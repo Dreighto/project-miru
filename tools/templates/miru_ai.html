@@ -1,0 +1,1825 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#130b1f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ app_name }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description" content="Miru is a One Piece Card Intelligence System that answers from verified card knowledge, not unsourced guesses.">
+    {% if manifest_url %}
+    <link rel="manifest" href="{{ manifest_url }}?v={{ asset_version }}">
+    {% endif %}
+    {% if apple_icon_url %}
+    <link rel="apple-touch-icon" href="{{ apple_icon_url }}{% if apple_icon_url.startswith('data:') %}{% else %}?v={{ asset_version }}{% endif %}">
+    {% endif %}
+    {% if favicon_url %}
+    <link rel="icon" href="{{ favicon_url }}{% if favicon_url.startswith('data:') %}{% else %}?v={{ asset_version }}{% endif %}">
+    {% endif %}
+    <title>{{ app_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='miru_ai.css') }}?v={{ asset_version }}">
+</head>
+
+<body class="pageBody pageBody--{{ page_key }}">
+    <main class="appShell">
+        <nav class="topNav" aria-label="Miru navigation">
+            <a class="brandLink" href="{{ url_for('index') }}" aria-label="Go to Miru home">
+                <img class="brandLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+                <span class="brandWordmark">
+                    <strong>{{ app_name }}</strong>
+                    <span>{{ app_tagline }}</span>
+                </span>
+            </a>
+            <div class="navLinks">
+                {% for item in nav_items %}
+                <a class="navLink{% if item.active %} isActive{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
+                {% endfor %}
+            </div>
+        </nav>
+
+        <div id="miruMainContent" data-page-key="{{ page_key }}" data-run-disabled="{{ 'true' if run_disabled else 'false' }}" data-run-url="{{ run_url }}">
+        {% if page_key == "home" %}
+        <header class="heroCard heroCard--home heroCard--homeAsk">
+            <img class="heroLogo heroLogo--home heroLogo--glow miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+            <div class="heroCopy heroCopy--homeAsk">
+                <div class="heroEyebrow">One Piece card intelligence</div>
+                <h1>{{ app_name }}</h1>
+                <p>Miru answers questions about One Piece cards using verified card knowledge built from trusted sources.</p>
+            </div>
+        </header>
+
+        {% if startup_issues %}
+        <section class="noticeStack" aria-label="Startup notices">
+            {% for issue in startup_issues %}
+            <article class="noticeCard">
+                <strong>Heads up</strong>
+                <p>{{ issue }}</p>
+            </article>
+            {% endfor %}
+        </section>
+        {% endif %}
+
+        <form class="panelCard formCard homeAskCard" id="miruHomeForm" action="{{ run_url }}" method="post" novalidate>
+            <input class="homeModeInput" type="radio" name="mode" value="{{ default_mode }}" checked>
+            <div class="homeAskIntro">
+                <p class="fieldHelp" id="requestHelp" data-home-help="Ask about a card code, card name, set, or variant. Miru answers from current local card knowledge and keeps unknowns visible.">Ask about a card code, card name, set, or variant. Miru answers from current local card knowledge and keeps unknowns visible.</p>
+                <p class="fieldExample isHidden" id="requestExample" data-home-example=""></p>
+                <div class="modeHint isHidden" id="modeHint" aria-live="polite"></div>
+            </div>
+
+            <div class="fieldBlock homeAskFieldBlock">
+                <label class="srOnly" for="requestText">Question</label>
+                <textarea id="requestText" name="request_text" rows="4" data-home-placeholder="Ask Miru about a One Piece card..." placeholder="Ask Miru about a One Piece card..."></textarea>
+            </div>
+
+            <div class="actionRow homeActionRow">
+                <button class="runButton" id="runButton" type="submit" {% if run_disabled %}disabled{% endif %}>Ask Miru</button>
+                <button class="clearButton" id="clearButton" type="button">Clear</button>
+            </div>
+
+            <section class="homeExamples" aria-label="Example questions">
+                <h2>Try a question</h2>
+                <div class="presetGrid presetGrid--home" id="presetGrid">
+                    <button class="presetButton" type="button" data-mode="{{ default_mode }}" data-request="What is OP09-001?">
+                        <span>What is OP09-001?</span>
+                    </button>
+                    <button class="presetButton" type="button" data-mode="{{ default_mode }}" data-request="What variants exist for OP01-001?">
+                        <span>What variants exist for OP01-001?</span>
+                    </button>
+                    <button class="presetButton" type="button" data-mode="{{ default_mode }}" data-request="What set is EB03-018 from?">
+                        <span>What set is EB03-018 from?</span>
+                    </button>
+                    <button class="presetButton" type="button" data-mode="{{ default_mode }}" data-request="What does P-088 do?">
+                        <span>What does P-088 do?</span>
+                    </button>
+                </div>
+                <div class="homeQuickLinks" aria-label="More Miru pages">
+                    <a class="ctaButton ctaButton--secondary" href="{{ url_for('dossiers_page') }}">View Dossiers</a>
+                    <a class="ctaButton ctaButton--secondary" href="{{ url_for('gaps_page') }}">Knowledge gaps</a>
+                </div>
+            </section>
+        </form>
+
+        <section class="panelCard statusCard isHidden" id="loadingCard" aria-live="polite">
+            <div class="statusSpinner" aria-hidden="true"></div>
+            <div>
+                <strong>Working...</strong>
+                <p>Miru is checking the current One Piece knowledge data and building a structured answer. Keep this page open until the result lands.</p>
+            </div>
+        </section>
+
+        <section class="panelCard resultCard isHidden" id="resultCard" aria-live="polite">
+            <div class="resultLabel">Miru answer</div>
+            <p class="resultMeta" id="resultMeta"></p>
+            <p class="copyHint" id="resultHint">Copy Result will try direct clipboard first, then a safe fallback if the browser blocks it.</p>
+            <p class="resultGuide">Read this in order: resolved cards and sets, known card details, missing fields, ambiguity notes, then follow-up questions.</p>
+            <div class="copyRow">
+                <button class="copyButton" id="copyButton" type="button">Copy Result</button>
+                <button class="copyButton" id="selectButton" type="button">Select Result</button>
+                <span class="copyFeedback" id="copyFeedback" aria-live="polite"></span>
+            </div>
+            <pre class="resultReadable" id="resultReadable"></pre>
+            <div class="manualCopyBlock isHidden" id="manualCopyBlock">
+                <p class="manualCopyHint">Manual copy area</p>
+                <textarea class="resultOutput" id="resultOutput" readonly spellcheck="false" aria-label="Miru AI manual copy area"></textarea>
+            </div>
+        </section>
+
+        <section class="panelCard errorCard isHidden" id="errorCard" aria-live="polite">
+            <div class="resultLabel">Run issue</div>
+            <p class="resultMeta" id="errorMeta"></p>
+            <pre class="errorOutput" id="errorOutput"></pre>
+        </section>
+        {% elif page_key == "ask" %}
+        <header class="heroCard heroCard--section">
+            <img class="heroLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+            <div class="heroCopy">
+                <div class="heroEyebrow">Ask a card question</div>
+                <h1>Ask Miru</h1>
+                <p>Ask about a One Piece card, set, variant, or mechanic. Miru should answer with known facts first, then show gaps, ambiguity, and useful follow-up questions.</p>
+            </div>
+        </header>
+
+        {% if startup_issues %}
+        <section class="noticeStack" aria-label="Startup notices">
+            {% for issue in startup_issues %}
+            <article class="noticeCard">
+                <strong>Heads up</strong>
+                <p>{{ issue }}</p>
+            </article>
+            {% endfor %}
+        </section>
+        {% endif %}
+
+        <section class="panelCard">
+            <div class="sectionCopy">
+                <div class="sectionEyebrow">Try a question</div>
+                <h2>Start with a real card question</h2>
+                <p>These examples are written like normal Miru questions, not tool commands. Tap one, then adjust it however you want.</p>
+            </div>
+            <div class="presetGrid" id="presetGrid">
+                {% for preset in presets %}
+                <button class="presetButton" type="button" data-mode="{{ preset.mode }}" data-request="{{ preset.request_text }}">
+                    <span>{{ preset.label }}</span>
+                </button>
+                {% endfor %}
+            </div>
+        </section>
+
+        <form class="panelCard formCard" id="miruForm" action="{{ run_url }}" method="post" novalidate>
+            <div class="sectionCopy">
+                <div class="sectionEyebrow">Ask Miru</div>
+                <h2>Use the simplest mode that fits</h2>
+                <p>If you are not sure, leave it on Card Lookup. Miru will keep the answer grounded in card knowledge and make missing information visible.</p>
+            </div>
+
+            <fieldset class="modeGrid" aria-label="Miru AI knowledge mode">
+                {% for mode in mode_configs %}
+                <label class="modeCard">
+                    <input type="radio" name="mode" value="{{ mode.key }}" {% if mode.key == default_mode %}checked{% endif %}>
+                    <span class="modeBody">
+                        <strong>{{ mode.label }}</strong>
+                        <span>{{ mode.caption }}</span>
+                    </span>
+                </label>
+                {% endfor %}
+            </fieldset>
+
+            <div class="modeHint" id="modeHint" aria-live="polite"></div>
+
+            <div class="fieldBlock">
+                <div class="fieldHeaderRow">
+                    <label for="requestText">Question</label>
+                    <button class="utilityButton" id="pasteButton" type="button">Paste Question</button>
+                </div>
+                <p class="fieldHelp" id="requestHelp">Ask about cards, sets, variants, mechanics, citation-backed facts, or what Miru still does not know.</p>
+                <p class="fieldExample" id="requestExample"></p>
+                <textarea id="requestText" name="request_text" rows="7" placeholder="Example: What card information is still missing for OP09-001?"></textarea>
+            </div>
+
+            <div class="tipRow" aria-label="Question tips">
+                <span class="tipPill">Try exact card codes like OP09-001</span>
+                <span class="tipPill">Ask what a mechanic means</span>
+                <span class="tipPill">Ask which facts are still missing</span>
+                <span class="tipPill">Ask how prints or variants differ</span>
+            </div>
+
+            <div class="actionRow">
+                <button class="runButton" id="runButton" type="submit" {% if run_disabled %}disabled{% endif %}>Ask Miru</button>
+                <button class="clearButton" id="clearButton" type="button">Clear</button>
+                <p class="runNote">Ask one question at a time, read the known facts first, then use the gaps and follow-ups to decide what to ask next.</p>
+            </div>
+        </form>
+
+        <section class="panelCard statusCard isHidden" id="loadingCard" aria-live="polite">
+            <div class="statusSpinner" aria-hidden="true"></div>
+            <div>
+                <strong>Working...</strong>
+                <p>Miru is checking the current One Piece knowledge data and building a structured answer. Keep this page open until the result lands.</p>
+            </div>
+        </section>
+
+        <section class="panelCard resultCard isHidden" id="resultCard" aria-live="polite">
+            <div class="resultLabel">Miru answer</div>
+            <p class="resultMeta" id="resultMeta"></p>
+            <p class="copyHint" id="resultHint">Copy Result will try direct clipboard first, then a safe fallback if the browser blocks it.</p>
+            <p class="resultGuide">Read this in order: resolved cards and sets, known card details, missing fields, ambiguity notes, then follow-up questions.</p>
+            <div class="copyRow">
+                <button class="copyButton" id="copyButton" type="button">Copy Result</button>
+                <button class="copyButton" id="selectButton" type="button">Select Result</button>
+                <span class="copyFeedback" id="copyFeedback" aria-live="polite"></span>
+            </div>
+            <pre class="resultReadable" id="resultReadable"></pre>
+            <div class="manualCopyBlock isHidden" id="manualCopyBlock">
+                <p class="manualCopyHint">Manual copy area</p>
+                <textarea class="resultOutput" id="resultOutput" readonly spellcheck="false" aria-label="Miru AI manual copy area"></textarea>
+            </div>
+        </section>
+
+        <section class="panelCard errorCard isHidden" id="errorCard" aria-live="polite">
+            <div class="resultLabel">Run issue</div>
+            <p class="resultMeta" id="errorMeta"></p>
+            <pre class="errorOutput" id="errorOutput"></pre>
+        </section>
+
+        <section class="panelCard helpCard">
+            <div class="sectionCopy">
+                <div class="sectionEyebrow">If you are not sure what to ask</div>
+                <h2>Use short, concrete card questions</h2>
+            </div>
+            <ol class="helpList">
+                <li>Start with a card code, set code, card name, or mechanic if you have one.</li>
+                <li>Ask one direct question, or a short cluster of closely related questions.</li>
+                <li>After the answer appears, look at the missing fields and follow-up ideas to decide what to ask next.</li>
+            </ol>
+        </section>
+        {% elif page_key == "dossiers" %}
+        <header class="heroCard heroCard--section">
+            <img class="heroLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+            <div class="heroCopy">
+                <div class="heroEyebrow">Card dossiers</div>
+                <h1>Structured card knowledge</h1>
+                <p>Miru dossiers are the reusable card profiles behind better answers. They keep identity, variants, sources, and verification state together so card questions stay grounded.</p>
+            </div>
+        </header>
+
+        <section class="overviewGrid" aria-label="Dossier panels">
+            {% for panel in dossier_panels %}
+            <article class="infoCard">
+                <div class="sectionEyebrow">{{ panel.eyebrow }}</div>
+                <h2>{{ panel.title }}</h2>
+                <p>{{ panel.body }}</p>
+            </article>
+            {% endfor %}
+        </section>
+
+        <section class="panelCard compactPanel">
+            <div class="sectionCopy">
+                <div class="sectionEyebrow">Good dossier questions</div>
+                <h2>Ask for identity, sources, or variants</h2>
+            </div>
+            <ul class="featureList">
+                <li>What is OP01-001?</li>
+                <li>What variants exist for OP01-001?</li>
+                <li>What source supports this card's rarity?</li>
+                <li>What official image record is tied to this version?</li>
+            </ul>
+            <a class="ctaButton ctaButton--secondary" href="{{ ask_url }}">Ask these on the Ask Miru page</a>
+        </section>
+        {% elif page_key == "gaps" %}
+        <header class="heroCard heroCard--section">
+            <img class="heroLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+            <div class="heroCopy">
+                <div class="heroEyebrow">Knowledge gaps</div>
+                <h1>What Miru still needs to learn</h1>
+                <p>Miru is more useful when it shows what is missing, uncertain, or conflicting instead of guessing. This page is the short version of that promise.</p>
+            </div>
+        </header>
+
+        <section class="overviewGrid" aria-label="Gap panels">
+            {% for panel in gap_panels %}
+            <article class="infoCard">
+                <div class="sectionEyebrow">{{ panel.eyebrow }}</div>
+                <h2>{{ panel.title }}</h2>
+                <p>{{ panel.body }}</p>
+            </article>
+            {% endfor %}
+        </section>
+
+        <section class="panelCard compactPanel">
+            <div class="sectionCopy">
+                <div class="sectionEyebrow">Questions that expose gaps</div>
+                <h2>Ask Miru what is missing, not just what is known</h2>
+            </div>
+            <ul class="featureList">
+                <li>What facts are still missing for P-088?</li>
+                <li>Which fields are uncertain for OP09-001?</li>
+                <li>What conflicts exist for this card family?</li>
+                <li>What should Miru verify next about this card?</li>
+            </ul>
+            <a class="ctaButton ctaButton--secondary" href="{{ ask_url }}">Open Ask Miru</a>
+        </section>
+        {% elif page_key == "training" %}
+        <header class="heroCard heroCard--section">
+            <img class="heroLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+            <div class="heroCopy">
+                <div class="heroEyebrow">Training and roadmap</div>
+                <h1>How Miru is growing</h1>
+                <p>Miru should get smarter by learning trusted card facts, keeping citations, and exposing gaps honestly. This page shows what is real now and what comes next.</p>
+            </div>
+        </header>
+
+        <section class="overviewGrid" aria-label="Training panels">
+            {% for panel in training_panels %}
+            <article class="infoCard">
+                <div class="sectionEyebrow">{{ panel.eyebrow }}</div>
+                <h2>{{ panel.title }}</h2>
+                <p>{{ panel.body }}</p>
+            </article>
+            {% endfor %}
+        </section>
+
+        {% set tp = training_status.get("training_progress") or {} %}
+        <section class="panelCard trainingProgressCard" aria-label="Training progress">
+            <div class="trainingProgressIntro">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Training progress</div>
+                    <h2>Verified dossiers vs catalog</h2>
+                    <p>Miru gets stronger as catalog coverage becomes structured dossiers and then verified dossiers. This panel keeps that progress visible without pretending the work is finished.</p>
+                </div>
+                <div class="trainingProgressMeta">
+                    <span class="trainingProgressPercent">{{ "%.1f"|format(tp.get("training_progress_percent", training_status.get("progress_percent", 0))) }}%</span>
+                    <p>{{ tp.get("verified_summary", training_status.get("verified_summary", "")) }}</p>
+                </div>
+            </div>
+
+            <div class="trainingProgressBar" aria-hidden="true">
+                <span style="width: {{ "%.1f"|format(tp.get("training_progress_percent", training_status.get("progress_percent", 0))) }}%;"></span>
+            </div>
+            <p class="trainingProgressNote">{{ tp.get("remaining_summary", training_status.get("remaining_summary", "")) }}</p>
+
+            <div class="trainingStatGrid" aria-label="Training metrics">
+                {% for item in tp.get("stats") or training_status.get("stats") or [] %}
+                <article class="trainingStatCard">
+                    <span class="trainingStatLabel">{{ item["label"] }}</span>
+                    <strong>{{ item["value"] }}</strong>
+                    <p>{{ item["detail"] }}</p>
+                </article>
+                {% endfor %}
+            </div>
+
+            <div class="trainingRingGrid" aria-label="Coverage rings">
+                {% for item in tp.get("ring_metrics") or training_status.get("ring_metrics") or [] %}
+                <article class="trainingRingCard">
+                    <div class="trainingRing" style="--ring-progress: {{ "%.1f"|format(item["percent"]) }}%;">
+                        <div class="trainingRingInner">
+                            <strong>{{ "%.1f"|format(item["percent"]) }}%</strong>
+                            <span>{{ item["label"] }}</span>
+                        </div>
+                    </div>
+                    <div class="trainingRingCopy">
+                        <h3>{{ item["label"] }}</h3>
+                        <p>{{ item["detail"] }}</p>
+                        <span>{{ item["value"] }}</span>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+
+            <div class="trainingStageRow" aria-label="Training stages">
+                {% for item in training_status["stage_rows"] %}
+                <article class="trainingStage trainingStage--{{ item["state"] }}">
+                    <span class="trainingStageState">{{ item["state"]|replace("_", " ")|title }}</span>
+                    <h3>{{ item["label"] }}</h3>
+                    <p>{{ item["detail"] }}</p>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% set intelligence = training_status.get("intelligence_progress", {}) %}
+        {% set current_stage = intelligence.get("current_stage", {}) %}
+        {% set next_stage = intelligence.get("next_stage") %}
+        {% set training_voyage = training_status.get("voyage", {}) %}
+        {% set training_assets = training_voyage.get("assets", {}) %}
+        <section class="panelCard intelligenceProgressCard" aria-label="Miru intelligence progress">
+            <div class="intelligenceProgressIntro">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Miru Intelligence Progress</div>
+                    <h2>{{ current_stage.get("label", "Card Recognition") }}</h2>
+                    <p>{{ current_stage.get("summary", "Miru is still building its card knowledge foundation.") }}</p>
+                </div>
+                <div class="intelligenceStageHero">
+                    <span class="trainingStageState">Stage {{ current_stage.get("number", 1) }} of {{ intelligence.get("total_stages", 6) }}</span>
+                    <strong>Voyage Arc: {{ current_stage.get("voyage_arc", "East Blue") }}</strong>
+                    <p>{{ intelligence.get("coverage_note", "Training coverage is still being measured.") }}</p>
+                </div>
+            </div>
+
+            <article class="trainingStage intelligenceMeaningCard">
+                <span class="trainingStageState">What this means</span>
+                <h3>{{ current_stage.get("label", "Card Recognition") }}</h3>
+                <p>{{ current_stage.get("what_this_means", "Miru is still building its card knowledge foundation.") }}</p>
+            </article>
+
+            <div class="intelligenceVoyageStrip" aria-label="Voyage progress strip">
+                <div class="intelligenceVoyageStripHeader">
+                    <div>
+                        <span class="trainingStageState">Voyage Theme</span>
+                        <h3>Mini voyage track</h3>
+                        <p>The voyage layer is just supporting flavor for Miru’s current stage, with the current arc highlighted and future arcs kept subdued.</p>
+                    </div>
+                </div>
+                <div class="intelligenceVoyageTrack" role="list">
+                    {% for item in intelligence.get("stage_rows", []) %}
+                    <article class="intelligenceVoyageNode intelligenceVoyageNode--{{ item['state'] }}" role="listitem" aria-current="{{ 'step' if item['state'] == 'active' else 'false' }}">
+                        <div class="intelligenceVoyageNodeMarker" aria-hidden="true">
+                            {% if item["state"] == "active" %}
+                            <img src="{{ training_assets.get('ship', '/static/icons/miru-fruit.png') }}" alt="">
+                            {% elif item["state"] == "complete" %}
+                            <img src="{{ training_assets.get('compass', '/static/icons/miru-fruit.png') }}" alt="">
+                            {% else %}
+                            <img src="{{ training_assets.get('vivre', '/static/icons/miru-fruit.png') }}" alt="">
+                            {% endif %}
+                        </div>
+                        <div class="intelligenceVoyageNodeCopy">
+                            <span class="trainingStageState">{{ item["state"]|replace("_", " ")|title }}</span>
+                            <strong>{{ item["number"] }}. {{ item["voyage_arc"] }}</strong>
+                            <p>{{ item["label"] }}</p>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="trainingStatGrid intelligenceSummaryGrid" aria-label="Miru intelligence summary">
+                <article class="trainingStatCard">
+                    <span class="trainingStatLabel">Current Stage</span>
+                    <strong>{{ current_stage.get("label", "Card Recognition") }}</strong>
+                    <p>Miru is strongest at this level today.</p>
+                </article>
+                <article class="trainingStatCard">
+                    <span class="trainingStatLabel">Voyage Arc</span>
+                    <strong>{{ current_stage.get("voyage_arc", "East Blue") }}</strong>
+                    <p>{{ intelligence.get("voyage_note", "The voyage theme supports the plain-English stage.") }}</p>
+                </article>
+                <article class="trainingStatCard">
+                    <span class="trainingStatLabel">Next Stage</span>
+                    <strong>{{ next_stage.get("label", "Ongoing refinement") if next_stage else "Ongoing refinement" }}</strong>
+                    <p>{{ current_stage.get("next_stage_detail", "Miru will keep improving coverage and answer quality.") }}</p>
+                </article>
+            </div>
+
+            <div class="intelligenceListGrid" aria-label="Miru current and future capabilities">
+                <article class="trainingStage">
+                    <span class="trainingStageState">What Miru can do now</span>
+                    <ul class="roadmapList">
+                        {% for item in current_stage.get("can_do_now", []) %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </article>
+                <article class="trainingStage">
+                    <span class="trainingStageState">What Miru is still learning</span>
+                    <ul class="roadmapList">
+                        {% for item in current_stage.get("still_learning", []) %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </article>
+                <article class="trainingStage">
+                    <span class="trainingStageState">Next Stage</span>
+                    <h3>{{ next_stage.get("label", "Ongoing refinement") if next_stage else "Ongoing refinement" }}</h3>
+                    <p>{{ current_stage.get("next_stage_detail", "Miru will keep improving coverage and answer quality.") }}</p>
+                </article>
+            </div>
+
+            <div class="intelligenceStageGrid" aria-label="Miru intelligence stages">
+                {% for item in intelligence.get("stage_rows", []) %}
+                <article class="trainingStage trainingStage--{{ item["state"] }}">
+                    <span class="trainingStageState">{{ item["state"]|replace("_", " ")|title }}</span>
+                    <h3>{{ item["number"] }}. {{ item["label"] }}</h3>
+                    <p>{{ item["summary"] }}</p>
+                    <p class="intelligenceVoyageArc">Voyage arc: {{ item["voyage_arc"] }}</p>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="panelCard roadmapCard" aria-label="Miru AI progress">
+            <div class="sectionCopy roadmapIntro">
+                <div class="sectionEyebrow">Miru AI progress</div>
+                <h2>What it can do now, what comes next, and what comes later</h2>
+                <p>The roadmap stays product-focused here so users can see how card intelligence is expanding over time.</p>
+            </div>
+            <div class="roadmapGrid">
+                {% for section in roadmap_sections %}
+                <article class="roadmapBlock">
+                    <h3>{{ section["title"] }}</h3>
+                    <ul class="roadmapList">
+                        {% for item in section["items"] %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% elif page_key == "dev" %}
+        {% set dev_tp = dev_status.get('training_progress') or dev_status.get('training') or {} %}
+        {% set dev_voyage = dev_status.get("voyage", {}) %}
+        {% set dev_current_island = dev_voyage.get("current_island", {}) %}
+        {% set dev_next_island = dev_voyage.get("next_island") %}
+        {% set dev_next_boss = dev_voyage.get("next_boss") %}
+        {% set dev_learning_stage_label = dev_voyage.get("sea_label", "Early structured learning") %}
+        {% set validation_audit = dev_status.get('validation_audit', {}) %}
+        {% set dev_recently_validated = validation_audit.get('recently_validated', []) %}
+        {% set dev_recent_log = dev_voyage.get('recent_log', []) %}
+        {% set limits_by_provider = dev_status.get('limits_by_provider', {}) %}
+        {% set cursor_limits = limits_by_provider.get('cursor') %}
+        {% set codex_limits = limits_by_provider.get('codex') %}
+        {% set dev_push = dev_status.get('pushover', {}) %}
+        {% set dev_intelligence = dev_status.get('intelligence_status', {}) %}
+        {% set dev_push_tone = 'good' if dev_push.get('enabled') and dev_push.get('configured') else ('neutral' if not dev_push.get('enabled') else 'warn') %}
+        {% set dev_api_events = dev_status.get('learning_engine', {}).get('api_permission_events', []) %}
+        {% set dev_has_attention = (
+            dev_status['issues']['miru_ai']['tone'] == 'warn'
+            or dev_status['issues']['project_miru']['tone'] == 'warn'
+            or dev_push_tone == 'warn'
+            or (dev_api_events and dev_api_events|length > 0)
+            or (cursor_limits and ((cursor_limits.get('remaining_percent') or 100) < 20))
+            or (codex_limits and ((codex_limits.get('remaining_percent') or 100) < 20))
+        ) %}
+
+        {% set dev_env = dev_status.get('dev_environment', {}) %}
+        <section class="panelCard devConsoleShell" id="devMonitor" data-dev-status-url="{{ dev_status_url }}" data-dev-default-tab="overview" data-project-miru-link="{{ dev_status.get('links', {}).get('project_miru', '') }}">
+            <div class="devMiniHeader">
+                <div class="devMiniHeaderBrand">
+                    <img class="devMiniHeaderIcon" src="/static/icons/miru-fruit-192.png" alt="Miru" aria-hidden="true">
+                    <span class="devMiniHeaderTitle">Miru Control</span>
+                </div>
+                <div class="devMiniHeaderMeta">
+                    <span class="devUpdatedAt" id="devUpdatedAt">{{ dev_status.get('updated_at_display') or dev_status.get('updated_at') or '—' }}</span>
+                    <button class="devBtn devBtn--secondary devRefreshButton devRefreshButton--mini" id="devRefreshButton" type="button" title="Refresh status">↻</button>
+                </div>
+            </div>
+
+            {% set control_deck = dev_status.get('control_deck', {}) %}
+            {% set surface_status = dev_status.get('surface_status', {}) %}
+            {% set le = dev_status.get('learning_engine', {}) %}
+            {% set activity = dev_status.get('activity', {}) %}
+            {% set worker_last = dev_status.get('worker_last_run', {}) %}
+            {% set gov = dev_status.get('governed_autopilot', {}) %}
+            {% set gov_has_data = gov and (gov.get('runs', 0) > 0 or gov.get('last_run_ts')) %}
+            <div class="devCurrentStatusWrap" aria-label="Current status">
+                <p class="devCurrentStatusLine" id="devCurrentStatusLine">{{ le.get('learner_state_display') or le.get('learner_state') or '—' }}</p>
+            </div>
+            <section class="devStatusStrip" aria-label="Status details">
+                <article class="devStatusStripItem">
+                    <span class="devStatusStripLabel">Learner</span>
+                    <strong class="devStatusStripValue devStatusStripValue--state" id="devStripLearnerState">{{ le.get('learner_state_display') or le.get('learner_state') or '—' }}</strong>
+                    {% if le.get('learner_pid') %}<span class="devStatusStripSub" id="devStripLearnerPid">PID {{ le.get('learner_pid') }}</span>{% else %}<span class="devStatusStripSub isHidden" id="devStripLearnerPid"></span>{% endif %}
+                </article>
+                <article class="devStatusStripItem">
+                    <span class="devStatusStripLabel">Miru</span>
+                    <strong class="devStatusStripValue" id="devStripMiruStatus">{{ activity.get('title') or le.get('learner_state_display') or '—' }}</strong>
+                </article>
+                <article class="devStatusStripItem">
+                    <span class="devStatusStripLabel">Worker</span>
+                    <strong class="devStatusStripValue" id="devStripWorkerStatus">{% if worker_last.get('action') and worker_last.get('action') != 'no_run_recorded' %}{{ worker_last.get('action_display', worker_last.get('action')) }}{% if worker_last.get('timestamp_display') %} · {{ worker_last.get('timestamp_display') }}{% endif %}{% else %}—{% endif %}</strong>
+                </article>
+                <article class="devStatusStripItem">
+                    <span class="devStatusStripLabel">Mode</span>
+                    <strong class="devStatusStripValue" id="devStripMode">{{ dev_status.get('learning_engine', {}).get('learner_mode', 'REVIEW_REQUIRED') }}</strong>
+                </article>
+                <article class="devStatusStripItem">
+                    <span class="devStatusStripLabel">Heartbeat</span>
+                    <strong class="devStatusStripValue" id="devStripHeartbeat">—</strong>
+                    <span class="devStatusStripSub" id="devStripHeartbeatFreshness">{% if dev_status.get('learning_engine', {}).get('heartbeat_freshness') %}({{ dev_status.get('learning_engine', {}).get('heartbeat_freshness') }}){% endif %}</span>
+                </article>
+                <article class="devStatusStripItem">
+                    <span class="devStatusStripLabel">Queue</span>
+                    <strong class="devStatusStripValue" id="devStripQueue">{{ dev_status.get('learning_engine', {}).get('queue_length', 0) }} waiting · {{ dev_status.get('learning_engine', {}).get('running_count', 0) }} running</strong>
+                </article>
+                <article class="devStatusStripItem">
+                    <span class="devStatusStripLabel">Dossiers</span>
+                    <strong class="devStatusStripValue" id="devStripDossiers">{{ dev_status.get('learning_engine', {}).get('dossier_verified_count', 0) }} verified · {{ dev_status.get('learning_engine', {}).get('dossier_source_backed_count', 0) }} source-backed</strong>
+                </article>
+            </section>
+
+            <section class="devStatusStrip devWorkerLastRunWrap" id="devWorkerLastRunWrap" aria-label="Scheduled worker last run" {% if worker_last.get('action') == 'no_run_recorded' %}style="display:none"{% endif %}>
+                <span class="devStatusStripLabel">Scheduled worker</span>
+                <strong class="devStatusStripValue" id="devWorkerLastRunAction">{{ worker_last.get('action_display', worker_last.get('action', '—')) }}</strong>
+                <span class="devStatusStripSub" id="devWorkerLastRunTime">{{ worker_last.get('timestamp_display') or worker_last.get('timestamp') or '—' }}</span>
+                <p class="devWorkerLastRunDetail devProgressDetail" id="devWorkerLastRunDetail">{% if worker_last.get('blocker') %}{{ worker_last.get('blocker') }}{% elif worker_last.get('no_new_work_reason') %}{{ worker_last.get('no_new_work_reason') }}{% endif %}{% if worker_last.get('overlap_count') is not none %} · overlap {{ worker_last.get('overlap_count') }}{% endif %}{% if worker_last.get('insight_count_after') is not none %} · {{ worker_last.get('insight_count_after') }} insights{% endif %}</p>
+            </section>
+
+            {% if gov_has_data %}
+            <section class="devGovernedCard devStatusStrip" aria-label="Miru today — governed autopilot">
+                <div class="devGovernedCardInner">
+                    <div class="devCardHeader devGovernedCardHeader">
+                        <div>
+                            <div class="sectionEyebrow">Miru today</div>
+                            <h3>Is Miru running safely?</h3>
+                        </div>
+                        <span class="statusPill statusPill--good">Yes</span>
+                    </div>
+                    <p class="devLeadSummary devGovernedSummary">All writes stay in this worktree only. Ethics and provenance stay on.</p>
+                    <ul class="devGovernedList" aria-label="What Miru did today">
+                        <li><strong>Governed runs today:</strong> {{ gov.get('runs', 0) }}{% if gov.get('runs_skipped_overlap', 0) %} ({{ gov.get('runs_skipped_overlap') }} skipped — another run was in progress){% endif %}</li>
+                        <li><strong>Safe updates applied:</strong> {{ gov.get('total_auto_applied', 0) }}</li>
+                        <li><strong>New items that need your review:</strong> {{ gov.get('newly_surfaced_review', 0) }}</li>
+                        <li><strong>Duplicates skipped quietly:</strong> {{ gov.get('total_skipped', 0) }}</li>
+                        {% if gov.get('failure_count', 0) %}
+                        <li class="devGovernedWarn">At least one run had a failure. Check the latest summary.</li>
+                        {% endif %}
+                    </ul>
+                    {% set open_review = gov.get('open_review_items') or [] %}
+                    {% if open_review %}
+                    <div class="devGovernedReviewWrap">
+                        <h4 class="devGovernedReviewTitle">What still needs your attention</h4>
+                        <p class="devGovernedReviewHint">Tap an item to see why Miru held it and what to do next.</p>
+                        <ul class="devGovernedReviewList" role="list">
+                            {% for item in open_review %}
+                            <li class="devGovernedReviewItem">
+                                <details class="devGovernedReviewDetails">
+                                    <summary class="devGovernedReviewSummary">
+                                        <span class="devGovernedReviewSummaryLabel">{{ item.get('item_identifier', '') }}</span>
+                                        <span class="devGovernedReviewSummaryMeta">({{ item.get('proposed_state', '') }})</span>
+                                        <span class="devGovernedReviewSummaryTitle">{{ item.get('simple_title', 'Item for review') }}</span>
+                                    </summary>
+                                    <div class="devGovernedReviewDetailBody">
+                                        {% if item.get('simple_reason') %}
+                                        <p class="devGovernedReviewDetailP"><strong>Why I held it:</strong> {{ item.get('simple_reason') }}</p>
+                                        {% endif %}
+                                        {% if item.get('why_it_matters') %}
+                                        <p class="devGovernedReviewDetailP"><strong>Why it matters:</strong> {{ item.get('why_it_matters') }}</p>
+                                        {% endif %}
+                                        {% if item.get('confidence_note') %}
+                                        <p class="devGovernedReviewDetailP"><strong>How sure I am:</strong> {{ item.get('confidence_note') }}</p>
+                                        {% endif %}
+                                        {% if item.get('suggested_action') %}
+                                        <p class="devGovernedReviewDetailP devGovernedReviewAction"><strong>Suggested next step:</strong> {{ item.get('suggested_action') }}</p>
+                                        {% endif %}
+                                        {% if not (item.get('simple_reason') or item.get('why_it_matters') or item.get('confidence_note') or item.get('suggested_action')) %}
+                                        <p class="devGovernedReviewDetailP">This item was held for your review. Check the latest batch summary for more detail.</p>
+                                        {% endif %}
+                                        <p class="devGovernedReviewDetailMeta">{{ item.get('item_identifier', '') }} · {{ item.get('proposed_state', '') }}{% if item.get('source_id') %} · {{ item.get('source_id') }}{% endif %}</p>
+                                    </div>
+                                </details>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% else %}
+                    <div class="devGovernedAllClearWrap">
+                        <p class="devGovernedAllClear">Nothing needs your attention right now.</p>
+                        <p class="devGovernedAllClearSub">I don't have anything important to hold for review at the moment.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+            {% endif %}
+
+            <div class="devControlDeck" aria-label="Mode and learner controls">
+                <div class="devControlDeckRow devControlDeckRow--mode">
+                    <span class="devModeBadge" id="devLearnerModeBadge" style="display:none" aria-hidden="true"></span>
+                    <button class="devBtn devBtn--mode devControlButton" type="button" data-dev-action="set-mode" data-action="set-mode" data-mode="DRY_RUN" title="Safe: discovery only">Dry Run</button>
+                    <button class="devBtn devBtn--mode devControlButton" type="button" data-dev-action="set-mode" data-action="set-mode" data-mode="SANDBOX" title="Limited safe testing">Sandbox</button>
+                    <button class="devBtn devBtn--mode devControlButton" type="button" data-dev-action="set-mode" data-action="set-mode" data-mode="REVIEW_REQUIRED" title="Items go to review queue">Review</button>
+                </div>
+                <div class="devControlDeckRow devControlDeckRow--actions">
+                    <button class="devBtn devBtn--primary devControlButton" type="button" id="devStartLearnerBtn" data-dev-action="start-learner" data-action="start-learner" title="Start learner (run queued work)">Start Learner</button>
+                    <button class="devBtn devBtn--secondary devControlButton" type="button" data-dev-action="stop-learner" data-action="stop-learner" title="Stop learner">Stop Learner</button>
+                    <button class="devBtn devBtn--secondary devControlButton" type="button" data-dev-action="restart" data-action="restart" title="Restart learner (stop then start)">Restart Learner</button>
+                    <button class="devBtn devBtn--secondary devControlButton" type="button" data-dev-action="refresh-status" data-action="refresh-status" title="Reload status">Refresh</button>
+                    <button class="devBtn devBtn--secondary devControlButton" type="button" data-dev-action="sync-insights" data-action="sync-insights" title="Run worktree card insight sync now">Sync Insights</button>
+                    <button class="devBtn devBtn--primary devControlButton" type="button" id="devContinueLearnerBtn" data-dev-action="start-learner" data-action="start-learner" title="Start learner again (e.g. after sync)">Continue Learning</button>
+                    <button class="devBtn devBtn--secondary devControlButton" type="button" id="devRunLoopBtn" data-dev-action="run-learning-loop" data-action="run-learning-loop" title="Run up to 3 learning cycles with pause between">Run Learning Loop</button>
+                    <button class="devBtn devBtn--secondary devControlButton" type="button" data-dev-action="seed-review-task" data-action="seed-review-task" title="Seed one review item (verify_official_fields from approved snapshot)">Seed Review Item</button>
+                    <span class="devControlFeedback" id="devControlFeedback" aria-live="polite"></span>
+                </div>
+                <p class="devStartLearnerHint" id="devStartLearnerHint">Start runs in {{ dev_status.get('learning_engine', {}).get('learner_mode', 'REVIEW_REQUIRED') }} mode. Insight sync runs automatically after Stop Learner. Use Sync Insights to refresh without stopping.</p>
+                <p class="devAlreadyRunningHint isHidden" id="devAlreadyRunningHint" aria-live="polite">Learner is already running. Duplicate start blocked.</p>
+                <p class="devDossiersHint isHidden" id="devDossiersHint"></p>
+                <p class="devLastSyncHint" id="devLastSyncHint">—</p>
+            </div>
+
+            <nav class="devInlineLinks" aria-label="Switch between Miru surfaces">
+                <a class="devInlineLink" href="{{ dev_status['links']['project_miru'] }}" aria-label="Open Project Miru">Project Miru</a>
+                <span class="devInlineLinkSep" aria-hidden="true">·</span>
+                <a class="devInlineLink" href="#devMonitor" aria-label="Focus Dev Monitor">Dev Monitor</a>
+                <span class="devInlineLinkSep" aria-hidden="true">·</span>
+                <a class="devInlineLink devInlineLink--primary" href="{{ dev_status['links']['miru_ai'] }}" data-client-nav="true" aria-label="Open Miru AI">Miru AI</a>
+            </nav>
+
+            <details class="devCollapse devCollapse--sites" aria-label="Sites and environment">
+                <summary class="devCollapseSummary">Sites &amp; environment</summary>
+                <div class="devCollapseBody">
+                    <section class="devQuickLinks" aria-label="Quick links">
+                        <h2 class="devQuickLinksTitle">Quick links</h2>
+                        <div class="devQuickLinksGrid">
+                            <a class="devBtn devBtn--secondary" href="{{ control_deck.get('worktree_site', 'http://localhost:18080') }}" target="_blank" rel="noopener noreferrer">Open Worktree Site</a>
+                            <a class="devBtn devBtn--primary" href="{{ control_deck.get('miru_dev_console', '') }}">Open Miru Dev Console</a>
+                            <a class="devBtn devBtn--secondary" href="{{ control_deck.get('main_site', 'http://localhost:8080') }}" target="_blank" rel="noopener noreferrer">Open Main Repo Site</a>
+                        </div>
+                    </section>
+                    <div class="devEnvStrip" aria-label="Environment and runtime">
+                        <span class="devEnvStripItem"><span class="devEnvStripLabel">Environment</span> <strong id="devStripEnvironment">{{ dev_env.get('environment', '—') }}</strong></span>
+                        <span class="devEnvStripItem"><span class="devEnvStripLabel">Runtime</span> <strong id="devStripRuntimeTarget">{{ dev_env.get('runtime_target', '—') }}</strong></span>
+                    </div>
+                    <section class="devSurfaceStatus devStatusStrip" aria-label="Surface status">
+                        <article class="devStatusStripItem">
+                            <span class="devStatusStripLabel">Miru AI Server</span>
+                            <strong class="devStatusStripValue">Port {{ surface_status.get('miru_ai', {}).get('port', '18765') }}</strong>
+                            <span class="devStatusStripSub statusPill statusPill--good">{{ surface_status.get('miru_ai', {}).get('status', 'Running') }}</span>
+                        </article>
+                        <article class="devStatusStripItem">
+                            <span class="devStatusStripLabel">Worktree Dashboard</span>
+                            <strong class="devStatusStripValue">Port {{ surface_status.get('worktree_dashboard', {}).get('port', '18080') }}</strong>
+                            <span class="devStatusStripSub statusPill statusPill--{{ 'good' if surface_status.get('worktree_dashboard', {}).get('status') == 'Running' else 'warn' }}">{{ surface_status.get('worktree_dashboard', {}).get('status', '—') }}</span>
+                        </article>
+                    </section>
+                </div>
+            </details>
+
+            <section class="devConsolePanel devOverviewPanel" id="devOverviewPanel" data-dev-panel="overview" role="tabpanel" aria-labelledby="devTabOverview">
+                {% set dev_awaiting = (validation_audit.get('rejected_evidence') or []) + (validation_audit.get('lowest_confidence') or []) %}
+                {% set dev_review_count = dev_status.get('learning_engine', {}).get('review_queue_count', 0) %}
+                {% set gov_open = (dev_status.get('governed_autopilot', {}) or {}).get('open_review_items') or [] %}
+                {% set dev_has_governed_review = gov_open|length > 0 %}
+                {% set dev_has_review_items = dev_awaiting or (dev_review_count and dev_review_count > 0) or dev_has_governed_review %}
+                <div class="devPrimaryGrid">
+                    <article class="devSurfaceCard devAttentionCard{% if not dev_has_attention and not dev_has_review_items %} devAttentionCard--quiet{% endif %}">
+                        <div class="devCardHeader">
+                            <div>
+                                <div class="sectionEyebrow">Action needed</div>
+                                <h3>{% if dev_has_attention or dev_has_review_items %}Needs attention{% else %}All clear{% endif %}</h3>
+                            </div>
+                            <span class="statusPill statusPill--{{ 'warn' if dev_has_attention or dev_has_review_items else 'good' }}">{{ 'Check' if dev_has_attention or dev_has_review_items else 'OK' }}</span>
+                        </div>
+                        <p class="devLeadSummary">{% if dev_has_attention or dev_has_review_items %}Only blockers, review items, and urgent warnings stay here.{% else %}Nothing urgent is blocking Miru right now.{% endif %}</p>
+                        <ul class="devAttentionList" id="devNeedsAttentionList">
+                            {% if dev_status['issues']['miru_ai']['tone'] == 'warn' %}
+                            <li>{{ dev_status['issues']['miru_ai']['detail'] }}</li>
+                            {% endif %}
+                            {% if dev_status['issues']['project_miru']['tone'] == 'warn' %}
+                            <li>{{ dev_status['issues']['project_miru']['detail'] }}</li>
+                            {% endif %}
+                            {% if dev_push_tone == 'warn' %}
+                            <li>Notifications: Pushover is enabled but credentials are missing.</li>
+                            {% endif %}
+                            {% if cursor_limits and ((cursor_limits.get('remaining_percent') or 100) < 20) %}
+                            <li>Cursor usage is below 20% remaining.</li>
+                            {% endif %}
+                            {% if codex_limits and ((codex_limits.get('remaining_percent') or 100) < 20) %}
+                            <li>Codex usage is below 20% remaining.</li>
+                            {% endif %}
+                            {% if dev_has_review_items and dev_review_count %}
+                            <li>{{ dev_review_count }} item(s) are waiting in learner review.</li>
+                            {% endif %}
+                            {% if dev_has_governed_review %}
+                            <li>{{ gov_open|length }} item(s) from today's governed run need your review.</li>
+                            {% endif %}
+                            {% if not dev_has_attention and not dev_has_review_items %}
+                            <li>No urgent issues. Miru looks healthy.</li>
+                            {% endif %}
+                        </ul>
+                        {% if dev_has_review_items %}
+                        <div class="devAttentionCta">
+                            <button class="devBtn devBtn--primary devReviewApprovalsBtn" type="button" id="devReviewApprovalsBtn" data-action="review-approvals" aria-label="Scroll to pending approvals and refresh">Review approvals</button>
+                        </div>
+                        {% endif %}
+                    </article>
+
+                    <article class="devSurfaceCard devLeadCard devLeadCard--compact">
+                        <div class="devLeadHeader">
+                            <div>
+                                <div class="sectionEyebrow">Recent learning</div>
+                                <h3>Recently touched cards</h3>
+                            </div>
+                            <span class="statusPill statusPill--{{ 'warn' if not dev_recently_validated and not dev_recent_log else 'good' }}">Live</span>
+                        </div>
+                        <p class="devLeadSummary" id="devRecentLearnedSummary">
+                            {% if dev_recently_validated %}
+                            Newly verified cards and recent learner movement.
+                            {% elif dev_recent_log %}
+                            Recent progress milestones from the learning engine.
+                            {% else %}
+                            No new learning events recorded yet.
+                            {% endif %}
+                        </p>
+                        <div class="devLeadList" id="devRecentLearnedList">
+                            {% if dev_recently_validated %}
+                                {% for item in dev_recently_validated[:4] %}
+                                <button class="devLearningEvent" type="button" data-card-code="{{ item['card_code'] }}">
+                                    <strong>{{ item['card_code'] }} · {{ item['card_name'] or 'Unknown card' }}</strong>
+                                    <span>{{ item['verified_at'] or 'Recently verified' }}</span>
+                                </button>
+                                {% endfor %}
+                            {% elif dev_recent_log %}
+                                {% for item in dev_recent_log[:4] %}
+                                <article class="devLearningEvent devLearningEvent--static">
+                                    <strong>{{ item['message'] }}</strong>
+                                    <span>{{ dev_voyage.get('source_label', 'Miru voyage progress') }}</span>
+                                </article>
+                                {% endfor %}
+                            {% else %}
+                            <p class="devValidationEmpty">Miru has not reported a new learning event yet.</p>
+                            {% endif %}
+                        </div>
+                    </article>
+                </div>
+
+                <section class="devPendingApprovalsSection" id="devPendingApprovalsSection" aria-label="Pending Approvals">
+                    <div class="devSectionHeader devPendingApprovalsHeader">
+                        <div class="sectionCopy">
+                            <div class="sectionEyebrow">Miru Approval Queue</div>
+                            <h3>Pending Approvals</h3>
+                            <p>Review and approve or reject items from the learner review queue.</p>
+                        </div>
+                        <button class="utilityButton devRefreshButton" type="button" id="devPendingApprovalsRefresh" aria-label="Refresh pending approvals">Refresh</button>
+                    </div>
+                    <div class="devPendingApprovalsList" id="devPendingApprovalsList" aria-live="polite">
+                        <p class="devPendingApprovalsEmpty" id="devPendingApprovalsEmpty">Loading…</p>
+                    </div>
+                </section>
+
+                <details class="devExpandable devExpandable--learner">
+                    <summary class="devExpandableSummary">Snapshot details</summary>
+                    <div class="devMiniDetailsGrid">
+                        <article class="devSurfaceCard devSummaryCard devLearnerStatusCard">
+                            <div class="devCardHeader">
+                                <div>
+                                    <div class="sectionEyebrow">Learner</div>
+                                    <h3>Learner status</h3>
+                                </div>
+                                <span class="statusPill statusPill--neutral" id="devLearnerModePill">{{ dev_status.get('learning_engine', {}).get('learner_mode', 'REVIEW_REQUIRED') }}</span>
+                            </div>
+                            <ul class="devLearnerStatusList">
+                                <li><strong>Mode:</strong> {{ dev_status.get('learning_engine', {}).get('learner_mode', 'REVIEW_REQUIRED') }}</li>
+                                <li><strong>Last run:</strong> {{ dev_status.get('learning_engine', {}).get('last_heartbeat', '—') or '—' }}</li>
+                                <li><strong>Last publish:</strong> {{ dev_status.get('learning_engine', {}).get('last_publish_at', '—') or '—' }}</li>
+                                <li><strong>Last blocked:</strong> {{ dev_status.get('learning_engine', {}).get('last_blocked_at', '—') or '—' }}</li>
+                                <li><strong>Queue size:</strong> {{ dev_status.get('learning_engine', {}).get('queue_length', 0) }}</li>
+                                <li><strong>Awaiting review:</strong> {{ dev_status.get('learning_engine', {}).get('review_queue_count', 0) }} items</li>
+                            </ul>
+                        </article>
+
+                        <article class="devSurfaceCard devSummaryCard devProgressCard">
+                            <div class="devCardHeader">
+                                <div>
+                                    <div class="sectionEyebrow">Coverage</div>
+                                    <h3>Verified card coverage</h3>
+                                </div>
+                                <strong class="devProgressValue" id="devOverviewProgressPercent">{{ "%.1f"|format(dev_tp.get('training_progress_percent', dev_tp.get('progress_percent', 0))) }}%</strong>
+                            </div>
+                            <p id="devOverviewProgressSummary">{{ dev_tp.get('summary', dev_tp.get('verified_summary', 'Training summary unavailable.')) }}</p>
+                            <div class="devProgressTrack" aria-hidden="true">
+                                <span id="devOverviewProgressFill" style="width: {{ "%.1f"|format(dev_tp.get('training_progress_percent', dev_tp.get('progress_percent', 0))) }}%;"></span>
+                            </div>
+                            <p class="devProgressDetail" id="devOverviewProgressDetail">Verified knowledge coverage only.</p>
+                            <p class="devProgressDetail" id="devOverviewStageLabel">Current learning stage: {{ dev_learning_stage_label }}</p>
+                        </article>
+                    </div>
+                </details>
+            </section>
+
+            <details class="devCollapse devCollapse--activity" aria-label="Activity and worktree" id="devActivityWorktreeCollapse">
+                <summary class="devCollapseSummary">Activity &amp; worktree</summary>
+                <div class="devCollapseBody">
+                    {% set worktree_summary_activity = dev_status.get('worktree_update_summary') %}
+                    {% if worktree_summary_activity and worktree_summary_activity.get('show') %}
+                    <section class="devWorktreeUpdate devWorktreeUpdate--{{ worktree_summary_activity.get('status', 'none') }}" id="devWorktreeUpdateBlock" aria-label="Worktree update status">
+                        <div class="devWorktreeUpdateHeader">
+                            <div>
+                                <span class="sectionEyebrow">Worktree site</span>
+                                <h3 class="devWorktreeUpdateTitle" id="devWorktreeUpdateTitle">{% if worktree_summary_activity.get('awaiting_review') %}Awaiting review{% else %}{% if worktree_summary_activity.get('status') == 'updated' %}Updated{% else %}Update status{% endif %}{% endif %}</h3>
+                            </div>
+                            <span class="statusPill statusPill--{{ 'warn' if worktree_summary_activity.get('awaiting_review') else ('good' if worktree_summary_activity.get('status') == 'updated' else 'neutral') }}" id="devWorktreeUpdatePill">{% if worktree_summary_activity.get('awaiting_review') %}Review{% else %}{% if worktree_summary_activity.get('status') == 'updated' %}Updated{% else %}—{% endif %}{% endif %}</span>
+                        </div>
+                        <p class="devWorktreeUpdateMessage" id="devWorktreeUpdateMessage">{{ worktree_summary_activity.get('message', 'No verified updates on worktree site yet.') }}</p>
+                        <div class="devWorktreeUpdateCounts" id="devWorktreeUpdateCounts">
+                            <span class="devWorktreeUpdateCountItem">{{ worktree_summary_activity.get('dossier_count', 0) }} verified dossiers</span>
+                            <span class="devWorktreeUpdateCountItem">{{ worktree_summary_activity.get('cards_updated', 0) }} recent cards on worktree site</span>
+                            {% if worktree_summary_activity.get('review_count', 0) > 0 %}<span class="devWorktreeUpdateCountItem">{{ worktree_summary_activity.get('review_count') }} awaiting review</span>{% endif %}
+                        </div>
+                        <ul class="devWorktreeUpdateList{% if not worktree_summary_activity.get('recent_additions') %} isHidden{% endif %}" id="devWorktreeUpdateList" aria-label="Latest verified additions on worktree">
+                            {% for item in worktree_summary_activity.get('recent_additions', [])[:6] %}
+                            <li class="devWorktreeUpdateListItem">{{ item.get('card_code', '') }} · {{ item.get('card_name', 'Unknown card') }} <span class="devWorktreeUpdateTime">{{ item.get('verified_at', '') }}</span></li>
+                            {% endfor %}
+                        </ul>
+                        <p class="devWorktreeUpdateCta">
+                            <a class="devInlineLink devInlineLink--primary" href="{{ dev_status['links']['project_miru'] }}" aria-label="Open worktree Project Miru to inspect">Inspect worktree Project Miru</a>
+                        </p>
+                    </section>
+                    {% endif %}
+                    <section class="devActivityFeed devActivityFeed--compact" aria-label="Recent activity">
+                        <div class="devCardHeader">
+                            <div>
+                                <div class="sectionEyebrow">Live activity</div>
+                                <h3 class="devActivityFeedTitle">Current activity</h3>
+                            </div>
+                            <span class="statusPill statusPill--neutral" id="devOverviewStatePill">{{ dev_status['activity']['title'] }}</span>
+                        </div>
+                        <div class="devActivityNow">
+                            <strong id="devLiveActivityTitle">{{ dev_status['activity']['title'] }}</strong>
+                            <p id="devLiveActivityDetail">{{ dev_status['activity']['detail'] }}</p>
+                        </div>
+                        <div class="devActivityFeedList" id="devActivityFeedList">
+                            {% for item in dev_status.get('activity_feed', [])[:8] %}
+                            <div class="devActivityFeedItem devActivityFeedItem--{{ item.get('tone', 'neutral') }}" data-timestamp="{{ item.get('timestamp', '') }}">
+                                <span class="devActivityFeedTitleText">{{ item.get('title', 'Event') }}</span>
+                                <span class="devActivityFeedDetail">{{ item.get('detail', '') }}</span>
+                                <span class="devActivityFeedTime">{{ item.get('timestamp', '') }}</span>
+                            </div>
+                            {% else %}
+                            <p class="devActivityFeedEmpty">No recent activity.</p>
+                            {% endfor %}
+                        </div>
+                    </section>
+                </div>
+            </details>
+        </section>
+
+        <details class="panelCard devAdvancedConsole" id="devAdvancedConsole">
+            <summary class="devAdvancedConsoleSummary">
+                <div>
+                    <div class="sectionEyebrow">Advanced</div>
+                    <strong>Voyage, validation, queue, and system detail</strong>
+                </div>
+                <span class="devAdvancedConsoleHint">Collapsed by default</span>
+            </summary>
+            <div class="devAdvancedConsoleBody">
+                <div class="devConsoleTabs" role="tablist" aria-label="Dev Console sections">
+                    <button class="devConsoleTab isActive" type="button" role="tab" aria-selected="true" aria-controls="devOverviewPanel" id="devTabOverview" data-dev-tab="overview">Overview</button>
+                    <button class="devConsoleTab" type="button" role="tab" aria-selected="false" aria-controls="devVoyagePanel" id="devTabVoyage" data-dev-tab="voyage">Voyage</button>
+                    <button class="devConsoleTab" type="button" role="tab" aria-selected="false" aria-controls="devValidationPanel" id="devTabValidation" data-dev-tab="validation">Validation</button>
+                    <button class="devConsoleTab" type="button" role="tab" aria-selected="false" aria-controls="devLearningPanel" id="devTabQueue" data-dev-tab="queue">Queue</button>
+                    <button class="devConsoleTab" type="button" role="tab" aria-selected="false" aria-controls="devSystemPanel" id="devTabSystem" data-dev-tab="system">System</button>
+                </div>
+            </div>
+        </details>
+
+        <section class="panelCard devQuickPanel isHidden" id="devSystemPanel" data-dev-panel="system" role="tabpanel" aria-labelledby="devTabSystem" hidden>
+            <div class="sectionCopy">
+                <div class="sectionEyebrow">Surfaces</div>
+                <h2>Switch between Miru apps</h2>
+                <p>Tap a tile to open Miru AI, Project Miru, or focus this Dev Monitor.</p>
+            </div>
+            <nav class="devLaunchpad" aria-label="Switch between Miru surfaces">
+                <a class="devLaunchpadTile devLaunchpadTile--primary" href="{{ dev_status['links']['miru_ai'] }}" data-client-nav="true" aria-label="Open Miru AI">
+                    <span class="devLaunchpadLabel">Miru AI</span>
+                </a>
+                <a class="devLaunchpadTile" href="{{ dev_status['links']['project_miru'] }}" aria-label="Open Project Miru">
+                    <span class="devLaunchpadLabel">Project Miru</span>
+                </a>
+                <a class="devLaunchpadTile" href="#devMonitor" aria-label="Focus Dev Monitor">
+                    <span class="devLaunchpadLabel">Dev Monitor</span>
+                </a>
+            </nav>
+        </section>
+
+        <section class="panelCard devActivityPanel isHidden" data-dev-panel="system" hidden>
+            <div class="devSectionHeader">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Live Miru Activity</div>
+                    <h2>What Miru is doing right now</h2>
+                    <p>Friendly state names keep the monitor easy to read at a glance.</p>
+                </div>
+                <div class="devRefreshStack">
+                    <button class="utilityButton devRefreshButton" id="devRefreshButton" type="button">Refresh</button>
+                    <span class="devUpdatedAt" id="devUpdatedAt">Server stamp {{ dev_status['updated_at'] }}</span>
+                    <span class="devUpdatedAtLocal" id="devUpdatedAtLocal">Local time updates in your browser.</span>
+                </div>
+            </div>
+
+            <div class="devActivityHero devActivityHero--{{ dev_status['activity']['visual'] }}" id="devActivityHero">
+                <div class="devActivityVisual" aria-hidden="true">
+                    <span class="devActivityCore"></span>
+                    <span class="devActivityRing devActivityRing--outer"></span>
+                    <span class="devActivityRing devActivityRing--inner"></span>
+                    <span class="devCompassNeedle"></span>
+                    <span class="devActivityWave devActivityWave--one"></span>
+                    <span class="devActivityWave devActivityWave--two"></span>
+                </div>
+                <div class="devActivityCopy">
+                    <div class="sectionEyebrow">Current state</div>
+                    <h2 id="devActivityTitle">{{ dev_status['activity']['title'] }}</h2>
+                    <p id="devActivityDescription">{{ dev_status['activity']['description'] }}</p>
+                    <p class="devActivityDetail" id="devActivityDetail">{{ dev_status['activity']['detail'] }}</p>
+                </div>
+            </div>
+
+            <div class="devStateGrid" aria-label="Miru activity states">
+                {% for item in dev_status['activity_states'] %}
+                <article class="devStateCard{% if item['active'] %} isCurrent{% endif %}" data-activity-key="{{ item['key'] }}">
+                    <span class="devStateBadge">{{ item['title'] }}</span>
+                    <p>{{ item['description'] }}</p>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% set dev_tp = dev_status.get('training_progress') or dev_status.get('training') or {} %}
+        {% set dev_monitor = dev_status.get('monitor', {}) %}
+        {% set dev_monitor_state = dev_monitor.get('state', {}) %}
+        {% set dev_monitor_progress = dev_monitor.get('progress', {}) %}
+        {% set dev_monitor_source = dev_monitor.get('source', {}) %}
+        <section class="panelCard devLearningPanel isHidden" id="devLearningPanel" data-dev-panel="queue" role="tabpanel" aria-labelledby="devTabQueue" hidden>
+            <div class="devSectionHeader">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Queue snapshot</div>
+                    <h2>Background progress and throughput</h2>
+                        <p>Keep the deeper worker detail here so the overview stays simpler.</p>
+                </div>
+                <div class="devProgressMeta">
+                    <strong id="devProgressPercent">{{ "%.1f"|format(dev_tp.get('training_progress_percent', dev_tp.get('progress_percent', 0))) }}%</strong>
+                    <p id="devProgressSummary">{{ dev_tp.get('summary', dev_tp.get('verified_summary', '')) }}</p>
+                </div>
+            </div>
+
+            <div class="devProgressTrack" aria-hidden="true">
+                <span id="devProgressFill" style="width: {{ "%.1f"|format(dev_tp.get('training_progress_percent', dev_tp.get('progress_percent', 0))) }}%;"></span>
+            </div>
+            <p class="devProgressDetail" id="devProgressDetail">This measures verified card knowledge coverage, not Miru's full strategic intelligence.</p>
+            <p class="devProgressDetail" id="devProgressStageLabel">Current learning stage: {{ dev_learning_stage_label }}</p>
+
+            <section class="devSurfaceCard devIntelligenceCard" aria-label="Miru intelligence status">
+                <div class="devCardHeader">
+                    <div>
+                        <div class="sectionEyebrow">Miru intelligence status</div>
+                        <h3>How far along Miru really is</h3>
+                    </div>
+                    <span class="statusPill statusPill--{{ dev_intelligence.get('worker', {}).get('tone', 'neutral') }}" id="devIntelligenceWorkerPill">{{ dev_intelligence.get('worker', {}).get('label', 'Idle') }}</span>
+                </div>
+                <p class="devIntelligenceSentence" id="devIntelligenceSentence">{{ dev_intelligence.get('status_sentence', 'Miru is idle. No learning tasks are waiting.') }}</p>
+                <p class="devProgressDetail" id="devIntelligenceHint">{{ dev_intelligence.get('activity_hint', 'Miru learning visibility is loading.') }}</p>
+
+                <div class="devIntelligenceGrid">
+                    <article class="devMonitorListItem">
+                        <span class="devMetricLabel">Worker state</span>
+                        <strong id="devIntelligenceWorkerState">{{ dev_intelligence.get('worker', {}).get('label', 'Idle') }}</strong>
+                        <p id="devIntelligenceWorkerDetail">{{ dev_intelligence.get('worker', {}).get('detail', 'Worker status detail unavailable.') }}</p>
+                    </article>
+                    <article class="devMonitorListItem">
+                        <span class="devMetricLabel">Queue state</span>
+                        <strong id="devIntelligenceQueueSummary">{{ dev_intelligence.get('queue', {}).get('summary', '0 pending, 0 running, 0 completed') }}</strong>
+                        <p id="devIntelligenceQueueDetail">{{ dev_intelligence.get('queue', {}).get('detail', 'No queue detail yet.') }}</p>
+                    </article>
+                    <article class="devMonitorListItem">
+                        <span class="devMetricLabel">Last meaningful learning</span>
+                        <strong id="devIntelligenceLastMeaningful">{{ dev_intelligence.get('last_meaningful_activity', {}).get('label', 'Unavailable') }}</strong>
+                        <p id="devIntelligenceLastMeaningfulDetail">{{ dev_intelligence.get('last_meaningful_activity', {}).get('detail', 'No recent meaningful learning signal is visible.') }}</p>
+                    </article>
+                    <article class="devMonitorListItem devMonitorListItem--{{ dev_intelligence.get('pushover', {}).get('tone', 'neutral') }}">
+                        <span class="devMetricLabel">Pushover state</span>
+                        <strong id="devIntelligencePushoverState">{{ dev_intelligence.get('pushover', {}).get('label', 'Quiet because idle') }}</strong>
+                        <p id="devIntelligencePushoverDetail">{{ dev_intelligence.get('pushover', {}).get('detail', 'Pushover state detail unavailable.') }}</p>
+                    </article>
+                </div>
+
+                <div class="devIntelligenceCoverageGrid" id="devIntelligenceCoverageGrid">
+                    {% for item in dev_intelligence.get('coverages', []) %}
+                    <article class="devMonitorListItem">
+                        <span class="devMetricLabel">{{ item['label'] }}</span>
+                        <strong>{{ item['value'] }}</strong>
+                        <p>{{ item['detail'] }}</p>
+                    </article>
+                    {% endfor %}
+                </div>
+
+                <div class="devIntelligenceStageList" id="devIntelligenceStageList">
+                    {% for item in dev_intelligence.get('stages', []) %}
+                    <article class="devMonitorListItem devIntelligenceStageItem">
+                        <div class="devIntelligenceStageHead">
+                            <span class="devMetricLabel">{{ item['label'] }}</span>
+                            <span class="statusPill statusPill--{{ item.get('tone', 'neutral') }}">{{ item['status'] }}</span>
+                        </div>
+                        <p>{{ item['detail'] }}</p>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="devSurfaceCard devOperatorConsoleCard" aria-label="Miru Operator Console">
+                <div class="devCardHeader">
+                    <div>
+                        <div class="sectionEyebrow">Miru Operator Console</div>
+                        <h3>Runtime truth and safe operator actions</h3>
+                    </div>
+                    <span class="statusPill statusPill--neutral" id="devOperatorWorkerPill">Loading</span>
+                </div>
+                <p class="devIntelligenceSentence" id="devOperatorSentence">Loading the main-runtime operator snapshot.</p>
+                <div class="devOperatorGuidanceGrid">
+                    <article class="devMonitorListItem">
+                        <span class="devMetricLabel">How Miru looks</span>
+                        <strong id="devOperatorGuidanceHealth">Loading</strong>
+                        <p id="devOperatorGuidanceFreshness">Waiting for freshness detail.</p>
+                    </article>
+                    <article class="devMonitorListItem">
+                        <span class="devMetricLabel">Progress signal</span>
+                        <strong id="devOperatorGuidanceMomentum">Loading</strong>
+                        <p id="devOperatorGuidanceStrongest">Waiting for intelligence summary.</p>
+                    </article>
+                    <article class="devMonitorListItem devMonitorListItem--warn">
+                        <span class="devMetricLabel">What Miru needs next</span>
+                        <strong id="devOperatorNeedsTitle">Loading</strong>
+                        <p id="devOperatorNeedsDetail">Waiting for the next recommended action.</p>
+                    </article>
+                </div>
+
+                <div class="devOperatorSnapshotGrid">
+                    <article class="devMonitorListItem">
+                        <span class="devMetricLabel">Worker state</span>
+                        <strong id="devOperatorWorkerState">Loading</strong>
+                        <p id="devOperatorRuntimeState">Waiting for runtime state.</p>
+                    </article>
+                    <article class="devMonitorListItem">
+                        <span class="devMetricLabel">Queue summary</span>
+                        <strong id="devOperatorQueueSummary">Loading</strong>
+                        <p id="devOperatorQueueDetail">Waiting for queue detail.</p>
+                    </article>
+                    <article class="devMonitorListItem">
+                        <span class="devMetricLabel">Truth source</span>
+                        <strong id="devOperatorTruthSourceLabel">Loading</strong>
+                        <p id="devOperatorTruthSourceDetail">Waiting for runtime source detail.</p>
+                    </article>
+                    <article class="devMonitorListItem">
+                        <span class="devMetricLabel">Last heartbeat</span>
+                        <strong id="devOperatorHeartbeatLabel">Loading</strong>
+                        <p id="devOperatorHeartbeatDetail">Waiting for heartbeat detail.</p>
+                    </article>
+                    <article class="devMonitorListItem">
+                        <span class="devMetricLabel">Last completed task</span>
+                        <strong id="devOperatorLastTaskLabel">Loading</strong>
+                        <p id="devOperatorLastTaskDetail">Waiting for completed-task detail.</p>
+                    </article>
+                </div>
+
+                <div class="devOperatorPanelGrid">
+                    <article class="devMonitorCard">
+                        <div class="devCardHeader">
+                            <div>
+                                <div class="sectionEyebrow">Recent meaningful work</div>
+                                <h3>Latest meaningful runtime signals</h3>
+                            </div>
+                        </div>
+                        <div class="devMonitorFeed" id="devOperatorActivityList">
+                            <p class="devValidationEmpty">Loading recent runtime activity.</p>
+                        </div>
+                    </article>
+
+                    <article class="devMonitorCard">
+                        <div class="devCardHeader">
+                            <div>
+                                <div class="sectionEyebrow">Intelligence progress</div>
+                                <h3>Where Miru is actually strong</h3>
+                            </div>
+                        </div>
+                        <div class="devIntelligenceStageList" id="devOperatorProgressCategories">
+                            <p class="devValidationEmpty">Loading intelligence progress.</p>
+                        </div>
+                    </article>
+
+                    <article class="devMonitorCard">
+                        <div class="devCardHeader">
+                            <div>
+                                <div class="sectionEyebrow">Safe actions</div>
+                                <h3>Refresh checks without changing the worker</h3>
+                            </div>
+                        </div>
+                        <div class="devOperatorActionGrid">
+                            <button class="devActionButton" type="button" data-operator-action="refresh_snapshot">Refresh Dev Snapshot</button>
+                            <button class="devActionButton" type="button" data-operator-action="refresh_progress">Refresh Progress</button>
+                            <button class="devActionButton" type="button" data-operator-action="recheck_runtime_status">Recheck Runtime Status</button>
+                        </div>
+                        <p class="devProgressDetail" id="devOperatorActionFeedback">These actions only refresh operator telemetry and runtime checks.</p>
+                    </article>
+                </div>
+
+                <article class="devMonitorCard">
+                    <div class="devCardHeader">
+                        <div>
+                            <div class="sectionEyebrow">Ask Miru</div>
+                            <h3>Structured operator queries</h3>
+                        </div>
+                    </div>
+                    <p class="devProgressDetail">Use a short operator prompt like "What are you doing?" or "Show OP01 progress". Answers stay grounded in the live runtime snapshot.</p>
+                    <form class="devOperatorQueryForm" id="devOperatorQueryForm">
+                        <input class="devOperatorQueryInput" id="devOperatorQueryInput" type="text" placeholder="What are you doing?" autocomplete="off">
+                        <button class="utilityButton" id="devOperatorQueryButton" type="submit">Ask</button>
+                    </form>
+                    <div class="tipRow" id="devOperatorQuerySuggestions" aria-label="Suggested operator questions">
+                        <span class="tipPill">What are you doing?</span>
+                        <span class="tipPill">Why are notifications quiet?</span>
+                        <span class="tipPill">How far along are you?</span>
+                        <span class="tipPill">What is left to learn?</span>
+                        <span class="tipPill">Show OP01 progress</span>
+                    </div>
+                    <div class="devMonitorList">
+                        <article class="devMonitorListItem">
+                            <span class="devMetricLabel">Operator answer</span>
+                            <strong id="devOperatorQueryAnswer">Ask a structured operator question to get a grounded answer from live status data.</strong>
+                            <p id="devOperatorQueryMeta">This is a deterministic operator helper, not freeform chat.</p>
+                        </article>
+                    </div>
+                </article>
+            </section>
+
+            <section class="devMonitorDeck" id="devMonitorDeck" aria-label="Live Miru monitoring">
+                <article class="devSurfaceCard devMonitorSummaryCard">
+                    <div class="devCardHeader">
+                        <div>
+                            <div class="sectionEyebrow">Live monitor</div>
+                            <h3>Is Miru actually improving?</h3>
+                        </div>
+                        <span class="statusPill statusPill--{{ dev_monitor_progress.get('tone', 'neutral') }}" id="devMonitorProgressPill">{{ dev_monitor_progress.get('label', 'Idle') }}</span>
+                    </div>
+                    <p id="devMonitorProgressSummary">{{ dev_monitor_progress.get('summary', 'Miru progress summary is unavailable.') }}</p>
+                    <p class="devProgressDetail" id="devMonitorProgressDetail">{{ dev_monitor_progress.get('detail', 'No recent operator summary is available yet.') }}</p>
+                    <p class="devProgressDetail" id="devMonitorSourceLabel">{{ dev_monitor_source.get('label', 'Monitoring worktree runtime') }}</p>
+                    <p class="devProgressDetail" id="devMonitorSourceDetail">{{ dev_monitor_source.get('detail', '') }}</p>
+                </article>
+
+                <div class="devMonitorGrid">
+                    <article class="devSurfaceCard devMonitorCard">
+                        <div class="devCardHeader">
+                            <div>
+                                <div class="sectionEyebrow">Live engine state</div>
+                                <h3 id="devMonitorStateTitle">{{ dev_monitor_state.get('label', 'Idle') }}</h3>
+                            </div>
+                            <span class="statusPill statusPill--{{ dev_monitor_state.get('tone', 'neutral') }}" id="devMonitorStatePill">{{ dev_monitor_state.get('label', 'Idle') }}</span>
+                        </div>
+                        <p id="devMonitorStateDescription">{{ dev_monitor_state.get('description', 'Miru is online and waiting for work.') }}</p>
+                        <div class="devMonitorList" id="devMonitorStateList">
+                            <article class="devMonitorListItem">
+                                <span class="devMetricLabel">Current task</span>
+                                <strong id="devMonitorTaskLabel">{{ dev_monitor_state.get('task_label', 'No active task') }}</strong>
+                                <p id="devMonitorTaskType">{{ dev_monitor_state.get('task_type_label', 'Waiting') }}</p>
+                            </article>
+                            <article class="devMonitorListItem">
+                                <span class="devMetricLabel">Queue status</span>
+                                <strong id="devMonitorQueueStatus">{{ dev_monitor_state.get('queue_status', '0 waiting, 0 running, 0 failed') }}</strong>
+                                <p>Live queue counts from the learning engine.</p>
+                            </article>
+                            <article class="devMonitorListItem">
+                                <span class="devMetricLabel">Last heartbeat</span>
+                                <strong id="devMonitorHeartbeat">{{ dev_monitor_state.get('heartbeat', 'No heartbeat reported yet.') }}</strong>
+                                <p>Fresh heartbeats show the learning loop is still checking in.</p>
+                            </article>
+                        </div>
+                    </article>
+
+                    <article class="devSurfaceCard devMonitorCard">
+                        <div class="devCardHeader">
+                            <div>
+                                <div class="sectionEyebrow">Learning gains</div>
+                                <h3>Verified progress that matters</h3>
+                            </div>
+                        </div>
+                        <div class="devMonitorList" id="devMonitorGainsList">
+                            {% for item in dev_monitor.get('gains', []) %}
+                            <article class="devMonitorListItem">
+                                <span class="devMetricLabel">{{ item['label'] }}</span>
+                                <strong>{{ item['value'] }}</strong>
+                                <p>{{ item['detail'] }}</p>
+                            </article>
+                            {% endfor %}
+                        </div>
+                    </article>
+
+                    <article class="devSurfaceCard devMonitorCard">
+                        <div class="devCardHeader">
+                            <div>
+                                <div class="sectionEyebrow">Recent activity feed</div>
+                                <h3>Latest real events</h3>
+                            </div>
+                        </div>
+                        <div class="devMonitorFeed" id="devMonitorActivityList">
+                            {% if dev_monitor.get('recent_activity') %}
+                                {% for item in dev_monitor.get('recent_activity', []) %}
+                                    {% if item.get('card_code') %}
+                                    <button class="devLearningEvent devMonitorEvent" type="button" data-card-code="{{ item['card_code'] }}">
+                                        <strong>{{ item['title'] }}</strong>
+                                        <span>{{ item['detail'] }}</span>
+                                        <small>{{ item.get('timestamp', '') }}</small>
+                                    </button>
+                                    {% else %}
+                                    <article class="devMonitorEvent devMonitorEvent--static" data-tone="{{ item.get('tone', 'neutral') }}">
+                                        <strong>{{ item['title'] }}</strong>
+                                        <span>{{ item['detail'] }}</span>
+                                        <small>{{ item.get('timestamp', '') }}</small>
+                                    </article>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                            <p class="devValidationEmpty">No recent monitor events are available yet.</p>
+                            {% endif %}
+                        </div>
+                    </article>
+
+                    <article class="devSurfaceCard devMonitorCard">
+                        <div class="devCardHeader">
+                            <div>
+                                <div class="sectionEyebrow">Health and warnings</div>
+                                <h3>What needs attention</h3>
+                            </div>
+                        </div>
+                        <div class="devMonitorList" id="devMonitorWarningsList">
+                            {% for item in dev_monitor.get('warnings', []) %}
+                            <article class="devMonitorListItem devMonitorListItem--{{ item.get('tone', 'neutral') }}">
+                                <span class="devMetricLabel">{{ item['title'] }}</span>
+                                <strong>{{ item['detail'] }}</strong>
+                            </article>
+                            {% endfor %}
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <div class="devSectionHeader">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Learning engine</div>
+                    <h2>Queue, workers, and sidecar throughput</h2>
+                    <p>Queue depth, task counts, and sidecar metrics live here instead of the main overview.</p>
+                </div>
+            </div>
+            <div class="devMetricGrid" aria-label="Learning engine metrics">
+                {% for item in dev_status['learning_metrics'] %}
+                <article class="devMetricCard" data-metric-key="{{ item['key'] }}">
+                    <span class="devMetricLabel">{{ item['label'] }}</span>
+                    <strong data-field="value">{{ item['value'] }}</strong>
+                    <p data-field="detail">{{ item['detail'] }}</p>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% set dev_voyage = dev_status.get("voyage", {}) %}
+        {% set dev_current_island = dev_voyage.get("current_island", {}) %}
+        {% set dev_next_island = dev_voyage.get("next_island") %}
+        {% set dev_next_boss = dev_voyage.get("next_boss") %}
+        {% set dev_assets = dev_voyage.get("assets", {}) %}
+        {% set dev_ship_position = dev_voyage.get("ship_position", {}) %}
+        <section class="panelCard devVoyagePanel isHidden" id="devVoyagePanel" data-dev-panel="voyage" role="tabpanel" aria-labelledby="devTabVoyage" hidden>
+            <div class="voyagePanelIntro">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Miru Voyage</div>
+                    <h2>Voyage snapshot</h2>
+                    <p>Keep this map-first and calm. The large shell stays for now; richer art can come later.</p>
+                </div>
+            </div>
+
+            <div class="devVoyageSimpleGrid">
+                <article class="devSurfaceCard devVoyageMapCard">
+                    <div class="devCardHeader">
+                        <div>
+                            <div class="sectionEyebrow">Voyage map</div>
+                            <h3 id="devVoyageArc">East Blue foundations</h3>
+                            <p class="devVoyageMapCardCopy" id="devVoyageRouteProgressSummary">This large placeholder shell stays in place until fuller voyage art is ready.</p>
+                        </div>
+                        <div class="devVoyageMapMeta">
+                            <span class="statusPill statusPill--neutral" id="devVoyageProgressPercentSummary">{{ "%.1f"|format(dev_voyage.get('progress_percent', 0)) }}%</span>
+                            <button class="utilityButton" id="devVoyageExpandButton" type="button">Open full map</button>
+                        </div>
+                    </div>
+                    <div class="devVoyageMapViewport" id="devVoyageMapViewport" data-mode="focused">
+                        <div class="devVoyageMapStage" id="devVoyageMapStage" data-has-map="{{ 'true' if dev_assets.get('map') else 'false' }}"{% if dev_assets.get('map') %} style="--voyage-map-image: url('{{ dev_assets.get('map') }}');"{% endif %}>
+                            <div class="devVoyageMapPlaceholderCopy">
+                                <strong id="devVoyageMapBadgeTitle">Voyage shell placeholder</strong>
+                                <p id="devVoyageMapBadgeCopy">Use the large shell for now. Route art can layer in later without changing the layout again.</p>
+                            </div>
+                            <div class="devVoyageMapSurface" id="devVoyageMap" aria-label="Miru voyage map"></div>
+                        </div>
+                    </div>
+                    <p class="devVoyageMapHint" id="devVoyageMapHint">Mobile starts focused on the current route. Open full map for the wider shell.</p>
+                </article>
+
+                <article class="devSurfaceCard devVoyageSummaryCard">
+                    <div class="devVoyageMiniGrid devVoyageMiniGrid--summary">
+                        <article class="devVoyageMiniCard">
+                            <span class="devMetricLabel">Current stage</span>
+                            <strong id="devVoyageStageTitle">Reliable card lookup</strong>
+                            <p id="devVoyageLearningStage">Early verified card knowledge</p>
+                        </article>
+                        <article class="devVoyageMiniCard">
+                            <span class="devMetricLabel">What this means</span>
+                            <strong id="devVoyageCurrentIslandSummary">Verified card foundations</strong>
+                            <p id="devVoyageStageMeaning">Reliable for verified card facts, not yet for deeper strategy.</p>
+                        </article>
+                        <article class="devVoyageMiniCard">
+                            <span class="devMetricLabel">What Miru can do now</span>
+                            <strong id="devVoyageCanDoNow">Grounded verified card lookup</strong>
+                            <p id="devVoyageCanDoNowDetail">Useful for card facts, citations, and structured answers.</p>
+                        </article>
+                        <article class="devVoyageMiniCard">
+                            <span class="devMetricLabel">Still learning</span>
+                            <strong id="devVoyageStillLearning">Broader verified coverage</strong>
+                            <p id="devVoyageStillLearningDetail">Still short of deck, matchup, and tournament intelligence.</p>
+                        </article>
+                        <article class="devVoyageMiniCard">
+                            <span class="devMetricLabel">Next stage</span>
+                            <strong id="devVoyageNextStageTitle">Stronger card understanding</strong>
+                            <p id="devVoyageNextStageDetail">Heading toward broader, more dependable card knowledge.</p>
+                        </article>
+                    </div>
+                </article>
+            </div>
+
+            <div class="devVoyageMapDialog isHidden" id="devVoyageMapDialog" hidden aria-hidden="true">
+                <button class="devVoyageMapBackdrop" type="button" data-voyage-map-close="true" aria-label="Close full voyage map"></button>
+                <div class="devVoyageMapDialogCard" role="dialog" aria-modal="true" aria-labelledby="devVoyageMapDialogTitle">
+                    <button class="devVoyageCloseChip" id="devVoyageCloseButton" type="button" aria-label="Close full voyage map">
+                        <span aria-hidden="true">&times;</span>
+                        <span>Close map</span>
+                    </button>
+                    <div class="devCardHeader">
+                        <div>
+                            <div class="sectionEyebrow">Full map</div>
+                            <h3 id="devVoyageMapDialogTitle">Miru voyage map</h3>
+                            <p class="devVoyageMapCardCopy">Use the full placeholder shell here for now. Richer voyage art can layer in later.</p>
+                        </div>
+                    </div>
+                    <div class="devVoyageMapViewport devVoyageMapViewport--expanded" id="devVoyageMapExpandedViewport" data-mode="full">
+                        <div class="devVoyageMapStage devVoyageMapStage--expanded" id="devVoyageMapStageExpanded" data-has-map="{{ 'true' if dev_assets.get('map') else 'false' }}"{% if dev_assets.get('map') %} style="--voyage-map-image: url('{{ dev_assets.get('map') }}');"{% endif %}>
+                            <div class="devVoyageMapPlaceholderCopy">
+                                <strong id="devVoyageExpandedMapBadgeTitle">Full voyage shell</strong>
+                                <p id="devVoyageExpandedMapBadgeCopy">Expanded route shell for the current roadmap stage.</p>
+                            </div>
+                            <div class="devVoyageMapSurface" id="devVoyageMapExpanded" aria-label="Miru voyage map expanded"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <section class="panelCard devImageCoveragePanel isHidden" id="devImageCoverage" data-dev-panel="queue" hidden>
+            <div class="devSectionHeader">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Image Coverage</div>
+                    <h2>Per-set image ingestion</h2>
+                    <p>Coverage is based on catalog cards and the image registry.</p>
+                </div>
+            </div>
+
+            <div class="devCoverageSummaryGrid" aria-label="Image ingestion summary">
+                <article class="devCoverageSummaryCard">
+                    <span class="devMetricLabel">Sets tracked</span>
+                    <strong id="devCoverageSetCount">{{ dev_status['image_coverage_by_set']|length if dev_status['image_coverage_by_set'] else 0 }}</strong>
+                    <p id="devCoverageSetCountDetail">How many set groups currently report ingestion progress.</p>
+                </article>
+                <article class="devCoverageSummaryCard">
+                    <span class="devMetricLabel">Average coverage</span>
+                    <strong id="devCoverageAveragePercent">0.0%</strong>
+                    <p id="devCoverageAverageDetail">Average tracked image coverage across visible sets.</p>
+                </article>
+                <article class="devCoverageSummaryCard">
+                    <span class="devMetricLabel">Verified images</span>
+                    <strong id="devCoverageVerifiedTotal">0</strong>
+                    <p id="devCoverageVerifiedDetail">Verified image records currently available.</p>
+                </article>
+                <article class="devCoverageSummaryCard">
+                    <span class="devMetricLabel">Missing images</span>
+                    <strong id="devCoverageMissingTotal">0</strong>
+                    <p id="devCoverageMissingDetail">Remaining image gaps across the tracked sets.</p>
+                </article>
+            </div>
+
+            <details class="devCoverageAccordion" id="devCoverageAccordion">
+                <summary class="devCoverageAccordionSummary">
+                    <div class="devCoverageAccordionCopy">
+                        <span class="devMetricLabel">Per-set detail</span>
+                        <strong id="devCoverageAccordionTitle">Show set-by-set image ingestion</strong>
+                        <p id="devCoverageAccordionHint">Keep this collapsed by default.</p>
+                    </div>
+                    <span class="devCoverageAccordionMeta" id="devCoverageAccordionMeta">{{ dev_status['image_coverage_by_set']|length if dev_status['image_coverage_by_set'] else 0 }} sets</span>
+                </summary>
+                <div class="devCoverageAccordionBody">
+                    <div class="devCoverageList" id="devCoverageList" aria-label="Image coverage by set">
+                        {% if dev_status['image_coverage_by_set'] %}
+                        {% for item in dev_status['image_coverage_by_set'] %}
+                        <article class="devCoverageRow" data-set-code="{{ item['set_code'] }}">
+                            <div class="devCoverageHeader">
+                                <div class="devCoverageTitle">
+                                    <strong class="devCoverageSet">{{ item['set_code'] }}</strong>
+                                    <span class="devCoverageStage devCoverageStage--{{ item['milestone_label'] }}">{{ item['milestone_label'] }}</span>
+                                </div>
+                                <span class="devCoveragePercent">{{ "%.1f"|format(item['coverage_percent']) }}%</span>
+                            </div>
+                            <div class="devCoverageBar" aria-hidden="true">
+                                <span style="width: {{ "%.1f"|format(item['coverage_percent']) }}%;"></span>
+                            </div>
+                            <div class="devCoverageMeta">
+                                <span>{{ item['images_tracked'] }} tracked</span>
+                                <span>{{ item['images_verified'] }} verified</span>
+                                <span>{{ item['images_missing'] }} missing</span>
+                                <span>{{ item['total_cards'] }} total</span>
+                            </div>
+                        </article>
+                        {% endfor %}
+                        {% else %}
+                        <p class="devCoverageEmpty">No image coverage data yet.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </details>
+        </section>
+
+        {% set limits_by_provider = dev_status.get('limits_by_provider', {}) %}
+        {% set cursor_limits = limits_by_provider.get('cursor') %}
+        {% set codex_limits = limits_by_provider.get('codex') %}
+        <section class="panelCard devLimitsDock isHidden" id="devLimitsDock" data-dev-panel="queue" aria-label="Limits Dock" hidden>
+            <div class="devSectionHeader">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Limits Dock</div>
+                    <h2>AI usage limits</h2>
+                    <p>Track Cursor and Codex usage from the Dev page. Data is read from <code>data/miru_limits_status.json</code>.</p>
+                </div>
+            </div>
+            <div class="devLimitsGrid" id="devLimitsGrid" aria-label="Limits by provider">
+                <article class="devLimitsCard{% if cursor_limits and ((cursor_limits.get('remaining_percent') or 100) < 20) %} devLimitsCard--warn{% endif %}" id="devLimitsCardCursor" data-provider="cursor">
+                    <h3 class="devLimitsProvider">Cursor</h3>
+                    <div class="devLimitsCardBody">
+                        {% if cursor_limits %}
+                        <p class="devLimitsRemaining" data-field="remaining"><strong>{{ "%.0f"|format(cursor_limits.get('remaining_percent', 0)) }}%</strong> remaining</p>
+                        <p class="devLimitsReset" data-field="reset">Reset: {{ cursor_limits.get('reset_at', '—') }}</p>
+                        {% if cursor_limits.get('notes') %}<p class="devLimitsNotes" data-field="notes">{{ cursor_limits.get('notes') }}</p>{% endif %}
+                        <p class="devLimitsMeta" data-field="meta">Updated {{ cursor_limits.get('updated_at', '—') }}{% if cursor_limits.get('source') %} · {{ cursor_limits.get('source') }}{% endif %}</p>
+                        {% else %}
+                        <p class="devLimitsEmpty" data-field="empty">No data</p>
+                        {% endif %}
+                    </div>
+                </article>
+                <article class="devLimitsCard{% if codex_limits and ((codex_limits.get('remaining_percent') or 100) < 20) %} devLimitsCard--warn{% endif %}" id="devLimitsCardCodex" data-provider="codex">
+                    <h3 class="devLimitsProvider">Codex</h3>
+                    <div class="devLimitsCardBody">
+                        {% if codex_limits %}
+                        <p class="devLimitsRemaining" data-field="remaining"><strong>{{ "%.0f"|format(codex_limits.get('remaining_percent', 0)) }}%</strong> remaining</p>
+                        <p class="devLimitsReset" data-field="reset">Reset: {{ codex_limits.get('reset_at', '—') }}</p>
+                        {% if codex_limits.get('notes') %}<p class="devLimitsNotes" data-field="notes">{{ codex_limits.get('notes') }}</p>{% endif %}
+                        <p class="devLimitsMeta" data-field="meta">Updated {{ codex_limits.get('updated_at', '—') }}{% if codex_limits.get('source') %} · {{ codex_limits.get('source') }}{% endif %}</p>
+                        {% else %}
+                        <p class="devLimitsEmpty" data-field="empty">No data</p>
+                        {% endif %}
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        {% set validation_audit = dev_status.get('validation_audit', {}) %}
+        <section class="panelCard devValidationPanel isHidden" id="devValidationPanel" data-dev-panel="validation" role="tabpanel" aria-labelledby="devTabValidation" data-validation-audit-url-base="{{ dev_status.get('validation_audit_url_base', '/api/dev/card-validation') }}" hidden>
+            <div class="devSectionHeader">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Validation Audit</div>
+                    <h2>Why canonical card values were accepted</h2>
+                    <p>Read-only explainability for trust decisions, rejected evidence, and recent validation outcomes.</p>
+                </div>
+            </div>
+
+            <div class="devValidationInspector">
+                <label class="devValidationInspectorLabel" for="devValidationCardCode">Inspect card evidence trail</label>
+                <div class="devValidationInspectorRow">
+                    <input class="devValidationInspectorInput" id="devValidationCardCode" type="text" inputmode="text" placeholder="OP01-001" aria-label="Card code for validation audit">
+                    <button class="utilityButton" id="devValidationInspectButton" type="button">Inspect</button>
+                </div>
+                <p class="devValidationInspectorMeta">Read-only lookup against <code>miru_validations</code> and the current canonical card row.</p>
+            </div>
+
+            <div class="devValidationGrid" aria-label="Validation audit insights">
+                <article class="devValidationLane">
+                    <div class="devValidationLaneHeader">
+                        <span class="devMetricLabel">Recent conflicts</span>
+                        <p>Cards where evidence disagreed and Miru had to apply conflict rules.</p>
+                    </div>
+                    <div class="devValidationList" id="devValidationRecentConflicts">
+                        {% for item in validation_audit.get('recent_conflicts', []) %}
+                        <button class="devValidationItem" type="button" data-card-code="{{ item['card_code'] }}">
+                            <strong>{{ item['card_code'] }} · {{ item['card_name'] or 'Unknown card' }}</strong>
+                            <span>{{ item['conflict_rule']|replace('_', ' ')|title }}</span>
+                        </button>
+                        {% else %}
+                        <p class="devValidationEmpty">No recent conflicts.</p>
+                        {% endfor %}
+                    </div>
+                </article>
+
+                <article class="devValidationLane">
+                    <div class="devValidationLaneHeader">
+                        <span class="devMetricLabel">Lowest confidence</span>
+                        <p>Canonical entries worth reviewing first if you want the weakest evidence chain.</p>
+                    </div>
+                    <div class="devValidationList" id="devValidationLowestConfidence">
+                        {% for item in validation_audit.get('lowest_confidence', []) %}
+                        <button class="devValidationItem" type="button" data-card-code="{{ item['card_code'] }}">
+                            <strong>{{ item['card_code'] }} · {{ item['card_name'] or 'Unknown card' }}</strong>
+                            <span>{{ "%.2f"|format(item['confidence']) }} confidence</span>
+                        </button>
+                        {% else %}
+                        <p class="devValidationEmpty">No validation confidence data yet.</p>
+                        {% endfor %}
+                    </div>
+                </article>
+
+                <article class="devValidationLane">
+                    <div class="devValidationLaneHeader">
+                        <span class="devMetricLabel">Recently validated</span>
+                        <p>The latest cards that completed the verified sync decision boundary.</p>
+                    </div>
+                    <div class="devValidationList" id="devValidationRecentlyValidated">
+                        {% for item in validation_audit.get('recently_validated', []) %}
+                        <button class="devValidationItem" type="button" data-card-code="{{ item['card_code'] }}">
+                            <strong>{{ item['card_code'] }} · {{ item['card_name'] or 'Unknown card' }}</strong>
+                            <span>{{ item['verified_at'] or 'Unknown time' }}</span>
+                        </button>
+                        {% else %}
+                        <p class="devValidationEmpty">No recent validation records.</p>
+                        {% endfor %}
+                    </div>
+                </article>
+
+                <article class="devValidationLane">
+                    <div class="devValidationLaneHeader">
+                        <span class="devMetricLabel">Rejected evidence</span>
+                        <p>Cards where weaker conflicting sources were kept out of the canonical row.</p>
+                    </div>
+                    <div class="devValidationList" id="devValidationRejectedEvidence">
+                        {% for item in validation_audit.get('rejected_evidence', []) %}
+                        <button class="devValidationItem" type="button" data-card-code="{{ item['card_code'] }}">
+                            <strong>{{ item['card_code'] }} · {{ item['card_name'] or 'Unknown card' }}</strong>
+                            <span>{{ item['rejected_source_count'] }} rejected source{{ '' if item['rejected_source_count'] == 1 else 's' }}</span>
+                        </button>
+                        {% else %}
+                        <p class="devValidationEmpty">No rejected evidence records yet.</p>
+                        {% endfor %}
+                    </div>
+                </article>
+            </div>
+
+            <article class="devValidationDetailCard" id="devValidationDetailCard">
+                <div class="devValidationDetailHeader">
+                    <div>
+                        <div class="sectionEyebrow">Evidence trail</div>
+                        <h3 id="devValidationDetailTitle">Pick a card to inspect</h3>
+                    </div>
+                    <span class="statusPill statusPill--neutral" id="devValidationDetailConfidence">Read-only</span>
+                </div>
+                <p class="devValidationDetailSummary" id="devValidationDetailSummary">Miru will show the winning source, rejected evidence, conflict rule, and the current canonical values for the selected card.</p>
+                <div class="devValidationCanonicalGrid" id="devValidationCanonicalGrid"></div>
+                <div class="devValidationEvidenceGrid">
+                    <div class="devValidationEvidenceCard">
+                        <span class="devMetricLabel">Winning source</span>
+                        <div id="devValidationWinningSource" class="devValidationEvidenceBody">
+                            <p class="devValidationEmpty">No card selected.</p>
+                        </div>
+                    </div>
+                    <div class="devValidationEvidenceCard">
+                        <span class="devMetricLabel">Rejected sources</span>
+                        <div id="devValidationRejectedSources" class="devValidationEvidenceBody">
+                            <p class="devValidationEmpty">No card selected.</p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section class="panelCard devResourcePanel isHidden" data-dev-panel="system" hidden>
+            <div class="sectionCopy">
+                <div class="sectionEyebrow">System Resources</div>
+                <h2>Machine load right now</h2>
+                <p>Labels stay simple so it is easy to spot a busy machine from your phone.</p>
+            </div>
+            <div class="devResourceGrid" aria-label="System resources">
+                {% for item in dev_status['resource_metrics'] %}
+                <article class="devResourceCard{% if not item['available'] %} isUnavailable{% endif %}" data-resource-key="{{ item['key'] }}">
+                    <div class="devResourceHead">
+                        <span>{{ item['label'] }}</span>
+                        <strong data-field="value">{{ item['value'] }}</strong>
+                    </div>
+                    <div class="devResourceBar" aria-hidden="true">
+                        <span data-field="bar" style="width: {{ "%.1f"|format(item['percent']) }}%;"></span>
+                    </div>
+                    <p data-field="detail">{{ item['detail'] }}</p>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        {% set dev_push = dev_status.get('pushover', {}) %}
+        {% set dev_push_tone = 'good' if dev_push.get('enabled') and dev_push.get('configured') else ('neutral' if not dev_push.get('enabled') else 'warn') %}
+        {% set dev_push_status = 'Ready' if dev_push.get('enabled') and dev_push.get('configured') else ('Disabled' if not dev_push.get('enabled') else 'Needs attention') %}
+        <section class="panelCard devHealthPanel isHidden" data-dev-panel="system" hidden>
+            <div class="devSectionHeader">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">System Health</div>
+                    <h2>Service readiness and notification path</h2>
+                    <p>Keep Miru AI, Project Miru, and Pushover in one place so it is easy to see what needs attention.</p>
+                </div>
+            </div>
+            <div class="devIssueGrid" aria-label="Current issues and notification health">
+            {% for issue in (dev_status['issues']['miru_ai'], dev_status['issues']['project_miru']) %}
+            <article class="panelCard devIssueCard devIssueCard--{{ issue['tone'] }}" data-issue-key="{{ 'miru_ai' if loop.index == 1 else 'project_miru' }}">
+                <div class="statusHeadingRow">
+                    <h2>{{ issue['label'] }}</h2>
+                    <span class="statusPill statusPill--{{ issue['tone'] }}" data-field="status">{{ issue['status'] }}</span>
+                </div>
+                <p data-field="detail">{{ issue['detail'] }}</p>
+                <ul class="devIssueList" data-field="items">
+                    {% if issue['items'] %}
+                    {% for detail in issue['items'] %}
+                    <li>{{ detail }}</li>
+                    {% endfor %}
+                    {% else %}
+                    <li>Everything looks ready from this page.</li>
+                    {% endif %}
+                </ul>
+            </article>
+            {% endfor %}
+            <article class="panelCard devIssueCard devIssueCard--{{ dev_push_tone }}" data-issue-key="pushover">
+                <div class="statusHeadingRow">
+                    <h2>Pushover</h2>
+                    <span class="statusPill statusPill--{{ dev_push_tone }}" id="devPushoverStatus">{{ dev_push_status }}</span>
+                </div>
+                <p id="devPushoverDetail">
+                    {% if dev_push.get('enabled') and dev_push.get('configured') %}
+                    Notifications are enabled and the live server can use the configured local credentials.
+                    {% elif not dev_push.get('enabled') %}
+                    Pushover notifications are currently disabled.
+                    {% else %}
+                    Pushover is enabled but still missing required credentials.
+                    {% endif %}
+                </p>
+                <ul class="devIssueList" id="devPushoverItems">
+                    <li>Env file: {{ dev_push.get('env_path', 'Unavailable') }}</li>
+                    <li>Default priority: {{ dev_push.get('default_priority', '0') or '0' }}</li>
+                    <li>
+                        {% if dev_push.get('missing_required_keys') %}
+                        Missing keys: {{ dev_push.get('missing_required_keys', [])|join(', ') }}
+                        {% else %}
+                        Required keys are present.
+                        {% endif %}
+                    </li>
+                </ul>
+            </article>
+            </div>
+        </section>
+        {% elif page_key == "status" %}
+        <header class="heroCard heroCard--section">
+            <img class="heroLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+            <div class="heroCopy">
+                <div class="heroEyebrow">System status</div>
+                <h1>Miru sidecar status</h1>
+                <p>This is a lightweight view of the current Miru AI sidecar state so you can sanity-check the routes and helper availability without leaving the product surface.</p>
+            </div>
+        </header>
+
+        <section class="overviewGrid" aria-label="Miru status checks">
+            {% for item in status_snapshot %}
+            <article class="infoCard statusInfoCard">
+                <div class="statusHeadingRow">
+                    <h2>{{ item.label }}</h2>
+                    <span class="statusPill statusPill--{{ item.tone }}">{{ item.value }}</span>
+                </div>
+                <p>{{ item.detail }}</p>
+            </article>
+            {% endfor %}
+        </section>
+
+        {% if startup_issues %}
+        <section class="noticeStack" aria-label="Startup notices">
+            {% for issue in startup_issues %}
+            <article class="noticeCard">
+                <strong>Heads up</strong>
+                <p>{{ issue }}</p>
+            </article>
+            {% endfor %}
+        </section>
+        {% endif %}
+        {% endif %}
+        </div>
+    </main>
+
+    <script>
+        window.MIRU_AI_CONFIG = {
+            pageKey: {{ page_key|tojson }},
+            modeConfigs: {{ mode_configs|tojson }},
+            defaultMode: {{ default_mode|tojson }},
+            runUrl: {{ run_url|tojson }},
+            healthUrl: {{ health_url|tojson }},
+            devStatusUrl: {{ dev_status_url|tojson }},
+            runDisabled: {{ run_disabled|tojson }},
+            pythonName: {{ config.get('PYTHON_NAME', 'python')|tojson }},
+            copySuccessText: {{ "Copied to clipboard."|tojson }},
+            copyFallbackText: {{ "Clipboard copy is blocked here. Miru selected the result so you can copy it manually."|tojson }},
+            pasteSuccessText: {{ "Pasted into the question box."|tojson }},
+            pasteFallbackText: {{ "Browser paste is blocked here. Tap the question box and use your device paste action."|tojson }}
+        };
+    </script>
+    <script src="{{ url_for('static', filename='miru_ai.js') }}?v={{ asset_version }}" defer></script>
+</body>
+
+</html>

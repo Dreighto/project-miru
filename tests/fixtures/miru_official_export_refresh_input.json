@@ -1,0 +1,76 @@
+{
+  "export_meta": {
+    "sourceKey": "official-cardlist",
+    "sourceTitle": "Official One Piece Card List Export",
+    "baseUrl": "https://asia-en.onepiece-cardgame.com/cardlist/",
+    "format": "official-cardlist-export",
+    "snapshotTakenAt": "2026-03-08 09:15:00"
+  },
+  "rows": [
+    {
+      "officialCardId": "official-op01-001",
+      "cardCode": "OP01-001",
+      "name": "Monkey D. Luffy",
+      "setCode": "OP01",
+      "setName": "Romance Dawn",
+      "rarity": "L",
+      "color": "Red",
+      "type": "Leader",
+      "officialText": "[DON!! x1] This Leader gains +1000 power.",
+      "effectText": "[DON!! x1] This Leader gains +1000 power.",
+      "imageUrl": "https://asia-en.onepiece-cardgame.com/images/cardlist/card/op01-001-refresh.png",
+      "updatedAt": "2026-03-08 09:16:00",
+      "variants": [
+        {
+          "variantKey": "base",
+          "variantFamily": "base",
+          "variantLabel": "Base",
+          "imageUrl": "https://asia-en.onepiece-cardgame.com/images/cardlist/card/op01-001-refresh.png"
+        },
+        {
+          "variantKey": "alt-art",
+          "variantFamily": "alternate_art",
+          "variantLabel": "Alt Art",
+          "imageUrl": "https://asia-en.onepiece-cardgame.com/images/cardlist/card/op01-001-alt.png",
+          "notes": "Official export still carries alternate artwork image"
+        }
+      ],
+      "seriesName": "One Piece Card Game",
+      "productName": "Romance Dawn",
+      "availability": "featured",
+      "status": "active",
+      "power": "5000",
+      "life": "5",
+      "attribute": "Strike",
+      "traits": [
+        "Supernovas",
+        "Straw Hat Crew"
+      ],
+      "subtype": "Leader"
+    },
+    {
+      "officialCardId": "official-op01-060",
+      "cardCode": "OP01-060",
+      "name": "Dracule Mihawk",
+      "setCode": "OP01",
+      "setName": "Romance Dawn",
+      "rarity": "SR",
+      "color": "Blue",
+      "type": "Character",
+      "imageUrl": "https://asia-en.onepiece-cardgame.com/images/cardlist/card/op01-060.png",
+      "updatedAt": "2026-03-08 09:16:00",
+      "seriesName": "One Piece Card Game",
+      "productName": "Romance Dawn",
+      "availability": "listed",
+      "status": "active",
+      "cost": "9",
+      "counter": "1000",
+      "attribute": "Slash",
+      "traits": "The Seven Warlords of the Sea",
+      "effectText": "[On Play] Return up to 1 Character with a cost of 7 or less to the owner's hand.",
+      "subtypes": [
+        "Character"
+      ]
+    }
+  ]
+}

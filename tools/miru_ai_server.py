@@ -1,0 +1,6261 @@
+#!/usr/bin/env python
+from __future__ import annotations
+
+import copy
+from contextlib import closing
+import argparse
+from datetime import datetime, timezone
+import ctypes
+import ipaddress
+import json
+import os
+import re
+import shutil
+import sqlite3
+import subprocess
+import sys
+import time
+import traceback
+from pathlib import Path
+from threading import Lock
+from typing import Any, Callable
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import Request, urlopen
+
+from flask import Flask, jsonify, render_template, request, url_for
+from werkzeug.exceptions import HTTPException
+
+try:
+    import psutil  # type: ignore
+except Exception:
+    psutil = None
+
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from tools.miru_ai_onepiece import (
+    initialize_fallback_catalog_db,
+    inspect_fallback_catalog_db,
+    normalize_card_code,
+)
+from tools.miru_env import build_pushover_status_message, inspect_pushover_env, load_project_env
+from tools.miru_learning_engine import (
+    load_learning_engine_status,
+    build_engine_from_args,
+    build_parser as build_learner_parser,
+)
+from tools.miru_pushover import send_pushover_notification
+from tools.miru_project_sync import (
+    MiruProjectDbSync,
+    load_card_validation_audit,
+    list_validation_audit_insights,
+    run_worktree_card_insight_sync,
+)
+from tools.miru_source_adapters import NormalizedSourceRecord
+from tools.miru_learner_config import get_learner_mode, set_learner_mode, LEARNER_MODES
+
+
+TOOL_ROOT = Path(__file__).resolve().parent
+TEMPLATE_DIR = TOOL_ROOT / "templates"
+STATIC_DIR = TOOL_ROOT / "static"
+PROJECT_ROOT = TOOL_ROOT.parent
+SCRIPT_PATH = TOOL_ROOT / "miru_ai.py"
+KNOWLEDGE_CACHE_PATH = PROJECT_ROOT / "data" / "miru_ai_onepiece_knowledge.json"
+FALLBACK_CATALOG_DB_PATH = PROJECT_ROOT / "data" / "card_catalog.db"
+DOSSIER_DB_PATH = PROJECT_ROOT / "data" / "miru_dossiers.db"
+DECK_INTEL_DB_PATH = PROJECT_ROOT / "data" / "miru_deck_intel.db"
+LEARNING_QUEUE_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_queue.db"
+LEARNING_STATUS_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_log.db"
+LEARNING_DOSSIER_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_dossiers.db"
+LIMITS_STATUS_PATH = PROJECT_ROOT / "data" / "miru_limits_status.json"
+PUSHOVER_LEARNING_SNAPSHOT_PATH = PROJECT_ROOT / "data" / "miru_pushover_learning_snapshot.json"
+WORKTREE_LEARNER_PID_DIR = PROJECT_ROOT / "data" / "startup-logs"
+WORKTREE_LEARNER_PID_FILE = WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree.pid"
+WORKER_LAST_RUN_PATH = PROJECT_ROOT / "data" / "miru_worker_last_run.json"
+GOVERNED_AUTOPILOT_DATA_DIR = PROJECT_ROOT / "data"
+WORKTREE_LEARNER_STDOUT_LOG = WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree_stdout.log"
+WORKTREE_LEARNER_STDERR_LOG = WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree_stderr.log"
+CSS_PATH = STATIC_DIR / "miru_ai.css"
+JS_PATH = STATIC_DIR / "miru_ai.js"
+TEMPLATE_PATH = TEMPLATE_DIR / "miru_ai.html"
+DEFAULT_TIMEOUT_SECONDS = 180
+RUN_API_PATH = "/api/run"
+APP_NAME = "Miru AI"
+APP_TAGLINE = "A One Piece Card Intelligence System"
+PROJECT_ENV_LOAD = load_project_env()
+_PUSHOVER_STATUS_LOCK = Lock()
+_PUSHOVER_STATUS_LOGGED = False
+CURRENT_SERVER_PORT = 8765
+_SERVER_STARTED_AT: str = ""   # ISO-8601 UTC; set in main() before create_app()
+_TTL_CACHE_LOCK = Lock()
+_TTL_CACHE: dict[str, dict[str, Any]] = {}
+_RUNTIME_TRUTH_CACHE_LOCK = Lock()
+_RUNTIME_TRUTH_CACHE: dict[str, dict[str, Any]] = {}
+_LAST_INSIGHT_SYNC_LOCK = Lock()
+_LAST_INSIGHT_SYNC_REPORT: dict[str, Any] = {}
+CARD_REFERENCE_RE = re.compile(r"\b(?:OP|EB|ST|PRB)\d{2}-\d{3}[A-Z]?|P-\d{3}\b", re.I)
+DIRECT_KNOWLEDGE_HINTS = (
+    "what is the effect",
+    "effect of",
+    "what does",
+    "who drew",
+    "what variants exist",
+    "what is the rarity",
+    "rarity of",
+    "what attribute",
+    "attribute of",
+    "what card type",
+    "card type of",
+    "what is the trigger",
+    "trigger of",
+    "what is op",
+    "what is eb",
+)
+SET_CATALOG_HINTS = (
+    "what cards are in",
+    "what is op",
+    "what is eb",
+    "what is st",
+    "set",
+    "catalog",
+    "fields are known",
+    "fields are missing",
+    "what is still missing",
+    "represented in the catalog",
+    "card information is still missing",
+)
+TRAINING_HINTS = (
+    "what is still missing",
+    "what does miru still need to learn",
+    "what should miru learn next",
+    "which fields are known",
+    "which fields are missing",
+    "card information is still missing",
+    "still missing for",
+    "knowledge gap",
+    "missing data",
+    "missing field",
+    "represented in the catalog",
+)
+GAMEPLAY_HINTS = (
+    "don!!",
+    "counter",
+    "trigger",
+    "blocker",
+    "rush",
+    "banish",
+    "double attack",
+)
+MATCHING_HINTS = (
+    "tell me about",
+    "which one is",
+    "which card is",
+    "identify",
+    "from filename",
+    "from filenames",
+    "filename",
+)
+EXPLICIT_DEVELOPMENT_HINTS = (
+    "codex prompt",
+    "implementation plan",
+    "development brief",
+    "debug ",
+    "review ",
+    "fix ",
+    "implement ",
+    "update ",
+    "refactor ",
+    "edit ",
+    "patch ",
+    "app.py",
+    "dashboard",
+    "repository",
+    "repo",
+    "flask",
+    "server",
+    "ui",
+    "bug ",
+    "bug:",
+)
+
+MODE_CONFIGS = (
+    {
+        "key": "card lookup",
+        "label": "Card Lookup",
+        "caption": "Exact card questions and direct card facts.",
+        "hint": "Best for exact card codes, card names, and direct card-detail questions.",
+        "use_case": "Use this when you want to know what one specific card is and what Miru already knows about it.",
+        "answer_shape": "You get the resolved card, the known details, any missing fields, and a few good next questions.",
+        "request_help": "Ask about one card code or card name. Miru AI will return the card it found, the known card fields, and any missing or uncertain details clearly.",
+        "request_placeholder": "Example: What is OP09-001?",
+        "request_example": "Good fit: card lookups, rarity checks, artist questions, illustration questions, and field-completeness checks for one card.",
+        "result_hint": "Use the answer as a card fact sheet first. Missing fields should stay visible so Miru can learn what the catalog still lacks.",
+    },
+    {
+        "key": "card analysis",
+        "label": "Card Analysis",
+        "caption": "Effects, keywords, and game mechanics in plain language.",
+        "hint": "Best for effect text, trigger text, and game-mechanic questions.",
+        "use_case": "Use this when you want to know what a card does or what a One Piece rule term means.",
+        "answer_shape": "You get mechanic notes, effect text context, and follow-up questions for deeper learning.",
+        "request_help": "Ask what a card effect means, what a mechanic does, or how several gameplay terms relate to each other.",
+        "request_placeholder": "Example: What effects does OP04-061 have?",
+        "request_example": "Good fit: effect text, trigger text, DON!!, Counter, Trigger, and card-by-card gameplay explanations.",
+        "result_hint": "Read the effect analysis first, then use the follow-up suggestions to compare that mechanic with other cards or sets.",
+    },
+    {
+        "key": "variant & print analysis",
+        "label": "Variant & Print Analysis",
+        "caption": "Alt arts, promos, SP cards, manga cards, and print confusion.",
+        "hint": "Best for variant questions, print families, and rough card references that need careful identification.",
+        "use_case": "Use this when you want to know which print or variant a card reference most likely means.",
+        "answer_shape": "You get likely matches, variant notes, ambiguity warnings, and follow-up questions.",
+        "request_help": "Ask about promos, alt arts, SP cards, manga cards, reprints, filenames, or same-name cards that need clearer print handling.",
+        "request_placeholder": "Example: What variants exist for EB04-031 King?",
+        "request_example": "Good fit: variant families, print comparisons, filename-based identification, and ambiguous same-name card questions.",
+        "result_hint": "Use the result to see which print details are known, which are uncertain, and what Miru still needs to learn about that card family.",
+    },
+    {
+        "key": "set & catalog knowledge",
+        "label": "Set & Catalog Knowledge",
+        "caption": "Set codes, set contents, and catalog coverage.",
+        "hint": "Best for set-level questions, coverage checks, and catalog completeness questions.",
+        "use_case": "Use this when you want to know what is in a set or how complete the current catalog knowledge looks.",
+        "answer_shape": "You get set references, sample card coverage, missing data notes, and follow-up questions.",
+        "request_help": "Ask what a set is, what cards are in it, which fields are known, or what the current catalog still needs to learn.",
+        "request_placeholder": "Example: What cards are in OP09?",
+        "request_example": "Good fit: set lookup, catalog completeness, missing-field questions, and how a card or set should be represented in the catalog.",
+        "result_hint": "Use the answer to see what Miru already knows about the set and what knowledge gaps still matter for the catalog.",
+    },
+    {
+        "key": "knowledge training",
+        "label": "Knowledge Training",
+        "caption": "What Miru knows, what is missing, and what it should learn next.",
+        "hint": "Best for field completeness checks and catalog-coverage questions.",
+        "use_case": "Use this when your main goal is improving Miru's card knowledge instead of only reading one fact.",
+        "answer_shape": "You get known fields, missing fields, uncertainty notes, and suggested next questions.",
+        "request_help": "Ask what Miru still needs to learn, which fields are missing, or how a card should be represented so the catalog becomes more complete over time.",
+        "request_placeholder": "Example: What card information is still missing for OP09-001?",
+        "request_example": "Good fit: missing-field checks, unknown-field checks, completeness questions, and what Miru should learn next.",
+        "result_hint": "Use the answer to spot missing knowledge quickly and decide what Miru should learn next about the card or set.",
+    },
+)
+MODE_LABELS = {config["key"]: config["label"] for config in MODE_CONFIGS}
+LEGACY_MODE_LABELS = {
+    "card knowledge": "Card Knowledge",
+    "matching": "Matching / Identification",
+    "codex prompt": "Codex Prompt",
+    "development": "Miru Development",
+    "plan": "Plan",
+    "debug": "Debug",
+    "review": "Review",
+}
+ALL_MODE_LABELS = {**MODE_LABELS, **LEGACY_MODE_LABELS}
+
+PRESETS = (
+    {
+        "label": "What is OP09-001?",
+        "mode": "card lookup",
+        "request_text": "What is OP09-001?",
+    },
+    {
+        "label": "What effects does OP04-061 have?",
+        "mode": "card analysis",
+        "request_text": "What effects does OP04-061 have?",
+    },
+    {
+        "label": "What variants exist for EB04-031 King?",
+        "mode": "variant & print analysis",
+        "request_text": "What variants exist for EB04-031 King?",
+    },
+    {
+        "label": "What set is OP05-067 from?",
+        "mode": "set & catalog knowledge",
+        "request_text": "What set is OP05-067 from?",
+    },
+    {
+        "label": "Does this card have trigger text?",
+        "mode": "card analysis",
+        "request_text": "Does OP04-061 have trigger text?",
+    },
+    {
+        "label": "What facts are still missing for P-088?",
+        "mode": "knowledge training",
+        "request_text": "What card information is still missing for P-088?",
+    },
+)
+
+NAV_ITEMS = (
+    {"endpoint": "index", "label": "Home"},
+    {"endpoint": "ask_page", "label": "Ask Miru"},
+    {"endpoint": "dossiers_page", "label": "Dossiers"},
+    {"endpoint": "gaps_page", "label": "Gaps"},
+    {"endpoint": "training_page", "label": "Training"},
+    {"endpoint": "status_page", "label": "Status"},
+    {"endpoint": "leader_hub", "label": "Leader Hub", "path": "/leader/OP10-001"},
+    {"endpoint": "dev_page", "label": "Dev Monitor"},
+)
+
+ROADMAP_SECTIONS = (
+    {
+        "title": "What Miru AI knows now",
+        "items": (
+            "Card lookup",
+            "Variant and print analysis",
+            "Verified dossier-backed answers",
+            "Local source and citation tracking",
+            "Official snapshot ingestion",
+        ),
+    },
+    {
+        "title": "What Miru AI is learning next",
+        "items": (
+            "Richer official field coverage",
+            "Snapshot refresh and update flow",
+            "Better missing-field and conflict visibility",
+            "More practical card question coverage",
+        ),
+    },
+    {
+        "title": "What is planned later",
+        "items": (
+            "Deck intelligence",
+            "Relationship graphing",
+            "Player lens",
+            "Market lens",
+            "Semantic and vector retrieval support",
+        ),
+    },
+)
+
+DOSSIER_PANELS = (
+    {
+        "eyebrow": "Identity",
+        "title": "Resolve the exact card first",
+        "body": "Miru dossiers are built around exact One Piece card identity: code, name, set, rarity, color, type, and print family when known.",
+    },
+    {
+        "eyebrow": "Sources",
+        "title": "Keep facts tied to evidence",
+        "body": "Answers should show where a fact came from, what is verified, and what still needs a better source instead of pretending certainty.",
+    },
+    {
+        "eyebrow": "Variants",
+        "title": "Track prints without hiding ambiguity",
+        "body": "Alt arts, promos, SP cards, and same-name cards can stay separate so Miru can explain what is clear and what still needs cleanup.",
+    },
+)
+
+GAP_PANELS = (
+    {
+        "eyebrow": "Missing fields",
+        "title": "Keep unknowns visible",
+        "body": "Miru should show missing effect text, attributes, image identity, or source coverage directly so the next enrichment pass knows what to fix.",
+    },
+    {
+        "eyebrow": "Conflicts",
+        "title": "Record disagreement instead of flattening it",
+        "body": "When a lower-tier source disagrees with an official record, the conflict stays visible instead of getting silently collapsed into one answer.",
+    },
+    {
+        "eyebrow": "Next question",
+        "title": "Turn gaps into useful follow-ups",
+        "body": "Good gap tracking should tell you the next practical card question to ask, not just that the data is incomplete.",
+    },
+)
+
+TRAINING_PANELS = (
+    {
+        "eyebrow": "Verified loop",
+        "title": "Miru learns card by card",
+        "body": "The sidecar pipeline ingests trusted source records, compares facts, records conflicts, and updates reusable card dossiers without changing the main runtime.",
+    },
+    {
+        "eyebrow": "Refresh",
+        "title": "Official snapshots can be updated safely",
+        "body": "Miru can refresh official-style snapshots over time, compare what changed, and keep a clean audit trail for what was added, updated, or left unresolved.",
+    },
+)
+
+INTELLIGENCE_STAGE_BLUEPRINT = (
+    {
+        "key": "card_recognition",
+        "label": "Card Recognition",
+        "voyage_arc": "East Blue",
+        "summary": "Miru can identify cards and their basic reference data.",
+        "what_this_means": "Miru is building a reliable foundation for identifying One Piece cards. It can match names, codes, sets, rarity, and images, but it is not yet ready to interpret full card details or reason about decks.",
+        "can_do_now": (
+            "Recognize card names, codes, sets, and rarity",
+            "Track card identity and basic variant information",
+            "Match images to known card records",
+            "Prepare the card catalog for deeper learning",
+        ),
+        "still_learning": (
+            "Core stats, traits, and effects",
+            "Deck synergy and strategy",
+            "Tournament and matchup analysis",
+            "Verified multi-source card intelligence",
+        ),
+        "next_stage_detail": "Miru will begin learning how to understand individual card details such as stats, traits, and effects.",
+    },
+    {
+        "key": "card_understanding",
+        "label": "Card Understanding",
+        "voyage_arc": "Alabasta",
+        "summary": "Miru can understand individual card facts, but not full deck or meta reasoning yet.",
+        "what_this_means": "Miru is currently strongest at understanding individual One Piece cards. It can identify cards and interpret core card details, but it is not yet advanced enough to fully understand decks, tournament trends, or the competitive meta.",
+        "can_do_now": (
+            "Recognize card names, codes, sets, and rarity",
+            "Read core stats, traits, and effects",
+            "Track card identity and variant information",
+            "Use dossier-style card records where they already exist",
+        ),
+        "still_learning": (
+            "Deck synergy and strategy",
+            "Tournament and matchup analysis",
+            "Market reasoning tied to competitive play",
+            "Broader verified multi-source card intelligence across the catalog",
+        ),
+        "next_stage_detail": "Miru will begin learning how cards function together inside real decklists.",
+    },
+    {
+        "key": "deck_understanding",
+        "label": "Deck Understanding",
+        "voyage_arc": "Water 7",
+        "summary": "Miru will learn how individual cards combine into real decks and roles.",
+        "what_this_means": "Miru will move from understanding single cards to understanding how cards function together inside complete decklists, including roles, synergy, and common play patterns.",
+        "can_do_now": (
+            "Relate cards to common deck roles",
+            "Recognize simple synergy patterns",
+            "Follow real decklist structure",
+            "Explain why certain cards are paired together",
+        ),
+        "still_learning": (
+            "Tournament-level matchup reasoning",
+            "Meta trend tracking",
+            "Price reasoning tied to play patterns",
+            "Full verified dossier coverage across the catalog",
+        ),
+        "next_stage_detail": "Miru will begin learning which decks, cards, and strategies are actually performing well in the live meta.",
+    },
+    {
+        "key": "meta_understanding",
+        "label": "Meta Understanding",
+        "voyage_arc": "Dressrosa",
+        "summary": "Miru will learn which decks and strategies are performing well.",
+        "what_this_means": "Miru will start connecting deck knowledge to competitive results so it can explain which decks, cards, and strategies are currently strong and why they matter.",
+        "can_do_now": (
+            "Track deck performance trends",
+            "Spot common matchups and pressure points",
+            "Explain why certain cards rise in importance",
+            "Summarize competitive shifts over time",
+        ),
+        "still_learning": (
+            "Market reasoning tied to demand",
+            "Broader verified intelligence across trusted sources",
+        ),
+        "next_stage_detail": "Miru will begin connecting market movement and demand to deck usage and competitive trends.",
+    },
+    {
+        "key": "market_intelligence",
+        "label": "Market Intelligence",
+        "voyage_arc": "Wano",
+        "summary": "Miru will connect card prices and demand to how the game is actually being played.",
+        "what_this_means": "Miru will start relating price movement and buyer demand to deck usage, set relevance, and competitive shifts instead of treating market data as a separate system.",
+        "can_do_now": (
+            "Track price movement against deck usage",
+            "Explain demand spikes tied to play trends",
+            "Connect metagame shifts to market pressure",
+            "Surface cards whose value is moving for gameplay reasons",
+        ),
+        "still_learning": (
+            "Full verified multi-source card intelligence across the product",
+        ),
+        "next_stage_detail": "Miru will begin answering from broad, verified dossier-style knowledge gathered from trusted sources.",
+    },
+    {
+        "key": "verified_card_intelligence",
+        "label": "Verified Card Intelligence",
+        "voyage_arc": "Egghead",
+        "summary": "Miru will answer from broad, verified, dossier-style card knowledge.",
+        "what_this_means": "Miru will be able to answer from verified dossier-style knowledge gathered from trusted sources across the product, with stronger evidence, broader coverage, and clearer confidence about what is known versus still uncertain.",
+        "can_do_now": (
+            "Answer from trusted, verified dossier records",
+            "Keep source-backed card knowledge organized and reusable",
+            "Surface clearer evidence and confidence boundaries",
+            "Support more reliable product experiences across card, deck, meta, and market workflows",
+        ),
+        "still_learning": (
+            "Ongoing coverage expansion and answer quality improvements",
+        ),
+        "next_stage_detail": "Miru will keep improving coverage, freshness, and answer quality across the full card intelligence stack.",
+    },
+)
+
+HOME_HIGHLIGHTS = (
+    {
+        "title": "Verified card answers",
+        "body": "Ask about a card, variant, set, or mechanic and Miru answers from structured knowledge instead of bluffing.",
+    },
+    {
+        "title": "Gaps stay honest",
+        "body": "If a field is missing, uncertain, or conflicting, Miru should say so clearly and point to the next useful follow-up.",
+    },
+)
+
+VOYAGE_ISLANDS = (
+    {"key": "east_blue", "name": "East Blue", "short_name": "East Blue", "sprite": "islands/island_east_blue.png", "stage": "East Blue", "map_x": 10, "map_y": 75},
+    {"key": "reverse_mountain", "name": "Reverse Mountain", "short_name": "Reverse Mountain", "sprite": "islands/island_reverse_mountain.png", "stage": "Grand Line Approach", "map_x": 23, "map_y": 57},
+    {"key": "alabasta", "name": "Alabasta", "short_name": "Alabasta", "sprite": "islands/island_alabasta.png", "stage": "Grand Line", "map_x": 35, "map_y": 66},
+    {"key": "skypiea", "name": "Skypiea", "short_name": "Skypiea", "sprite": "islands/island_skypiea.png", "stage": "Grand Line", "map_x": 45, "map_y": 42},
+    {"key": "water_7", "name": "Water 7", "short_name": "Water 7", "sprite": "islands/island_water_7.png", "stage": "Grand Line", "map_x": 56, "map_y": 56},
+    {"key": "thriller_bark", "name": "Thriller Bark", "short_name": "Thriller Bark", "sprite": "islands/island_thriller_bark.png", "stage": "Grand Line", "map_x": 66, "map_y": 42},
+    {"key": "fishman_island", "name": "Fishman Island", "short_name": "Fishman Island", "sprite": "islands/island_fishman_island.png", "stage": "New World", "map_x": 74, "map_y": 64},
+    {"key": "dressrosa", "name": "Dressrosa", "short_name": "Dressrosa", "sprite": "islands/island_dressrosa.png", "stage": "New World", "map_x": 83, "map_y": 48},
+    {"key": "whole_cake", "name": "Whole Cake", "short_name": "Whole Cake", "sprite": "islands/island_whole_cake.png", "stage": "New World", "map_x": 90, "map_y": 62},
+    {"key": "wano", "name": "Wano", "short_name": "Wano", "sprite": "islands/island_wano.png", "stage": "New World", "map_x": 86, "map_y": 29},
+    {"key": "egghead", "name": "Egghead", "short_name": "Egghead", "sprite": "islands/island_egghead.png", "stage": "Final Voyage", "map_x": 69, "map_y": 15},
+    {"key": "laugh_tale", "name": "Laugh Tale", "short_name": "Laugh Tale", "sprite": "islands/island_laugh_tale.png", "stage": "Final Voyage", "map_x": 50, "map_y": 11},
+)
+
+VOYAGE_BOSSES = (
+    {"name": "Alvida", "sprite": "bosses/boss_alvida.png", "island_key": "east_blue"},
+    {"name": "Kuro", "sprite": "bosses/boss_kuro.png", "island_key": "east_blue"},
+    {"name": "Krieg", "sprite": "bosses/boss_krieg.png", "island_key": "east_blue"},
+    {"name": "Buggy", "sprite": "bosses/boss_buggy.png", "island_key": "east_blue"},
+    {"name": "Arlong", "sprite": "bosses/boss_arlong.png", "island_key": "east_blue"},
+    {"name": "Crocodile", "sprite": "bosses/boss_crocodile.png", "island_key": "alabasta"},
+    {"name": "Enel", "sprite": "bosses/boss_enel.png", "island_key": "skypiea"},
+    {"name": "Lucci", "sprite": "bosses/boss_lucci.png", "island_key": "water_7"},
+    {"name": "Moria", "sprite": "bosses/boss_moria.png", "island_key": "thriller_bark"},
+    {"name": "Doflamingo", "sprite": "bosses/boss_doflamingo.png", "island_key": "dressrosa"},
+    {"name": "Katakuri", "sprite": "bosses/boss_katakuri.png", "island_key": "whole_cake"},
+    {"name": "Big Mom", "sprite": "bosses/boss_big_mom.png", "island_key": "whole_cake"},
+    {"name": "Kaido", "sprite": "bosses/boss_kaido.png", "island_key": "wano"},
+    {"name": "Five Elders", "sprite": "bosses/boss_five_elders.png", "island_key": "egghead"},
+    {"name": "Imu", "sprite": "bosses/boss_imu.png", "island_key": "egghead"},
+    {"name": "Blackbeard", "sprite": "bosses/boss_blackbeard.png", "island_key": "laugh_tale"},
+)
+
+VOYAGE_ROUTE_MARKERS = {
+    "completed": "routes/route_completed_marker.png",
+    "current": "routes/route_current_ship_marker.png",
+    "next": "routes/route_next_destination_marker.png",
+    "planned": "routes/route_checkpoint_marker.png",
+    "finish": "routes/route_finish_marker.png",
+}
+
+VOYAGE_SHARED_ASSETS = {
+    "ship": "ships/polar_tang_sail_01.png",
+    "ship_alt": "ships/polar_tang_sail_02.png",
+    "travel_ship": "travel/travel_ship_move_01.png",
+    "wake_primary": "travel/travel_wake_01.png",
+    "wake_secondary": "travel/travel_long_wake_01.png",
+    "captain_log": "ui/ui_log_pose.png",
+    "compass": "ui/ui_compass_open.png",
+    "vivre": "ui/ui_vivre_card.png",
+    "celebration": "characters/barto_victory.png",
+    "celebration_alt": "characters/barto_fanboy.png",
+    "sparkle": "effects/effect_glow_sparkle.png",
+    "confetti": "effects/effect_confetti.png",
+}
+
+TRAINING_STAGE_BLUEPRINT = (
+    ("catalog_ready", "Catalog Ready", "Local card catalog is indexed and ready for lookup."),
+    ("dossiers_building", "Dossiers Building", "Structured dossiers are being created card by card."),
+    ("verification_expanding", "Verification Expanding", "Verified dossiers are growing with trusted evidence."),
+    ("relationship_graph_later", "Relationship Graph Later", "Card and variant relationships will deepen later."),
+    ("deck_intelligence_later", "Deck Intelligence Later", "Deck-level intelligence comes after card knowledge is solid."),
+)
+
+def read_port_env(name: str, default: int) -> int:
+    raw_value = str(os.getenv(name, "") or "").strip()
+    if not raw_value:
+        return default
+    try:
+        return int(raw_value)
+    except ValueError:
+        return default
+
+
+PROJECT_MIRU_PORT = read_port_env("PROJECT_MIRU_PORT", 8080)
+PROJECT_MIRU_DEV_PORT = read_port_env("PROJECT_MIRU_DEV_PORT", 18080)
+RUNTIME_MONITOR_PORT = read_port_env("MIRU_RUNTIME_PORT", 8765)
+RUNTIME_MONITOR_STATUS_URL = str(os.getenv("MIRU_RUNTIME_STATUS_URL", "") or "").strip()
+ACTIVITY_RECENT_WINDOW_SECONDS = 300
+
+
+def path_signature(path_like: str | Path | None) -> tuple[bool, int, int]:
+    try:
+        path = Path(path_like) if path_like is not None else None
+    except Exception:
+        path = None
+    if path is None or not path.exists():
+        return (False, 0, 0)
+    stat = path.stat()
+    return (True, int(stat.st_mtime_ns), int(stat.st_size))
+
+
+def get_ttl_cached_value(
+    key: str,
+    *,
+    ttl_seconds: float,
+    builder: Callable[[], Any],
+    signature: Any = None,
+) -> Any:
+    now = time.time()
+    with _TTL_CACHE_LOCK:
+        entry = _TTL_CACHE.get(key)
+        if entry and entry.get("expires_at", 0.0) > now and entry.get("signature") == signature:
+            return copy.deepcopy(entry["value"])
+    value = builder()
+    with _TTL_CACHE_LOCK:
+        _TTL_CACHE[key] = {
+            "expires_at": now + max(float(ttl_seconds), 0.0),
+            "signature": signature,
+            "value": copy.deepcopy(value),
+        }
+    return value
+
+
+def invalidate_ttl_cache(key: str) -> None:
+    """Remove a key from the TTL cache so the next get_ttl_cached_value rebuilder runs."""
+    with _TTL_CACHE_LOCK:
+        _TTL_CACHE.pop(key, None)
+
+
+DEV_ACTIVITY_BLUEPRINT = (
+    {"key": "sleeping", "title": "Idle", "description": "Miru is online but not working on a learning task right now.", "visual": "sleeping"},
+    {"key": "setting_sail", "title": "Running", "description": "Miru is online and moving through structured learning work.", "visual": "sailing"},
+    {"key": "gathering_crew", "title": "Working Now", "description": "Miru is actively processing a live learning task.", "visual": "crew"},
+    {"key": "storm_warning", "title": "Needs Attention", "description": "The learning engine reported a recent problem that may need help.", "visual": "storm"},
+)
+
+MIRU_ACTIVITY_LOCK = Lock()
+MIRU_ACTIVITY_STATE = {
+    "active_runs": 0,
+    "last_started_at": "",
+    "last_finished_at": "",
+    "last_mode": "",
+    "last_request_text": "",
+    "last_error": "",
+}
+
+def compute_asset_version() -> str:
+    candidates = [Path(__file__)]
+    if TEMPLATE_DIR.exists():
+        candidates.extend(path for path in TEMPLATE_DIR.rglob("*") if path.is_file())
+    if STATIC_DIR.exists():
+        candidates.extend(path for path in STATIC_DIR.rglob("*") if path.is_file())
+    latest_mtime = max(int(path.stat().st_mtime_ns) for path in candidates)
+    return str(latest_mtime)
+
+
+def format_mode_label(mode_key: str) -> str:
+    return ALL_MODE_LABELS.get(mode_key, mode_key.title())
+
+
+
+def format_count(value: int) -> str:
+    return f"{int(max(value, 0)):,}"
+
+
+def format_compact_count(value: int | float) -> str:
+    number = float(value or 0)
+    sign = "-" if number < 0 else ""
+    absolute = abs(number)
+    for threshold, suffix in ((1_000_000_000, "B"), (1_000_000, "M"), (1_000, "K")):
+        if absolute >= threshold:
+            compact = absolute / threshold
+            return f"{sign}{compact:.1f}".rstrip("0").rstrip(".") + suffix
+    if absolute.is_integer():
+        return f"{sign}{int(absolute)}"
+    return f"{sign}{absolute:.1f}".rstrip("0").rstrip(".")
+
+
+def safe_percent(numerator: int, denominator: int) -> float:
+    if denominator <= 0:
+        return 0.0
+    return round((max(numerator, 0) / denominator) * 100, 1)
+
+
+def ensure_fallback_catalog_status() -> dict[str, Any]:
+    status = inspect_fallback_catalog_db(FALLBACK_CATALOG_DB_PATH)
+    if status["usable"]:
+        return status
+    return initialize_fallback_catalog_db(
+        db_path=FALLBACK_CATALOG_DB_PATH,
+        cache_path=KNOWLEDGE_CACHE_PATH,
+    )
+
+
+def inspect_dossier_db(path: Path | None = None) -> dict[str, Any]:
+    dossier_path = Path(path or DOSSIER_DB_PATH)
+    status = {
+        "path": str(dossier_path),
+        "exists": dossier_path.is_file(),
+        "openable": False,
+        "usable": False,
+        "dossiers_created": 0,
+        "verified_dossiers": 0,
+        "variant_records": 0,
+        "image_coverage_cards": 0,
+        "error": "",
+    }
+
+    if not status["exists"]:
+        status["error"] = "Miru dossier database does not exist yet."
+        return status
+
+    try:
+        with closing(sqlite3.connect(dossier_path)) as conn:
+            tables = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+            status["openable"] = True
+
+            if "cards" in tables:
+                columns = {
+                    row[1]
+                    for row in conn.execute("PRAGMA table_info(cards)").fetchall()
+                }
+                status["dossiers_created"] = int(
+                    conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
+                )
+                if "overall_state" in columns:
+                    status["verified_dossiers"] = int(
+                        conn.execute(
+                            "SELECT COUNT(*) FROM cards WHERE lower(coalesce(overall_state, '')) = 'verified'"
+                        ).fetchone()[0]
+                    )
+                elif "verification_state" in columns:
+                    status["verified_dossiers"] = int(
+                        conn.execute(
+                            "SELECT COUNT(*) FROM cards WHERE lower(coalesce(verification_state, '')) = 'verified'"
+                        ).fetchone()[0]
+                    )
+                elif "confidence_records" in tables:
+                    status["verified_dossiers"] = int(
+                        conn.execute(
+                            """
+                            SELECT COUNT(DISTINCT card_id)
+                            FROM confidence_records
+                            WHERE lower(coalesce(verification_state, '')) = 'verified'
+                              AND (
+                                    lower(coalesce(scope, '')) = 'card'
+                                 OR lower(coalesce(scope_key, '')) = 'overall'
+                              )
+                            """
+                        ).fetchone()[0]
+                    )
+                if "card_variants" in tables:
+                    status["variant_records"] = int(
+                        conn.execute("SELECT COUNT(*) FROM card_variants").fetchone()[0]
+                    )
+                if "image_identity" in columns:
+                    status["image_coverage_cards"] = int(
+                        conn.execute(
+                            "SELECT COUNT(*) FROM cards WHERE trim(coalesce(image_identity, '')) != ''"
+                        ).fetchone()[0]
+                    )
+                elif "card_facts" in tables:
+                    status["image_coverage_cards"] = int(
+                        conn.execute(
+                            """
+                            SELECT COUNT(DISTINCT card_id)
+                            FROM card_facts
+                            WHERE field_name = 'image_identity'
+                              AND trim(coalesce(value_text, '')) != ''
+                            """
+                        ).fetchone()[0]
+                    )
+            elif "dossiers" in tables:
+                columns = {
+                    row[1]
+                    for row in conn.execute("PRAGMA table_info(dossiers)").fetchall()
+                }
+                status["dossiers_created"] = int(
+                    conn.execute("SELECT COUNT(*) FROM dossiers").fetchone()[0]
+                )
+                verification_column = None
+                for candidate in ("overall_state", "verification_state", "status"):
+                    if candidate in columns:
+                        verification_column = candidate
+                        break
+                if verification_column:
+                    status["verified_dossiers"] = int(
+                        conn.execute(
+                            f"SELECT COUNT(*) FROM dossiers WHERE lower(coalesce({verification_column}, '')) = 'verified'"
+                        ).fetchone()[0]
+                    )
+            else:
+                status["error"] = "Miru dossier database opened, but no recognized dossier tables were found."
+                return status
+
+            status["usable"] = status["dossiers_created"] > 0 or "cards" in tables or "dossiers" in tables
+            if not status["usable"] and not status["error"]:
+                status["error"] = "Miru dossier database opened, but contains no dossier rows yet."
+    except sqlite3.Error as exc:
+        status["error"] = f"{exc.__class__.__name__}: {exc}"
+
+    return status
+
+
+def determine_training_stage(total_cards: int, dossiers_created: int, verified_dossiers: int) -> str:
+    if total_cards <= 0:
+        return "catalog_ready"
+    if dossiers_created <= 0:
+        return "dossiers_building"
+    if verified_dossiers < total_cards:
+        return "verification_expanding"
+    if verified_dossiers >= total_cards:
+        return "relationship_graph_later"
+    return "deck_intelligence_later"
+
+
+def build_training_stage_rows(training_stage: str) -> list[dict[str, str]]:
+    active_seen = False
+    rows = []
+    for key, label, detail in TRAINING_STAGE_BLUEPRINT:
+        if key == training_stage:
+            state = "active"
+            active_seen = True
+        elif active_seen:
+            state = "upcoming"
+        else:
+            state = "complete"
+        rows.append({"key": key, "label": label, "detail": detail, "state": state})
+    return rows
+
+
+def determine_intelligence_stage_index(training_status: dict[str, Any]) -> int:
+    capability_flags = training_status.get("capability_flags")
+    if isinstance(capability_flags, dict):
+        for index, key in (
+            (5, "verified_card_intelligence"),
+            (4, "market_intelligence"),
+            (3, "meta_understanding"),
+            (2, "deck_understanding"),
+        ):
+            if capability_flags.get(key):
+                return index
+
+    total_cards = int(training_status.get("total_cards") or 0)
+    dossiers_created = int(training_status.get("dossiers_created") or 0)
+    verified_dossiers = int(training_status.get("verified_dossiers") or 0)
+
+    if total_cards <= 0:
+        return 0
+    if verified_dossiers > 0 or dossiers_created > 0:
+        return 1
+    return 0
+
+
+def build_intelligence_progress(training_status: dict[str, Any]) -> dict[str, Any]:
+    current_index = determine_intelligence_stage_index(training_status)
+    total_stages = len(INTELLIGENCE_STAGE_BLUEPRINT)
+    current_stage = dict(INTELLIGENCE_STAGE_BLUEPRINT[current_index])
+    next_stage = dict(INTELLIGENCE_STAGE_BLUEPRINT[current_index + 1]) if current_index + 1 < total_stages else None
+
+    for stage in (current_stage, next_stage):
+        if isinstance(stage, dict):
+            stage["number"] = 1 + next(
+                index for index, entry in enumerate(INTELLIGENCE_STAGE_BLUEPRINT) if entry["key"] == stage["key"]
+            )
+
+    stage_rows = []
+    for index, stage in enumerate(INTELLIGENCE_STAGE_BLUEPRINT):
+        if index < current_index:
+            state = "complete"
+        elif index == current_index:
+            state = "active"
+        else:
+            state = "upcoming"
+        stage_rows.append(
+            {
+                "key": stage["key"],
+                "number": index + 1,
+                "label": stage["label"],
+                "voyage_arc": stage["voyage_arc"],
+                "summary": stage["summary"],
+                "state": state,
+            }
+        )
+
+    total_cards = int(training_status.get("total_cards") or 0)
+    verified_dossiers = int(training_status.get("verified_dossiers") or 0)
+    progress_percent = float(training_status.get("progress_percent") or 0.0)
+    coverage_note = (
+        f"{format_count(verified_dossiers)} of {format_count(total_cards)} cards currently have a verified dossier ({progress_percent:.1f}%). "
+        "This measures card knowledge coverage, not deck, meta, or market intelligence."
+        if total_cards > 0
+        else "Miru is still building its local card catalog, so intelligence progress is early and conservative."
+    )
+
+    return {
+        "total_stages": total_stages,
+        "current_stage": current_stage,
+        "next_stage": next_stage,
+        "stage_rows": stage_rows,
+        "coverage_note": coverage_note,
+        "voyage_note": "The voyage arc is supporting flavor for the current intelligence stage, not a claim that Miru is near endgame knowledge.",
+    }
+
+
+def build_training_status() -> dict[str, Any]:
+    cache_signature = (
+        path_signature(FALLBACK_CATALOG_DB_PATH),
+        path_signature(DOSSIER_DB_PATH),
+    )
+    cached = get_ttl_cached_value(
+        "training_status",
+        ttl_seconds=10.0,
+        signature=cache_signature,
+        builder=lambda: _build_training_status_uncached(),
+    )
+    return cached
+
+
+def _build_training_status_uncached() -> dict[str, Any]:
+    catalog_status = ensure_fallback_catalog_status()
+    dossier_status = inspect_dossier_db(DOSSIER_DB_PATH)
+
+    total_cards = int(catalog_status["cards"]) if catalog_status["usable"] else 0
+    dossiers_created = min(int(dossier_status["dossiers_created"]), total_cards) if total_cards else int(dossier_status["dossiers_created"])
+    verified_dossiers = min(int(dossier_status["verified_dossiers"]), dossiers_created) if dossiers_created else 0
+    remaining_gaps = max(total_cards - verified_dossiers, 0)
+
+    catalog_coverage_percent = 100.0 if total_cards > 0 else 0.0
+    dossier_coverage_percent = safe_percent(dossiers_created, total_cards)
+    verified_coverage_percent = safe_percent(verified_dossiers, total_cards)
+    progress_percent = verified_coverage_percent
+    training_stage = determine_training_stage(total_cards, dossiers_created, verified_dossiers)
+
+    ring_metrics = [
+        {
+            "label": "Catalog Coverage",
+            "percent": catalog_coverage_percent,
+            "value": format_count(total_cards),
+            "detail": "Indexed card identities available locally.",
+        },
+        {
+            "label": "Dossier Coverage",
+            "percent": dossier_coverage_percent,
+            "value": format_count(dossiers_created),
+            "detail": "Cards with dossier records created.",
+        },
+        {
+            "label": "Verified Coverage",
+            "percent": verified_coverage_percent,
+            "value": format_count(verified_dossiers),
+            "detail": "Cards with verified dossier state.",
+        },
+    ]
+
+    verified_summary = f"{format_count(verified_dossiers)} verified dossiers out of {format_count(total_cards)} catalog cards"
+    remaining_summary = f"{format_count(remaining_gaps)} cards still need verified dossier coverage."
+
+    ring_metrics_clear = [
+        {"label": "Catalog size", "percent": catalog_coverage_percent, "value": format_count(total_cards), "detail": "Indexed card identities available locally."},
+        {"label": "Dossiers in store", "percent": dossier_coverage_percent, "value": format_count(dossiers_created), "detail": "Cards with dossier records in the verified store."},
+        {"label": "Verified", "percent": verified_coverage_percent, "value": format_count(verified_dossiers), "detail": "Cards with verified dossier state."},
+    ]
+    stats_clear = (
+        {"label": "Catalog size", "value": format_count(total_cards), "detail": "Cards in local catalog."},
+        {"label": "Dossiers in verified store", "value": format_count(dossiers_created), "detail": "Card profiles in the main verified store."},
+        {"label": "Verified in store", "value": format_count(verified_dossiers), "detail": "Dossiers marked verified."},
+        {"label": "Still to verify", "value": format_count(remaining_gaps), "detail": "Catalog cards without a verified dossier."},
+    )
+
+    training_status = {
+        "total_cards": total_cards,
+        "dossiers_created": dossiers_created,
+        "verified_dossiers": verified_dossiers,
+        "remaining_gaps": remaining_gaps,
+        "progress_percent": progress_percent,
+        "catalog_coverage_percent": catalog_coverage_percent,
+        "dossier_coverage_percent": dossier_coverage_percent,
+        "verified_coverage_percent": verified_coverage_percent,
+        "training_stage": training_stage,
+        "stage_rows": build_training_stage_rows(training_stage),
+        "ring_metrics": ring_metrics,
+        "catalog_status": catalog_status,
+        "dossier_status": dossier_status,
+        "verified_summary": verified_summary,
+        "remaining_summary": remaining_summary,
+        "stats": (
+            {
+                "label": "Total Cards",
+                "value": format_count(total_cards),
+                "detail": "Local fallback catalog rows indexed for card lookup.",
+            },
+            {
+                "label": "Dossiers Created",
+                "value": format_count(dossiers_created),
+                "detail": "Structured card profiles written to the dossier store.",
+            },
+            {
+                "label": "Verified Dossiers",
+                "value": format_count(verified_dossiers),
+                "detail": "Dossiers that currently report a verified overall state.",
+            },
+            {
+                "label": "Remaining Knowledge Gaps",
+                "value": format_count(remaining_gaps),
+                "detail": "Catalog cards that still need verified dossier coverage.",
+            },
+        ),
+    }
+    training_status["training_progress"] = {
+        "catalog_cards_total": total_cards,
+        "verified_store_dossiers_count": dossiers_created,
+        "verified_store_verified_count": verified_dossiers,
+        "verified_store_gaps_count": remaining_gaps,
+        "training_progress_percent": progress_percent,
+        "training_stage": training_stage,
+        "stage_rows": build_training_stage_rows(training_stage),
+        "ring_metrics": ring_metrics_clear,
+        "verified_summary": verified_summary,
+        "remaining_summary": remaining_summary,
+        "stats": stats_clear,
+    }
+    training_status["intelligence_progress"] = build_intelligence_progress(training_status)
+    training_status["voyage"] = ensure_voyage_state(training_status)
+    return training_status
+
+
+def voyage_asset_url(relative_path: str) -> str:
+    return url_for("static", filename=f"icons/miru_voyage/{relative_path}")
+
+
+def safe_voyage_asset_url(relative_path: str | None, fallback_relative_path: str = "ui/ui_log_pose.png") -> str:
+    voyage_root = STATIC_DIR / "icons" / "miru_voyage"
+    candidate = voyage_root / str(relative_path or "")
+    if relative_path and candidate.is_file():
+        return voyage_asset_url(relative_path)
+    fallback_candidate = voyage_root / fallback_relative_path
+    if fallback_candidate.is_file():
+        return voyage_asset_url(fallback_relative_path)
+    return url_for("static", filename="icons/miru-fruit.png")
+
+
+def voyage_shared_asset_url(key: str, fallback_relative_path: str = "ui/ui_log_pose.png") -> str:
+    return safe_voyage_asset_url(VOYAGE_SHARED_ASSETS.get(key), fallback_relative_path)
+
+
+def build_voyage_assets() -> dict[str, str]:
+    fallbacks = {
+        "ship": "ships/polar_tang_idle.png",
+        "ship_alt": "ships/polar_tang_sail_01.png",
+        "travel_ship": "ships/polar_tang_sail_01.png",
+        "wake_primary": "effects/effect_wave_loop.png",
+        "wake_secondary": "effects/effect_wave_loop.png",
+        "captain_log": "ui/ui_log_pose.png",
+        "compass": "ui/ui_compass_open.png",
+        "vivre": "ui/ui_vivre_card.png",
+        "celebration": "characters/barto_idle.png",
+        "celebration_alt": "characters/barto_fanboy.png",
+        "sparkle": "effects/effect_glow_sparkle.png",
+        "confetti": "effects/effect_confetti.png",
+    }
+    return {
+        key: voyage_shared_asset_url(key, fallback_relative_path=fallback)
+        for key, fallback in fallbacks.items()
+    }
+
+
+def build_voyage_location(island: dict[str, str], status: str) -> dict[str, str]:
+    return {
+        "key": island.get("key", "planned"),
+        "name": island.get("name", "Planned"),
+        "short_name": island.get("short_name", island.get("name", "Planned")),
+        "stage": island.get("stage", "Planned"),
+        "status": status,
+        "map_x": int(island.get("map_x", 0) or 0),
+        "map_y": int(island.get("map_y", 0) or 0),
+        "sprite_url": safe_voyage_asset_url(island.get("sprite"), "islands/island_east_blue.png"),
+    }
+
+
+def build_voyage_boss(boss: dict[str, str], status: str) -> dict[str, str]:
+    return {
+        "name": boss.get("name", "Planned"),
+        "island_key": boss.get("island_key", ""),
+        "status": status,
+        "sprite_url": safe_voyage_asset_url(boss.get("sprite"), "characters/barto_idle.png"),
+    }
+
+
+def build_voyage_log_entries(
+    current_island_index: int,
+    defeated_boss_count: int,
+    next_island: dict[str, str] | None,
+) -> list[dict[str, str]]:
+    assets = build_voyage_assets()
+    entries: list[dict[str, str]] = []
+    if defeated_boss_count > 0:
+        last_boss = VOYAGE_BOSSES[defeated_boss_count - 1]
+        entries.append(
+            {
+                "message": f"Defeated {last_boss['name']}",
+                "tone": "victory",
+                "icon_url": assets["confetti"],
+            }
+        )
+    if current_island_index > 0:
+        entries.append(
+            {
+                "message": f"Entered {VOYAGE_ISLANDS[current_island_index]['name']}",
+                "tone": "travel",
+                "icon_url": assets["compass"],
+            }
+        )
+        entries.append(
+            {
+                "message": f"Left {VOYAGE_ISLANDS[current_island_index - 1]['name']}",
+                "tone": "travel",
+                "icon_url": assets["captain_log"],
+            }
+        )
+    if current_island_index >= 6:
+        entries.append(
+            {
+                "message": "Entered the New World",
+                "tone": "travel",
+                "icon_url": assets["compass"],
+            }
+        )
+    elif current_island_index >= 1:
+        entries.append(
+            {
+                "message": "Entered the Grand Line",
+                "tone": "travel",
+                "icon_url": assets["compass"],
+            }
+        )
+    if current_island_index >= 10:
+        entries.append(
+            {
+                "message": "Left Wano",
+                "tone": "travel",
+                "icon_url": assets["captain_log"],
+            }
+        )
+    if next_island:
+        entries.append(
+            {
+                "message": f"Charted course for {next_island['name']}",
+                "tone": "planned",
+                "icon_url": assets["vivre"],
+            }
+        )
+    return entries[:5]
+
+
+def build_voyage_state(
+    training_status: dict[str, Any],
+    learning_status: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    progress_percent = float(training_status.get("progress_percent") or 0.0)
+    island_total = len(VOYAGE_ISLANDS)
+    reverse_mountain_index = next((index for index, island in enumerate(VOYAGE_ISLANDS) if island.get("key") == "reverse_mountain"), 0)
+    next_island_index = min(reverse_mountain_index + 1, island_total - 1) if island_total else 0
+
+    current_island = build_voyage_location(VOYAGE_ISLANDS[reverse_mountain_index], "current")
+    next_island = build_voyage_location(VOYAGE_ISLANDS[next_island_index], "next") if island_total else None
+    route_nodes = []
+    for index, island in enumerate(VOYAGE_ISLANDS):
+        if index == reverse_mountain_index:
+            status = "current"
+        elif index == next_island_index and next_island_index != reverse_mountain_index:
+            status = "next"
+        elif index == island_total - 1:
+            status = "finish"
+        else:
+            status = "planned"
+        route_nodes.append(
+            {
+                "key": island.get("key", f"island-{index}"),
+                "name": island.get("name", "Planned"),
+                "short_name": island.get("short_name", island.get("name", "Planned")),
+                "status": status,
+                "map_x": int(island.get("map_x", 0) or 0),
+                "map_y": int(island.get("map_y", 0) or 0),
+                "sprite_url": safe_voyage_asset_url(island.get("sprite"), "islands/island_east_blue.png"),
+                "marker_url": safe_voyage_asset_url(VOYAGE_ROUTE_MARKERS.get(status), "routes/route_checkpoint_marker.png"),
+                "bosses": [],
+            }
+        )
+
+    learning_phase = describe_learning_engine_phase(dict(learning_status or {}))
+    queue_length = int((learning_status or {}).get("queue_length") or 0)
+    running_count = int((learning_status or {}).get("running_count") or 0)
+    assets = build_voyage_assets()
+    stage_label = "Approaching Reverse Mountain"
+    route_progress = learning_phase["description"]
+    stage_detail = "Miru is in early structured learning: collecting, checking, and organizing card knowledge without claiming advanced intelligence."
+    stage_meaning = (
+        "This voyage position means Miru has moved beyond basic setup and is learning in a structured way, "
+        "but it is still far from advanced deck, matchup, or endgame reasoning."
+    )
+
+    if learning_phase["title"] == "Verifying Knowledge":
+        can_do_now = "Check card facts against real sources"
+        can_do_now_detail = "Miru can compare queued card facts with source material and lock in trusted details."
+    elif learning_phase["title"] == "Writing Dossiers":
+        can_do_now = "Write structured card notes"
+        can_do_now_detail = "Miru can turn trusted facts into cleaner dossier records for later lookup."
+    elif learning_phase["title"] == "Scanning Sources":
+        can_do_now = "Collect source material for verification"
+        can_do_now_detail = "Miru can gather new source pages and queue them for the next verification pass."
+    elif learning_phase["title"] == "Processing Images":
+        can_do_now = "Track and verify card images"
+        can_do_now_detail = "Miru can fetch or review card images so the learning archive stays usable."
+    else:
+        can_do_now = "Build dependable card knowledge"
+        can_do_now_detail = "Miru can work through source-backed card tasks and keep structured learning moving."
+
+    next_title = "Steadier trusted coverage"
+    if queue_length > 0:
+        next_detail = f"{format_count(queue_length)} queued task{'s' if queue_length != 1 else ''} still need attention after the current step."
+    elif running_count > 0:
+        next_detail = "The next step is finishing the work already in flight and turning it into trusted coverage."
+    else:
+        next_detail = "The next step is widening trusted coverage and keeping the queue healthy."
+
+    route_polyline = " ".join(f"{node['map_x']},{node['map_y']}" for node in route_nodes)
+    ship_position = {
+        "x": int(current_island.get("map_x", 0) or 0),
+        "y": int(current_island.get("map_y", 0) or 0),
+    }
+
+    return {
+        "source_label": "Live learning engine telemetry",
+        "learning_label": learning_phase["title"],
+        "learning_stage": str(training_status.get("training_stage") or "planned"),
+        "stage": stage_label,
+        "sea_label": "Early structured learning",
+        "route_progress": route_progress,
+        "boss_summary": learning_phase["detail"] or stage_detail,
+        "stage_title": stage_label,
+        "stage_detail": stage_detail,
+        "stage_meaning": stage_meaning,
+        "can_do_now": can_do_now,
+        "can_do_now_detail": can_do_now_detail,
+        "still_learning": "Broader trusted coverage",
+        "still_learning_detail": "Miru still needs much more verified coverage before higher-level strategic reasoning would be trustworthy.",
+        "next_title": next_title,
+        "next_detail": next_detail,
+        "current_island": current_island,
+        "next_island": next_island,
+        "next_boss": None,
+        "progress_percent": progress_percent,
+        "defeated_boss_count": 0,
+        "boss_total": 0,
+        "defeated_bosses": [],
+        "defeated_boss_names": [],
+        "recent_log": [],
+        "route_nodes": route_nodes,
+        "route_polyline": route_polyline,
+        "ship_position": ship_position,
+        "assets": assets,
+        "celebration_state": "voyage",
+    }
+
+
+def ensure_voyage_state(
+    training_status: dict[str, Any] | None,
+    voyage_state: dict[str, Any] | None = None,
+    learning_status: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    training_status = dict(training_status or {})
+    base_voyage = build_voyage_state(training_status, learning_status=learning_status)
+    candidate = voyage_state if isinstance(voyage_state, dict) else training_status.get("voyage")
+    if not isinstance(candidate, dict):
+        return base_voyage
+
+    merged = dict(base_voyage)
+    for key in (
+        "source_label",
+        "learning_label",
+        "learning_stage",
+        "stage",
+        "sea_label",
+        "route_progress",
+        "boss_summary",
+        "stage_title",
+        "stage_detail",
+        "stage_meaning",
+        "can_do_now",
+        "can_do_now_detail",
+        "still_learning",
+        "still_learning_detail",
+        "next_title",
+        "next_detail",
+        "progress_percent",
+        "defeated_boss_count",
+        "boss_total",
+        "celebration_state",
+        "route_polyline",
+    ):
+        if candidate.get(key) not in (None, ""):
+            merged[key] = candidate[key]
+    for key in ("current_island", "next_island", "next_boss", "ship_position"):
+        if isinstance(candidate.get(key), dict):
+            merged[key] = {**merged.get(key, {}), **candidate[key]}
+    if isinstance(candidate.get("assets"), dict):
+        merged["assets"] = {**merged["assets"], **{k: v for k, v in candidate["assets"].items() if v}}
+    if isinstance(candidate.get("recent_log"), list) and candidate["recent_log"]:
+        merged["recent_log"] = candidate["recent_log"]
+    if isinstance(candidate.get("route_nodes"), list) and candidate["route_nodes"]:
+        merged["route_nodes"] = candidate["route_nodes"]
+    if isinstance(candidate.get("defeated_bosses"), list):
+        merged["defeated_bosses"] = candidate["defeated_bosses"]
+    if isinstance(candidate.get("defeated_boss_names"), list):
+        merged["defeated_boss_names"] = candidate["defeated_boss_names"]
+    return merged
+
+
+def current_timestamp() -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+
+
+def parse_bool_flag(value: Any) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def seconds_since(timestamp: str) -> float | None:
+    if not timestamp:
+        return None
+    try:
+        parsed = time.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+    return max(time.time() - time.mktime(parsed), 0.0)
+
+
+def compute_learner_state_and_freshness(learning_status: dict[str, Any]) -> dict[str, str]:
+    """Compute learner_state (Offline/Starting/Running/Idle/Stale/Error) and heartbeat_freshness (fresh/stale/none)."""
+    current_state = str(learning_status.get("current_state") or "").strip().lower()
+    last_heartbeat = str(learning_status.get("last_heartbeat") or "").strip()
+    last_error = str(learning_status.get("last_error") or "").strip()
+    queue_waiting = int(learning_status.get("queue_length") or 0)
+    queue_running = int(learning_status.get("running_count") or 0)
+    active_states = {"processing", "running", "validating", "learning", "syncing", "discovering", "starting"}
+    heartbeat_age = seconds_since(last_heartbeat) if last_heartbeat else None
+    status_db_exists = bool(learning_status.get("status_db_exists"))
+
+    if last_error or current_state == "error":
+        heartbeat_freshness = "stale" if heartbeat_age is not None and heartbeat_age <= 180 else ("none" if heartbeat_age is None else "stale")
+        return {"learner_state": "Error", "heartbeat_freshness": heartbeat_freshness}
+    if not status_db_exists and heartbeat_age is None:
+        return {"learner_state": "Offline", "heartbeat_freshness": "none"}
+    if heartbeat_age is not None and heartbeat_age > 600:
+        return {"learner_state": "Offline", "heartbeat_freshness": "stale"}
+    if heartbeat_age is not None and heartbeat_age > 180 and (queue_waiting > 0 or queue_running > 0 or current_state in active_states):
+        return {"learner_state": "Stale", "heartbeat_freshness": "stale"}
+    if current_state == "starting":
+        return {"learner_state": "Starting", "heartbeat_freshness": "fresh" if heartbeat_age is not None and heartbeat_age <= 180 else "stale"}
+    if queue_running > 0 or current_state in active_states:
+        return {"learner_state": "Running", "heartbeat_freshness": "fresh" if heartbeat_age is not None and heartbeat_age <= 180 else "stale"}
+    if last_heartbeat:
+        return {"learner_state": "Idle", "heartbeat_freshness": "fresh" if heartbeat_age is not None and heartbeat_age <= 180 else "stale"}
+    return {"learner_state": "Offline", "heartbeat_freshness": "none"}
+
+
+def humanize_snake_label(value: str) -> str:
+    parts = [part for part in re.split(r"[_\s]+", str(value or "").strip()) if part]
+    if not parts:
+        return ""
+    return " ".join(part.capitalize() for part in parts)
+
+
+def classify_learning_task(
+    task_type: str,
+    *,
+    current_image_task: str = "",
+) -> tuple[str, str]:
+    normalized = str(task_type or "").strip().lower()
+    if current_image_task or normalized in {"fetch_card_image", "verify_card_image", "refresh_card_image", "inspect_missing_image"}:
+        return (
+            "Processing Images",
+            "Miru is fetching or checking card images for the learning archive.",
+        )
+    if normalized in {"discover_sources", "discover_set_cards", "fetch_official_source", "refresh_from_source"}:
+        return (
+            "Scanning Sources",
+            "Miru is collecting source material before it verifies new card facts.",
+        )
+    if normalized in {"verify_official_fields", "verify_card_image"}:
+        return (
+            "Verifying Knowledge",
+            "Miru is checking card facts against source material before saving them.",
+        )
+    if normalized in {"bootstrap_dossier", "sync_missing_fields", "refresh_progress"}:
+        return (
+            "Writing Dossiers",
+            "Miru is updating structured card notes from the facts it already trusts.",
+        )
+    return (
+        "Processing Queue",
+        "Miru is working through queued learning tasks.",
+    )
+
+
+def build_learning_task_detail(
+    *,
+    task_label: str,
+    task_type: str,
+    current_source_id: str,
+    current_image_task: str,
+    queue_length: int,
+) -> str:
+    parts: list[str] = []
+    primary = current_image_task or task_label or humanize_snake_label(task_type)
+    if primary:
+        parts.append(primary)
+    if current_source_id:
+        parts.append(f"Source: {current_source_id}")
+    if queue_length > 0:
+        waiting_label = "task" if queue_length == 1 else "tasks"
+        parts.append(f"{format_count(queue_length)} {waiting_label} waiting")
+    if parts:
+        return " | ".join(parts)
+    return "Miru is working through queued learning tasks."
+
+
+def load_pushover_learning_snapshot(
+    path: Path = PUSHOVER_LEARNING_SNAPSHOT_PATH,
+) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def save_pushover_learning_snapshot(
+    snapshot: dict[str, Any],
+    *,
+    title: str = "",
+    message: str = "",
+    path: Path = PUSHOVER_LEARNING_SNAPSHOT_PATH,
+) -> None:
+    payload = dict(snapshot or {})
+    if title:
+        payload["_notification_title"] = str(title)
+    if message:
+        payload["_notification_message"] = str(message)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def build_learning_notification_snapshot(
+    training_status: dict[str, Any],
+    learning_status: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "generated_at": current_timestamp(),
+        "verified_dossiers": int(training_status.get("verified_dossiers") or 0),
+        "verified_coverage_percent": round(float(training_status.get("verified_coverage_percent") or 0.0), 1),
+        "queue_length": int(learning_status.get("queue_length") or 0),
+        "running_count": int(learning_status.get("running_count") or 0),
+        "failed_count": int(learning_status.get("failed_count") or 0),
+        "processed_count": int(learning_status.get("processed_count") or 0),
+        "source_success_count": int(learning_status.get("source_success_count") or 0),
+        "source_error_count": int(learning_status.get("source_error_count") or 0),
+        "image_success_count": int(learning_status.get("image_success_count") or 0),
+        "image_error_count": int(learning_status.get("image_error_count") or 0),
+        "current_state": str(learning_status.get("current_state") or "").strip().lower(),
+        "current_task_type": str(learning_status.get("current_task_type") or "").strip().lower(),
+        "current_task_label": str(learning_status.get("current_task_label") or "").strip(),
+        "current_card_code": str(learning_status.get("current_card_code") or "").strip(),
+        "current_source_id": str(learning_status.get("current_source_id") or "").strip(),
+        "last_completed_task": str(learning_status.get("last_completed_task") or "").strip().lower(),
+        "last_completed_card": str(learning_status.get("last_completed_card") or "").strip(),
+        "last_error": str(learning_status.get("last_error") or "").strip(),
+        "last_heartbeat": str(learning_status.get("last_heartbeat") or "").strip(),
+    }
+
+
+def describe_learning_notification_engine_state(snapshot: dict[str, Any]) -> str:
+    current_state = str(snapshot.get("current_state") or "").strip().lower()
+    task_type = str(snapshot.get("current_task_type") or "").strip().lower()
+    task_label = str(snapshot.get("current_task_label") or "").strip()
+    current_card = str(snapshot.get("current_card_code") or "").strip()
+    source_id = str(snapshot.get("current_source_id") or "").strip()
+    queue_length = int(snapshot.get("queue_length") or 0)
+
+    if current_state == "error" or snapshot.get("last_error"):
+        return "stuck"
+    if current_state in {"processing", "starting"}:
+        if "image" in task_type:
+            return "checking images"
+        if "source" in task_type or task_type.startswith("verify_") or task_type.startswith("discover_"):
+            return "searching"
+        return "learning"
+    if queue_length > 0:
+        return "queued"
+    if current_state in {"sleeping", "idle"}:
+        return "idle"
+    if task_label or current_card or source_id:
+        return "active"
+    return "idle"
+
+
+def describe_learning_notification_task(snapshot: dict[str, Any]) -> str:
+    task_label = str(snapshot.get("current_task_label") or "").strip()
+    task_type = str(snapshot.get("current_task_type") or "").strip().lower()
+    current_card = str(snapshot.get("current_card_code") or "").strip()
+    source_id = str(snapshot.get("current_source_id") or "").strip()
+    if task_label:
+        return task_label
+    parts: list[str] = []
+    if task_type:
+        parts.append(humanize_snake_label(task_type))
+    if current_card:
+        parts.append(current_card)
+    if source_id:
+        parts.append(f"from {source_id}")
+    return " ".join(parts).strip()
+
+
+def describe_learning_notification_queue(snapshot: dict[str, Any]) -> str:
+    queue_length = int(snapshot.get("queue_length") or 0)
+    running_count = int(snapshot.get("running_count") or 0)
+    failed_count = int(snapshot.get("failed_count") or 0)
+    parts: list[str] = []
+    if queue_length > 0:
+        parts.append(f"{format_compact_count(queue_length)} waiting")
+    else:
+        parts.append("clear")
+    if running_count > 0:
+        parts.append(f"{format_compact_count(running_count)} running")
+    if failed_count > 0:
+        parts.append(f"{format_compact_count(failed_count)} failed")
+    return "Queue is " + ", ".join(parts) + "."
+
+
+def build_learning_notification_payload(
+    training_status: dict[str, Any],
+    learning_status: dict[str, Any],
+    previous_snapshot: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    snapshot = build_learning_notification_snapshot(training_status, learning_status)
+    baseline = previous_snapshot if isinstance(previous_snapshot, dict) else None
+
+    previous_verified = int(baseline.get("verified_dossiers") or 0) if baseline else 0
+    previous_coverage = round(float(baseline.get("verified_coverage_percent") or 0.0), 1) if baseline else 0.0
+    verified_delta = (snapshot["verified_dossiers"] - previous_verified) if baseline else 0
+    coverage_delta = round(snapshot["verified_coverage_percent"] - previous_coverage, 1) if baseline else 0.0
+    processed_delta = (snapshot["processed_count"] - int(baseline.get("processed_count") or 0)) if baseline else 0
+    source_success_delta = (snapshot["source_success_count"] - int(baseline.get("source_success_count") or 0)) if baseline else 0
+    image_success_delta = (snapshot["image_success_count"] - int(baseline.get("image_success_count") or 0)) if baseline else 0
+    error_delta = (snapshot["source_error_count"] + snapshot["image_error_count"] - int(baseline.get("source_error_count") or 0) - int(baseline.get("image_error_count") or 0)) if baseline else 0
+
+    engine_state = describe_learning_notification_engine_state(snapshot)
+    task_summary = describe_learning_notification_task(snapshot)
+    queue_summary = describe_learning_notification_queue(snapshot)
+    meaningful_gain = bool(baseline) and (verified_delta > 0 or coverage_delta > 0)
+    api_permission_required = bool(learning_status.get("api_permission_events"))
+
+    if api_permission_required:
+        title = "Miru: API permission required"
+        first_sentence = "A source requires API or permission; Miru has not used it automatically. Check the Dev page."
+        coverage_sentence = f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
+    elif meaningful_gain:
+        title = "Miru learning improved"
+        if verified_delta > 0:
+            first_sentence = (
+                f"Miru verified +{format_compact_count(verified_delta)} card dossier"
+                f"{'' if verified_delta == 1 else 's'} since the last report."
+            )
+        else:
+            first_sentence = "Miru improved verified coverage since the last report."
+        coverage_sentence = (
+            f"Coverage rose from {previous_coverage:.1f}% to {snapshot['verified_coverage_percent']:.1f}%."
+        )
+    elif not baseline:
+        title = "Miru learning snapshot"
+        first_sentence = (
+            f"Miru currently has {format_compact_count(snapshot['verified_dossiers'])} verified card dossiers."
+        )
+        coverage_sentence = f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
+    elif snapshot.get("last_error") or engine_state == "stuck" or error_delta > 0:
+        title = "Miru may be stuck"
+        first_sentence = "Miru retried work but did not add new verified learning this cycle."
+        coverage_sentence = f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+    elif engine_state == "idle" and snapshot["queue_length"] <= 0:
+        title = "Miru is idle"
+        first_sentence = "Miru is online but idle. No queued learning work right now."
+        coverage_sentence = f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
+    elif engine_state == "searching":
+        title = "Miru is searching"
+        first_sentence = "Miru scanned sources but has not added new verified learning yet."
+        coverage_sentence = f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+    elif engine_state == "checking images":
+        title = "Miru is checking images"
+        first_sentence = "Miru processed image work but has not added new verified learning yet."
+        coverage_sentence = f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+    elif processed_delta > 0 or source_success_delta > 0 or image_success_delta > 0 or snapshot["queue_length"] > 0:
+        title = "Miru is working"
+        first_sentence = "Miru is active but has not added new verified learning yet."
+        coverage_sentence = f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+    else:
+        title = "Miru learning steady"
+        first_sentence = "Miru has not added meaningful new verified learning this cycle."
+        coverage_sentence = f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+
+    engine_sentence = (
+        f"Engine is {engine_state}"
+        + (f" on {task_summary}." if task_summary and engine_state not in {"idle", "stuck"} else ".")
+    )
+    if engine_state == "stuck" and snapshot.get("last_error"):
+        engine_sentence = f"Engine is stuck. {str(snapshot['last_error'])[:120]}."
+
+    message = " ".join(part for part in (first_sentence, coverage_sentence, queue_summary, engine_sentence) if part)
+    return {
+        "title": title,
+        "message": message.strip(),
+        "meaningful_gain": meaningful_gain,
+        "api_permission_required": api_permission_required,
+        "engine_state": engine_state,
+        "queue_summary": queue_summary,
+        "task_summary": task_summary,
+        "verified_delta": verified_delta if baseline else None,
+        "coverage_delta": coverage_delta if baseline else None,
+        "snapshot": snapshot,
+        "has_baseline": bool(baseline),
+    }
+
+
+def describe_learning_engine_phase(learning_status: dict[str, Any]) -> dict[str, Any]:
+    current_state = str(learning_status.get("current_state") or "").strip().lower()
+    current_source_id = str(learning_status.get("current_source_id") or "").strip()
+    current_image_task = str(learning_status.get("current_image_task") or "").strip()
+    task_label = str(learning_status.get("current_task_label") or "").strip()
+    task_type = str(learning_status.get("current_task_type") or "").strip().lower()
+    last_error = str(learning_status.get("last_error") or "").strip()
+    last_heartbeat = str(learning_status.get("last_heartbeat") or "").strip()
+    queue_length = int(learning_status.get("queue_length") or 0)
+    running_count = int(learning_status.get("running_count") or 0)
+    processed_count = int(learning_status.get("processed_count") or 0)
+    dossier_count = int(learning_status.get("dossier_count") or 0)
+    status_db_exists = bool(learning_status.get("status_db_exists"))
+
+    updated_at = last_heartbeat or current_timestamp()
+    if current_state == "error" and last_error:
+        return {
+            "key": "storm_warning",
+            "title": "Needs Attention",
+            "description": "The learning engine hit a recent problem and may need operator help.",
+            "detail": last_error,
+            "visual": "storm",
+            "updated_at": updated_at,
+            "active_runs": 0,
+        }
+
+    if current_state == "starting":
+        return {
+            "key": "setting_sail",
+            "title": "Starting Up",
+            "description": "Miru is bringing the learning engine online.",
+            "detail": "Preparing the queue and learning stores for live work.",
+            "visual": "sailing",
+            "updated_at": updated_at,
+            "active_runs": max(running_count, 0),
+        }
+
+    if current_state in {"processing", "running"} or running_count > 0:
+        title, description = classify_learning_task(task_type, current_image_task=current_image_task)
+        return {
+            "key": "gathering_crew",
+            "title": title,
+            "description": description,
+            "detail": build_learning_task_detail(
+                task_label=task_label,
+                task_type=task_type,
+                current_source_id=current_source_id,
+                current_image_task=current_image_task,
+                queue_length=queue_length,
+            ),
+            "visual": "crew",
+            "updated_at": updated_at,
+            "active_runs": max(running_count, 1),
+        }
+
+    if current_state in {"sleeping", "idle"}:
+        if queue_length > 0:
+            return {
+                "key": "setting_sail",
+                "title": "Processing Queue",
+                "description": "Miru is online with more learning work lined up.",
+                "detail": f"{format_count(queue_length)} queued task{'s' if queue_length != 1 else ''} waiting to run.",
+                "visual": "sailing",
+                "updated_at": updated_at,
+                "active_runs": 0,
+            }
+        return {
+            "key": "sleeping",
+            "title": "Idle",
+            "description": "Miru is online but not working on a learning task right now.",
+            "detail": (
+                f"Queue clear. {format_count(dossier_count)} learning dossiers tracked."
+                if (processed_count > 0 or dossier_count > 0)
+                else "No live learning task is running."
+            ),
+            "visual": "sleeping",
+            "updated_at": updated_at,
+            "active_runs": 0,
+        }
+
+    if last_error:
+        return {
+            "key": "storm_warning",
+            "title": "Needs Attention",
+            "description": "The learning engine reported a recent problem.",
+            "detail": last_error,
+            "visual": "storm",
+            "updated_at": updated_at,
+            "active_runs": 0,
+        }
+
+    if status_db_exists or queue_length > 0 or processed_count > 0 or dossier_count > 0:
+        return {
+            "key": "setting_sail",
+            "title": "Running",
+            "description": "Miru's learning engine is online and tracking structured card knowledge.",
+            "detail": (
+                f"Queue: {format_count(queue_length)} waiting | "
+                f"Processed: {format_count(processed_count)} | "
+                f"Dossiers: {format_count(dossier_count)}"
+            ),
+            "visual": "sailing",
+            "updated_at": updated_at,
+            "active_runs": 0,
+        }
+
+    return {
+        "key": "sleeping",
+        "title": "Offline",
+        "description": "Miru's learning engine is not reporting live status yet.",
+        "detail": "No live learning status has been recorded yet.",
+        "visual": "sleeping",
+        "updated_at": updated_at,
+        "active_runs": 0,
+    }
+
+
+def summarize_activity_request(request_text: str) -> str:
+    text = re.sub(r"\s+", " ", request_text or "").strip()
+    if len(text) <= 84:
+        return text
+    return text[:81].rstrip() + "..."
+
+
+def note_miru_run_started(selected_mode: str, request_text: str) -> None:
+    with MIRU_ACTIVITY_LOCK:
+        MIRU_ACTIVITY_STATE["active_runs"] += 1
+        MIRU_ACTIVITY_STATE["last_started_at"] = current_timestamp()
+        MIRU_ACTIVITY_STATE["last_mode"] = selected_mode
+        MIRU_ACTIVITY_STATE["last_request_text"] = summarize_activity_request(request_text)
+        MIRU_ACTIVITY_STATE["last_error"] = ""
+
+
+def note_miru_run_finished(selected_mode: str, request_text: str, ok: bool, message: str) -> None:
+    with MIRU_ACTIVITY_LOCK:
+        MIRU_ACTIVITY_STATE["active_runs"] = max(int(MIRU_ACTIVITY_STATE["active_runs"]) - 1, 0)
+        MIRU_ACTIVITY_STATE["last_finished_at"] = current_timestamp()
+        MIRU_ACTIVITY_STATE["last_mode"] = selected_mode
+        MIRU_ACTIVITY_STATE["last_request_text"] = summarize_activity_request(request_text)
+        MIRU_ACTIVITY_STATE["last_error"] = "" if ok else summarize_activity_request(message)
+
+
+def build_activity_states(current_key: str) -> list[dict[str, Any]]:
+    return [{**item, "active": item["key"] == current_key} for item in DEV_ACTIVITY_BLUEPRINT]
+
+
+def build_miru_activity(training_status: dict[str, Any]) -> dict[str, Any]:
+    with MIRU_ACTIVITY_LOCK:
+        snapshot = dict(MIRU_ACTIVITY_STATE)
+
+    current_key = "sleeping"
+    detail = "Miru is waiting for the next question to arrive."
+
+    if snapshot["active_runs"] > 0:
+        current_key = "gathering_crew"
+        detail = (
+            f"Live request: {snapshot['last_request_text']}"
+            if snapshot.get("last_request_text")
+            else "Miru is answering a live request right now."
+        )
+    else:
+        recent_error_age = seconds_since(str(snapshot.get("last_finished_at") or ""))
+        if snapshot.get("last_error") and recent_error_age is not None and recent_error_age <= ACTIVITY_RECENT_WINDOW_SECONDS:
+            current_key = "storm_warning"
+            detail = str(snapshot["last_error"])
+        elif training_status["dossiers_created"] > 0 and training_status["remaining_gaps"] > 0:
+            current_key = "setting_sail"
+            detail = training_status["remaining_summary"]
+
+    current = next((item for item in DEV_ACTIVITY_BLUEPRINT if item["key"] == current_key), DEV_ACTIVITY_BLUEPRINT[0])
+    return {
+        "key": current_key,
+        "title": current["title"],
+        "description": current["description"],
+        "detail": detail,
+        "visual": current["visual"],
+        "updated_at": snapshot.get("last_finished_at") or snapshot.get("last_started_at") or current_timestamp(),
+        "active_runs": int(snapshot.get("active_runs") or 0),
+    }
+
+
+def format_bytes(value: int) -> str:
+    size = float(max(int(value), 0))
+    units = ("B", "KB", "MB", "GB", "TB")
+    unit_index = 0
+    while size >= 1024 and unit_index < len(units) - 1:
+        size /= 1024.0
+        unit_index += 1
+    return f"{size:.1f} {units[unit_index]}"
+
+
+def sample_cpu_usage() -> float | None:
+    if psutil is not None:
+        try:
+            return round(float(psutil.cpu_percent(interval=0.05)), 1)
+        except Exception:
+            return None
+    if hasattr(os, "getloadavg") and os.name != "nt":
+        try:
+            load = os.getloadavg()[0]
+            cpu_count = max(os.cpu_count() or 1, 1)
+            return round(min(max((load / cpu_count) * 100, 0.0), 100.0), 1)
+        except OSError:
+            return None
+    if os.name == "nt":
+        try:
+            result = subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
+                    "[math]::Round((Get-Counter '\\Processor(_Total)\\% Processor Time').CounterSamples[0].CookedValue, 1)",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=2,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        if result.returncode == 0 and result.stdout.strip():
+            try:
+                return round(float(result.stdout.strip().splitlines()[-1]), 1)
+            except ValueError:
+                return None
+    return None
+
+
+def sample_memory_usage() -> dict[str, float | int] | None:
+    if psutil is not None:
+        try:
+            memory = psutil.virtual_memory()
+            return {"percent": float(memory.percent), "used": int(memory.used), "total": int(memory.total)}
+        except Exception:
+            return None
+    if os.name == "nt":
+        class MEMORYSTATUSEX(ctypes.Structure):
+            _fields_ = [
+                ("dwLength", ctypes.c_ulong),
+                ("dwMemoryLoad", ctypes.c_ulong),
+                ("ullTotalPhys", ctypes.c_ulonglong),
+                ("ullAvailPhys", ctypes.c_ulonglong),
+                ("ullTotalPageFile", ctypes.c_ulonglong),
+                ("ullAvailPageFile", ctypes.c_ulonglong),
+                ("ullTotalVirtual", ctypes.c_ulonglong),
+                ("ullAvailVirtual", ctypes.c_ulonglong),
+                ("sullAvailExtendedVirtual", ctypes.c_ulonglong),
+            ]
+
+        status = MEMORYSTATUSEX()
+        status.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+        if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+            return None
+        used = int(status.ullTotalPhys - status.ullAvailPhys)
+        return {"percent": float(status.dwMemoryLoad), "used": used, "total": int(status.ullTotalPhys)}
+    try:
+        page_size = int(os.sysconf("SC_PAGE_SIZE"))
+        total_pages = int(os.sysconf("SC_PHYS_PAGES"))
+        available_pages = int(os.sysconf("SC_AVPHYS_PAGES"))
+    except (AttributeError, OSError, ValueError):
+        return None
+    total = page_size * total_pages
+    used = total - (page_size * available_pages)
+    percent = round((used / total) * 100, 1) if total else 0.0
+    return {"percent": percent, "used": used, "total": total}
+
+
+def sample_gpu_usage() -> dict[str, float | int] | None:
+    try:
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    first_line = result.stdout.strip().splitlines()[0]
+    parts = [part.strip() for part in first_line.split(",")]
+    if len(parts) < 3:
+        return None
+    try:
+        percent = float(parts[0])
+        memory_used_mb = int(float(parts[1]))
+        memory_total_mb = int(float(parts[2]))
+    except ValueError:
+        return None
+    return {"percent": percent, "memory_used_mb": memory_used_mb, "memory_total_mb": memory_total_mb}
+
+
+def build_resource_metrics() -> list[dict[str, Any]]:
+    cpu_percent = sample_cpu_usage()
+    memory = sample_memory_usage()
+    gpu = sample_gpu_usage()
+    disk_total, disk_used, disk_free = shutil.disk_usage(str(PROJECT_ROOT.anchor or PROJECT_ROOT))
+    return [
+        {
+            "key": "cpu",
+            "label": "CPU",
+            "value": f"{cpu_percent:.1f}%" if cpu_percent is not None else "Unavailable",
+            "detail": "Current processor use." if cpu_percent is not None else "CPU usage is unavailable on this machine.",
+            "percent": cpu_percent if cpu_percent is not None else 0.0,
+            "available": cpu_percent is not None,
+        },
+        {
+            "key": "memory",
+            "label": "Memory",
+            "value": f"{format_bytes(int(memory['used']))} / {format_bytes(int(memory['total']))}" if memory else "Unavailable",
+            "detail": f"{float(memory['percent']):.1f}% in use." if memory else "Memory usage is unavailable on this machine.",
+            "percent": float(memory["percent"]) if memory else 0.0,
+            "available": memory is not None,
+        },
+        {
+            "key": "gpu",
+            "label": "GPU",
+            "value": f"{float(gpu['percent']):.1f}%" if gpu else "Unavailable",
+            "detail": f"{int(gpu['memory_used_mb'])} MB of {int(gpu['memory_total_mb'])} MB used." if gpu else "GPU stats are unavailable on this machine.",
+            "percent": float(gpu["percent"]) if gpu else 0.0,
+            "available": gpu is not None,
+        },
+        {
+            "key": "storage",
+            "label": "Storage",
+            "value": f"{format_bytes(disk_free)} free",
+            "detail": f"{format_bytes(disk_used)} used of {format_bytes(disk_total)}.",
+            "percent": round((disk_used / disk_total) * 100, 1) if disk_total else 0.0,
+            "available": True,
+        },
+    ]
+
+
+def build_route_url(path: str) -> str:
+    route_path = path if path.startswith("/") else f"/{path}"
+    return f"{request.url_root.rstrip('/')}" + route_path
+
+
+def build_companion_url(port: int, path: str = "/") -> str:
+    route_path = path if path.startswith("/") else f"/{path}"
+    host = request.host.split(":", 1)[0]
+    return f"{request.scheme}://{host}:{port}{route_path}"
+
+
+def inspect_local_http_route(url: str) -> dict[str, Any]:
+    try:
+        with closing(urlopen(url, timeout=0.35)) as response:
+            return {"reachable": True, "status_code": int(response.getcode() or 200), "detail": f"HTTP {int(response.getcode() or 200)}"}
+    except HTTPError as exc:
+        return {"reachable": True, "status_code": int(exc.code), "detail": f"HTTP {int(exc.code)}"}
+    except (URLError, OSError) as exc:
+        reason = getattr(exc, "reason", exc)
+        return {"reachable": False, "status_code": 0, "detail": f"{exc.__class__.__name__}: {reason}"}
+
+
+def build_issue_card(label: str, issues: list[str], *, ok_detail: str, warn_detail: str) -> dict[str, Any]:
+    if issues:
+        return {"label": label, "status": issues[0], "tone": "warn", "detail": warn_detail, "items": issues}
+    return {"label": label, "status": "No issues detected", "tone": "good", "detail": ok_detail, "items": []}
+
+
+def build_learning_engine_activity(
+    learning_status: dict[str, Any],
+    fallback_activity: dict[str, Any],
+) -> dict[str, Any]:
+    phase = describe_learning_engine_phase(learning_status)
+    if not phase.get("updated_at"):
+        phase["updated_at"] = fallback_activity.get("updated_at") or current_timestamp()
+    return phase
+
+
+def build_issue_detection(
+    training_status: dict[str, Any],
+    project_status: dict[str, Any],
+    learning_status: dict[str, Any],
+) -> dict[str, Any]:
+    miru_issues = list(runtime_issue_messages())
+    if not training_status["catalog_status"].get("usable"):
+        miru_issues.append("Fallback catalog missing")
+    dossier_status = training_status["dossier_status"]
+    if not dossier_status.get("exists"):
+        miru_issues.append("Training DB not initialized")
+    elif dossier_status.get("error"):
+        miru_issues.append(str(dossier_status["error"]))
+    if learning_status.get("status_db_exists") and learning_status.get("last_error"):
+        miru_issues.append("Learning engine reported an error")
+    for ev in learning_status.get("api_permission_events") or []:
+        msg = ev.get("message") or ev.get("event_type") or "API/permission event"
+        miru_issues.append(f"Learner: {msg}")
+
+    with MIRU_ACTIVITY_LOCK:
+        recent_error = str(MIRU_ACTIVITY_STATE.get("last_error") or "")
+        recent_finished = str(MIRU_ACTIVITY_STATE.get("last_finished_at") or "")
+    error_age = seconds_since(recent_finished)
+    if recent_error and error_age is not None and error_age <= ACTIVITY_RECENT_WINDOW_SECONDS:
+        miru_issues.append("Latest Ask run needs attention")
+
+    project_issues = []
+    if not project_status.get("reachable"):
+        project_issues.append("Project Miru route unreachable")
+
+    return {
+        "miru_ai": build_issue_card(
+            "Miru AI",
+            miru_issues,
+            ok_detail="Ask flow, fallback catalog, and training DB all look ready.",
+            warn_detail="Miru AI needs attention before relying on this testing surface.",
+        ),
+        "project_miru": build_issue_card(
+            "Project Miru",
+            project_issues,
+            ok_detail=f"Project Miru answered on port {PROJECT_MIRU_DEV_PORT}.",
+            warn_detail=f"Project Miru did not answer on port {PROJECT_MIRU_DEV_PORT}.",
+        ),
+    }
+
+
+def build_learning_engine_metrics(learning_status: dict[str, Any]) -> list[dict[str, Any]]:
+    """Build learning-engine-only metrics (queue, throughput, sidecar) with clear keys and labels."""
+    return [
+        {"key": "queue_queued_count", "label": "Queue: waiting", "value": format_count(learning_status.get("queue_length", 0)), "detail": "Learning tasks waiting in the queue."},
+        {"key": "queue_running_count", "label": "Queue: running", "value": format_count(learning_status.get("running_count", 0)), "detail": "Tasks currently running."},
+        {"key": "queue_failed_count", "label": "Queue: failed", "value": format_count(learning_status.get("failed_count", 0)), "detail": "Tasks that permanently failed."},
+        {"key": "queue_completed_count", "label": "Queue: completed", "value": format_count(learning_status.get("completed_count", 0)), "detail": "Tasks completed (all time)."},
+        {"key": "queue_backlog", "label": "Queue backlog", "value": format_count(learning_status.get("queue_backlog", 0)), "detail": "Queued learning work still waiting to run."},
+        {"key": "parallel_workers", "label": "Parallel validations", "value": format_count(learning_status.get("max_parallel_validations", 1)), "detail": "Configured safe concurrency limit for validation work."},
+        {"key": "engine_processed_count", "label": "Tasks run", "value": format_count(learning_status.get("processed_count", 0)), "detail": "Total task attempts processed."},
+        {"key": "engine_success_count", "label": "Succeeded", "value": format_count(learning_status.get("success_count", 0)), "detail": "Tasks completed without error."},
+        {"key": "engine_error_count", "label": "Failed", "value": format_count(learning_status.get("error_count", 0)), "detail": "Task attempts that ended in error."},
+        {"key": "validated_cards_total", "label": "Validated cards", "value": format_count(learning_status.get("validated_card_count", 0)), "detail": "Cards that completed the verified field validation step."},
+        {"key": "cards_learned_per_hour", "label": "Cards learned/hr", "value": format_count(learning_status.get("cards_learned_per_hour", 0)), "detail": "Verified cards completed during the last rolling hour."},
+        {"key": "validation_success_rate", "label": "Validation success", "value": f"{float(learning_status.get('validation_success_rate', 0.0)):.1f}%", "detail": "Share of validation tasks that finished successfully."},
+        {"key": "average_validation_seconds", "label": "Avg validation time", "value": f"{float(learning_status.get('average_validation_seconds', 0.0)):.2f}s", "detail": "Average runtime for completed validation tasks."},
+        {"key": "engine_source_success_count", "label": "Source: success", "value": format_count(learning_status.get("source_success_count", 0)), "detail": "Source-backed tasks completed successfully."},
+        {"key": "engine_source_error_count", "label": "Source: errors", "value": format_count(learning_status.get("source_error_count", 0)), "detail": "Source-backed tasks that ended in error."},
+        {"key": "engine_image_success_count", "label": "Images: success", "value": format_count(learning_status.get("image_success_count", 0)), "detail": "Image ingestion tasks completed successfully."},
+        {"key": "engine_image_error_count", "label": "Images: errors", "value": format_count(learning_status.get("image_error_count", 0)), "detail": "Image ingestion tasks that ended in error."},
+        {"key": "discovery_candidates", "label": "Source candidates", "value": format_count(learning_status.get("discovery_candidate_count", 0)), "detail": "Potential source sites discovered locally."},
+        {"key": "discovery_pending_review", "label": "Source review queue", "value": format_count(learning_status.get("discovery_pending_review_count", 0)), "detail": "Discovered source candidates still waiting for operator review."},
+        {"key": "approved_sources_loaded", "label": "Approved sources (config)", "value": format_count(learning_status.get("approved_sources_loaded_count", 0)), "detail": "Sources loaded from worktree config/miru_approved_sources.json (allowlist)."},
+        {"key": "approved_sources_config_errors", "label": "Config load errors", "value": format_count(len(learning_status.get("approved_sources_config_errors") or [])), "detail": "Invalid or skipped entries in approved-sources config (see status payload for messages)."},
+        {"key": "sidecar_dossiers_count", "label": "Sidecar dossiers", "value": format_count(learning_status.get("dossier_count", 0)), "detail": "Profiles in the learning engine store."},
+        {"key": "dossier_verified_count", "label": "Dossiers: verified", "value": format_count(learning_status.get("dossier_verified_count", 0)), "detail": "Learning dossiers with verification_state = verified."},
+        {"key": "dossier_source_backed_count", "label": "Dossiers: source-backed", "value": format_count(learning_status.get("dossier_source_backed_count", 0)), "detail": "Learning dossiers with verification_state = source-backed (used for insight sync)."},
+        {"key": "sidecar_images_tracked_count", "label": "Sidecar images: tracked", "value": format_count(learning_status.get("images_tracked", 0)), "detail": "Image registry entries tracked."},
+        {"key": "sidecar_images_verified_count", "label": "Sidecar images: verified", "value": format_count(learning_status.get("images_verified", 0)), "detail": "Image registry entries marked verified."},
+        {"key": "sidecar_images_missing_count", "label": "Sidecar images: missing", "value": format_count(learning_status.get("images_missing", 0)), "detail": "Catalog cards missing a sidecar image entry."},
+        {"key": "last_image_update", "label": "Last image update", "value": learning_status.get("last_image_update") or "—", "detail": "Most recent image ingestion update timestamp."},
+    ]
+
+
+def format_relative_age(seconds_value: float | None) -> str:
+    if seconds_value is None:
+        return "time unavailable"
+    seconds_int = max(int(seconds_value), 0)
+    if seconds_int < 60:
+        return f"{seconds_int}s ago"
+    minutes = seconds_int // 60
+    if minutes < 60:
+        return f"{minutes}m ago"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours}h ago"
+    days = hours // 24
+    return f"{days}d ago"
+
+
+def load_monitor_validation_counts(
+    *,
+    project_db_path: Path = FALLBACK_CATALOG_DB_PATH,
+    recent_window_seconds: int = 3600,
+) -> dict[str, int]:
+    snapshot = {
+        "miru_validations_count": 0,
+        "recent_validation_writes_count": 0,
+    }
+    path = Path(project_db_path)
+    if not path.is_file():
+        return snapshot
+
+    cutoff = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - max(recent_window_seconds, 0)))
+    try:
+        with closing(sqlite3.connect(path)) as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                """
+                SELECT
+                    COUNT(*) AS total_rows,
+                    SUM(
+                        CASE
+                            WHEN trim(coalesce(verified_at, '')) != ''
+                             AND verified_at >= ?
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) AS recent_rows
+                FROM miru_validations
+                """
+                ,
+                (cutoff,),
+            ).fetchone()
+    except sqlite3.Error:
+        return snapshot
+
+    if row is not None:
+        snapshot["miru_validations_count"] = int(row["total_rows"] or 0)
+        snapshot["recent_validation_writes_count"] = int(row["recent_rows"] or 0)
+    return snapshot
+
+
+def build_monitor_activity_item_from_log(row: sqlite3.Row) -> dict[str, Any] | None:
+    event_type = str(row["event_type"] or "").strip().lower()
+    task_type = str(row["task_type"] or "").strip().lower()
+    card_code = str(row["card_code"] or "").strip().upper()
+    message = str(row["message"] or "").strip()
+    created_at = str(row["created_at"] or "").strip()
+
+    if event_type == "card_synced":
+        return {
+            "kind": event_type,
+            "title": "Card synced",
+            "detail": message or f"{card_code} reached Project Miru.",
+            "timestamp": created_at,
+            "card_code": card_code,
+            "tone": "good",
+        }
+    if event_type == "card_sync_queued":
+        return {
+            "kind": event_type,
+            "title": "Sync queued",
+            "detail": message or f"{card_code} is waiting to reach Project Miru.",
+            "timestamp": created_at,
+            "card_code": card_code,
+            "tone": "neutral",
+        }
+    if event_type == "card_sync_failed":
+        return {
+            "kind": event_type,
+            "title": "Sync failed",
+            "detail": message or f"{card_code} failed to reach Project Miru.",
+            "timestamp": created_at,
+            "card_code": card_code,
+            "tone": "warn",
+        }
+    if event_type == "task_completed":
+        task_label = humanize_snake_label(task_type) or "Task"
+        return {
+            "kind": event_type,
+            "title": f"{task_label} completed",
+            "detail": message or "The task completed successfully.",
+            "timestamp": created_at,
+            "card_code": card_code,
+            "tone": "good",
+        }
+    if event_type == "task_failed":
+        task_label = humanize_snake_label(task_type) or "Task"
+        return {
+            "kind": event_type,
+            "title": f"{task_label} failed",
+            "detail": message or "The task ended in error.",
+            "timestamp": created_at,
+            "card_code": card_code,
+            "tone": "warn",
+        }
+    if event_type == "task_started":
+        task_label = humanize_snake_label(task_type) or "Task"
+        return {
+            "kind": event_type,
+            "title": f"{task_label} started",
+            "detail": message or "Miru started a new learning task.",
+            "timestamp": created_at,
+            "card_code": card_code,
+            "tone": "neutral",
+        }
+    if event_type == "engine_started":
+        return {
+            "kind": event_type,
+            "title": "Engine started",
+            "detail": message or "Continuous learning started.",
+            "timestamp": created_at,
+            "card_code": "",
+            "tone": "neutral",
+        }
+    if event_type == "engine_stopped":
+        return {
+            "kind": event_type,
+            "title": "Engine stopped",
+            "detail": message or "Continuous learning stopped.",
+            "timestamp": created_at,
+            "card_code": "",
+            "tone": "warn",
+        }
+    if event_type in {"source_not_registered", "source_not_in_registry"}:
+        return {
+            "kind": event_type,
+            "title": "Blocked: source not registered",
+            "detail": message or "Miru ignored a source that is not in the allowed registry.",
+            "timestamp": created_at,
+            "card_code": card_code,
+            "tone": "warn",
+        }
+    if event_type in {"api_required_source_detected", "access_policy_unclear", "permission_required"}:
+        return {
+            "kind": event_type,
+            "title": "API permission required",
+            "detail": message or "A source requires API or permission; Miru did not use it automatically.",
+            "timestamp": created_at,
+            "card_code": card_code,
+            "tone": "warn",
+        }
+    if event_type == "publish_blocked":
+        return {
+            "kind": event_type,
+            "title": "Publish blocked by mode",
+            "detail": message or "Miru did not publish; mode is dry run or review required.",
+            "timestamp": created_at,
+            "card_code": card_code,
+            "tone": "neutral",
+        }
+    if event_type == "publish_success":
+        return {
+            "kind": event_type,
+            "title": "Queued for publish",
+            "detail": message or f"{card_code} queued for Project Miru.",
+            "timestamp": created_at,
+            "card_code": card_code,
+            "tone": "good",
+        }
+    if event_type == "seed_queue":
+        return {
+            "kind": event_type,
+            "title": "Queue seeded",
+            "detail": message or "Learning tasks were added to the queue.",
+            "timestamp": created_at,
+            "card_code": "",
+            "tone": "neutral",
+        }
+    # Fallback: include all events for control room visibility
+    title = humanize_snake_label(event_type) or event_type or "Event"
+    return {
+        "kind": event_type,
+        "title": title,
+        "detail": message or "Miru activity.",
+        "timestamp": created_at,
+        "card_code": card_code,
+        "tone": "neutral",
+    }
+
+
+def load_pending_approvals(
+    *,
+    status_db_path: Path = LEARNING_STATUS_DB_PATH,
+    limit: int = 200,
+) -> list[dict[str, Any]]:
+    """Load items from learner_review_queue (review_required). Worktree-only; no schema change."""
+    path = Path(status_db_path)
+    if not path.is_file():
+        return []
+    try:
+        with closing(sqlite3.connect(path)) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT id, card_code, source_id, confidence, reason, created_at
+                FROM learner_review_queue
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (max(int(limit), 1),),
+            ).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    return [
+        {
+            "id": int(row["id"]),
+            "card_code": str(row["card_code"] or "").strip(),
+            "source_id": str(row["source_id"] or "").strip(),
+            "task_type": "verify_official_fields",
+            "confidence": float(row["confidence"] or 0.0),
+            "reason": str(row["reason"] or "").strip(),
+            "created_at": str(row["created_at"] or ""),
+        }
+        for row in rows
+    ]
+
+
+def load_monitor_engine_events(
+    *,
+    status_db_path: Path = LEARNING_STATUS_DB_PATH,
+    recent_window_seconds: int = 3600,
+    churn_window_seconds: int = 1800,
+    limit: int = 80,
+) -> dict[str, Any]:
+    snapshot: dict[str, Any] = {
+        "recent_activity": [],
+        "recent_synced_cards_count": 0,
+        "recent_failure_count": 0,
+    }
+    path = Path(status_db_path)
+    if not path.is_file():
+        return snapshot
+
+    try:
+        with closing(sqlite3.connect(path)) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT level, event_type, message, card_code, task_type, created_at
+                FROM engine_log
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (max(int(limit), 1),),
+            ).fetchall()
+    except sqlite3.Error:
+        return snapshot
+
+    items: list[dict[str, Any]] = []
+    synced_count = 0
+    failure_count = 0
+    for row in rows:
+        event_type = str(row["event_type"] or "").strip().lower()
+        created_at = str(row["created_at"] or "").strip()
+        if event_type == "card_synced" and seconds_since(created_at) is not None and seconds_since(created_at) <= recent_window_seconds:
+            synced_count += 1
+        if event_type in {"task_failed", "card_sync_failed"} and seconds_since(created_at) is not None and seconds_since(created_at) <= churn_window_seconds:
+            failure_count += 1
+        item = build_monitor_activity_item_from_log(row)
+        if item is not None:
+            items.append(item)
+
+    snapshot["recent_activity"] = items
+    snapshot["recent_synced_cards_count"] = synced_count
+    snapshot["recent_failure_count"] = failure_count
+    return snapshot
+
+
+def fetch_remote_runtime_dev_status(url: str, *, timeout_seconds: float = 1.0) -> dict[str, Any] | None:
+    target = str(url or "").strip()
+    if not target:
+        return None
+    try:
+        with urlopen(target, timeout=timeout_seconds) as response:
+            payload = json.load(response)
+    except (HTTPError, URLError, OSError, TimeoutError, json.JSONDecodeError, ValueError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def cache_runtime_truth_snapshot(target: str, payload: dict[str, Any]) -> None:
+    cache_key = str(target or "").strip()
+    if not cache_key or not isinstance(payload, dict):
+        return
+    entry = {
+        "payload": copy.deepcopy(payload),
+        "fetched_at": time.time(),
+    }
+    with _RUNTIME_TRUTH_CACHE_LOCK:
+        _RUNTIME_TRUTH_CACHE[cache_key] = entry
+
+
+def load_cached_runtime_truth_snapshot(target: str) -> dict[str, Any] | None:
+    cache_key = str(target or "").strip()
+    if not cache_key:
+        return None
+    with _RUNTIME_TRUTH_CACHE_LOCK:
+        entry = copy.deepcopy(_RUNTIME_TRUTH_CACHE.get(cache_key) or {})
+    return entry or None
+
+
+def clear_runtime_truth_cache() -> None:
+    """Clear the runtime truth cache so the next Dev status fetch hits the main runtime."""
+    with _RUNTIME_TRUTH_CACHE_LOCK:
+        _RUNTIME_TRUTH_CACHE.clear()
+
+
+def build_runtime_truth_source_descriptor(
+    *,
+    mode: str,
+    status_url: str,
+    fetched_at: float | None = None,
+) -> dict[str, Any]:
+    age_label = ""
+    if fetched_at is not None:
+        age_seconds = max(time.time() - float(fetched_at), 0.0)
+        age_label = format_relative_age(age_seconds)
+    if mode == "main_runtime_live":
+        label = "Live main runtime"
+        detail = "Using the live main-runtime snapshot."
+        if age_label and age_label != "just now":
+            detail = f"Using the live main-runtime snapshot refreshed {age_label}."
+    elif mode == "main_runtime_cached":
+        label = "Cached main-runtime snapshot"
+        detail = "Using the last good main-runtime snapshot while live access catches up."
+        if age_label:
+            detail = f"Using the last good main-runtime snapshot from {age_label} while live access catches up."
+    else:
+        label = "Local fallback"
+        detail = "Using local worktree status data because the main runtime is not currently reachable."
+    return {
+        "mode": mode,
+        "label": label,
+        "detail": detail,
+        "status_url": status_url,
+        "fetched_at": fetched_at,
+        "age_label": age_label,
+    }
+
+
+def fetch_truth_source_dev_status_result(
+    *,
+    summary_only: bool = False,
+    include_heavy: bool = False,
+    force_refresh: bool = False,
+) -> dict[str, Any] | None:
+    remote_status_url = resolve_runtime_monitor_status_url()
+    if not remote_status_url:
+        return None
+    query_parts: list[str] = []
+    if summary_only:
+        query_parts.append("view=summary")
+    if include_heavy:
+        query_parts.append("include=heavy")
+    target = remote_status_url
+    if query_parts:
+        separator = "&" if "?" in target else "?"
+        target = f"{target}{separator}{'&'.join(query_parts)}"
+
+    cached_entry = load_cached_runtime_truth_snapshot(target)
+    if cached_entry and not force_refresh:
+        cached_age = max(time.time() - float(cached_entry.get("fetched_at") or 0.0), 0.0)
+        fresh_cache_window = 8.0 if summary_only and not include_heavy else 4.0
+        if cached_age <= fresh_cache_window:
+            source = build_runtime_truth_source_descriptor(
+                mode="main_runtime_live",
+                status_url=target,
+                fetched_at=cached_entry.get("fetched_at"),
+            )
+            payload = dict(cached_entry.get("payload") or {})
+            if payload:
+                payload["truth_source"] = dict(source)
+                return {
+                    "payload": payload,
+                    "source": source,
+                    "status_url": target,
+                }
+
+    if force_refresh:
+        timeout_plan = (2.5, 6.0)
+    elif summary_only and not include_heavy:
+        timeout_plan = (1.0, 2.0)
+    else:
+        timeout_plan = (2.0, 4.5)
+    live_payload = None
+    for timeout_seconds in timeout_plan:
+        live_payload = fetch_remote_runtime_dev_status(target, timeout_seconds=timeout_seconds)
+        if live_payload:
+            break
+    if live_payload:
+        cache_runtime_truth_snapshot(target, live_payload)
+        source = build_runtime_truth_source_descriptor(
+            mode="main_runtime_live",
+            status_url=target,
+            fetched_at=time.time(),
+        )
+        payload = dict(live_payload)
+        payload["truth_source"] = dict(source)
+        return {
+            "payload": payload,
+            "source": source,
+            "status_url": target,
+        }
+
+    if cached_entry:
+        source = build_runtime_truth_source_descriptor(
+            mode="main_runtime_cached",
+            status_url=target,
+            fetched_at=cached_entry.get("fetched_at"),
+        )
+        payload = dict(cached_entry.get("payload") or {})
+        if payload:
+            payload["truth_source"] = dict(source)
+            return {
+                "payload": payload,
+                "source": source,
+                "status_url": target,
+            }
+    return None
+
+
+def fetch_truth_source_dev_status(
+    *,
+    summary_only: bool = False,
+    include_heavy: bool = False,
+) -> dict[str, Any] | None:
+    result = fetch_truth_source_dev_status_result(
+        summary_only=summary_only,
+        include_heavy=include_heavy,
+    )
+    return dict(result.get("payload") or {}) if result else None
+
+
+def build_dev_bootstrap_status() -> dict[str, Any]:
+    remote_status_url = resolve_runtime_monitor_status_url()
+    if remote_status_url:
+        target = f"{remote_status_url}{'&' if '?' in remote_status_url else '?'}view=summary"
+        cached_entry = load_cached_runtime_truth_snapshot(target)
+        if cached_entry:
+            payload = dict(cached_entry.get("payload") or {})
+            if payload:
+                source = build_runtime_truth_source_descriptor(
+                    mode="main_runtime_cached",
+                    status_url=target,
+                    fetched_at=cached_entry.get("fetched_at"),
+                )
+                payload["truth_source"] = dict(source)
+                payload["dev_environment"] = build_dev_environment_descriptor()
+                return ensure_governed_autopilot_payload(payload)
+
+    training_status = build_training_status()
+    return ensure_governed_autopilot_payload(build_dev_status(
+        training_status,
+        lightweight=True,
+        fetch_truth_source=False,
+    ))
+
+
+def resolve_runtime_monitor_status_url() -> str:
+    """Remote runtime status URL. Non-empty only when explicitly set via MIRU_RUNTIME_STATUS_URL.
+    Default is local: worktree (18765) uses worktree data; main (8765) uses main data.
+    Set MIRU_RUNTIME_STATUS_URL (e.g. http://127.0.0.1:8765/api/dev-status) to make this
+    server proxy status and control to that URL instead of using local runtime."""
+    return str(RUNTIME_MONITOR_STATUS_URL or "").strip()
+
+
+def _is_worktree_runtime() -> bool:
+    """True when this server is the worktree instance (e.g. 18765), not main (8765) and not proxying."""
+    current = int(CURRENT_SERVER_PORT or 0)
+    if current == 0 or current == int(RUNTIME_MONITOR_PORT or 8765):
+        return False
+    return not bool(str(resolve_runtime_monitor_status_url() or "").strip())
+
+
+def _worktree_learner_pid_record(pid: int) -> dict[str, Any]:
+    """Build PID file record for worktree learner."""
+    return {
+        "pid": pid,
+        "repo_root": str(PROJECT_ROOT),
+        "started_at": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+        "learner": "miru_learning_engine",
+        "mode": "continuous",
+    }
+
+
+def _read_worktree_learner_pid() -> dict[str, Any] | None:
+    """Read worktree learner PID file. Returns None if missing or invalid."""
+    path = WORKTREE_LEARNER_PID_FILE
+    if not path.is_file():
+        return None
+    try:
+        raw = path.read_text(encoding="utf-8").strip()
+        data = json.loads(raw)
+        if not isinstance(data, dict) or not isinstance(data.get("pid"), (int, float)):
+            return None
+        return {"pid": int(data["pid"]), "repo_root": str(data.get("repo_root") or "")}
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def _is_worktree_learner_process_alive(pid: int) -> bool:
+    """True if pid exists and is the worktree learner (miru_learning_engine --mode continuous)."""
+    if pid <= 0:
+        return False
+    if psutil is not None:
+        try:
+            proc = psutil.Process(pid)
+            cmd = " ".join(proc.cmdline() or [])
+            if "miru_learning_engine" not in cmd or "continuous" not in cmd:
+                return False
+            return proc.is_running() and proc.status() != psutil.STATUS_ZOMBIE
+        except Exception as e:
+            if psutil is not None and isinstance(e, (psutil.NoSuchProcess, psutil.AccessDenied)):
+                return False
+            raise
+    try:
+        if sys.platform == "win32":
+            os.kill(pid, 0)
+        else:
+            os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def _normalize_path_variants(path: Path) -> set[str]:
+    """Lower-cased path string variants for resilient command-line matching."""
+    raw = str(path)
+    normalized = os.path.normpath(raw)
+    variants = {
+        raw.lower(),
+        normalized.lower(),
+        raw.replace("\\", "/").lower(),
+        normalized.replace("\\", "/").lower(),
+    }
+    return {item for item in variants if item}
+
+
+def _looks_like_worktree_learner_command(cmdline: list[str] | str | None) -> bool:
+    """True when a command line is this worktree's continuous learner process."""
+    if cmdline is None:
+        return False
+    # On Windows psutil may return cmdline as list or in some contexts as single string
+    if isinstance(cmdline, str):
+        cmd_text = cmdline.lower()
+    else:
+        if not cmdline:
+            return False
+        cmd_text = " ".join(str(part) for part in cmdline).lower()
+    if "miru_learning_engine" not in cmd_text or "continuous" not in cmd_text:
+        return False
+    expected_path_variants = (
+        _normalize_path_variants(LEARNING_QUEUE_DB_PATH),
+        _normalize_path_variants(LEARNING_STATUS_DB_PATH),
+        _normalize_path_variants(LEARNING_DOSSIER_DB_PATH),
+        _normalize_path_variants(FALLBACK_CATALOG_DB_PATH),
+    )
+    for variants in expected_path_variants:
+        if not any(candidate in cmd_text for candidate in variants):
+            return False
+    return True
+
+
+def _list_worktree_learner_process_ids() -> list[int]:
+    """List running continuous learner process IDs that target this worktree's data paths."""
+    if psutil is None:
+        return []
+    process_ids: set[int] = set()
+    for proc in psutil.process_iter(attrs=["pid", "cmdline", "status"]):
+        try:
+            cmdline = proc.info.get("cmdline")
+            # Pass as-is: list on Unix, sometimes list or str on Windows; avoid list(str) -> chars
+            if not _looks_like_worktree_learner_command(cmdline if cmdline is not None else []):
+                continue
+            if proc.is_running() and proc.status() != psutil.STATUS_ZOMBIE:
+                process_ids.add(int(proc.pid))
+        except Exception as e:
+            if isinstance(e, (psutil.NoSuchProcess, psutil.AccessDenied)):
+                continue
+            raise
+    return sorted(process_ids)
+
+
+def _write_worktree_learner_pid(pid: int) -> None:
+    """Write worktree learner PID file."""
+    WORKTREE_LEARNER_PID_DIR.mkdir(parents=True, exist_ok=True)
+    WORKTREE_LEARNER_PID_FILE.write_text(
+        json.dumps(_worktree_learner_pid_record(pid), indent=2),
+        encoding="utf-8",
+    )
+
+
+def _clear_worktree_learner_pid() -> None:
+    """Remove worktree learner PID file."""
+    try:
+        if WORKTREE_LEARNER_PID_FILE.is_file():
+            WORKTREE_LEARNER_PID_FILE.unlink()
+    except OSError:
+        pass
+
+
+def _start_worktree_learner_process() -> tuple[bool, str, int | None]:
+    """Launch the worktree learner (miru_learning_engine --mode continuous). Returns (ok, message, pid_or_none)."""
+    running_pids = _list_worktree_learner_process_ids()
+    if running_pids:
+        adopted_pid = int(running_pids[0])
+        _write_worktree_learner_pid(adopted_pid)
+        duplicate_count = len(running_pids)
+        suffix = f" ({duplicate_count} matching process(es) detected)." if duplicate_count > 1 else ""
+        return True, f"Worktree learner already running; adopted PID {adopted_pid}.{suffix}", adopted_pid
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "tools.miru_learning_engine",
+        "--mode",
+        "continuous",
+        "--queue-db", str(LEARNING_QUEUE_DB_PATH),
+        "--status-db", str(LEARNING_STATUS_DB_PATH),
+        "--dossier-db", str(LEARNING_DOSSIER_DB_PATH),
+        "--catalog-db", str(FALLBACK_CATALOG_DB_PATH),
+    ]
+    env = os.environ.copy()
+    kwargs: dict[str, Any] = {
+        "cwd": str(PROJECT_ROOT),
+        "env": env,
+        "stdin": subprocess.DEVNULL,
+        "close_fds": True,
+    }
+    if sys.platform == "win32":
+        flags = getattr(subprocess, "DETACHED_PROCESS", 0x00000008) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+        kwargs["creationflags"] = flags
+    else:
+        kwargs["start_new_session"] = True
+    WORKTREE_LEARNER_PID_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        stderr_file = open(WORKTREE_LEARNER_STDERR_LOG, "a", encoding="utf-8")
+        stdout_file = open(WORKTREE_LEARNER_STDOUT_LOG, "a", encoding="utf-8")
+        stderr_file.write(f"\n[worktree] learner start requested at {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())} UTC\n")
+        stderr_file.flush()
+    except OSError:
+        stderr_file = subprocess.DEVNULL
+        stdout_file = subprocess.DEVNULL
+    kwargs["stdout"] = stdout_file
+    kwargs["stderr"] = stderr_file
+    try:
+        proc = subprocess.Popen(cmd, **kwargs)
+        pid = proc.pid
+        if pid is None:
+            for f in (stdout_file, stderr_file):
+                if f != subprocess.DEVNULL and hasattr(f, "close"):
+                    try:
+                        f.close()
+                    except Exception:
+                        pass
+            return False, "Learner process failed to start (no PID).", None
+        _write_worktree_learner_pid(pid)
+        return True, "Worktree learner started.", pid
+    except OSError as e:
+        for f in (stdout_file, stderr_file):
+            if f != subprocess.DEVNULL and hasattr(f, "close"):
+                try:
+                    f.close()
+                except Exception:
+                    pass
+        return False, f"Failed to start learner process: {e}", None
+    except Exception as e:
+        for f in (stdout_file, stderr_file):
+            if f != subprocess.DEVNULL and hasattr(f, "close"):
+                try:
+                    f.close()
+                except Exception:
+                    pass
+        return False, f"Unexpected error starting learner: {e}", None
+
+
+def _stop_worktree_learner_process() -> tuple[bool, str]:
+    """Stop the worktree learner process tracked by the PID file. Returns (ok, message)."""
+    record = _read_worktree_learner_pid()
+    running_pids = _list_worktree_learner_process_ids()
+    if record:
+        record_pid = int(record["pid"])
+        if _is_worktree_learner_process_alive(record_pid) and record_pid not in running_pids:
+            running_pids.append(record_pid)
+    running_pids = sorted(set(int(pid) for pid in running_pids if int(pid) > 0))
+    if not running_pids:
+        _clear_worktree_learner_pid()
+        return True, "No worktree learner process found (already stopped or not started by this runtime)."
+
+    if psutil is None:
+        pid = int(running_pids[0])
+        try:
+            sigterm = getattr(__import__("signal", fromlist=["SIGTERM"]), "SIGTERM", 15)
+            os.kill(pid, sigterm)
+            time.sleep(2)
+        except OSError as e:
+            _clear_worktree_learner_pid()
+            return False, f"Error stopping learner: {e}"
+        _clear_worktree_learner_pid()
+        return True, "Worktree learner stopped."
+
+    stopped_count = 0
+    for pid in running_pids:
+        try:
+            proc = psutil.Process(pid)
+            proc.terminate()
+            try:
+                proc.wait(timeout=15)
+            except Exception as e:
+                if not isinstance(e, psutil.TimeoutExpired):
+                    raise
+                proc.kill()
+                proc.wait(timeout=5)
+            stopped_count += 1
+        except Exception as e:
+            if isinstance(e, (psutil.NoSuchProcess, psutil.AccessDenied)):
+                continue
+            raise
+
+    _clear_worktree_learner_pid()
+    if stopped_count <= 0:
+        return True, "No worktree learner process found (already stopped or not started by this runtime)."
+    if stopped_count == 1:
+        return True, "Worktree learner stopped."
+    return True, f"Stopped {stopped_count} worktree learner processes."
+
+
+def _get_worktree_learner_control_status() -> dict[str, Any]:
+    """Return current worktree learner process control status (pid, managed, state) for dev-status."""
+    if not _is_worktree_runtime():
+        return {}
+    running_pids = _list_worktree_learner_process_ids()
+    if running_pids:
+        primary_pid = int(running_pids[0])
+        _write_worktree_learner_pid(primary_pid)
+        return {
+            "learner_managed_by_worktree": True,
+            "learner_pid": primary_pid,
+            "learner_pid_stale": False,
+            "learner_process_count": len(running_pids),
+        }
+    record = _read_worktree_learner_pid()
+    if not record:
+        return {"learner_managed_by_worktree": False, "learner_pid": None}
+    pid = int(record["pid"])
+    alive = _is_worktree_learner_process_alive(pid)
+    return {
+        "learner_managed_by_worktree": True,
+        "learner_pid": pid if alive else None,
+        "learner_pid_stale": not alive,
+    }
+
+
+def _get_last_insight_sync_report() -> dict[str, Any]:
+    """Return a copy of the last worktree card insight sync report (from post-stop sync) for Dev status."""
+    with _LAST_INSIGHT_SYNC_LOCK:
+        return dict(_LAST_INSIGHT_SYNC_REPORT)
+
+
+def _apply_worktree_learner_state_override(
+    learning_engine: dict[str, Any],
+    activity: dict[str, Any],
+) -> dict[str, Any]:
+    """When worktree learner process is alive but DB says Idle, show Running (waiting). Mutates activity title for consistency."""
+    if not learning_engine.get("learner_managed_by_worktree"):
+        return learning_engine
+    if learning_engine.get("learner_pid") is None:
+        return learning_engine
+    if learning_engine.get("learner_state") != "Idle":
+        return learning_engine
+    learning_engine = dict(learning_engine)
+    learning_engine["learner_state"] = "Running (waiting)"
+    if activity.get("title") == "Idle":
+        activity["title"] = "Running (waiting)"
+    return learning_engine
+
+
+def build_dev_environment_descriptor() -> dict[str, Any]:
+    """Label and ports for the Dev page so environment (worktree vs main) and runtime target are explicit."""
+    current = int(CURRENT_SERVER_PORT or 0)
+    truth_port = int(RUNTIME_MONITOR_PORT or 8765)
+    is_worktree = current != 0 and current != truth_port
+    remote_url = resolve_runtime_monitor_status_url()
+    if remote_url:
+        runtime_target = "remote/main"
+        truth_source_label = "Remote main runtime (proxied via MIRU_RUNTIME_STATUS_URL)"
+    else:
+        runtime_target = "local/worktree" if is_worktree else "local/main"
+        truth_source_label = f"Worktree runtime (port {current})" if is_worktree else f"Main runtime (port {truth_port})"
+    return {
+        "environment": "worktree" if is_worktree else "main",
+        "runtime_target": runtime_target,
+        "label": "Worktree Preview" if is_worktree else "Main runtime",
+        "current_port": current,
+        "truth_port": truth_port,
+        "truth_source_label": truth_source_label,
+    }
+
+
+def build_worktree_update_summary(
+    training_status: dict[str, Any],
+    learning_status: dict[str, Any],
+    validation_audit: dict[str, Any],
+    dev_environment: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Lightweight summary for worktree Dev Monitor: verified updates and awaiting-review state.
+    Only returned when environment is worktree. Data is from worktree-local runtime."""
+    if str(dev_environment.get("environment") or "").strip().lower() != "worktree":
+        return None
+    recently_validated = list(validation_audit.get("recently_validated") or [])[:10]
+    rejected = list(validation_audit.get("rejected_evidence") or [])
+    lowest_conf = list(validation_audit.get("lowest_confidence") or [])
+    review_queue_count = int(learning_status.get("review_queue_count") or 0)
+    verified_dossiers = int(training_status.get("verified_dossiers") or 0)
+    cards_recently_added = len(recently_validated)
+    awaiting_review = review_queue_count > 0 or len(rejected) > 0 or len(lowest_conf) > 0
+    has_verified_updates = cards_recently_added > 0 or verified_dossiers > 0
+
+    if awaiting_review and has_verified_updates:
+        status = "ready_for_review"
+        message = "Verified update ready for review on worktree Project Miru site."
+    elif has_verified_updates:
+        status = "updated"
+        message = "Worktree Project Miru site updated with verified data."
+    elif awaiting_review:
+        status = "ready_for_review"
+        message = "Items awaiting review on worktree site."
+    else:
+        status = "none"
+        message = "No verified updates on worktree site yet."
+
+    recent_additions = [
+        {
+            "card_code": str(item.get("card_code") or "").strip().upper(),
+            "card_name": str(item.get("card_name") or "Unknown card").strip(),
+            "verified_at": str(item.get("verified_at") or "").strip(),
+        }
+        for item in recently_validated
+        if item.get("card_code")
+    ][:6]
+
+    return {
+        "show": True,
+        "environment": "worktree",
+        "status": status,
+        "message": message,
+        "awaiting_review": awaiting_review,
+        "review_count": review_queue_count,
+        "dossier_count": verified_dossiers,
+        "cards_updated": cards_recently_added,
+        "recent_additions": recent_additions,
+        "insight_bundles_ready": cards_recently_added,
+    }
+
+
+def build_monitor_source(
+    training_status: dict[str, Any],
+    learning_status: dict[str, Any],
+    validation_audit: dict[str, Any],
+) -> dict[str, Any]:
+    local_project_db_path = Path(FALLBACK_CATALOG_DB_PATH)
+    local_status_db_path = Path(LEARNING_STATUS_DB_PATH)
+    local_queue_db_path = Path(LEARNING_QUEUE_DB_PATH)
+    local_dossier_db_path = Path(LEARNING_DOSSIER_DB_PATH)
+    local_source = {
+        "mode": "worktree_runtime",
+        "label": "Monitoring worktree runtime",
+        "detail": f"Reading worktree data from {local_status_db_path.parent}.",
+        "status_url": "",
+        "queue_db_path": str(local_queue_db_path),
+        "status_db_path": str(local_status_db_path),
+        "dossier_db_path": str(local_dossier_db_path),
+        "project_db_path": str(local_project_db_path),
+        "catalog_total": int(training_status.get("total_cards") or 0),
+        "learning_status": dict(learning_status or {}),
+        "validation_audit": dict(validation_audit or {}),
+    }
+
+    remote_status_url = resolve_runtime_monitor_status_url()
+    if not remote_status_url:
+        return local_source
+
+    truth_result = fetch_truth_source_dev_status_result(force_refresh=False)
+    if not truth_result:
+        fallback = dict(local_source)
+        fallback_truth = build_runtime_truth_source_descriptor(
+            mode="local_fallback",
+            status_url=remote_status_url,
+        )
+        fallback["label"] = str(fallback_truth.get("label") or fallback["label"])
+        fallback["detail"] = str(fallback_truth.get("detail") or fallback["detail"])
+        fallback["status_url"] = remote_status_url
+        return fallback
+
+    remote_payload = dict(truth_result.get("payload") or {})
+    truth_source = dict(truth_result.get("source") or {})
+    remote_learning = dict(remote_payload.get("learning_engine") or {})
+    queue_db_raw = str(remote_learning.get("queue_db_path") or "").strip()
+    status_db_raw = str(remote_learning.get("status_db_path") or "").strip()
+    dossier_db_raw = str(remote_learning.get("dossier_db_path") or "").strip()
+    runtime_queue_db = Path(queue_db_raw) if queue_db_raw else None
+    runtime_status_db = Path(status_db_raw) if status_db_raw else None
+    runtime_dossier_db = Path(dossier_db_raw) if dossier_db_raw else None
+    runtime_root = runtime_status_db.parent if runtime_status_db else (runtime_queue_db.parent if runtime_queue_db else None)
+    runtime_project_db = runtime_root / "card_catalog.db" if runtime_root else None
+
+    if runtime_queue_db and runtime_status_db and runtime_dossier_db and runtime_project_db and runtime_project_db.is_file():
+        runtime_catalog_status = inspect_fallback_catalog_db(runtime_project_db)
+        runtime_total_cards = int(
+            runtime_catalog_status.get("cards")
+            or (remote_payload.get("training_progress") or {}).get("catalog_cards_total")
+            or training_status.get("total_cards")
+            or 0
+        )
+        truth_mode = str(truth_source.get("mode") or "")
+        return {
+            "mode": "main_runtime" if truth_mode == "main_runtime_live" else "main_runtime_cached",
+            "label": str(truth_source.get("label") or "Live main runtime"),
+            "detail": (
+                f"{str(truth_source.get('detail') or 'Using main-runtime truth.')}"
+                f" Runtime data paths are available for richer monitoring."
+            ),
+            "status_url": remote_status_url,
+            "queue_db_path": str(runtime_queue_db),
+            "status_db_path": str(runtime_status_db),
+            "dossier_db_path": str(runtime_dossier_db),
+            "project_db_path": str(runtime_project_db),
+            "catalog_total": runtime_total_cards,
+            "fetched_at": truth_source.get("fetched_at"),
+            "age_label": str(truth_source.get("age_label") or ""),
+            "learning_status": load_learning_engine_status(
+                queue_db_path=runtime_queue_db,
+                status_db_path=runtime_status_db,
+                dossier_db_path=runtime_dossier_db,
+                total_cards=runtime_total_cards,
+            ),
+            "validation_audit": list_validation_audit_insights(project_db_path=runtime_project_db),
+        }
+
+    fallback_remote = dict(local_source)
+    truth_mode = str(truth_source.get("mode") or "")
+    fallback_remote["mode"] = "main_runtime_api" if truth_mode == "main_runtime_live" else "main_runtime_api_cached"
+    fallback_remote["label"] = str(truth_source.get("label") or "Live main runtime")
+    fallback_remote["detail"] = (
+        f"{str(truth_source.get('detail') or 'Using main-runtime truth.')} "
+        "Direct runtime DB paths were unavailable, so validation and sync activity uses the runtime API snapshot."
+    )
+    fallback_remote["status_url"] = remote_status_url
+    fallback_remote["queue_db_path"] = queue_db_raw
+    fallback_remote["status_db_path"] = status_db_raw
+    fallback_remote["dossier_db_path"] = dossier_db_raw
+    fallback_remote["project_db_path"] = str(runtime_project_db) if runtime_project_db else ""
+    fallback_remote["fetched_at"] = truth_source.get("fetched_at")
+    fallback_remote["age_label"] = str(truth_source.get("age_label") or "")
+    fallback_remote["catalog_total"] = int(
+        (remote_payload.get("training_progress") or {}).get("catalog_cards_total")
+        or training_status.get("total_cards")
+        or 0
+    )
+    fallback_remote["learning_status"] = remote_learning or dict(learning_status or {})
+    fallback_remote["validation_audit"] = dict(remote_payload.get("validation_audit") or {})
+    return fallback_remote
+
+
+def build_monitor_payload(
+    training_status: dict[str, Any],
+    monitor_source: dict[str, Any],
+) -> dict[str, Any]:
+    learning_status = dict(monitor_source.get("learning_status") or {})
+    validation_audit = dict(monitor_source.get("validation_audit") or {})
+    activity = build_learning_engine_activity(learning_status, build_miru_activity(training_status))
+    project_db_path_raw = str(monitor_source.get("project_db_path") or "").strip()
+    status_db_path_raw = str(monitor_source.get("status_db_path") or "").strip()
+    project_db_path = Path(project_db_path_raw) if project_db_path_raw else None
+    status_db_path = Path(status_db_path_raw) if status_db_path_raw else None
+    validation_counts = (
+        load_monitor_validation_counts(project_db_path=project_db_path)
+        if project_db_path and project_db_path.is_file()
+        else {"miru_validations_count": 0, "recent_validation_writes_count": 0}
+    )
+    engine_events = (
+        load_monitor_engine_events(status_db_path=status_db_path)
+        if status_db_path and status_db_path.is_file()
+        else {"recent_activity": [], "recent_synced_cards_count": 0, "recent_failure_count": 0}
+    )
+    queue_length = int(learning_status.get("queue_length") or 0)
+    running_count = int(learning_status.get("running_count") or 0)
+    failed_count = int(learning_status.get("failed_count") or 0)
+    cards_per_hour = int(learning_status.get("cards_learned_per_hour") or 0)
+    validation_success_rate = float(learning_status.get("validation_success_rate") or 0.0)
+    catalog_total = int(monitor_source.get("catalog_total") or training_status.get("total_cards") or 0)
+    recent_validation_writes = int(validation_counts["recent_validation_writes_count"] or 0)
+    recent_synced_cards = int(engine_events["recent_synced_cards_count"] or 0)
+    recent_failure_count = int(engine_events["recent_failure_count"] or 0)
+    source_mode = str(monitor_source.get("mode") or "worktree_runtime")
+    if source_mode in {"main_runtime", "main_runtime_api", "main_runtime_cached", "main_runtime_api_cached"}:
+        verified_dossiers = int(validation_counts["miru_validations_count"] or learning_status.get("validated_card_count") or 0)
+    else:
+        verified_dossiers = int(training_status.get("verified_dossiers") or 0)
+    verified_coverage = safe_percent(verified_dossiers, catalog_total)
+    heartbeat = str(learning_status.get("last_heartbeat") or "").strip()
+    heartbeat_age = seconds_since(heartbeat)
+    heartbeat_stale = heartbeat_age is not None and heartbeat_age > 180
+    current_state = str(learning_status.get("current_state") or "").strip().lower()
+    task_label = str(learning_status.get("current_task_label") or "").strip()
+    task_type = str(learning_status.get("current_task_type") or "").strip().lower()
+    task_type_label = humanize_snake_label(task_type) or "Waiting"
+
+    state_label = str(activity.get("title") or "Idle")
+    state_tone = "neutral"
+    if heartbeat_stale and (running_count > 0 or queue_length > 0 or current_state in {"processing", "running"}):
+        state_label = "Stuck"
+        state_tone = "warn"
+    elif str(activity.get("key") or "") == "storm_warning":
+        state_tone = "warn"
+    elif str(activity.get("key") or "") in {"setting_sail", "gathering_crew"}:
+        state_tone = "good"
+
+    if recent_failure_count >= 3 and recent_validation_writes <= 0 and recent_synced_cards <= 0:
+        progress_label = "Churning"
+        progress_tone = "warn"
+        meaningful_progress = False
+        progress_summary = "Miru is active, but the recent loop looks more like churn than new verified gains."
+        progress_detail = f"{format_count(recent_failure_count)} recent failures and no fresh validation or sync writes in the last 30 minutes."
+    elif recent_validation_writes > 0 and recent_synced_cards > 0:
+        progress_label = "Improving"
+        progress_tone = "good"
+        meaningful_progress = True
+        progress_summary = "Miru is adding verified knowledge and Project Miru is receiving it."
+        progress_detail = f"{format_count(recent_validation_writes)} validation write(s) and {format_count(recent_synced_cards)} sync(s) landed in the last hour."
+    elif recent_validation_writes > 0:
+        progress_label = "Improving"
+        progress_tone = "neutral"
+        meaningful_progress = True
+        progress_summary = "Miru is adding verified knowledge, but Project Miru sync looks quiet right now."
+        progress_detail = f"{format_count(recent_validation_writes)} validation write(s) landed in the last hour while recent sync count stayed at {format_count(recent_synced_cards)}."
+    elif cards_per_hour > 0 or queue_length > 0 or running_count > 0:
+        progress_label = "Working"
+        progress_tone = "neutral"
+        meaningful_progress = False
+        progress_summary = "Miru is busy, but fresh verified gains are not visible yet."
+        progress_detail = f"Throughput is {format_count(cards_per_hour)} cards/hr with {format_count(queue_length)} queued and {format_count(running_count)} running."
+    else:
+        progress_label = "Idle"
+        progress_tone = "neutral"
+        meaningful_progress = False
+        progress_summary = "Miru is not showing meaningful new verified progress right now."
+        progress_detail = "Queue is clear and no recent validation or sync writes are visible."
+
+    warnings: list[dict[str, Any]] = []
+    if heartbeat_stale:
+        warnings.append(
+            {
+                "tone": "warn",
+                "title": "Stale heartbeat",
+                "detail": f"The last learning heartbeat was {format_relative_age(heartbeat_age)}.",
+            }
+        )
+    if recent_failure_count >= 3 and recent_validation_writes <= 0:
+        warnings.append(
+            {
+                "tone": "warn",
+                "title": "High churn",
+                "detail": "Recent task failures are piling up without fresh verified gains.",
+            }
+        )
+    if queue_length <= 0 and running_count <= 0:
+        warnings.append(
+            {
+                "tone": "neutral",
+                "title": "Empty queue",
+                "detail": "No queued or running learning tasks are visible right now.",
+            }
+        )
+    if validation_success_rate > 0 and validation_success_rate < 70.0:
+        warnings.append(
+            {
+                "tone": "warn",
+                "title": "Low validation success",
+                "detail": f"Recent validation success is only {validation_success_rate:.1f}%.",
+            }
+        )
+    if recent_validation_writes > 0 and recent_synced_cards <= 0:
+        warnings.append(
+            {
+                "tone": "warn",
+                "title": "Sync not progressing",
+                "detail": "Fresh validation writes are landing, but no recent Project Miru sync completed.",
+            }
+        )
+    if not warnings:
+        warnings.append(
+            {
+                "tone": "good",
+                "title": "No active warnings",
+                "detail": "Heartbeat looks fresh and no obvious blockage is showing right now.",
+            }
+        )
+
+    validation_events = [
+        {
+            "kind": "validation_written",
+            "title": "Validation written",
+            "detail": (
+                f"{str(item.get('card_code') or '').upper()} · "
+                f"{str(item.get('card_name') or 'Unknown card')} saved to miru_validations."
+            ),
+            "timestamp": str(item.get("verified_at") or ""),
+            "card_code": str(item.get("card_code") or "").upper(),
+            "tone": "good",
+        }
+        for item in (validation_audit.get("recently_validated") or [])[:6]
+        if item.get("card_code")
+    ]
+    recent_activity = sorted(
+        [*validation_events, *(engine_events.get("recent_activity") or [])],
+        key=lambda item: str(item.get("timestamp") or ""),
+        reverse=True,
+    )[:8]
+
+    heartbeat_detail = "No heartbeat reported yet."
+    if heartbeat:
+        heartbeat_detail = f"{heartbeat} ({format_relative_age(heartbeat_age)})"
+        if heartbeat_stale:
+            heartbeat_detail += " - stale"
+
+    gains = [
+        {
+            "key": "verified_coverage",
+            "label": "Verified coverage",
+            "value": f"{verified_coverage:.1f}%",
+            "detail": "Share of catalog cards with verified dossier coverage.",
+        },
+        {
+            "key": "verified_dossiers",
+            "label": "Verified card dossiers",
+            "value": format_count(verified_dossiers),
+            "detail": "Cards currently covered by verified dossier records.",
+        },
+        {
+            "key": "miru_validations_rows",
+            "label": "Validation ledger rows",
+            "value": format_count(validation_counts["miru_validations_count"]),
+            "detail": "Rows currently stored in Project Miru's miru_validations table.",
+        },
+        {
+            "key": "recent_validation_writes",
+            "label": "Recent validation writes",
+            "value": format_count(recent_validation_writes),
+            "detail": "Rows written to miru_validations during the last hour.",
+        },
+        {
+            "key": "recent_synced_cards",
+            "label": "Recent synced cards",
+            "value": format_count(recent_synced_cards),
+            "detail": "Cards that recently reached Project Miru during the last hour.",
+        },
+        {
+            "key": "cards_learned_per_hour",
+            "label": "Cards learned per hour",
+            "value": format_count(cards_per_hour),
+            "detail": "Rolling hour of completed verify_official_fields tasks.",
+        },
+    ]
+
+    return {
+        "source": {
+            "mode": source_mode,
+            "label": str(monitor_source.get("label") or "Monitoring worktree runtime"),
+            "detail": str(monitor_source.get("detail") or ""),
+            "status_url": str(monitor_source.get("status_url") or ""),
+            "queue_db_path": str(monitor_source.get("queue_db_path") or ""),
+            "status_db_path": str(monitor_source.get("status_db_path") or ""),
+            "dossier_db_path": str(monitor_source.get("dossier_db_path") or ""),
+            "project_db_path": str(monitor_source.get("project_db_path") or ""),
+        },
+        "state": {
+            "label": state_label,
+            "tone": state_tone,
+            "description": str(activity.get("description") or "Miru is online and waiting."),
+            "task_label": task_label or "No active task",
+            "task_type_label": task_type_label,
+            "queue_status": (
+                f"{format_count(queue_length)} waiting, "
+                f"{format_count(running_count)} running, "
+                f"{format_count(failed_count)} failed"
+            ),
+            "heartbeat": heartbeat_detail,
+        },
+        "progress": {
+            "label": progress_label,
+            "tone": progress_tone,
+            "meaningful_progress": meaningful_progress,
+            "summary": progress_summary,
+            "detail": progress_detail,
+        },
+        "gains": gains,
+        "recent_activity": recent_activity,
+        "warnings": warnings,
+    }
+
+
+def build_learning_metrics(
+    training_status: dict[str, Any],
+    learning_status: dict[str, Any],
+) -> list[dict[str, Any]]:
+    total_cards = int(training_status["total_cards"] or 0)
+    dossier_status = training_status["dossier_status"]
+    variants_tracked = int(training_status["catalog_status"].get("variants") or 0)
+    image_coverage_cards = int(dossier_status.get("image_coverage_cards") or 0)
+    image_coverage_percent = safe_percent(image_coverage_cards, total_cards)
+    images_tracked = int(learning_status.get("images_tracked") or 0)
+    images_verified = int(learning_status.get("images_verified") or 0)
+    images_missing = int(learning_status.get("images_missing") or 0)
+    metrics = [
+        {"key": "queue_length", "label": "Queued tasks", "value": format_count(learning_status["queue_length"]), "detail": "Learning tasks waiting in the SQLite queue."},
+        {"key": "processed_count", "label": "Processed tasks", "value": format_count(learning_status["processed_count"]), "detail": "Total task attempts processed by the learning engine."},
+        {"key": "success_count", "label": "Successful tasks", "value": format_count(learning_status["success_count"]), "detail": "Learning tasks completed without error."},
+        {"key": "error_count", "label": "Errored tasks", "value": format_count(learning_status["error_count"]), "detail": "Learning task attempts that ended in an error."},
+        {"key": "source_success_count", "label": "Source fetch success", "value": format_count(learning_status["source_success_count"]), "detail": "Source-backed tasks completed successfully."},
+        {"key": "source_error_count", "label": "Source fetch errors", "value": format_count(learning_status["source_error_count"]), "detail": "Source-backed tasks that ended in error."},
+        {"key": "image_success_count", "label": "Image fetch success", "value": format_count(learning_status.get("image_success_count", 0)), "detail": "Image ingestion tasks completed successfully."},
+        {"key": "image_error_count", "label": "Image fetch errors", "value": format_count(learning_status.get("image_error_count", 0)), "detail": "Image ingestion tasks that ended in error."},
+        {"key": "images_tracked", "label": "Images tracked", "value": format_count(images_tracked), "detail": "Image registry entries tracked by the learning engine."},
+        {"key": "images_verified", "label": "Images verified", "value": format_count(images_verified), "detail": "Image registry entries marked as verified."},
+        {"key": "images_missing", "label": "Images missing", "value": format_count(images_missing), "detail": "Catalog cards missing an image registry entry."},
+        {"key": "last_image_update", "label": "Last image update", "value": learning_status.get("last_image_update") or "—", "detail": "Most recent image ingestion update timestamp."},
+        {"key": "learning_dossiers", "label": "Learning dossiers", "value": format_count(learning_status["dossier_count"]), "detail": "Bootstrap dossier rows managed by the learning engine."},
+        {"key": "total_cards", "label": "Total cards", "value": format_count(total_cards), "detail": "Catalog identities loaded locally."},
+        {"key": "dossiers_created", "label": "Dossiers created", "value": format_count(training_status["dossiers_created"]), "detail": "Structured card profiles in the training store."},
+        {"key": "verified_dossiers", "label": "Verified dossiers", "value": format_count(training_status["verified_dossiers"]), "detail": "Cards that currently read as verified."},
+        {"key": "remaining_gaps", "label": "Remaining gaps", "value": format_count(training_status["remaining_gaps"]), "detail": "Cards still missing verified dossier coverage."},
+        {"key": "variants_tracked", "label": "Variants tracked", "value": format_count(variants_tracked), "detail": "Variant rows currently indexed in the local catalog."},
+        {"key": "image_coverage", "label": "Image coverage", "value": format_count(image_coverage_cards), "detail": f"{image_coverage_percent:.1f}% of catalog cards have a stored image identity."},
+    ]
+    return metrics
+
+
+def build_image_coverage_by_set(
+    *,
+    catalog_db_path: Path = FALLBACK_CATALOG_DB_PATH,
+    dossier_db_path: Path = LEARNING_DOSSIER_DB_PATH,
+) -> list[dict[str, Any]]:
+    if not Path(catalog_db_path).is_file() or not Path(dossier_db_path).is_file():
+        return []
+
+    query = """
+        SELECT
+            c.set_code AS set_code,
+            COUNT(DISTINCT c.canonical_code) AS total_cards,
+            COUNT(DISTINCT i.card_code) AS images_tracked,
+            COUNT(DISTINCT CASE WHEN i.verification_state = 'verified' THEN i.card_code END) AS images_verified
+        FROM catalog.cards c
+        LEFT JOIN learning_dossier_images i
+            ON i.card_code = c.canonical_code
+        WHERE trim(coalesce(c.set_code, '')) != ''
+        GROUP BY c.set_code
+        ORDER BY c.set_code ASC
+    """
+
+    coverage: list[dict[str, Any]] = []
+    try:
+        with closing(sqlite3.connect(dossier_db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            conn.execute("ATTACH DATABASE ? AS catalog", (str(catalog_db_path),))
+            for row in conn.execute(query):
+                total_cards = int(row["total_cards"] or 0)
+                images_tracked = int(row["images_tracked"] or 0)
+                images_verified = int(row["images_verified"] or 0)
+                images_missing = max(total_cards - images_tracked, 0)
+                coverage_percent = (images_tracked / total_cards * 100.0) if total_cards else 0.0
+                if images_tracked == 0:
+                    milestone_stage = 0
+                    milestone_label = "not_started"
+                elif images_verified == 0:
+                    milestone_stage = 1
+                    milestone_label = "discovered"
+                elif images_verified < total_cards:
+                    milestone_stage = 2
+                    milestone_label = "tracked"
+                else:
+                    milestone_stage = 3
+                    milestone_label = "verified"
+                coverage.append(
+                    {
+                        "set_code": str(row["set_code"] or ""),
+                        "total_cards": total_cards,
+                        "images_tracked": images_tracked,
+                        "images_verified": images_verified,
+                        "images_missing": images_missing,
+                        "coverage_percent": round(coverage_percent, 2),
+                        "milestone_stage": milestone_stage,
+                        "milestone_label": milestone_label,
+                    }
+                )
+    except sqlite3.OperationalError:
+        return []
+
+    return coverage
+
+
+def load_limits_status() -> list[dict[str, Any]]:
+    """Load limits data from data/miru_limits_status.json. Returns a list of provider entries; empty on missing/invalid file."""
+    path = Path(LIMITS_STATUS_PATH)
+    if not path.is_file():
+        return []
+    try:
+        raw = path.read_text(encoding="utf-8")
+        data = json.loads(raw)
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(data, list):
+        return []
+    return [entry for entry in data if isinstance(entry, dict) and entry.get("provider")]
+
+
+def _format_timestamp_readable(ts: str | None) -> str:
+    """Format a timestamp string (ISO with Z/+ or YYYY-MM-DD HH:MM:SS) to a short local-time display. Returns '—' if missing or unparseable."""
+    if not ts or not str(ts).strip():
+        return "—"
+    s = str(ts).strip()
+    try:
+        if "T" in s or "+" in s or s.endswith("Z"):
+            dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+            local = dt.astimezone()
+        else:
+            dt = datetime.strptime(s[:19], "%Y-%m-%d %H:%M:%S")
+            local = dt
+        return local.strftime("%b %d, %I:%M %p").replace(" 0", " ").strip()
+    except Exception:
+        return s[:20] if len(s) > 20 else s
+
+
+def _learner_state_display(learning_engine: dict[str, Any]) -> str:
+    """Single label for Dev strip: Stopped, Running, Waiting for work, Sleeping, Learning, Error, Needs attention."""
+    state = str(learning_engine.get("learner_state") or "").strip()
+    pid = learning_engine.get("learner_pid")
+    has_pid = pid is not None and str(pid).strip() != ""
+    if state in ("Running", "Starting"):
+        return "Learning"
+    if state == "Running (waiting)" or (state == "Idle" and has_pid):
+        return "Waiting for work"
+    if state == "Idle" and not has_pid:
+        return "Stopped"
+    if state == "Offline":
+        return "Stopped"
+    if state == "Error":
+        return "Error"
+    if state == "Stale":
+        return "Needs attention"
+    if state and state != "—":
+        return state
+    return "Stopped" if not has_pid else "Waiting for work"
+
+
+def _worker_action_display(action: str, data: dict[str, Any]) -> str:
+    """Human-readable scheduled worker action for Dev display."""
+    a = (action or "").strip().lower()
+    if a == "overlap_blocked":
+        return "Blocked (overlap)"
+    if a == "no_new_work":
+        return "No new work"
+    if a == "growth":
+        return "Growth"
+    if a == "bulk_growth_and_sync":
+        return "Growth + sync"
+    if a == "sync_only":
+        return "Sync only"
+    if a == "error":
+        return "Error"
+    if a == "no_run_recorded":
+        return "—"
+    return humanize_snake_label(action or "—")
+
+
+def _enrich_learning_engine_display(learning_engine: dict[str, Any]) -> dict[str, Any]:
+    """Add learner_state_display for Dev strip (truthful, readable label)."""
+    out = dict(learning_engine)
+    out["learner_state_display"] = _learner_state_display(out)
+    return out
+
+
+def load_governed_autopilot_rollup() -> dict[str, Any]:
+    """Load today's governed autopilot rollup from worktree data/. Returns empty dict if missing."""
+    date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    path = GOVERNED_AUTOPILOT_DATA_DIR / f"governed_autopilot_rollup_{date_key}.json"
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return dict(data) if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def ensure_governed_autopilot_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
+    """Ensure governed_autopilot is always present in Dev payloads."""
+    out = dict(payload or {})
+    out["governed_autopilot"] = load_governed_autopilot_rollup()
+    return out
+
+
+def _enrich_worker_last_run_display(worker_last_run: dict[str, Any]) -> dict[str, Any]:
+    """Add action_display and timestamp_display for Dev scheduled worker block."""
+    out = dict(worker_last_run)
+    out["action_display"] = _worker_action_display(out.get("action", ""), out)
+    out["timestamp_display"] = _format_timestamp_readable(out.get("timestamp"))
+    return out
+
+
+def load_worker_last_run() -> dict[str, Any]:
+    """Read latest worker run from data/miru_worker_last_run.json. File-read only; no DB. Returns {"action": "no_run_recorded"} if missing."""
+    if not WORKER_LAST_RUN_PATH.is_file():
+        return {"action": "no_run_recorded"}
+    try:
+        raw = WORKER_LAST_RUN_PATH.read_text(encoding="utf-8")
+        data = json.loads(raw)
+        return data if isinstance(data, dict) else {"action": "no_run_recorded"}
+    except (OSError, json.JSONDecodeError):
+        return {"action": "no_run_recorded"}
+
+
+def build_pushover_runtime_state(
+    *,
+    training_status: dict[str, Any] | None = None,
+    learning_status: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    state = dict(inspect_pushover_env())
+    state["env_path"] = PROJECT_ENV_LOAD.get("env_path")
+    state["env_exists"] = bool(PROJECT_ENV_LOAD.get("exists"))
+    state["env_parser"] = PROJECT_ENV_LOAD.get("parser")
+    state["loaded_keys"] = list(PROJECT_ENV_LOAD.get("loaded_keys") or [])
+    state["skipped_existing_keys"] = list(PROJECT_ENV_LOAD.get("skipped_existing_keys") or [])
+    state["server_script_path"] = str(Path(__file__).resolve())
+    state["project_root"] = str(PROJECT_ROOT)
+    state["test_endpoint"] = build_route_url("/api/dev/test-pushover")
+    if training_status is not None and learning_status is not None:
+        preview = build_learning_notification_payload(
+            training_status,
+            learning_status,
+            previous_snapshot=load_pushover_learning_snapshot(),
+        )
+        state["learning_preview"] = {
+            "title": preview["title"],
+            "message": preview["message"],
+            "meaningful_gain": bool(preview["meaningful_gain"]),
+            "engine_state": preview["engine_state"],
+            "has_baseline": bool(preview["has_baseline"]),
+            "verified_delta": preview["verified_delta"],
+            "coverage_delta": preview["coverage_delta"],
+        }
+    return state
+
+
+def build_dev_intelligence_status(
+    training_status: dict[str, Any],
+    learning_status: dict[str, Any],
+    pushover_state: dict[str, Any],
+    activity: dict[str, Any],
+) -> dict[str, Any]:
+    total_cards = int(training_status.get("total_cards") or 0)
+    dossiers_created = int(training_status.get("dossiers_created") or 0)
+    verified_dossiers = int(training_status.get("verified_dossiers") or 0)
+    validated_cards = int(learning_status.get("validated_card_count") or 0)
+    images_tracked = int(learning_status.get("images_tracked") or 0)
+    images_verified = int(learning_status.get("images_verified") or 0)
+    queue_waiting = int(learning_status.get("queue_length") or 0)
+    queue_running = int(learning_status.get("running_count") or 0)
+    queue_failed = int(learning_status.get("failed_count") or 0)
+    queue_completed = int(learning_status.get("completed_count") or 0)
+    current_state = str(learning_status.get("current_state") or "").strip().lower()
+    last_heartbeat = str(learning_status.get("last_heartbeat") or "").strip()
+    heartbeat_age = seconds_since(last_heartbeat)
+    active_state_keys = {"processing", "running", "validating", "learning", "syncing", "discovering"}
+
+    if not bool(learning_status.get("status_db_exists")) and heartbeat_age is None:
+        worker_label = "Offline"
+        worker_tone = "warn"
+        worker_detail = "No worker heartbeat or status store is visible from this server."
+    elif heartbeat_age is not None and heartbeat_age > 600:
+        worker_label = "Offline"
+        worker_tone = "warn"
+        worker_detail = f"Last worker heartbeat was {format_relative_age(heartbeat_age)}."
+    elif heartbeat_age is not None and heartbeat_age > 180 and (
+        queue_waiting > 0 or queue_running > 0 or current_state in active_state_keys
+    ):
+        worker_label = "Stalled"
+        worker_tone = "warn"
+        worker_detail = f"Work is queued or active, but the heartbeat is stale at {format_relative_age(heartbeat_age)}."
+    elif queue_waiting > 0 or queue_running > 0 or current_state in active_state_keys:
+        worker_label = "Running"
+        worker_tone = "good"
+        worker_detail = "The learning worker is actively processing or holding queued work."
+    else:
+        worker_label = "Idle"
+        worker_tone = "neutral"
+        worker_detail = "The worker is online, but no learning tasks are waiting right now."
+
+    verified_coverage = float(training_status.get("verified_coverage_percent") or 0.0)
+    dossier_coverage = float(training_status.get("dossier_coverage_percent") or 0.0)
+    validation_coverage = safe_percent(validated_cards, total_cards)
+    image_coverage = safe_percent(max(images_verified, images_tracked), total_cards)
+
+    last_signal_timestamp = ""
+    last_signal_label = "No recent meaningful learning signal"
+    last_signal_detail = "No recent verified, source, or image completion timestamp is available yet."
+    for timestamp, label, detail in (
+        (
+            str(learning_status.get("last_source_update") or "").strip(),
+            "Recent source learning",
+            "Most recent source-backed learning signal recorded by the worker.",
+        ),
+        (
+            str(learning_status.get("last_image_update") or "").strip(),
+            "Recent image learning",
+            "Most recent image-learning signal recorded by the worker.",
+        ),
+        (
+            last_heartbeat,
+            "Recent worker heartbeat",
+            f"Best local signal after the latest '{humanize_snake_label(str(learning_status.get('last_completed_task') or 'learning update')) or 'learning update'}'.",
+        ),
+    ):
+        if timestamp:
+            last_signal_timestamp = timestamp
+            age = seconds_since(timestamp)
+            last_signal_label = format_relative_age(age) if age is not None else timestamp
+            last_signal_detail = f"{label}. {detail}"
+            break
+
+    preview = dict(pushover_state.get("learning_preview") or {})
+    pushover_enabled = bool(pushover_state.get("enabled"))
+    pushover_configured = bool(pushover_state.get("configured"))
+    if not pushover_enabled:
+        pushover_label = "Quiet because disabled"
+        pushover_tone = "neutral"
+        pushover_detail = "Pushover is turned off for this environment."
+    elif not pushover_configured:
+        pushover_label = "Quiet because unavailable/error"
+        pushover_tone = "warn"
+        pushover_detail = "Pushover is enabled, but credentials are incomplete or unavailable."
+    elif bool(preview.get("meaningful_gain")):
+        pushover_label = "Sending normally"
+        pushover_tone = "good"
+        pushover_detail = str(preview.get("message") or "Meaningful verified gains are ready to notify.")
+    elif worker_label == "Idle" and queue_waiting <= 0 and queue_running <= 0:
+        pushover_label = "Quiet because idle"
+        pushover_tone = "neutral"
+        pushover_detail = str(preview.get("message") or "Miru is online, but there is no queued learning work.")
+    elif worker_label in {"Offline", "Stalled"}:
+        pushover_label = "Quiet because unavailable/error"
+        pushover_tone = "warn"
+        pushover_detail = str(preview.get("message") or "Worker health needs attention before notification timing can be trusted.")
+    else:
+        pushover_label = "Quiet because threshold not reached"
+        pushover_tone = "neutral"
+        pushover_detail = str(preview.get("message") or "Miru is active, but this cycle has not reached a meaningful learning threshold yet.")
+
+    if worker_label == "Running":
+        status_sentence = "Miru is processing queued card tasks."
+    elif worker_label == "Idle":
+        status_sentence = "Miru is idle. No learning tasks are waiting."
+    elif worker_label == "Stalled":
+        status_sentence = "Miru is running, but the worker heartbeat looks stalled."
+    else:
+        status_sentence = "Miru looks offline from this Dev server."
+
+    if worker_label == "Running" and pushover_label == "Quiet because threshold not reached":
+        status_sentence = "Miru is running, but no new notification threshold has been reached yet."
+
+    stage_rows = [
+        {
+            "label": "Card awareness",
+            "status": "Grounded" if total_cards > 0 else "Early",
+            "tone": "good" if total_cards > 0 else "neutral",
+            "detail": (
+                f"{format_compact_count(total_cards)} local card records are available for lookup."
+                if total_cards > 0
+                else "The local card catalog is still not populated."
+            ),
+        },
+        {
+            "label": "Verified card knowledge",
+            "status": "Active" if verified_dossiers > 0 else "Early",
+            "tone": "good" if verified_dossiers > 0 else "neutral",
+            "detail": (
+                f"{verified_coverage:.1f}% verified coverage across {format_compact_count(verified_dossiers)} cards."
+                if verified_dossiers > 0
+                else "Verified dossier coverage has not started yet."
+            ),
+        },
+        {
+            "label": "Image intelligence",
+            "status": "Building" if images_tracked > 0 or images_verified > 0 else "Not built yet",
+            "tone": "neutral",
+            "detail": (
+                f"{format_compact_count(images_verified)} verified image records and {format_compact_count(images_tracked)} tracked."
+                if images_tracked > 0 or images_verified > 0
+                else "No stored image-learning coverage is visible yet."
+            ),
+        },
+        {
+            "label": "Deck intelligence",
+            "status": "Not built yet",
+            "tone": "neutral",
+            "detail": "Deck-level reasoning is not part of the live verified card pipeline yet.",
+        },
+        {
+            "label": "Meta intelligence",
+            "status": "Not built yet",
+            "tone": "neutral",
+            "detail": "Meta interpretation is not currently tracked as a live capability.",
+        },
+        {
+            "label": "Market intelligence",
+            "status": "Not built yet",
+            "tone": "neutral",
+            "detail": "Market reasoning is not currently part of this Miru worker state.",
+        },
+    ]
+
+    return {
+        "status_sentence": status_sentence,
+        "worker": {
+            "label": worker_label,
+            "tone": worker_tone,
+            "detail": worker_detail,
+        },
+        "queue": {
+            "waiting": queue_waiting,
+            "running": queue_running,
+            "failed": queue_failed,
+            "completed": queue_completed,
+            "summary": (
+                f"{format_compact_count(queue_waiting)} pending, {format_compact_count(queue_running)} running, "
+                f"{format_compact_count(queue_completed)} completed"
+            ),
+            "detail": f"{format_compact_count(queue_failed)} failed tasks remain on the ledger.",
+        },
+        "coverages": [
+            {
+                "key": "verified",
+                "label": "Verified card coverage",
+                "value": f"{verified_coverage:.1f}%",
+                "detail": f"{format_compact_count(verified_dossiers)} verified dossiers in the main store.",
+            },
+            {
+                "key": "dossiers",
+                "label": "Dossier coverage",
+                "value": f"{dossier_coverage:.1f}%",
+                "detail": f"{format_compact_count(dossiers_created)} dossiers created across the catalog.",
+            },
+            {
+                "key": "validation",
+                "label": "Validation coverage",
+                "value": f"{validation_coverage:.1f}%",
+                "detail": f"{format_compact_count(validated_cards)} cards finished the validation step.",
+            },
+            {
+                "key": "images",
+                "label": "Image coverage",
+                "value": f"{image_coverage:.1f}%",
+                "detail": (
+                    f"{format_compact_count(images_verified)} verified image records, "
+                    f"{format_compact_count(images_tracked)} tracked total."
+                ),
+            },
+        ],
+        "last_meaningful_activity": {
+            "label": last_signal_label,
+            "detail": last_signal_detail,
+            "timestamp": last_signal_timestamp or "Unavailable",
+        },
+        "pushover": {
+            "label": pushover_label,
+            "tone": pushover_tone,
+            "detail": pushover_detail,
+        },
+        "stages": stage_rows,
+        "current_stage_label": str((training_status.get("intelligence_progress") or {}).get("current_stage", {}).get("label") or "Card awareness"),
+        "activity_hint": str(activity.get("description") or status_sentence),
+    }
+
+
+def humanize_operator_truth_source(monitor_source: dict[str, Any]) -> dict[str, str]:
+    mode = str(monitor_source.get("mode") or "").strip().lower()
+    age_label = str(monitor_source.get("age_label") or "").strip()
+    if mode in {"main_runtime", "main_runtime_api"}:
+        label = "Live main runtime"
+        detail = "Using the live main-runtime snapshot."
+        if age_label and age_label != "just now":
+            detail = f"Using the live main-runtime snapshot refreshed {age_label}."
+    elif mode in {"main_runtime_cached", "main_runtime_api_cached"}:
+        label = "Cached main-runtime snapshot"
+        detail = "Using the last good main-runtime snapshot while live access catches up."
+        if age_label:
+            detail = f"Using the last good main-runtime snapshot from {age_label} while live access catches up."
+    else:
+        label = "Local fallback"
+        detail = "Using local worktree status data because the main runtime is not currently reachable."
+    detail = str(monitor_source.get("detail") or detail)
+    return {"label": label, "detail": detail}
+
+
+def build_operator_recent_activity(
+    *,
+    learning_status: dict[str, Any],
+    monitor_source: dict[str, Any],
+    validation_audit: dict[str, Any],
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    last_completed_task = humanize_snake_label(str(learning_status.get("last_completed_task") or "")) or "No completed task recorded"
+    last_heartbeat = str(learning_status.get("last_heartbeat") or "").strip()
+    if last_completed_task:
+        items.append(
+            {
+                "title": "Latest completed task",
+                "detail": last_completed_task,
+                "timestamp": last_heartbeat,
+                "tone": "good" if last_completed_task != "No completed task recorded" else "neutral",
+            }
+        )
+
+    latest_validation = next(iter(list(validation_audit.get("recently_validated") or [])), None)
+    if latest_validation:
+        items.append(
+            {
+                "title": "Latest validation signal",
+                "detail": f"{str(latest_validation.get('card_code') or '').upper()} · {str(latest_validation.get('card_name') or 'Unknown card')}",
+                "timestamp": str(latest_validation.get("verified_at") or "").strip(),
+                "tone": "good",
+            }
+        )
+
+    last_image_update = str(learning_status.get("last_image_update") or "").strip()
+    if last_image_update:
+        items.append(
+            {
+                "title": "Latest image signal",
+                "detail": "Miru last updated its image-learning state here.",
+                "timestamp": last_image_update,
+                "tone": "neutral",
+            }
+        )
+
+    queue_waiting = int(learning_status.get("queue_length") or 0)
+    queue_running = int(learning_status.get("running_count") or 0)
+    items.append(
+        {
+            "title": "Queue state",
+            "detail": (
+                "No learning tasks are waiting right now."
+                if queue_waiting <= 0 and queue_running <= 0
+                else f"{format_compact_count(queue_waiting)} waiting and {format_compact_count(queue_running)} running."
+            ),
+            "timestamp": last_heartbeat,
+            "tone": "neutral" if queue_waiting <= 0 and queue_running <= 0 else "good",
+        }
+    )
+
+    return items[:4]
+
+
+def build_set_progress_snapshot(set_code: str, *, catalog_db_path: Path, dossier_db_path: Path | None) -> dict[str, Any] | None:
+    normalized = str(set_code or "").strip().upper()
+    if not re.fullmatch(r"(?:OP|EB|ST|PRB)\d{2}", normalized):
+        return None
+    if not catalog_db_path.is_file():
+        return None
+
+    catalog_total = 0
+    verified_count = 0
+    dossier_count = 0
+    try:
+        with closing(sqlite3.connect(catalog_db_path)) as conn:
+            catalog_total = int(
+                conn.execute("SELECT COUNT(*) FROM cards WHERE upper(coalesce(set_code, '')) = ?", (normalized,)).fetchone()[0]
+            )
+    except sqlite3.Error:
+        return None
+
+    if dossier_db_path and dossier_db_path.is_file():
+        try:
+            with closing(sqlite3.connect(dossier_db_path)) as conn:
+                dossier_count = int(
+                    conn.execute("SELECT COUNT(*) FROM cards WHERE upper(coalesce(set_code, '')) = ?", (normalized,)).fetchone()[0]
+                )
+                verified_count = int(
+                    conn.execute(
+                        """
+                        SELECT COUNT(*)
+                        FROM cards
+                        WHERE upper(coalesce(set_code, '')) = ?
+                          AND lower(coalesce(overall_state, '')) = 'verified'
+                        """,
+                        (normalized,),
+                    ).fetchone()[0]
+                )
+        except sqlite3.Error:
+            dossier_count = 0
+            verified_count = 0
+
+    return {
+        "set_code": normalized,
+        "catalog_total": catalog_total,
+        "dossier_count": dossier_count,
+        "verified_count": verified_count,
+        "verified_percent": safe_percent(verified_count, catalog_total),
+        "dossier_percent": safe_percent(dossier_count, catalog_total),
+    }
+
+
+def build_operator_console_payload(*, force_runtime_recheck: bool = False) -> dict[str, Any]:
+    training_status = build_training_status()
+    local_learning_status = load_learning_engine_status(
+        queue_db_path=LEARNING_QUEUE_DB_PATH,
+        status_db_path=LEARNING_STATUS_DB_PATH,
+        dossier_db_path=LEARNING_DOSSIER_DB_PATH,
+        total_cards=int(training_status.get("total_cards") or 0),
+    )
+    local_validation_audit = load_cached_validation_audit()
+    monitor_source = (
+        build_monitor_source(training_status, local_learning_status, local_validation_audit)
+        if force_runtime_recheck
+        else load_cached_monitor_source(training_status, local_learning_status, local_validation_audit)
+    )
+    truth_payload = fetch_truth_source_dev_status(summary_only=True) or {}
+    runtime_learning = dict(monitor_source.get("learning_status") or truth_payload.get("learning_engine") or local_learning_status)
+    runtime_validation_audit = dict(monitor_source.get("validation_audit") or truth_payload.get("validation_audit") or local_validation_audit)
+    runtime_activity = dict(truth_payload.get("activity") or build_learning_engine_activity(runtime_learning, build_miru_activity(training_status)))
+    runtime_training = dict(truth_payload.get("training") or {})
+    runtime_truth_source = dict(truth_payload.get("truth_source") or {})
+    runtime_pushover = dict(truth_payload.get("pushover") or build_pushover_runtime_state(training_status=training_status, learning_status=runtime_learning))
+    source_mode = str((monitor_source.get("mode") or runtime_truth_source.get("mode") or "")).strip().lower()
+    using_live_runtime = source_mode in {"main_runtime", "main_runtime_api", "main_runtime_live"}
+    using_cached_runtime = source_mode in {"main_runtime_cached", "main_runtime_api_cached", "main_runtime_cached_snapshot"}
+    source_reference = (
+        "the main runtime"
+        if using_live_runtime
+        else ("the last good main-runtime snapshot" if using_cached_runtime else "local fallback data")
+    )
+
+    worker_state = "Idle"
+    worker_tone = "neutral"
+    heartbeat_age = seconds_since(str(runtime_learning.get("last_heartbeat") or ""))
+    current_state = str(runtime_learning.get("current_state") or "").strip().lower()
+    queue_waiting = int(runtime_learning.get("queue_length") or 0)
+    queue_running = int(runtime_learning.get("running_count") or 0)
+    if heartbeat_age is not None and heartbeat_age > 600:
+        worker_state = "Offline"
+        worker_tone = "warn"
+    elif heartbeat_age is not None and heartbeat_age > 180 and (queue_waiting > 0 or queue_running > 0 or current_state in {"processing", "running"}):
+        worker_state = "Stalled"
+        worker_tone = "warn"
+    elif queue_waiting > 0 or queue_running > 0 or current_state in {"processing", "running"}:
+        worker_state = "Running"
+        worker_tone = "good"
+
+    last_heartbeat = str(runtime_learning.get("last_heartbeat") or "").strip()
+    last_heartbeat_label = format_relative_age(heartbeat_age) if heartbeat_age is not None else "Unavailable"
+    last_completed_task = humanize_snake_label(str(runtime_learning.get("last_completed_task") or "")) or "No completed task recorded"
+    queue_failed = int(runtime_learning.get("failed_count") or 0)
+    queue_completed = int(runtime_learning.get("completed_count") or 0)
+    operator_sentence = str((truth_payload.get("intelligence_status") or {}).get("status_sentence") or "")
+    if not operator_sentence:
+        if worker_state == "Running":
+            operator_sentence = f"Miru is processing queued learning tasks from {source_reference}."
+        elif worker_state == "Idle":
+            operator_sentence = f"Miru is idle. No learning tasks are waiting in {source_reference}."
+        elif worker_state == "Stalled":
+            operator_sentence = f"Miru is online, but the heartbeat from {source_reference} looks stalled."
+        else:
+            operator_sentence = (
+                "Miru's main-runtime heartbeat is not currently visible."
+                if not using_cached_runtime
+                else "Live main-runtime access is quiet, so the console is holding the last good snapshot."
+            )
+
+    verified_percent = float(training_status.get("verified_coverage_percent") or 0.0)
+    image_percent = safe_percent(max(int(runtime_learning.get("images_verified") or 0), int(runtime_learning.get("images_tracked") or 0)), int(training_status.get("total_cards") or 0))
+    truth_freshness = (
+        "Live main runtime."
+        if using_live_runtime
+        else ("Cached main-runtime snapshot." if using_cached_runtime else "Local fallback from this worktree.")
+    )
+    health_summary = (
+        "Miru looks healthy."
+        if worker_state in {"Idle", "Running"} and using_live_runtime
+        else (
+            "Miru's last good main-runtime snapshot still looks healthy, but live access is temporarily unavailable."
+            if worker_state in {"Idle", "Running"} and using_cached_runtime
+            else (
+                "Miru looks available, but the console is using local fallback data until the main runtime answers again."
+                if worker_state in {"Idle", "Running"}
+                else "Miru needs attention before operator summaries will be fully trustworthy."
+            )
+        )
+    )
+    momentum_summary = (
+        "Miru is improving when verified coverage and validation writes move forward."
+        if queue_waiting > 0 or queue_running > 0
+        else "Miru is waiting for new learning work right now."
+    )
+    strongest_summary = (
+        f"Miru is strongest at card awareness and verified card knowledge ({verified_percent:.1f}% verified coverage). "
+        "Deck and meta intelligence are not built yet."
+    )
+
+    def category_status(percent: float, *, has_any: bool = True) -> str:
+        if not has_any:
+            return "Not started"
+        if percent >= 80.0:
+            return "Strong"
+        if percent >= 20.0:
+            return "In progress"
+        if percent > 0.0:
+            return "Early"
+        return "Not started"
+
+    progress_categories = [
+        {
+            "label": "Card awareness",
+            "status": category_status(100.0, has_any=int(training_status.get("total_cards") or 0) > 0),
+            "detail": f"{format_compact_count(int(training_status.get('total_cards') or 0))} catalog cards are available for lookup.",
+        },
+        {
+            "label": "Verified card knowledge",
+            "status": category_status(verified_percent, has_any=int(training_status.get("verified_dossiers") or 0) > 0),
+            "detail": f"{verified_percent:.1f}% of catalog cards have verified dossier coverage.",
+        },
+        {
+            "label": "Image intelligence",
+            "status": category_status(image_percent, has_any=int(runtime_learning.get("images_tracked") or 0) > 0 or int(runtime_learning.get("images_verified") or 0) > 0),
+            "detail": f"{format_compact_count(int(runtime_learning.get('images_verified') or 0))} verified image records and {format_compact_count(int(runtime_learning.get('images_tracked') or 0))} tracked so far.",
+        },
+        {
+            "label": "Deck intelligence",
+            "status": "Not started",
+            "detail": "Deck-level reasoning is not implemented in the live runtime yet.",
+        },
+        {
+            "label": "Meta intelligence",
+            "status": "Not started",
+            "detail": "Meta interpretation is not currently part of Miru's live learning loop.",
+        },
+        {
+            "label": "Market intelligence",
+            "status": "Not started",
+            "detail": "Market reasoning is not currently part of Miru's live worker state.",
+        },
+    ]
+
+    if using_cached_runtime:
+        needs_next_title = "Restore live main-runtime access"
+        needs_next_detail = "The console is holding the last good main-runtime snapshot until live access responds again."
+    elif not using_live_runtime:
+        needs_next_title = "Reconnect the main runtime truth source"
+        needs_next_detail = "The operator console is using local fallback data because the main runtime did not answer."
+    elif worker_state in {"Offline", "Stalled"}:
+        needs_next_title = "Restore a fresh worker heartbeat"
+        needs_next_detail = "Miru needs a fresh runtime heartbeat before the operator console can report healthy live state again."
+    elif queue_waiting <= 0 and queue_running <= 0:
+        needs_next_title = "Queue new learning work"
+        needs_next_detail = "Miru is ready, but no learning tasks are waiting right now."
+    elif image_percent < 10.0:
+        needs_next_title = "Grow image intelligence"
+        needs_next_detail = "Image coverage is still very low, so sharper image knowledge would help next."
+    else:
+        needs_next_title = "Close the remaining verified card gaps"
+        needs_next_detail = str(training_status.get("remaining_summary") or "Miru still needs more verified coverage.")
+
+    return {
+        "updated_at": current_timestamp(),
+        "guidance": {
+            "summary": f"{health_summary} {operator_sentence}",
+            "health": health_summary,
+            "momentum": momentum_summary,
+            "strongest": strongest_summary,
+            "freshness": f"{truth_freshness} {humanize_operator_truth_source(monitor_source if monitor_source else runtime_truth_source).get('detail', '')}".strip(),
+        },
+        "snapshot": {
+            "worker_state": {"label": worker_state, "tone": worker_tone},
+            "queue_summary": f"{format_compact_count(queue_waiting)} pending, {format_compact_count(queue_running)} running, {format_compact_count(queue_completed)} completed",
+            "queue_detail": f"{format_compact_count(queue_failed)} failed task(s) still recorded.",
+            "truth_source": humanize_operator_truth_source(monitor_source if monitor_source else runtime_truth_source),
+            "last_heartbeat": {"label": last_heartbeat_label, "detail": last_heartbeat or "Unavailable"},
+            "last_completed_task": {
+                "label": last_completed_task,
+                "detail": str(runtime_learning.get("current_task_label") or "Waiting for queued work"),
+            },
+            "sentence": operator_sentence,
+            "current_task": str(runtime_learning.get("current_task_label") or "Waiting for queued work"),
+            "runtime_state": str(runtime_activity.get("title") or worker_state),
+        },
+        "recent_activity": build_operator_recent_activity(
+            learning_status=runtime_learning,
+            monitor_source=monitor_source,
+            validation_audit=runtime_validation_audit,
+        ),
+        "progress_categories": progress_categories,
+        "needs_next": {
+            "title": needs_next_title,
+            "detail": needs_next_detail,
+        },
+        "actions": [
+            {"key": "refresh_snapshot", "label": "Refresh Dev Snapshot", "detail": "Reload the operator console from the latest cached runtime summary."},
+            {"key": "refresh_progress", "label": "Refresh Progress", "detail": "Re-read verified coverage and queue progress without changing worker behavior."},
+            {"key": "recheck_runtime_status", "label": "Recheck Runtime Status", "detail": "Bypass the short cache and probe the main runtime again."},
+        ],
+        "query_suggestions": [
+            "What are you doing?",
+            "Why are notifications quiet?",
+            "How far along are you?",
+            "What is left to learn?",
+            "Show OP01 progress",
+        ],
+        "query_context": {
+            "training": runtime_training,
+            "pushover": runtime_pushover,
+            "monitor_source": humanize_operator_truth_source(monitor_source if monitor_source else runtime_truth_source),
+            "runtime_learning": runtime_learning,
+            "catalog_db_path": str(monitor_source.get("project_db_path") or FALLBACK_CATALOG_DB_PATH),
+            "dossier_db_path": str(monitor_source.get("dossier_db_path") or DOSSIER_DB_PATH),
+        },
+    }
+
+
+def build_operator_query_answer(query: str) -> dict[str, Any]:
+    console = build_operator_console_payload()
+    normalized = re.sub(r"\s+", " ", str(query or "").strip()).lower()
+    snapshot = dict(console.get("snapshot") or {})
+    guidance = dict(console.get("guidance") or {})
+    training = dict((console.get("query_context") or {}).get("training") or {})
+    pushover = dict((console.get("query_context") or {}).get("pushover") or {})
+    runtime_learning = dict((console.get("query_context") or {}).get("runtime_learning") or {})
+    progress_categories = list(console.get("progress_categories") or [])
+    catalog_db_path = Path(str((console.get("query_context") or {}).get("catalog_db_path") or FALLBACK_CATALOG_DB_PATH))
+    dossier_db_path = Path(str((console.get("query_context") or {}).get("dossier_db_path") or DOSSIER_DB_PATH))
+
+    answer = "I do not have a structured operator answer for that prompt yet."
+    matched = False
+    answer_meta = str(guidance.get("freshness") or "Using the latest operator snapshot available.")
+    verified_progress = next(
+        (
+            item
+            for item in progress_categories
+            if str(item.get("label") or "").strip().lower() == "verified card knowledge"
+        ),
+        {},
+    )
+    image_progress = next(
+        (
+            item
+            for item in progress_categories
+            if str(item.get("label") or "").strip().lower() == "image intelligence"
+        ),
+        {},
+    )
+
+    if normalized in {"what are you doing?", "what are you doing", "what are you doing now", "what are you doing now?"}:
+        matched = True
+        answer = (
+            f"{snapshot.get('sentence', 'Miru status is unavailable.')} "
+            f"Current task: {snapshot.get('current_task', 'Unavailable')}. "
+            f"Queue: {snapshot.get('queue_summary', 'unavailable')}."
+        )
+    elif "why are notifications quiet" in normalized:
+        matched = True
+        preview = dict(pushover.get("learning_preview") or {})
+        answer = str(preview.get("message") or "")
+        if not answer:
+            worker_state = dict(snapshot.get("worker_state") or {}).get("label") or "Unavailable"
+            answer = (
+                f"Notifications are quiet because Miru is not reporting a fresh notification-ready learning gain from the current truth source. "
+                f"Worker state is {worker_state} and queue summary is {snapshot.get('queue_summary', 'unavailable')}."
+            )
+    elif "how far along" in normalized:
+        matched = True
+        answer = (
+            f"{guidance.get('strongest') or 'Miru is strongest at card facts and verified card knowledge.'} "
+            f"{verified_progress.get('detail') or training.get('summary') or 'Verified progress summary is unavailable.'}"
+        )
+    elif "what is left to learn" in normalized or "what's left to learn" in normalized:
+        matched = True
+        answer = (
+            f"{str(training.get('detail') or 'Remaining learning scope is not currently available.')} "
+            f"{image_progress.get('detail') or 'Image intelligence is still early.'} "
+            "Deck, meta, and market intelligence are not built yet."
+        )
+    else:
+        set_match = re.search(r"\b((?:op|eb|st|prb)\d{2})\b", normalized, re.I)
+        if set_match and "progress" in normalized:
+            matched = True
+            set_code = set_match.group(1).upper()
+            progress = build_set_progress_snapshot(set_code, catalog_db_path=catalog_db_path, dossier_db_path=dossier_db_path)
+            if progress and progress.get("catalog_total", 0) > 0:
+                if progress["verified_percent"] >= 80.0:
+                    progress_label = "strong"
+                elif progress["verified_percent"] > 0:
+                    progress_label = "early"
+                else:
+                    progress_label = "not started"
+                answer = (
+                    f"{set_code} progress is currently {progress_label}. "
+                    f"It has {format_compact_count(progress['catalog_total'])} catalog cards, with "
+                    f"{progress['verified_percent']:.1f}% verified coverage "
+                    f"({format_compact_count(progress['verified_count'])} verified) and "
+                    f"{progress['dossier_percent']:.1f}% dossier coverage "
+                    f"({format_compact_count(progress['dossier_count'])} dossiers)."
+                )
+                answer_meta = (
+                    f"{answer_meta} Set-level progress is calculated from the local catalog and dossier snapshot."
+                )
+            else:
+                answer = f"I could not find a grounded set-progress snapshot for {set_code}."
+
+    return {
+        "ok": True,
+        "matched": matched,
+        "query": query,
+        "answer": answer,
+        "meta": answer_meta,
+        "updated_at": current_timestamp(),
+        "worker_state": snapshot.get("worker_state", {}),
+        "queue_summary": snapshot.get("queue_summary", ""),
+    }
+
+
+def build_legacy_dev_usage() -> dict[str, Any]:
+    dev_status = build_dev_status()
+    return {
+        "ok": True,
+        "updated_at": dev_status["updated_at"],
+        "limits_status": dev_status.get("limits_status", []),
+        "limits_by_provider": dev_status.get("limits_by_provider", {}),
+        "pushover": dev_status.get("pushover", {}),
+    }
+
+
+def build_legacy_validation_insights() -> dict[str, Any]:
+    dev_status = build_dev_status()
+    return {
+        "ok": True,
+        "updated_at": dev_status["updated_at"],
+        "validation_audit": dev_status.get("validation_audit", {}),
+        "validation_audit_url_base": dev_status.get("validation_audit_url_base", ""),
+    }
+
+
+def load_cached_validation_audit() -> dict[str, Any]:
+    signature = path_signature(FALLBACK_CATALOG_DB_PATH)
+    return get_ttl_cached_value(
+        "validation_audit",
+        ttl_seconds=20.0,
+        signature=signature,
+        builder=lambda: list_validation_audit_insights(project_db_path=FALLBACK_CATALOG_DB_PATH),
+    )
+
+
+def load_cached_image_coverage_by_set() -> list[dict[str, Any]]:
+    signature = (
+        path_signature(FALLBACK_CATALOG_DB_PATH),
+        path_signature(LEARNING_DOSSIER_DB_PATH),
+    )
+    return get_ttl_cached_value(
+        "image_coverage_by_set",
+        ttl_seconds=45.0,
+        signature=signature,
+        builder=lambda: build_image_coverage_by_set(
+            catalog_db_path=FALLBACK_CATALOG_DB_PATH,
+            dossier_db_path=LEARNING_DOSSIER_DB_PATH,
+        ),
+    )
+
+
+def load_cached_resource_metrics() -> list[dict[str, Any]]:
+    return get_ttl_cached_value(
+        "resource_metrics",
+        ttl_seconds=5.0,
+        builder=build_resource_metrics,
+    )
+
+
+def load_cached_monitor_source(
+    training_status: dict[str, Any],
+    learning_status: dict[str, Any],
+    validation_audit: dict[str, Any],
+) -> dict[str, Any]:
+    signature = (
+        path_signature(LEARNING_QUEUE_DB_PATH),
+        path_signature(LEARNING_STATUS_DB_PATH),
+        path_signature(LEARNING_DOSSIER_DB_PATH),
+        path_signature(FALLBACK_CATALOG_DB_PATH),
+        int(training_status.get("verified_dossiers") or 0),
+        int(learning_status.get("queue_length") or 0),
+        int(learning_status.get("running_count") or 0),
+        str(learning_status.get("current_state") or ""),
+    )
+    return get_ttl_cached_value(
+        "monitor_source",
+        ttl_seconds=10.0,
+        signature=signature,
+        builder=lambda: build_monitor_source(training_status, learning_status, validation_audit),
+    )
+
+
+def build_deferred_monitor_payload(
+    training_status: dict[str, Any],
+    learning_status: dict[str, Any],
+    activity: dict[str, Any],
+) -> dict[str, Any]:
+    total_cards = int(training_status.get("total_cards") or 0)
+    verified_dossiers = int(training_status.get("verified_dossiers") or 0)
+    coverage_percent = safe_percent(verified_dossiers, total_cards)
+    state_label = str(activity.get("title") or "Loading live monitor")
+    state_description = str(activity.get("description") or "Miru telemetry is loading.")
+    state_detail = str(activity.get("detail") or "Detailed runtime data will appear after the first refresh.")
+    queue_waiting = int(learning_status.get("queue_length") or 0)
+    queue_running = int(learning_status.get("running_count") or 0)
+    queue_failed = int(learning_status.get("failed_count") or 0)
+    heartbeat = "Waiting for live runtime refresh."
+    heartbeat_seconds = seconds_since(learning_status.get("last_heartbeat"))
+    if heartbeat_seconds is not None:
+        heartbeat = f"Last local heartbeat {format_relative_age(heartbeat_seconds)}."
+    return {
+        "source": {
+            "label": "Loading runtime monitor",
+            "detail": "Heavy runtime details load after first paint so the page can open faster.",
+        },
+        "state": {
+            "label": state_label,
+            "tone": str(activity.get("tone") or "neutral"),
+            "description": state_description,
+            "task_label": str(learning_status.get("current_task_label") or "Loading active task"),
+            "task_type_label": humanize_snake_label(str(learning_status.get("current_task_type") or "")) or "Waiting",
+            "queue_status": f"{queue_waiting} waiting, {queue_running} running, {queue_failed} failed",
+            "heartbeat": heartbeat,
+        },
+        "progress": {
+            "label": "Loading live detail",
+            "tone": "neutral",
+            "summary": f"{coverage_percent:.1f}% verified card coverage currently cached.",
+            "detail": "Recent gains and sync activity appear after the first live refresh.",
+        },
+        "gains": [],
+        "recent_activity": [],
+        "warnings": [],
+    }
+
+
+def build_monitor_panel_payload(training_status: dict[str, Any] | None = None) -> dict[str, Any]:
+    training_status = training_status or build_training_status()
+    learning_status = load_learning_engine_status(
+        queue_db_path=LEARNING_QUEUE_DB_PATH,
+        status_db_path=LEARNING_STATUS_DB_PATH,
+        dossier_db_path=LEARNING_DOSSIER_DB_PATH,
+        total_cards=int(training_status.get("total_cards") or 0),
+    )
+    validation_audit = load_cached_validation_audit()
+    monitor_source = load_cached_monitor_source(training_status, learning_status, validation_audit)
+    return {
+        "updated_at": current_timestamp(),
+        "monitor": build_monitor_payload(training_status, monitor_source),
+    }
+
+
+def build_image_coverage_payload() -> dict[str, Any]:
+    return {
+        "updated_at": current_timestamp(),
+        "image_coverage_by_set": load_cached_image_coverage_by_set(),
+    }
+
+
+def build_validation_audit_payload() -> dict[str, Any]:
+    return {
+        "updated_at": current_timestamp(),
+        "validation_audit": load_cached_validation_audit(),
+        "validation_audit_url_base": build_route_url("/api/dev/card-validation"),
+    }
+
+
+def build_resource_metrics_payload() -> dict[str, Any]:
+    return {
+        "updated_at": current_timestamp(),
+        "resource_metrics": load_cached_resource_metrics(),
+    }
+
+
+def build_dev_status(
+    training_status: dict[str, Any] | None = None,
+    *,
+    lightweight: bool = False,
+    include_heavy_sections: bool = False,
+    fetch_truth_source: bool = True,
+) -> dict[str, Any]:
+    if fetch_truth_source and resolve_runtime_monitor_status_url():
+        remote_payload = fetch_truth_source_dev_status(
+            summary_only=lightweight,
+            include_heavy=include_heavy_sections,
+        )
+        if remote_payload:
+            out = dict(remote_payload)
+            out["dev_environment"] = build_dev_environment_descriptor()
+            return ensure_governed_autopilot_payload(out)
+    training_status = training_status or build_training_status()
+    _learning_sig = (
+        path_signature(LEARNING_QUEUE_DB_PATH),
+        path_signature(LEARNING_STATUS_DB_PATH),
+        path_signature(LEARNING_DOSSIER_DB_PATH),
+    )
+    _total_cards = int(training_status.get("total_cards") or 0)
+    learning_status = get_ttl_cached_value(
+        "learning_engine_status",
+        ttl_seconds=5.0,
+        signature=_learning_sig,
+        builder=lambda: load_learning_engine_status(
+            queue_db_path=LEARNING_QUEUE_DB_PATH,
+            status_db_path=LEARNING_STATUS_DB_PATH,
+            dossier_db_path=LEARNING_DOSSIER_DB_PATH,
+            total_cards=_total_cards,
+        ),
+    )
+    # `/api/dev-status` should always expose a fresh telemetry-based voyage snapshot.
+    # Do not merge a previously built voyage dict back in here, because that can
+    # preserve older fictional milestone fields from an earlier code path.
+    training_status["voyage"] = build_voyage_state(
+        training_status,
+        learning_status=learning_status,
+    )
+    activity = build_learning_engine_activity(learning_status, build_miru_activity(training_status))
+    pushover_state = build_pushover_runtime_state(
+        training_status=training_status,
+        learning_status=learning_status,
+    )
+    links = {
+        "miru_ai": build_route_url("/"),
+        "project_miru": build_companion_url(PROJECT_MIRU_DEV_PORT, "/"),
+        "training": build_route_url("/training"),
+        "status": build_route_url("/status"),
+    }
+    training_progress = training_status.get("training_progress")
+    if lightweight:
+        project_status = {"reachable": True, "status_code": 0, "detail": "Checking Project Miru after first paint."}
+        limits_status = []
+        limits_by_provider = {}
+        validation_audit = {
+            "recent_conflicts": [],
+            "lowest_confidence": [],
+            "recently_validated": [],
+            "rejected_evidence": [],
+        }
+        image_coverage_by_set = []
+        monitor = build_deferred_monitor_payload(training_status, learning_status, activity)
+        resource_metrics = []
+    else:
+        project_status = get_ttl_cached_value(
+            "project_miru_route_status",
+            ttl_seconds=5.0,
+            signature=PROJECT_MIRU_DEV_PORT,
+            builder=lambda: inspect_local_http_route(f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/"),
+        )
+        limits_status = load_limits_status()
+        limits_by_provider = {e["provider"]: e for e in limits_status if e.get("provider")}
+        if include_heavy_sections:
+            validation_audit = load_cached_validation_audit()
+            image_coverage_by_set = load_cached_image_coverage_by_set()
+            monitor_source = load_cached_monitor_source(training_status, learning_status, validation_audit)
+            monitor = build_monitor_payload(training_status, monitor_source)
+            resource_metrics = load_cached_resource_metrics()
+        else:
+            validation_audit = {
+                "recent_conflicts": [],
+                "lowest_confidence": [],
+                "recently_validated": [],
+                "rejected_evidence": [],
+            }
+            image_coverage_by_set = []
+            monitor = build_deferred_monitor_payload(training_status, learning_status, activity)
+            resource_metrics = []
+    _updated = current_timestamp()
+    return ensure_governed_autopilot_payload({
+        "updated_at": _updated,
+        "updated_at_display": _format_timestamp_readable(_updated),
+        "links": links,
+        "activity": activity,
+        "activity_states": build_activity_states(activity["key"]),
+        "limits_status": limits_status,
+        "limits_by_provider": limits_by_provider,
+        "training": {
+            "progress_percent": float(training_status["progress_percent"]),
+            "summary": training_status["verified_summary"],
+            "detail": training_status["remaining_summary"],
+            "stage": training_status["training_stage"],
+        },
+        "training_progress": training_progress,
+        "voyage": dict(training_status["voyage"]),
+        "monitor": monitor,
+        "learning_metrics": build_learning_engine_metrics(learning_status),
+        "validation_audit": validation_audit,
+        "validation_audit_url_base": build_route_url("/api/dev/card-validation"),
+        "image_coverage_by_set": image_coverage_by_set,
+        "resource_metrics": resource_metrics,
+        "issues": build_issue_detection(training_status, project_status, learning_status),
+        "catalog_status": training_status["catalog_status"],
+        "dossier_status": training_status["dossier_status"],
+        "pushover": pushover_state,
+        "intelligence_status": build_dev_intelligence_status(
+            training_status,
+            learning_status,
+            pushover_state,
+            activity,
+        ),
+        "project_miru": {
+            "reachable": bool(project_status.get("reachable")),
+            "status_code": int(project_status.get("status_code") or 0),
+            "detail": project_status.get("detail") or "Unavailable",
+            "url": links["project_miru"],
+        },
+        "control_deck": {
+            "worktree_site": links["project_miru"],
+            "miru_dev_console": build_route_url("/dev"),
+            "main_site": build_companion_url(PROJECT_MIRU_PORT, "/"),
+        },
+        "surface_status": {
+            "miru_ai": {
+                "port": str(request.environ.get("SERVER_PORT", "18765")),
+                "status": "Running",
+            },
+            "worktree_dashboard": {
+                "port": str(PROJECT_MIRU_DEV_PORT),
+                "status": "Running" if project_status.get("reachable") else "Unreachable",
+            },
+        },
+        "truth_source": build_runtime_truth_source_descriptor(
+            mode="local_fallback",
+            status_url=resolve_runtime_monitor_status_url() or "",
+        ),
+        "worker_last_run": _enrich_worker_last_run_display(load_worker_last_run()),
+        "dev_environment": (dev_environment_descriptor := build_dev_environment_descriptor()),
+        "worktree_update_summary": build_worktree_update_summary(
+            training_status,
+            learning_status,
+            validation_audit,
+            dev_environment_descriptor,
+        ),
+        "learning_engine": _enrich_learning_engine_display(
+            _apply_worktree_learner_state_override(
+                {
+                    **learning_status,
+                    **compute_learner_state_and_freshness(learning_status),
+                    **_get_worktree_learner_control_status(),
+                },
+                activity,
+            ),
+        ),
+        "activity_feed": load_monitor_engine_events(
+            status_db_path=LEARNING_STATUS_DB_PATH,
+            limit=20 if lightweight else 40,
+        )["recent_activity"],
+        "last_insight_sync": _get_last_insight_sync_report(),
+    })
+
+
+def log_pushover_startup_status(logger: Any) -> None:
+    global _PUSHOVER_STATUS_LOGGED
+    with _PUSHOVER_STATUS_LOCK:
+        if _PUSHOVER_STATUS_LOGGED:
+            return
+        message = build_pushover_status_message(
+            env_load=PROJECT_ENV_LOAD,
+            pushover=inspect_pushover_env(),
+        )
+        pushover = inspect_pushover_env()
+        if pushover["enabled"] and pushover["configured"]:
+            logger.info(message)
+        else:
+            logger.warning(message)
+        _PUSHOVER_STATUS_LOGGED = True
+
+
+def is_local_request() -> bool:
+    remote_addr = (request.remote_addr or "").strip()
+    if not remote_addr:
+        return False
+    try:
+        address = ipaddress.ip_address(remote_addr)
+    except ValueError:
+        return False
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
+        address = address.ipv4_mapped
+    if address.is_loopback:
+        return True
+    if isinstance(address, ipaddress.IPv4Address):
+        trusted_networks = (
+            ipaddress.ip_network("10.0.0.0/8"),
+            ipaddress.ip_network("172.16.0.0/12"),
+            ipaddress.ip_network("192.168.0.0/16"),
+            ipaddress.ip_network("100.64.0.0/10"),
+        )
+        return any(address in network for network in trusted_networks)
+    return False
+
+def resolve_cli_mode(selected_mode: str) -> str:
+    mapping = {
+        "card lookup": "knowledge",
+        "card analysis": "analysis",
+        "variant & print analysis": "matching",
+        "set & catalog knowledge": "knowledge",
+        "knowledge training": "knowledge",
+        "card knowledge": "knowledge",
+        "matching": "matching",
+        "codex prompt": "codex-prompt",
+        "development": "development",
+        "plan": "plan",
+        "debug": "debug",
+        "review": "review",
+    }
+    return mapping.get(selected_mode, selected_mode)
+
+
+def normalize_request_text(request_text: str) -> str:
+    return re.sub(r"\s+", " ", (request_text or "").strip().lower())
+
+
+def is_explicit_development_request(request_text: str) -> bool:
+    normalized = normalize_request_text(request_text)
+    return any(token in normalized for token in EXPLICIT_DEVELOPMENT_HINTS)
+
+
+def infer_knowledge_mode(request_text: str) -> str:
+    normalized = normalize_request_text(request_text)
+    has_card_reference = bool(CARD_REFERENCE_RE.search(request_text or ""))
+    has_gameplay_hint = any(token in normalized for token in GAMEPLAY_HINTS)
+
+    if any(token in normalized for token in TRAINING_HINTS):
+        return "knowledge training"
+    if any(token in normalized for token in SET_CATALOG_HINTS):
+        return "set & catalog knowledge"
+    if any(token in normalized for token in MATCHING_HINTS):
+        return "variant & print analysis"
+    if has_gameplay_hint or any(token in normalized for token in DIRECT_KNOWLEDGE_HINTS):
+        return "card analysis" if ("effect" in normalized or "what does" in normalized or has_gameplay_hint) else "card lookup"
+    if has_card_reference:
+        return "card lookup"
+    return "card lookup"
+
+
+def resolve_effective_mode(selected_mode: str, request_text: str) -> str:
+    if selected_mode not in {"development", "codex prompt"}:
+        return selected_mode
+    if is_explicit_development_request(request_text):
+        return selected_mode
+    return infer_knowledge_mode(request_text)
+
+
+def collect_runtime_dependencies() -> list[dict[str, Any]]:
+    catalog_status = ensure_fallback_catalog_status()
+    knowledge_ready = KNOWLEDGE_CACHE_PATH.is_file() or catalog_status["usable"]
+    return [
+        {
+            "label": "Helper script",
+            "path": str(SCRIPT_PATH),
+            "exists": SCRIPT_PATH.is_file(),
+            "required": True,
+            "detail": "Subprocess entrypoint for the Ask Miru flow.",
+        },
+        {
+            "label": "One Piece knowledge cache",
+            "path": str(KNOWLEDGE_CACHE_PATH),
+            "exists": KNOWLEDGE_CACHE_PATH.is_file(),
+            "required": not FALLBACK_CATALOG_DB_PATH.is_file(),
+            "detail": "Primary structured knowledge cache used by tools/miru_ai_onepiece.py.",
+        },
+        {
+            "label": "Fallback catalog database",
+            "path": str(FALLBACK_CATALOG_DB_PATH),
+            "exists": catalog_status["exists"],
+            "required": False,
+            "detail": (
+                f"Secondary local catalog source. "
+                f"Openable: {'yes' if catalog_status['openable'] else 'no'}. "
+                f"Cards indexed: {catalog_status['cards']}. "
+                f"Variants indexed: {catalog_status['variants']}."
+                + (
+                    f" Issue: {catalog_status['error']}"
+                    if catalog_status["error"]
+                    else ""
+                )
+            ),
+            "openable": catalog_status["openable"],
+            "usable": catalog_status["usable"],
+            "cards": catalog_status["cards"],
+            "variants": catalog_status["variants"],
+            "sets": catalog_status["sets"],
+            "error": catalog_status["error"],
+        },
+        {
+            "label": "Ask template",
+            "path": str(TEMPLATE_PATH),
+            "exists": TEMPLATE_PATH.is_file(),
+            "required": True,
+            "detail": "Miru AI HTML template.",
+        },
+        {
+            "label": "Miru AI stylesheet",
+            "path": str(CSS_PATH),
+            "exists": CSS_PATH.is_file(),
+            "required": True,
+            "detail": "Miru AI CSS asset.",
+        },
+        {
+            "label": "Miru AI script",
+            "path": str(JS_PATH),
+            "exists": JS_PATH.is_file(),
+            "required": True,
+            "detail": "Miru AI browser behavior asset.",
+        },
+        {
+            "label": "Ask runtime data",
+            "path": f"{KNOWLEDGE_CACHE_PATH} or {FALLBACK_CATALOG_DB_PATH}",
+            "exists": knowledge_ready,
+            "required": True,
+            "detail": "At least one local card-knowledge source must be available.",
+        },
+    ]
+
+
+def runtime_issue_messages() -> list[str]:
+    issues = []
+    for dependency in collect_runtime_dependencies():
+        if dependency["required"] and not dependency["exists"]:
+            issues.append(f"{dependency['label']} is missing: {dependency['path']}")
+    return issues
+
+
+def startup_issues() -> list[str]:
+    return runtime_issue_messages()
+
+
+def validate_inputs(selected_mode: str, request_text: str, file_path: str) -> list[str]:
+    errors = []
+
+    if selected_mode not in ALL_MODE_LABELS:
+        errors.append("Choose a valid mode before you run Miru AI.")
+    if not SCRIPT_PATH.is_file():
+        errors.append(f"Required helper script is missing: {SCRIPT_PATH}")
+    if resolve_cli_mode(selected_mode) == "review":
+        if not file_path.strip():
+            errors.append("Review needs a readable file path.")
+    elif not request_text.strip():
+        errors.append("Request text is required for this mode.")
+
+    return errors
+
+
+def build_command(selected_mode: str, request_text: str, file_path: str) -> list[str]:
+    cli_mode = resolve_cli_mode(selected_mode)
+    command = [sys.executable, str(SCRIPT_PATH), cli_mode]
+
+    if cli_mode == "review":
+        command.append(file_path.strip())
+    else:
+        command.append(request_text.strip())
+
+    return command
+
+
+def build_command_preview(selected_mode: str, request_text: str, file_path: str) -> str:
+    cli_mode = resolve_cli_mode(selected_mode)
+    if cli_mode == "review":
+        target = file_path.strip() or "<file path required>"
+    else:
+        target = "<request text>" if request_text.strip() else "<request text required>"
+
+    return f"{Path(sys.executable).name} {SCRIPT_PATH.name} {cli_mode} {target}"
+
+
+def build_command_summary(selected_mode: str) -> str:
+    cli_mode = resolve_cli_mode(selected_mode)
+    return f"{Path(sys.executable).name} {SCRIPT_PATH.name} {cli_mode}"
+
+
+def run_miru_ai(selected_mode: str, request_text: str, file_path: str) -> tuple[bool, str]:
+    dependency_issues = runtime_issue_messages()
+    if dependency_issues:
+        diagnostic = " | ".join(dependency_issues)
+        print(f"[miru_ai_server] Runtime dependency issue before /api/run: {diagnostic}", file=sys.stderr)
+        return False, f"Runtime dependency issue: {diagnostic}"
+
+    command = build_command(selected_mode, request_text, file_path)
+    env = os.environ.copy()
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=DEFAULT_TIMEOUT_SECONDS,
+            check=False,
+            env=env,
+            cwd=str(PROJECT_ROOT),
+        )
+    except OSError as exc:
+        print(f"[miru_ai_server] Failed to start subprocess: {exc}", file=sys.stderr)
+        return False, f"Failed to start subprocess: {exc}"
+    except subprocess.TimeoutExpired:
+        print("[miru_ai_server] Subprocess timed out while waiting for miru_ai.py.", file=sys.stderr)
+        return False, "Subprocess timed out while waiting for miru_ai.py."
+    except Exception as exc:
+        print(f"[miru_ai_server] Unexpected subprocess failure: {exc}", file=sys.stderr)
+        traceback.print_exc()
+        return False, f"Unexpected subprocess failure: {exc}"
+
+    stdout = (result.stdout or "").strip()
+    stderr = (result.stderr or "").strip()
+
+    if result.returncode != 0:
+        details = stderr or stdout or f"Exited with status {result.returncode}."
+        print(f"[miru_ai_server] miru_ai.py failed with status {result.returncode}: {details}", file=sys.stderr)
+        return False, f"miru_ai.py failed: {details}"
+
+    if not stdout:
+        print("[miru_ai_server] miru_ai.py completed without any output.", file=sys.stderr)
+        return False, "miru_ai.py completed without any output."
+
+    return True, stdout
+
+
+def build_inline_logo_data_uri() -> str:
+    svg = """
+    <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128' role='img' aria-label='Miru logo'>
+      <defs>
+        <linearGradient id='miru-bg' x1='0%' y1='0%' x2='100%' y2='100%'>
+          <stop offset='0%' stop-color='#d7c8ff'/>
+          <stop offset='55%' stop-color='#8b5cf6'/>
+          <stop offset='100%' stop-color='#4c1d95'/>
+        </linearGradient>
+        <linearGradient id='miru-leaf' x1='0%' y1='0%' x2='100%' y2='100%'>
+          <stop offset='0%' stop-color='#facc15'/>
+          <stop offset='100%' stop-color='#fb7185'/>
+        </linearGradient>
+      </defs>
+      <rect x='10' y='10' width='108' height='108' rx='30' fill='url(#miru-bg)'/>
+      <path d='M39 30c13 0 24 6 31 17c8-11 19-17 32-17c-4 10-14 19-29 25c-11 4-23 6-34 5c2-18 12-30 30-30Z' fill='url(#miru-leaf)' opacity='0.95'/>
+      <circle cx='64' cy='73' r='28' fill='rgba(8,5,15,0.22)'/>
+      <path d='M46 86V52h11l10 15l10-15h11v34H77V69L67 83h-6L51 69v17H46Z' fill='#fffaf5'/>
+    </svg>
+    """.strip()
+    return f"data:image/svg+xml;charset=utf-8,{quote(svg)}"
+
+
+def find_static_asset(*relative_paths: str) -> str | None:
+    for relative_path in relative_paths:
+        if (STATIC_DIR / relative_path).is_file():
+            return relative_path
+    return None
+
+
+def build_brand_assets() -> dict[str, str | None]:
+    fallback_logo = build_inline_logo_data_uri()
+    logo_asset = find_static_asset(
+        "icons/miru-fruit.png",
+        "icons/miru-fruit-512.png",
+        "icons/miru-fruit-192.png",
+        "icons/miru-fruit-180.png",
+        "miru-logo.svg",
+        "miru-logo.png",
+        "miru.png",
+    )
+    favicon_asset = find_static_asset(
+        "icons/favicon.ico",
+        "icons/miru-fruit-192.png",
+        "icons/miru-fruit.png",
+    )
+    apple_icon_asset = find_static_asset(
+        "icons/miru-fruit-192.png",
+        "icons/miru-fruit-512.png",
+        "icons/miru-fruit.png",
+    )
+    manifest_asset = find_static_asset("manifest.webmanifest")
+
+    def asset_url(relative_path: str | None) -> str | None:
+        if not relative_path:
+            return None
+        return url_for("static", filename=relative_path)
+
+    logo_url = asset_url(logo_asset) or fallback_logo
+    return {
+        "logo_url": logo_url,
+        "favicon_url": asset_url(favicon_asset) or logo_url,
+        "apple_icon_url": asset_url(apple_icon_asset) or logo_url,
+        "manifest_url": asset_url(manifest_asset),
+        "uses_inline_logo": logo_asset is None,
+    }
+
+
+def build_nav(current_endpoint: str) -> list[dict[str, str | bool]]:
+    nav = []
+    for item in NAV_ITEMS:
+        href = item.get("path") or url_for(item["endpoint"])
+        nav.append(
+            {
+                "label": item["label"],
+                "href": href,
+                "active": item["endpoint"] == current_endpoint,
+            }
+        )
+    return nav
+
+
+def build_status_snapshot() -> list[dict[str, str]]:
+    runtime_dependencies = collect_runtime_dependencies()
+    catalog_status = inspect_fallback_catalog_db(FALLBACK_CATALOG_DB_PATH)
+    dependency_rows = []
+    for dependency in runtime_dependencies[:4]:
+        detail = dependency["path"]
+        if dependency["label"] == "Fallback catalog database":
+            detail = (
+                f"{dependency['path']} | cards={catalog_status['cards']} | "
+                f"variants={catalog_status['variants']} | openable={'yes' if catalog_status['openable'] else 'no'}"
+            )
+            if catalog_status["error"]:
+                detail += f" | {catalog_status['error']}"
+        dependency_rows.append(
+            {
+                "label": dependency["label"],
+                "value": (
+                    "Ready"
+                    if dependency["label"] != "Fallback catalog database" and dependency["exists"]
+                    else (
+                        "Ready"
+                        if catalog_status["usable"]
+                        else ("Present but unavailable" if catalog_status["exists"] else "Missing")
+                    )
+                ),
+                "tone": (
+                    "good"
+                    if dependency["label"] != "Fallback catalog database" and dependency["exists"]
+                    else (
+                        "good"
+                        if catalog_status["usable"]
+                        else "warn"
+                    )
+                ),
+                "detail": detail,
+            }
+        )
+
+    dependency_rows.extend(
+        [
+            {
+                "label": "Ask flow mode",
+                "value": "Local knowledge",
+                "tone": "neutral",
+                "detail": "The visible Ask Miru modes resolve through local One Piece knowledge and do not require an API key.",
+            },
+            {
+                "label": "Knowledge routes",
+                "value": "7 pages",
+                "tone": "neutral",
+                "detail": "Home, Ask Miru, Dossiers, Gaps, Training, Status, and Dev Monitor.",
+            },
+        ]
+    )
+    return dependency_rows
+
+
+# Leader Hub: read-only load from miru_deck_intel.db; no new intelligence logic.
+_LEADER_HUB_FORMAT = ""
+
+
+def _leader_hub_confidence(decks_sampled: int) -> str:
+    if decks_sampled <= 4:
+        return "low"
+    if decks_sampled <= 14:
+        return "medium"
+    return "strong"
+
+
+def load_leader_hub_data(leader_code: str) -> dict[str, Any]:
+    """Load leader intelligence for the Leader Hub page. Returns stub if DB missing."""
+    leader_code = (leader_code or "").strip().upper()
+    if not leader_code:
+        return {
+            "leader_name": "",
+            "leader_code": "",
+            "decks_sampled": 0,
+            "confidence": "low",
+            "archetypes": [],
+            "shared_shell": [],
+            "variant_packages": [],
+            "cost_curves": [],
+            "miru_insight": None,
+        }
+
+    stub = {
+        "leader_name": "",
+        "leader_code": leader_code,
+        "decks_sampled": 0,
+        "confidence": "low",
+        "archetypes": [],
+        "shared_shell": [],
+        "variant_packages": [],
+        "cost_curves": [],
+        "miru_insight": None,
+    }
+
+    if not DECK_INTEL_DB_PATH.is_file():
+        return stub
+
+    try:
+        conn = sqlite3.connect(f"file:{DECK_INTEL_DB_PATH}?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+    except sqlite3.Error:
+        return stub
+
+    try:
+        tables = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name IN (?,?,?,?)",
+                ("decklists", "archetype_profiles", "archetype_profile_cards", "archetype_profile_cost_curve"),
+            ).fetchall()
+        }
+        if "decklists" not in tables:
+            return stub
+
+        decks_sampled = 0
+        row = conn.execute(
+            "SELECT COUNT(DISTINCT deck_uid) FROM decklists WHERE leader_code = ?",
+            (leader_code,),
+        ).fetchone()
+        if row:
+            decks_sampled = row[0] or 0
+        stub["decks_sampled"] = decks_sampled
+        stub["confidence"] = _leader_hub_confidence(decks_sampled)
+
+        # Leader name from dossiers
+        if DOSSIER_DB_PATH.is_file():
+            try:
+                dconn = sqlite3.connect(f"file:{DOSSIER_DB_PATH}?mode=ro", uri=True)
+                r = dconn.execute(
+                    "SELECT card_name FROM cards WHERE canonical_code = ?",
+                    (leader_code,),
+                ).fetchone()
+                if r and r[0]:
+                    stub["leader_name"] = (r[0] or "").strip()
+                dconn.close()
+            except sqlite3.Error:
+                pass
+
+        if "archetype_profiles" in tables:
+            profiles = conn.execute(
+                """
+                SELECT archetype_id, deck_count, avg_similarity
+                FROM archetype_profiles
+                WHERE leader_code = ? AND format_code = ?
+                ORDER BY deck_count DESC, avg_similarity DESC, archetype_id ASC
+                """,
+                (leader_code, _LEADER_HUB_FORMAT),
+            ).fetchall()
+            stub["archetypes"] = [
+                {
+                    "archetype_id": r["archetype_id"],
+                    "deck_count": r["deck_count"],
+                    "avg_similarity": round(float(r["avg_similarity"] or 0), 2),
+                }
+                for r in profiles
+            ]
+
+        arch_cards: dict[str, dict[str, str]] = {}
+        if "archetype_profile_cards" in tables:
+            rows = conn.execute(
+                """
+                SELECT archetype_id, card_code, role_label
+                FROM archetype_profile_cards
+                WHERE leader_code = ? AND format_code = ?
+                ORDER BY archetype_id, card_code
+                """,
+                (leader_code, _LEADER_HUB_FORMAT),
+            ).fetchall()
+            for r in rows:
+                aid = r["archetype_id"]
+                if aid not in arch_cards:
+                    arch_cards[aid] = {}
+                arch_cards[aid][r["card_code"]] = (r["role_label"] or "tech").lower()
+
+        # Shared shell: core in 2+ archetypes
+        core_count: dict[str, int] = {}
+        for cards in arch_cards.values():
+            for code, role in cards.items():
+                if role == "core":
+                    core_count[code] = core_count.get(code, 0) + 1
+        stub["shared_shell"] = sorted(c for c, n in core_count.items() if n >= 2)
+
+        # Variant packages per archetype: core/flex here, not core/flex elsewhere
+        strong_roles = frozenset({"core", "flex"})
+        for aid in stub["archetypes"]:
+            aid_key = aid["archetype_id"]
+            my_cards = arch_cards.get(aid_key, {})
+            others = [cards for a, cards in arch_cards.items() if a != aid_key]
+            package = []
+            for code, role in my_cards.items():
+                if role not in strong_roles:
+                    continue
+                if any(other.get(code, "") in strong_roles for other in others):
+                    continue
+                package.append({"card_code": code, "role_label": role})
+            package.sort(key=lambda x: (0 if x["role_label"] == "core" else 1, x["card_code"]))
+            aid["variant_package"] = package
+
+        # Cost curve: weighted avg per archetype
+        if "archetype_profile_cost_curve" in tables:
+            rows = conn.execute(
+                """
+                SELECT archetype_id, cost_bucket, total_copies
+                FROM archetype_profile_cost_curve
+                WHERE leader_code = ? AND format_code = ?
+                """,
+                (leader_code, _LEADER_HUB_FORMAT),
+            ).fetchall()
+            curve_by_arch: dict[str, dict[str, int]] = {}
+            for r in rows:
+                aid = r["archetype_id"]
+                if aid not in curve_by_arch:
+                    curve_by_arch[aid] = {}
+                curve_by_arch[aid][r["cost_bucket"]] = int(r["total_copies"] or 0)
+            for aid in stub["archetypes"]:
+                aid_key = aid["archetype_id"]
+                curve = curve_by_arch.get(aid_key, {})
+                total_copies = sum(curve.values())
+                total_cost = 0.0
+                for bucket, copies in curve.items():
+                    try:
+                        total_cost += float(bucket) * copies
+                    except (ValueError, TypeError):
+                        pass
+                aid["avg_cost"] = round(total_cost / total_copies, 1) if total_copies else 0
+            stub["cost_curves"] = [
+                {"archetype_id": a["archetype_id"], "avg_cost": a.get("avg_cost", 0)}
+                for a in stub["archetypes"]
+            ]
+
+        # Deterministic Miru insight from stored data only; no new computation.
+        stub["miru_insight"] = _build_leader_hub_insight(stub)
+    finally:
+        conn.close()
+
+    return stub
+
+
+def _build_leader_hub_insight(data: dict[str, Any]) -> dict[str, str] | None:
+    """
+    Build a short, evidence-backed insight for the Leader Hub. Returns None when
+    there is not enough data for a meaningful statement. Uses only data already
+    in the leader hub payload; first-person, calm, transparent about confidence.
+    """
+    decks = data.get("decks_sampled", 0) or 0
+    confidence = data.get("confidence", "low")
+    archetypes = data.get("archetypes") or []
+    shared_shell = data.get("shared_shell") or []
+    n_arch = len(archetypes)
+
+    # Minimum evidence: need at least 2 decks and at least 1 archetype.
+    if decks < 2 or n_arch < 1:
+        return None
+
+    # Cost identity labels from avg_cost (plain strategy terms).
+    def _cost_label(avg: float) -> str:
+        if avg < 2.2:
+            return "lower-curve pressure"
+        if avg < 3.5:
+            return "balanced midrange"
+        return "heavier top-end"
+
+    parts: list[str] = []
+
+    if n_arch >= 2:
+        # Multiple build paths; mention shared shell and cost split.
+        path_word = "build path" if n_arch == 2 else "build paths"
+        parts.append(f"I'm seeing {n_arch} real {path_word} here.")
+        cost_split = _describe_cost_split(archetypes, _cost_label)
+        suffix = " builds." if "," in cost_split or " and " in cost_split else "."
+        if shared_shell:
+            parts.append("The shared shell stays stable, but players split between " + cost_split + suffix)
+        else:
+            parts.append("Players split between " + cost_split + suffix)
+        category = "Variant Signal" if (shared_shell and any(a.get("variant_package") for a in archetypes)) else "Strategy Insight"
+    else:
+        # Single archetype: one main build, define by cost or shell.
+        parts.append("From the decks I've seen, this leader looks centered around one main build.")
+        arch = archetypes[0]
+        avg_cost = arch.get("avg_cost")
+        if avg_cost is not None:
+            parts.append(f"It runs a {_cost_label(float(avg_cost))} plan.")
+        elif shared_shell:
+            parts.append("The shared core defines the build.")
+        category = "Strategy Insight"
+
+    if confidence == "low":
+        parts.append("Sample size is still small — worth watching as more data comes in.")
+
+    text = " ".join(parts)
+    return {
+        "category": category,
+        "text": text,
+        "confidence": confidence,
+    }
+
+
+def _describe_cost_split(archetypes: list[dict[str, Any]], cost_label_fn: Callable[[float], str]) -> str:
+    """Describe the cost split across archetypes in plain strategy terms (low to high)."""
+    # Collect (avg_cost, label) and sort by cost so sentence reads low -> high.
+    pairs: list[tuple[float, str]] = []
+    seen: set[str] = set()
+    for a in archetypes:
+        avg = a.get("avg_cost")
+        if avg is None:
+            continue
+        label = cost_label_fn(float(avg))
+        if label not in seen:
+            seen.add(label)
+            pairs.append((float(avg), label))
+    if not pairs:
+        return "different curve choices"
+    pairs.sort(key=lambda x: x[0])
+    labels = [p[1] for p in pairs]
+    if len(labels) == 1:
+        return labels[0]
+    if len(labels) == 2:
+        return f"{labels[0]} and {labels[1]}"
+    return ", ".join(labels[:-1]) + ", and " + labels[-1]
+
+
+def load_card_page_data(card_code: str) -> dict[str, Any]:
+    """
+    Load card info and usage for the Card Page. Reads only from existing
+    catalog, dossiers, and deck intel; no new intelligence computation.
+    """
+    code = (card_code or "").strip().upper()
+    if not code:
+        return {
+            "card_name": "",
+            "card_code": "",
+            "set": "",
+            "cost": None,
+            "type": "",
+            "color": "",
+            "image_path": None,
+            "leaders_using": [],
+            "roles": [],
+            "miru_insight": None,
+        }
+
+    out: dict[str, Any] = {
+        "card_name": "",
+        "card_code": code,
+        "set": "",
+        "cost": None,
+        "type": "",
+        "color": "",
+        "image_path": None,
+        "leaders_using": [],
+        "roles": [],
+        "miru_insight": None,
+    }
+
+    # Card basics from fallback catalog
+    if FALLBACK_CATALOG_DB_PATH.is_file():
+        try:
+            conn = sqlite3.connect(f"file:{FALLBACK_CATALOG_DB_PATH}?mode=ro", uri=True)
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                "SELECT canonical_code, set_code, card_name, color, card_type, cost FROM cards WHERE canonical_code = ?",
+                (code,),
+            ).fetchone()
+            if row:
+                out["card_name"] = (row["card_name"] or "").strip() or code
+                out["set"] = (row["set_code"] or "").strip()
+                out["color"] = (row["color"] or "").strip()
+                out["type"] = (row["card_type"] or "").strip()
+                out["cost"] = row["cost"] if row["cost"] is not None else None
+            img = conn.execute(
+                "SELECT v.image_path FROM card_variants v JOIN cards c ON c.id = v.card_id WHERE c.canonical_code = ? LIMIT 1",
+                (code,),
+            ).fetchone()
+            if img and img["image_path"]:
+                out["image_path"] = (img["image_path"] or "").strip()
+            conn.close()
+        except sqlite3.Error:
+            pass
+
+    # Dossiers: fallback for name only
+    if not out["card_name"] and DOSSIER_DB_PATH.is_file():
+        try:
+            dconn = sqlite3.connect(f"file:{DOSSIER_DB_PATH}?mode=ro", uri=True)
+            r = dconn.execute("SELECT card_name FROM cards WHERE canonical_code = ?", (code,)).fetchone()
+            if r and r[0]:
+                out["card_name"] = (r[0] or "").strip()
+            dconn.close()
+        except sqlite3.Error:
+            pass
+    if not out["card_name"]:
+        out["card_name"] = code
+
+    # Usage: leaders and roles from deck intel
+    if DECK_INTEL_DB_PATH.is_file():
+        try:
+            dconn = sqlite3.connect(f"file:{DECK_INTEL_DB_PATH}?mode=ro", uri=True)
+            dconn.row_factory = sqlite3.Row
+            tables = {
+                row[0]
+                for row in dconn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+                    ("archetype_profile_cards",),
+                ).fetchall()
+            }
+            if "archetype_profile_cards" in tables:
+                rows = dconn.execute(
+                    """
+                    SELECT leader_code, role_label
+                    FROM archetype_profile_cards
+                    WHERE card_code = ? AND format_code = ?
+                    ORDER BY leader_code, role_label
+                    """,
+                    (code, _LEADER_HUB_FORMAT),
+                ).fetchall()
+                leaders_seen: set[str] = set()
+                role_list: list[dict[str, str]] = []
+                for r in rows:
+                    leader = (r["leader_code"] or "").strip()
+                    role = (r["role_label"] or "tech").lower()
+                    if leader:
+                        leaders_seen.add(leader)
+                        role_list.append({"leader_code": leader, "role_label": role})
+                out["leaders_using"] = sorted(leaders_seen)
+                out["roles"] = role_list
+            dconn.close()
+        except sqlite3.Error:
+            pass
+
+    # Optional Miru insight from usage only (no new logic)
+    out["miru_insight"] = _build_card_page_insight(out)
+    return out
+
+
+def _build_card_page_insight(data: dict[str, Any]) -> dict[str, str] | None:
+    """Build a short card insight from existing usage data. Returns None if no meaningful signal."""
+    roles = data.get("roles") or []
+    leaders = data.get("leaders_using") or []
+    if not roles and not leaders:
+        return None
+    # One sentence from stored usage: core/flex per leader (dedupe by leader)
+    core_leaders = sorted({r["leader_code"] for r in roles if r.get("role_label") == "core"})
+    flex_leaders = sorted({r["leader_code"] for r in roles if r.get("role_label") == "flex"})
+    if core_leaders:
+        if len(core_leaders) == 1:
+            text = f"I see this card in the core shell for {core_leaders[0]}."
+        else:
+            text = f"I see this card as core in {len(core_leaders)} leader builds."
+    elif flex_leaders:
+        if len(flex_leaders) == 1:
+            text = f"This card shows up as flex in {flex_leaders[0]} builds."
+        else:
+            text = f"This card appears as flex in {len(flex_leaders)} leader builds."
+    else:
+        text = f"This card appears in archetype profiles for {', '.join(leaders[:3])}{'…' if len(leaders) > 3 else ''}."
+    return {
+        "category": "Strategy Insight",
+        "text": text,
+        "confidence": "medium" if len(leaders) >= 2 else "low",
+    }
+
+
+def render_page(page_key: str, current_endpoint: str):
+    issues = startup_issues()
+    brand_assets = build_brand_assets()
+    training_status: dict[str, Any] = {}
+    dev_status = None
+    status_snapshot: list[dict[str, Any]] = []
+    runtime_dependencies: list[dict[str, Any]] = []
+    runtime_issues: list[str] = []
+
+    if page_key == "training":
+        training_status = build_training_status()
+        training_status["voyage"] = ensure_voyage_state(training_status, training_status.get("voyage"))
+    elif page_key == "dev":
+        dev_status = build_dev_bootstrap_status()
+    elif page_key == "status":
+        status_snapshot = build_status_snapshot()
+        runtime_dependencies = collect_runtime_dependencies()
+        runtime_issues = runtime_issue_messages()
+
+    return render_template(
+        "miru_ai.html",
+        app_name=APP_NAME,
+        app_tagline=APP_TAGLINE,
+        page_key=page_key,
+        nav_items=build_nav(current_endpoint),
+        home_highlights=HOME_HIGHLIGHTS,
+        dossier_panels=DOSSIER_PANELS,
+        gap_panels=GAP_PANELS,
+        training_panels=TRAINING_PANELS,
+        training_status=training_status,
+        roadmap_sections=ROADMAP_SECTIONS,
+        status_snapshot=status_snapshot,
+        runtime_dependencies=runtime_dependencies,
+        runtime_issues=runtime_issues,
+        mode_configs=MODE_CONFIGS,
+        presets=PRESETS,
+        default_mode=MODE_CONFIGS[0]["key"],
+        startup_issues=issues,
+        run_disabled=bool(issues),
+        asset_version=compute_asset_version(),
+        logo_url=brand_assets["logo_url"],
+        favicon_url=brand_assets["favicon_url"],
+        apple_icon_url=brand_assets["apple_icon_url"],
+        manifest_url=brand_assets["manifest_url"],
+        uses_inline_logo=brand_assets["uses_inline_logo"],
+        health_url=url_for("health"),
+        run_url=RUN_API_PATH,
+        ask_url=url_for("ask_page"),
+        dossiers_url=url_for("dossiers_page"),
+        gaps_url=url_for("gaps_page"),
+        training_url=url_for("training_page"),
+        status_url=url_for("status_page"),
+        dev_status=dev_status,
+        dev_status_url=url_for("dev_status"),
+    )
+
+
+def create_app() -> Flask:
+    app = Flask(
+        __name__,
+        template_folder=str(TEMPLATE_DIR),
+        static_folder=str(STATIC_DIR),
+        static_url_path="/static",
+    )
+    app.config["TEMPLATES_AUTO_RELOAD"] = True
+    app.config["PYTHON_NAME"] = Path(sys.executable).name
+    log_pushover_startup_status(app.logger)
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(exc):
+        if isinstance(exc, HTTPException):
+            if request.path.startswith("/api/"):
+                return jsonify({"ok": False, "error": f"{exc.code} {exc.name}: {exc.description}"}), exc.code
+            return exc
+        print(f"[miru_ai_server] Unhandled error while serving {request.path}: {exc}", file=sys.stderr)
+        traceback.print_exc()
+        if request.path.startswith("/api/"):
+            return jsonify({"ok": False, "error": f"Miru AI server error: {exc.__class__.__name__}: {exc}"}), 500
+        return (
+            "Miru AI server error. Check the server console for the exact traceback and dependency diagnostics.",
+            500,
+            {"Content-Type": "text/plain; charset=utf-8"},
+        )
+
+    @app.get("/")
+    def index():
+        return render_page("home", "index")
+
+    @app.get("/ask")
+    def ask_page():
+        return render_page("ask", "ask_page")
+
+    @app.get("/dossiers")
+    def dossiers_page():
+        return render_page("dossiers", "dossiers_page")
+
+    @app.get("/gaps")
+    def gaps_page():
+        return render_page("gaps", "gaps_page")
+
+    @app.get("/training")
+    def training_page():
+        return render_page("training", "training_page")
+
+    @app.get("/status")
+    def status_page():
+        return render_page("status", "status_page")
+
+    @app.get("/dev")
+    def dev_page():
+        return render_page("dev", "dev_page")
+
+    @app.get("/leader/<leader_code>")
+    def leader_hub(leader_code: str):
+        leader_data = load_leader_hub_data(leader_code)
+        brand_assets = build_brand_assets()
+        return render_template(
+            "leader_hub.html",
+            app_name=APP_NAME,
+            app_tagline=APP_TAGLINE,
+            nav_items=build_nav("leader_hub"),
+            leader_data=leader_data,
+            asset_version=compute_asset_version(),
+            logo_url=brand_assets["logo_url"],
+            favicon_url=brand_assets["favicon_url"],
+            apple_icon_url=brand_assets["apple_icon_url"],
+            manifest_url=brand_assets["manifest_url"],
+            uses_inline_logo=brand_assets["uses_inline_logo"],
+        )
+
+    @app.get("/card/<card_code>")
+    def card_page(card_code: str):
+        card_data = load_card_page_data(card_code)
+        brand_assets = build_brand_assets()
+        return render_template(
+            "card_page.html",
+            app_name=APP_NAME,
+            app_tagline=APP_TAGLINE,
+            nav_items=build_nav("index"),
+            card_data=card_data,
+            asset_version=compute_asset_version(),
+            logo_url=brand_assets["logo_url"],
+            favicon_url=brand_assets["favicon_url"],
+            apple_icon_url=brand_assets["apple_icon_url"],
+            manifest_url=brand_assets["manifest_url"],
+            uses_inline_logo=brand_assets["uses_inline_logo"],
+        )
+
+    @app.get("/api/health")
+    def health():
+        runtime_dependencies = collect_runtime_dependencies()
+        catalog_status = inspect_fallback_catalog_db(FALLBACK_CATALOG_DB_PATH)
+        return jsonify(
+            {
+                "status": "ok",
+                "app_name": APP_NAME,
+                "server_started_at": _SERVER_STARTED_AT,
+                "helper_script_ready": SCRIPT_PATH.is_file(),
+                "api_key_ready": bool(os.getenv("OPENAI_API_KEY", "").strip()),
+                "default_mode": MODE_CONFIGS[0]["key"],
+                "pages": ["/", "/ask", "/dossiers", "/gaps", "/training", "/status", "/dev"],
+                "runtime_dependencies": runtime_dependencies,
+                "runtime_issues": runtime_issue_messages(),
+                "fallback_catalog": catalog_status,
+                "training_status": build_training_status(),
+            }
+        )
+
+    @app.get("/api/training-status")
+    def training_status():
+        return jsonify(build_training_status())
+
+    @app.get("/api/dev-status")
+    def dev_status():
+        summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
+        include_heavy = str(request.args.get("include") or "").strip().lower() in {"heavy", "all", "full"}
+        return jsonify(build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy))
+
+    @app.get("/api/dev/status")
+    def legacy_dev_status():
+        summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
+        include_heavy = str(request.args.get("include") or "").strip().lower() in {"heavy", "all", "full"}
+        return jsonify(build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy))
+
+    @app.get("/dev-status")
+    def legacy_dev_status_root():
+        summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
+        include_heavy = str(request.args.get("include") or "").strip().lower() in {"heavy", "all", "full"}
+        return jsonify(build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy))
+
+    @app.get("/api/dev/monitor-panel")
+    def dev_monitor_panel():
+        return jsonify(build_monitor_panel_payload())
+
+    @app.get("/api/dev/image-coverage")
+    def dev_image_coverage():
+        return jsonify(build_image_coverage_payload())
+
+    @app.get("/api/dev/validation-audit")
+    def dev_validation_audit():
+        return jsonify(build_validation_audit_payload())
+
+    @app.get("/api/dev/resource-metrics")
+    def dev_resource_metrics():
+        return jsonify(build_resource_metrics_payload())
+
+    @app.get("/api/dev/operator-console")
+    def dev_operator_console():
+        force = str(request.args.get("force") or "").strip().lower() in {"1", "true", "yes", "force"}
+        return jsonify(build_operator_console_payload(force_runtime_recheck=force))
+
+    @app.post("/api/dev/operator-console/action")
+    def dev_operator_console_action():
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            payload = request.form
+        action = str(payload.get("action") or "").strip().lower()
+        force = action in {"recheck_runtime_status", "refresh_progress"}
+        if action not in {"refresh_snapshot", "refresh_progress", "recheck_runtime_status"}:
+            return jsonify({"ok": False, "error": f"Unsupported operator action: {action}"}), 400
+        return jsonify(
+            {
+                "ok": True,
+                "action": action,
+                "message": {
+                    "refresh_snapshot": "Operator snapshot refreshed.",
+                    "refresh_progress": "Progress snapshot refreshed from runtime truth.",
+                    "recheck_runtime_status": "Main runtime status rechecked.",
+                }[action],
+                "operator_console": build_operator_console_payload(force_runtime_recheck=force),
+            }
+        )
+
+    @app.post("/api/dev/operator-console/query")
+    def dev_operator_console_query():
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            payload = request.form
+        query = str(payload.get("query") or "").strip()
+        if not query:
+            return jsonify({"ok": False, "error": "Query text is required."}), 400
+        return jsonify(build_operator_query_answer(query))
+
+    def _proxy_dev_action_to_main(path: str) -> tuple[bool, dict[str, Any]]:
+        """POST to main runtime (8765) and return (ok, body). Used when this server is worktree (e.g. 18765)."""
+        base = (resolve_runtime_monitor_status_url() or "").replace("/api/dev-status", "").rstrip("/")
+        if not base:
+            return False, {"ok": False, "error": "Main runtime URL not configured."}
+        url = f"{base}{path}"
+        try:
+            req = Request(
+                url,
+                data=json.dumps({}).encode("utf-8"),
+                method="POST",
+                headers={"Content-Type": "application/json"},
+            )
+            with closing(urlopen(req, timeout=10)) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+                return True, body if isinstance(body, dict) else {"ok": True, "message": str(body)}
+        except HTTPError as e:
+            try:
+                body = json.loads(e.read().decode("utf-8")) if e.fp else {}
+            except Exception:
+                body = {}
+            return False, body if isinstance(body, dict) else {"ok": False, "error": str(e)}
+        except (URLError, OSError, ValueError) as e:
+            return False, {"ok": False, "error": str(e)}
+
+    @app.post("/api/dev/wake")
+    def dev_wake():
+        """Wake Miru (main runtime). On worktree this proxies to main; on main returns success."""
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Wake is only allowed from localhost."}), 403
+        remote_url = resolve_runtime_monitor_status_url()
+        if remote_url:
+            ok, body = _proxy_dev_action_to_main("/api/dev/wake")
+            return jsonify(body), 200 if ok else 502
+        return jsonify({"ok": True, "message": "Miru is awake."})
+
+    @app.post("/api/dev/start-learner")
+    def dev_start_learner():
+        """Start the learner. On worktree with real control: launch process. Proxies to main if MIRU_RUNTIME_STATUS_URL set. Prevents duplicate start."""
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Start learner is only allowed from localhost."}), 403
+        invalidate_ttl_cache("learning_engine_status")
+        remote_url = resolve_runtime_monitor_status_url()
+        if remote_url:
+            ok, body = _proxy_dev_action_to_main("/api/dev/start-learner")
+            if ok:
+                return jsonify(body), 200
+            error_text = str((body or {}).get("error") or "")
+            if "404 Not Found" not in error_text:
+                return jsonify(body), 502
+        # Real worktree learner process control when this server is the worktree runtime
+        if _is_worktree_runtime():
+            running_pids = _list_worktree_learner_process_ids()
+            if running_pids:
+                primary_pid = int(running_pids[0])
+                _write_worktree_learner_pid(primary_pid)
+                clear_runtime_truth_cache()
+                return jsonify({
+                    "ok": False,
+                    "already_running": True,
+                    "learner_state": "Running",
+                    "learner_pid": primary_pid,
+                    "learner_process_count": len(running_pids),
+                    "message": "Learner is already running. Use Refresh to see current state.",
+                }), 200
+            record = _read_worktree_learner_pid()
+            if record and _is_worktree_learner_process_alive(int(record["pid"])):
+                clear_runtime_truth_cache()
+                return jsonify({
+                    "ok": False,
+                    "already_running": True,
+                    "learner_state": "Running",
+                    "learner_pid": record["pid"],
+                    "message": "Learner is already running. Use Refresh to see current state.",
+                }), 200
+            if record and not _is_worktree_learner_process_alive(int(record["pid"])):
+                _clear_worktree_learner_pid()
+            fresh_status = load_learning_engine_status(
+                queue_db_path=LEARNING_QUEUE_DB_PATH,
+                status_db_path=LEARNING_STATUS_DB_PATH,
+                dossier_db_path=LEARNING_DOSSIER_DB_PATH,
+                total_cards=0,
+            )
+            state_fresh = compute_learner_state_and_freshness(fresh_status)
+            learner_state = state_fresh.get("learner_state", "")
+            heartbeat_fresh = state_fresh.get("heartbeat_freshness", "none")
+            if learner_state in ("Running", "Starting") and heartbeat_fresh == "fresh":
+                clear_runtime_truth_cache()
+                return jsonify({
+                    "ok": False,
+                    "already_running": True,
+                    "learner_state": learner_state,
+                    "message": "Learner is already running (heartbeat fresh). Use Refresh to see current state.",
+                }), 200
+            ok, message, pid = _start_worktree_learner_process()
+            clear_runtime_truth_cache()
+            invalidate_ttl_cache("learning_engine_status")
+            if ok:
+                return jsonify({
+                    "ok": True,
+                    "status": "started",
+                    "learner_pid": pid,
+                    "message": message,
+                })
+            return jsonify({"ok": False, "status": "error", "error": message}), 200
+        # Non-worktree local: acknowledge only
+        clear_runtime_truth_cache()
+        return jsonify({
+            "ok": True,
+            "message": "Start Learner acknowledged. This runtime does not run the worktree learner process. Use the worktree Dev page (port 18765) to start the learner.",
+        })
+
+    @app.post("/api/dev/stop-learner")
+    def dev_stop_learner():
+        """Stop the learner. On worktree with real control: stop the managed process. Proxies to main if MIRU_RUNTIME_STATUS_URL set."""
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Stop learner is only allowed from localhost."}), 403
+        invalidate_ttl_cache("learning_engine_status")
+        remote_url = resolve_runtime_monitor_status_url()
+        if remote_url:
+            ok, body = _proxy_dev_action_to_main("/api/dev/stop-learner")
+            return jsonify(body), 200 if ok else 502
+        if _is_worktree_runtime():
+            ok, message = _stop_worktree_learner_process()
+            clear_runtime_truth_cache()
+            invalidate_ttl_cache("learning_engine_status")
+            insight_sync_report: dict[str, Any] = {}
+            if ok:
+                try:
+                    report = run_worktree_card_insight_sync()
+                    with _LAST_INSIGHT_SYNC_LOCK:
+                        _LAST_INSIGHT_SYNC_REPORT.clear()
+                        _LAST_INSIGHT_SYNC_REPORT.update({
+                            "at": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+                            "synced_cards": int((report.get("sync_result") or {}).get("synced_cards") or 0),
+                            "inserted_insights": int((report.get("sync_result") or {}).get("inserted_insights") or 0),
+                            "replaced_insights": int((report.get("sync_result") or {}).get("replaced_insights") or 0),
+                            "insight_count_after": int(report.get("insight_count_after") or 0),
+                            "dossier_status": report.get("dossier_status") or {},
+                            "trigger": "after_stop",
+                        })
+                    res = report.get("sync_result") or {}
+                    insight_sync_report = {
+                        "ran": True,
+                        "synced_cards": res.get("synced_cards", 0),
+                        "inserted_insights": res.get("inserted_insights", 0),
+                        "replaced_insights": res.get("replaced_insights", 0),
+                        "insight_count_after": report.get("insight_count_after", 0),
+                    }
+                except Exception as e:
+                    insight_sync_report = {"ran": True, "error": str(e)}
+            return jsonify({
+                "ok": ok,
+                "status": "stopped" if ok else "error",
+                "message": message,
+                "insight_sync": insight_sync_report,
+            })
+        clear_runtime_truth_cache()
+        return jsonify({
+            "ok": True,
+            "message": "This runtime does not manage the worktree learner. Use the worktree Dev page (port 18765) to stop the learner.",
+        })
+
+    @app.post("/api/dev/sync-insights")
+    def dev_sync_insights():
+        """Run worktree card insight sync on demand. Worktree-local paths only. Localhost only. Preserves post-stop automatic sync."""
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Sync insights is only allowed from localhost."}), 403
+        invalidate_ttl_cache("learning_engine_status")
+        try:
+            report = run_worktree_card_insight_sync()
+            with _LAST_INSIGHT_SYNC_LOCK:
+                _LAST_INSIGHT_SYNC_REPORT.clear()
+                _LAST_INSIGHT_SYNC_REPORT.update({
+                    "at": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+                    "synced_cards": int((report.get("sync_result") or {}).get("synced_cards") or 0),
+                    "inserted_insights": int((report.get("sync_result") or {}).get("inserted_insights") or 0),
+                    "replaced_insights": int((report.get("sync_result") or {}).get("replaced_insights") or 0),
+                    "insight_count_after": int(report.get("insight_count_after") or 0),
+                    "dossier_status": report.get("dossier_status") or {},
+                    "trigger": "manual",
+                })
+            res = report.get("sync_result") or {}
+            insight_sync = {
+                "ran": True,
+                "synced_cards": res.get("synced_cards", 0),
+                "inserted_insights": res.get("inserted_insights", 0),
+                "replaced_insights": res.get("replaced_insights", 0),
+                "insight_count_after": report.get("insight_count_after", 0),
+                "dossier_status": report.get("dossier_status") or {},
+            }
+            return jsonify({
+                "ok": True,
+                "message": f"Insight sync completed. {insight_sync['synced_cards']} cards, {insight_sync['inserted_insights']} inserted, {insight_sync['replaced_insights']} replaced.",
+                "insight_sync": insight_sync,
+            })
+        except Exception as e:
+            return jsonify({
+                "ok": False,
+                "error": str(e),
+                "insight_sync": {"ran": True, "error": str(e)},
+            }), 200
+
+    @app.post("/api/dev/refresh-status")
+    def dev_refresh_status():
+        """Clear cached status so the next fetch gets fresh data from the main runtime."""
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Refresh status is only allowed from localhost."}), 403
+        clear_runtime_truth_cache()
+        invalidate_ttl_cache("learning_engine_status")
+        return jsonify({"ok": True, "message": "Status cache cleared. Refresh the page or click Refresh to see current state."})
+
+    @app.post("/api/dev/set-learner-mode")
+    def dev_set_learner_mode():
+        """Set learner mode (DRY_RUN, SANDBOX, REVIEW_REQUIRED, ACTIVE). Localhost only."""
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Set learner mode is only allowed from localhost."}), 403
+        payload = request.get_json(silent=True)
+        payload = payload if isinstance(payload, dict) else request.form
+        mode = str(payload.get("mode") or "").strip().upper()
+        if mode not in LEARNER_MODES:
+            return jsonify({"ok": False, "error": f"Invalid mode. Use one of: {', '.join(LEARNER_MODES)}"}), 400
+        remote_url = resolve_runtime_monitor_status_url()
+        if remote_url:
+            base = remote_url.replace("/api/dev-status", "").rstrip("/")
+            url = f"{base}/api/dev/set-learner-mode"
+            try:
+                req = Request(
+                    url,
+                    data=json.dumps({"mode": mode}).encode("utf-8"),
+                    method="POST",
+                    headers={"Content-Type": "application/json"},
+                )
+                with closing(urlopen(req, timeout=10)) as resp:
+                    body = json.loads(resp.read().decode("utf-8"))
+                    clear_runtime_truth_cache()
+                    return jsonify(body), 200
+            except (HTTPError, URLError, OSError, ValueError) as e:
+                clear_runtime_truth_cache()
+                return jsonify({"ok": False, "error": str(e)}), 502
+        ok = set_learner_mode(mode)
+        clear_runtime_truth_cache()
+        return jsonify({"ok": ok, "mode": get_learner_mode(), "message": f"Mode set to {get_learner_mode()}. Refresh status to see it."})
+
+    @app.get("/api/dev/activity-feed")
+    def dev_activity_feed():
+        """Lightweight activity feed for near-live polling."""
+        limit = min(int(request.args.get("limit") or 30), 80)
+        remote_url = resolve_runtime_monitor_status_url()
+        if remote_url:
+            base = remote_url.replace("/api/dev-status", "").rstrip("/")
+            url = f"{base}/api/dev/activity-feed?limit={limit}"
+            try:
+                with urlopen(url, timeout=8) as resp:
+                    return jsonify(json.load(resp))
+            except (HTTPError, URLError, OSError, ValueError):
+                return jsonify({"activity": [], "error": "Could not fetch from main runtime"}), 502
+        events = load_monitor_engine_events(status_db_path=LEARNING_STATUS_DB_PATH, limit=limit)
+        return jsonify({"activity": events["recent_activity"]})
+
+    @app.get("/api/dev/pending-approvals")
+    def dev_pending_approvals():
+        """Return items in learner_review_queue (review_required). Worktree-only."""
+        items = load_pending_approvals(status_db_path=LEARNING_STATUS_DB_PATH)
+        return jsonify({"items": items})
+
+    @app.post("/api/dev/approve-validation")
+    def dev_approve_validation():
+        """Approve one item: sync to project and remove from review queue. Localhost only."""
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Approve is only allowed from localhost."}), 403
+        payload = request.get_json(silent=True) or {}
+        item_id = payload.get("id")
+        card_code = str(payload.get("card_code") or "").strip().upper()
+        source_id = str(payload.get("source_id") or "").strip().lower()
+        if not card_code or not source_id:
+            return jsonify({"ok": False, "error": "card_code and source_id are required."}), 400
+        dossier_path = Path(LEARNING_DOSSIER_DB_PATH)
+        if not dossier_path.is_file():
+            return jsonify({"ok": False, "error": "Dossier DB not found; cannot load source record."}), 502
+        try:
+            with closing(sqlite3.connect(dossier_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                row = conn.execute(
+                    """
+                    SELECT field_payload_json
+                    FROM learning_dossier_sources
+                    WHERE card_code = ? AND source_id = ?
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                    """,
+                    (card_code, source_id),
+                ).fetchone()
+        except sqlite3.Error as e:
+            return jsonify({"ok": False, "error": f"Dossier read failed: {e}"}), 502
+        if not row:
+            return jsonify({"ok": False, "error": f"No source record for {card_code} from {source_id}."}), 404
+        try:
+            data = json.loads(str(row["field_payload_json"] or "{}"))
+        except json.JSONDecodeError as e:
+            return jsonify({"ok": False, "error": f"Invalid payload: {e}"}), 502
+        if not isinstance(data, dict):
+            return jsonify({"ok": False, "error": "Invalid payload shape."}), 502
+        traits_raw = data.get("traits")
+        if isinstance(traits_raw, list):
+            traits = [str(x).strip() for x in traits_raw if str(x).strip()]
+        else:
+            text = str(traits_raw or "")
+            traits = [p.strip() for p in text.replace("/", " ").split() if p.strip()] if text else []
+        try:
+            record = NormalizedSourceRecord(
+                card_code=str(data.get("card_code") or card_code).strip().upper(),
+                card_name=str(data.get("card_name") or "").strip(),
+                set_code=str(data.get("set_code") or "").strip().upper(),
+                set_name=str(data.get("set_name") or "").strip(),
+                rarity=str(data.get("rarity") or "").strip(),
+                color=str(data.get("color") or "").strip(),
+                card_type=str(data.get("card_type") or "").strip(),
+                cost=str(data.get("cost") or "").strip(),
+                power=str(data.get("power") or "").strip(),
+                counter=str(data.get("counter") or "").strip(),
+                attribute=str(data.get("attribute") or "").strip(),
+                traits=traits,
+                life=str(data.get("life") or "").strip(),
+                effect_text=str(data.get("effect_text") or "").strip(),
+                trigger_text=str(data.get("trigger_text") or "").strip(),
+                source_id=str(data.get("source_id") or source_id).strip().lower(),
+                source_url=str(data.get("source_url") or "").strip(),
+                source_reference=str(data.get("source_reference") or "").strip(),
+                fetched_at=str(data.get("fetched_at") or "").strip(),
+            )
+        except (TypeError, ValueError) as e:
+            return jsonify({"ok": False, "error": f"Could not build record: {e}"}), 502
+        sync = MiruProjectDbSync(project_db_path=FALLBACK_CATALOG_DB_PATH, sync_immediate=True)
+        try:
+            sync.queue_validated_record(record, task_type="verify_official_fields")
+        except Exception as e:
+            return jsonify({"ok": False, "error": f"Sync failed: {e}"}), 502
+        status_path = Path(LEARNING_STATUS_DB_PATH)
+        if status_path.is_file() and item_id is not None:
+            try:
+                with closing(sqlite3.connect(status_path)) as conn:
+                    conn.execute("DELETE FROM learner_review_queue WHERE id = ?", (int(item_id),))
+                    conn.commit()
+            except sqlite3.Error:
+                pass
+        return jsonify({"ok": True, "card_code": card_code, "source_id": source_id, "message": "Approved and synced."})
+
+    @app.post("/api/dev/reject-validation")
+    def dev_reject_validation():
+        """Remove one item from the review queue (reject). Localhost only."""
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Reject is only allowed from localhost."}), 403
+        payload = request.get_json(silent=True) or {}
+        item_id = payload.get("id")
+        if item_id is None:
+            return jsonify({"ok": False, "error": "id is required."}), 400
+        status_path = Path(LEARNING_STATUS_DB_PATH)
+        if not status_path.is_file():
+            return jsonify({"ok": False, "error": "Status DB not found."}), 502
+        try:
+            with closing(sqlite3.connect(status_path)) as conn:
+                conn.execute("DELETE FROM learner_review_queue WHERE id = ?", (int(item_id),))
+                conn.commit()
+        except sqlite3.Error as e:
+            return jsonify({"ok": False, "error": str(e)}), 502
+        return jsonify({"ok": True, "id": int(item_id), "message": "Rejected and removed from queue."})
+
+    WORKTREE_REVIEW_SNAPSHOT_PATH = PROJECT_ROOT / "data" / "snapshots" / "community_cardlist.json"
+
+    @app.post("/api/dev/seed-review-task")
+    def dev_seed_review_task():
+        """Seed one verify_official_fields task (same as run_worktree_review_cycle.py). Localhost only."""
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Seed review task is only allowed from localhost."}), 403
+        payload = request.get_json(silent=True) or {}
+        card_code = str(payload.get("card_code") or "OP01-001").strip().upper()
+        if not card_code:
+            return jsonify({"ok": False, "error": "card_code is required."}), 400
+        if not WORKTREE_REVIEW_SNAPSHOT_PATH.is_file():
+            return jsonify({
+                "ok": False,
+                "error": f"Snapshot not found: {WORKTREE_REVIEW_SNAPSHOT_PATH}",
+            }), 502
+        try:
+            parser = build_learner_parser()
+            args = parser.parse_args([])
+            args.queue_db = LEARNING_QUEUE_DB_PATH
+            args.status_db = LEARNING_STATUS_DB_PATH
+            args.dossier_db = LEARNING_DOSSIER_DB_PATH
+            engine = build_engine_from_args(args)
+            result = engine.run_once(
+                card_code=card_code,
+                task_type="verify_official_fields",
+                source_id="community-cardlist",
+                task_payload={"snapshot_path": str(WORKTREE_REVIEW_SNAPSHOT_PATH)},
+            )
+        except Exception as e:
+            return jsonify({
+                "ok": False,
+                "error": str(e),
+                "card_code": card_code,
+                "source_id": "community-cardlist",
+            }), 200
+        sync = result.get("project_sync") or {}
+        added = sync.get("added_to_review_queue", False)
+        invalidate_ttl_cache("learning_engine_status")
+        return jsonify({
+            "ok": result.get("ok") is True,
+            "card_code": result.get("card_code") or card_code,
+            "source_id": result.get("source_id") or "community-cardlist",
+            "message": result.get("message") or result.get("error") or ("Added to review queue." if added else "Task completed."),
+            "added_to_review_queue": added,
+        })
+
+    @app.post("/api/dev/restart")
+    def dev_restart():
+        """Restart the learner: stop then start. On worktree with real control: stop managed process then start it. Proxies to main if configured."""
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Restart is only allowed from localhost."}), 403
+        remote_url = resolve_runtime_monitor_status_url()
+        if remote_url:
+            ok, body = _proxy_dev_action_to_main("/api/dev/restart")
+            return jsonify(body), 200 if ok else 502
+        if _is_worktree_runtime():
+            _stop_worktree_learner_process()
+            time.sleep(1)
+            ok, message, pid = _start_worktree_learner_process()
+            clear_runtime_truth_cache()
+            invalidate_ttl_cache("learning_engine_status")
+            return jsonify({
+                "ok": ok,
+                "status": "restarting" if ok else "error",
+                "learner_pid": pid,
+                "message": message if ok else f"Restart failed: {message}",
+            })
+        return jsonify({
+            "ok": True,
+            "message": "This runtime does not manage the worktree learner. Use the worktree Dev page (port 18765) to restart.",
+        })
+
+    @app.get("/api/dev/usage")
+    def legacy_dev_usage():
+        return jsonify(build_legacy_dev_usage())
+
+    @app.get("/api/dev/worker-last-run")
+    def dev_worker_last_run():
+        """Return latest scheduled worker run (data/miru_worker_last_run.json). Read-only; no DB. Missing file → { \"action\": \"no_run_recorded\" }."""
+        return jsonify(load_worker_last_run())
+
+    @app.get("/api/dev/validation_insights")
+    def legacy_validation_insights():
+        return jsonify(build_legacy_validation_insights())
+
+    @app.post("/api/dev/test-pushover")
+    def dev_test_pushover():
+        if not (app.config.get("TESTING") or is_local_request()):
+            return jsonify({"ok": False, "error": "Pushover test endpoint is limited to localhost."}), 403
+
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            payload = request.form
+        use_learning_summary = parse_bool_flag(payload.get("use_learning_summary")) or not str(payload.get("message", "")).strip()
+        dry_run = parse_bool_flag(payload.get("dry_run"))
+        learning_preview: dict[str, Any] | None = None
+        if use_learning_summary:
+            training_status = build_training_status()
+            learning_status = load_learning_engine_status(
+                queue_db_path=LEARNING_QUEUE_DB_PATH,
+                status_db_path=LEARNING_STATUS_DB_PATH,
+                dossier_db_path=LEARNING_DOSSIER_DB_PATH,
+                total_cards=int(training_status.get("total_cards") or 0),
+            )
+            learning_preview = build_learning_notification_payload(
+                training_status,
+                learning_status,
+                previous_snapshot=load_pushover_learning_snapshot(),
+            )
+        title = str(payload.get("title", "")).strip() or (
+            learning_preview["title"] if learning_preview else "Miru AI Test"
+        )
+        message = str(payload.get("message", "")).strip() or (
+            learning_preview["message"]
+            if learning_preview
+            else f"Miru AI test notification from {PROJECT_ROOT} at {current_timestamp()}."
+        )
+        priority_raw = str(payload.get("priority", "")).strip()
+        priority: int | None = None
+        if priority_raw:
+            try:
+                priority = int(priority_raw)
+            except ValueError:
+                return jsonify({"ok": False, "error": f"Invalid priority value: {priority_raw}"}), 400
+
+        pushover_status = inspect_pushover_env()
+        if dry_run:
+            result = {
+                "ok": True,
+                "enabled": bool(pushover_status.get("enabled")),
+                "configured": bool(pushover_status.get("configured")),
+                "missing_required_keys": list(pushover_status.get("missing_required_keys") or []),
+                "endpoint": "dry-run",
+                "status_code": 200,
+                "error": "",
+                "response_json": {"dry_run": True},
+                "response_text": "dry-run",
+            }
+        else:
+            result = send_pushover_notification(
+                title=title,
+                message=message,
+                priority=priority,
+                logger=app.logger,
+            )
+            if bool(result["ok"]) and learning_preview is not None:
+                save_pushover_learning_snapshot(
+                    dict(learning_preview["snapshot"]),
+                    title=str(learning_preview["title"] or ""),
+                    message=str(learning_preview["message"] or ""),
+                )
+        response_body = {
+            "ok": bool(result["ok"]),
+            "pushover": build_pushover_runtime_state(
+                training_status=training_status if use_learning_summary else None,
+                learning_status=learning_status if use_learning_summary else None,
+            ),
+            "learning_preview": learning_preview,
+            "send_result": {
+                "ok": bool(result["ok"]),
+                "dry_run": dry_run,
+                "enabled": bool(result["enabled"]),
+                "configured": bool(result["configured"]),
+                "missing_required_keys": list(result["missing_required_keys"]),
+                "endpoint": result["endpoint"],
+                "status_code": result["status_code"],
+                "error": result["error"],
+                "response_json": result["response_json"],
+                "response_text": str(result["response_text"] or "")[:500],
+            },
+        }
+        return jsonify(response_body), (200 if result["ok"] else 502)
+
+    @app.get("/api/dev/card-validation/<card_code>")
+    def dev_card_validation(card_code: str):
+        normalized = normalize_card_code(card_code)
+        canonical_code = (normalized["canonical_code"] or card_code or "").strip().upper()
+        audit = load_card_validation_audit(canonical_code, project_db_path=FALLBACK_CATALOG_DB_PATH)
+        if audit is None:
+            return jsonify({"ok": False, "card_code": canonical_code, "error": "Validation audit not found."}), 404
+        return jsonify({"ok": True, "card_code": canonical_code, "audit": audit})
+
+    @app.post("/api/run")
+    @app.post("/api/run/")
+    def run_request():
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            payload = request.form
+
+        requested_mode = str(payload.get("mode", MODE_CONFIGS[0]["key"])).strip().lower()
+        request_text = str(payload.get("request_text", "")).strip()
+        file_path = str(payload.get("file_path", "")).strip()
+        selected_mode = resolve_effective_mode(requested_mode, request_text)
+        cli_mode = resolve_cli_mode(selected_mode)
+        command_preview = build_command_preview(selected_mode, request_text, file_path)
+        command_summary = build_command_summary(selected_mode)
+
+        errors = validate_inputs(selected_mode, request_text, file_path)
+        if errors:
+            return jsonify(
+                {
+                    "ok": False,
+                    "command": command_preview,
+                    "command_summary": command_summary,
+                    "mode": selected_mode,
+                    "requested_mode": requested_mode,
+                    "cli_mode": cli_mode,
+                    "mode_label": format_mode_label(selected_mode),
+                    "error": " ".join(errors),
+                }
+            ), 400
+
+        note_miru_run_started(selected_mode, request_text)
+        ok = False
+        output = ""
+        try:
+            ok, output = run_miru_ai(selected_mode, request_text, file_path)
+        finally:
+            note_miru_run_finished(selected_mode, request_text, ok, output)
+        status_code = 200 if ok else 502
+        response_body = {
+            "ok": ok,
+            "command": command_preview,
+            "command_summary": command_summary,
+            "mode": selected_mode,
+            "requested_mode": requested_mode,
+            "cli_mode": cli_mode,
+            "mode_label": format_mode_label(selected_mode),
+        }
+        if ok:
+            response_body["output"] = output
+        else:
+            response_body["error"] = output
+
+        return jsonify(response_body), status_code
+
+    return app
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Lightweight Flask sidecar for running tools/miru_ai.py from a phone or browser."
+    )
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind the Flask app to.")
+    parser.add_argument("--port", type=int, default=8765, help="Port to bind the Flask app to.")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Run the Flask development server in debug mode.",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    global CURRENT_SERVER_PORT, _SERVER_STARTED_AT
+    args = parse_args()
+    CURRENT_SERVER_PORT = int(args.port)
+    _SERVER_STARTED_AT = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    app = create_app()
+    app.run(host=args.host, port=args.port, debug=args.debug, threaded=True)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,57 @@
+[
+  {
+    "name": "Illustration box promo",
+    "input": "P-093 P-093(IllustrationBoxVol.6) Trafalgar Law",
+    "expect": {
+      "code": "P-093",
+      "set_code": "P",
+      "set_type": "promotion",
+      "canonical_name": "Trafalgar Law",
+      "variants": ["illustration_box"]
+    }
+  },
+  {
+    "name": "Premium booster foil promo",
+    "input": "P-088 P-088 Trafalgar Law (Pirate Foil)",
+    "expect": {
+      "code": "P-088",
+      "set_code": "P",
+      "canonical_name": "Trafalgar Law",
+      "variants": ["foil"]
+    }
+  },
+  {
+    "name": "Extra booster heroines card",
+    "input": "EB03-062 Extra Booster One Piece Heroines Edition Trafalgar Law",
+    "expect": {
+      "code": "EB03-062",
+      "set_code": "EB03",
+      "set_name": "Extra Booster - One Piece Heroines",
+      "set_type": "extra_booster",
+      "canonical_name": "Trafalgar Law"
+    }
+  },
+  {
+    "name": "Booster alternate art card",
+    "input": "OP11-067 A Fist Of Divine Speed Charlotte Katakuri 067 Alternate Art",
+    "expect": {
+      "code": "OP11-067",
+      "set_code": "OP11",
+      "set_name": "A Fist of Divine Speed",
+      "variants": ["alternate_art"],
+      "canonical_name": "Charlotte Katakuri"
+    }
+  },
+  {
+    "name": "Starter deck inference",
+    "input": "ST10-001 Red Purple Trafalgar Law Leader",
+    "expect": {
+      "code": "ST10-001",
+      "set_code": "ST10",
+      "set_type": "starter_deck",
+      "colors": ["red", "purple"],
+      "card_types": ["leader"],
+      "canonical_name": "Red Purple Trafalgar Law Leader"
+    }
+  }
+]

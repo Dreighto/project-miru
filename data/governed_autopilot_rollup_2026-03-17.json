@@ -1,0 +1,19 @@
+{
+  "date": "2026-03-17",
+  "runs": 5,
+  "runs_skipped_overlap": 0,
+  "total_auto_applied": 2,
+  "newly_surfaced_review": 1,
+  "total_skipped": 13,
+  "failure_count": 0,
+  "partial_count": 1,
+  "open_review_items": [
+    {
+      "item_identifier": "OP01-001",
+      "proposed_state": "banned",
+      "simple_title": "Possible conflict with existing legality"
+    }
+  ],
+  "last_run_ts": "20260317_201153",
+  "last_summary_path": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\governed_batch_summary_20260317_201153.txt"
+}

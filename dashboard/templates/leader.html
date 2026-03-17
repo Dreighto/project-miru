@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en" data-page="leader">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#08060f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="description" content="{{ name }} — Leader — Miru One Piece Intelligence">
+  <title>{{ name }} — Leader — Miru</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #08060f;
+      --panel:       rgba(10, 14, 22, 0.88);
+      --panelStrong: rgba(14, 19, 31, 0.94);
+      --stroke:      rgba(255, 255, 255, 0.10);
+      --strokeBrand: rgba(201, 176, 255, 0.18);
+      --strokeGold:  rgba(244, 208, 120, 0.18);
+      --brandPurple: rgba(184, 160, 255, 0.96);
+      --brandGold:   rgba(244, 208, 120, 0.96);
+      --muted:       rgba(255, 255, 255, 0.55);
+      --muted2:      rgba(255, 255, 255, 0.30);
+      --textSoft:    rgba(237, 243, 255, 0.88);
+      --font-display: 'Geist', system-ui, sans-serif;
+      --font-ui:      'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { overflow-x: hidden; }
+
+    body {
+      background:
+        radial-gradient(1200px 800px at 50% -10%, rgba(165, 118, 255, 0.18), transparent 55%),
+        radial-gradient(900px 700px at 100% 0%, rgba(244, 208, 120, 0.08), transparent 48%),
+        radial-gradient(900px 700px at 0% 20%, rgba(114, 82, 189, 0.10), transparent 50%),
+        var(--bg);
+      color: white;
+      font-family: var(--font-ui);
+      margin: 0;
+      padding: 0 14px 52px;
+      font-size: 13px;
+      overflow-x: clip;
+      max-width: 100vw;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Shell ──────────────────────────────────────── */
+    .leaderShell {
+      width: min(780px, 100%);
+      margin: 0 auto;
+    }
+
+    /* ── Top bar (safe-area integrated) ───────────────── */
+    .leaderPageHeader {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--bg);
+      border-bottom: 1px solid var(--stroke);
+      padding-top: calc(env(safe-area-inset-top, 0) + 8px);
+      padding-bottom: 10px;
+      padding-left: 14px;
+      padding-right: 14px;
+      margin: 0 -14px 0;
+    }
+    @supports (padding: env(safe-area-inset-left)) {
+      .leaderPageHeader {
+        padding-left: max(14px, env(safe-area-inset-left, 0));
+        padding-right: max(14px, env(safe-area-inset-right, 0));
+      }
+    }
+
+    /* ── Slim nav ───────────────────────────────────── */
+    .leaderNav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0;
+    }
+    .leaderNavBack {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      border: 1px solid var(--stroke);
+      border-radius: 8px;
+      padding: 5px 11px;
+      background: rgba(255, 255, 255, 0.04);
+      transition: color 0.14s, background 0.14s;
+    }
+    .leaderNavBack:hover { color: white; background: rgba(255, 255, 255, 0.07); }
+
+    /* ── Not-found banner ───────────────────────────── */
+    .leaderNotFound {
+      background: rgba(255, 90, 60, 0.07);
+      border: 1px solid rgba(255, 90, 60, 0.20);
+      border-radius: 14px;
+      padding: 13px 18px;
+      font-size: 12px;
+      color: rgba(255, 160, 140, 0.90);
+      margin-bottom: 12px;
+      line-height: 1.65;
+    }
+
+    /* ── Panel card ─────────────────────────────────── */
+    .leaderPanel {
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(500px 240px at 50% -6%, rgba(136, 104, 255, 0.16), transparent 60%),
+        linear-gradient(180deg, rgba(17, 14, 30, 0.98), rgba(8, 10, 18, 0.99));
+      border: 1px solid var(--strokeBrand);
+      border-radius: 18px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+      padding: 16px 18px;
+      margin-bottom: 10px;
+    }
+    .leaderPanel--flat {
+      background: rgba(10, 14, 22, 0.88);
+      border-color: var(--stroke);
+      box-shadow: none;
+    }
+    .leaderPanel--placeholder {
+      background: rgba(10, 14, 22, 0.55);
+      border: 1px dashed rgba(255, 255, 255, 0.07);
+      box-shadow: none;
+    }
+
+    /* ── Leader header (compact) ─────────────────────── */
+    .leaderHeader {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .leaderImgWrap { flex-shrink: 0; width: clamp(88px, 20vw, 128px); }
+    .leaderImg {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 12px;
+      object-fit: cover;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.44);
+    }
+    .leaderImgPlaceholder {
+      width: 100%;
+      aspect-ratio: 0.72;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px dashed var(--stroke);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted2);
+      font-size: 10px;
+    }
+    .leaderMeta { min-width: 0; flex: 1; }
+    .leaderCodeLabel {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted2);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .leaderName {
+      font-family: var(--font-display);
+      font-size: clamp(16px, 4vw, 22px);
+      font-weight: 700;
+      line-height: 1.2;
+      margin: 0 0 10px;
+      color: white;
+    }
+    .leaderBadgeRow { display: flex; flex-wrap: wrap; gap: 6px; }
+    .leaderBadge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--textSoft);
+      white-space: nowrap;
+    }
+    .leaderBadge--set   { border-color: var(--strokeBrand); color: var(--brandPurple); background: rgba(184, 160, 255, 0.08); }
+    .leaderBadge--color { border-color: var(--strokeGold);  color: var(--brandGold);   background: rgba(244, 208, 120, 0.07); }
+
+    /* ── Panel titles ───────────────────────────────── */
+    .leaderPanelTitle {
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--brandPurple);
+      margin: 0 0 10px;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Text field rows ────────────────────────────── */
+    .leaderFieldRow { margin-bottom: 12px; }
+    .leaderFieldRow:last-child { margin-bottom: 0; }
+    .leaderFieldRow + .leaderFieldRow--trigger {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--stroke);
+    }
+    .leaderFieldLabel {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted2);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 5px;
+    }
+    .leaderFieldValue {
+      font-size: 13px;
+      line-height: 1.72;
+      color: var(--textSoft);
+    }
+
+    /* ── Miru Insight: small optional button + compact panel ───────── */
+    .leaderInsightSignalWrap {
+      display: none;
+      flex-shrink: 0;
+      align-self: flex-start;
+      margin-left: auto;
+    }
+    .leaderInsightSignalWrap.isVisible {
+      display: block;
+      animation: leaderInsightFadeIn 0.5s ease;
+    }
+    @keyframes leaderInsightFadeIn {
+      from { opacity: 0; transform: translateY(2px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .leaderInsightSignal {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 11px;
+      min-height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--strokeBrand);
+      background: rgba(184, 160, 255, 0.06);
+      color: var(--textSoft);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: background 0.14s, border-color 0.14s, box-shadow 0.2s;
+      box-shadow: 0 0 10px var(--leaderInsightGlow, rgba(184, 160, 255, 0.12));
+    }
+    .leaderInsightSignal:hover {
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 0 14px var(--leaderInsightGlow, rgba(184, 160, 255, 0.18));
+    }
+    .leaderInsightSignal--meta {
+      --leaderInsightGlow: rgba(136, 104, 255, 0.22);
+      border-color: rgba(136, 104, 255, 0.28);
+    }
+    .leaderInsightSignal--price {
+      --leaderInsightGlow: rgba(244, 208, 120, 0.2);
+      border-color: rgba(244, 208, 120, 0.25);
+    }
+    .leaderInsightSignal--strength {
+      --leaderInsightGlow: rgba(255, 160, 100, 0.2);
+      border-color: rgba(255, 160, 100, 0.28);
+    }
+    .leaderInsightSignal--synergy {
+      --leaderInsightGlow: rgba(120, 200, 180, 0.2);
+      border-color: rgba(120, 200, 180, 0.28);
+    }
+    .leaderInsightSignal--lore {
+      --leaderInsightGlow: rgba(200, 160, 255, 0.18);
+      border-color: rgba(200, 160, 255, 0.25);
+    }
+    .leaderInsightSignal[aria-expanded="true"] .leaderInsightChevron { transform: rotate(180deg); }
+    .leaderInsightChevron { font-size: 9px; color: var(--muted2); transition: transform 0.2s; }
+    .leaderInsightExpand {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .leaderInsightExpand.isOpen { display: block; }
+    .leaderInsightPrimary {
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--textSoft);
+      margin-bottom: 0;
+    }
+    .leaderInsightMore {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted2);
+      margin-top: 10px;
+      margin-bottom: 6px;
+    }
+    .leaderInsightAdditionalItem {
+      font-size: 11px;
+      line-height: 1.55;
+      color: var(--muted);
+      margin-bottom: 6px;
+      padding-left: 8px;
+      border-left: 2px solid var(--stroke);
+    }
+    .leaderInsightAdditionalItem:last-child { margin-bottom: 0; }
+
+    /* ── Placeholder sub-panels grid ────────────────── */
+    .leaderSubGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .leaderSubPanel {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--stroke);
+      border-radius: 16px;
+      padding: 16px 18px;
+    }
+    .leaderSubTitle {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+    .leaderComingSoon {
+      display: inline-block;
+      margin-bottom: 8px;
+      padding: 2px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(244, 208, 120, 0.20);
+      background: rgba(244, 208, 120, 0.06);
+      color: rgba(244, 208, 120, 0.65);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .leaderPlaceholderText {
+      font-size: 12px;
+      color: var(--muted2);
+      line-height: 1.7;
+    }
+    .leaderPlaceholderIntro {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.55;
+      margin: 0 0 14px;
+    }
+    .leaderSubPanel--compact {
+      padding: 12px 14px;
+    }
+    .leaderSubPanel--compact .leaderPlaceholderText {
+      font-size: 11px;
+      margin: 0;
+    }
+    .leaderDeckIntelList {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 0;
+      font-size: 11px;
+    }
+    .leaderDeckIntelChip {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--stroke);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--textSoft);
+      font-weight: 500;
+    }
+    .leaderDeckSummary {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+    .leaderDeckSummaryItem {
+      display: inline;
+    }
+    .leaderDeckSummaryItem + .leaderDeckSummaryItem::before {
+      content: " · ";
+      color: var(--muted2);
+    }
+    .leaderVariantBlock {
+      margin-bottom: 10px;
+    }
+    .leaderVariantBlock:last-child { margin-bottom: 0; }
+    .leaderVariantId {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--textSoft);
+      margin-bottom: 4px;
+    }
+    .leaderVariantMeta {
+      font-size: 10px;
+      color: var(--muted2);
+      margin-bottom: 6px;
+    }
+    .leaderVariantCards {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .leaderPanel--compact .leaderPlaceholderText {
+      font-size: 11px;
+      margin: 0;
+    }
+
+    /* ── Collapsible sections ───────────────────────── */
+    .leaderCollapse {
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .leaderCollapseToggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      background: none;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      transition: color 0.14s, background 0.14s;
+    }
+    .leaderCollapseToggle:hover { color: var(--textSoft); background: rgba(255,255,255,0.04); }
+    .leaderCollapseToggle[aria-expanded="true"] .leaderCollapseChevron { transform: rotate(180deg); }
+    .leaderCollapseChevron { font-size: 10px; transition: transform 0.2s; }
+    .leaderCollapseBody { display: none; padding: 0 16px 14px; }
+    .leaderCollapseBody .leaderPlaceholderIntro { padding: 0; }
+    .leaderCollapseBody.isOpen { display: block; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .leaderInsightSignalWrap.isVisible { animation: none; }
+    }
+
+    /* ── Responsive ─────────────────────────────────── */
+    @media (max-width: 500px) {
+      .leaderSubGrid { grid-template-columns: 1fr; }
+      .leaderHeader   { flex-wrap: wrap; }
+      .leaderImgWrap  { width: clamp(88px, 28vw, 140px); }
+      .leaderInsightSignalWrap { margin-left: 0; margin-top: 8px; }
+    }
+  </style>
+</head>
+<body>
+<div class="leaderShell">
+
+  <!-- ── Top bar (safe-area integrated) ── -->
+  <header class="leaderPageHeader">
+    <nav class="leaderNav" aria-label="Leader page navigation">
+      <a class="leaderNavBack" href="/leaders">← Leaders</a>
+    </nav>
+  </header>
+
+  <!-- ── Not-found banner (shown only if card is missing from catalog) ── -->
+  {% if not_found %}
+  <div class="leaderNotFound" role="alert">
+    <strong>{{ leader_code }}</strong> is not yet in the card catalog.
+    The route and page layout are ready — card data will appear once the catalog is updated.
+  </div>
+  {% endif %}
+
+  <!-- ── Section 1: Leader Header + optional Miru insight signal ── -->
+  <div class="leaderPanel">
+    <div class="leaderHeader">
+      <div class="leaderImgWrap">
+        {% if image_src %}
+        <img class="leaderImg" src="{{ image_src }}" alt="{{ name }}" loading="eager">
+        {% else %}
+        <div class="leaderImgPlaceholder" aria-label="No image available">No image</div>
+        {% endif %}
+      </div>
+      <div class="leaderMeta">
+        <div class="leaderCodeLabel">{{ leader_code }}</div>
+        <h1 class="leaderName">{{ name }}</h1>
+        <div class="leaderBadgeRow">
+          {% if set_name %}
+          <span class="leaderBadge leaderBadge--set">{{ set_name }}</span>
+          {% endif %}
+          {% if color %}
+          <span class="leaderBadge leaderBadge--color">{{ color }}</span>
+          {% endif %}
+          {% if power %}
+          <span class="leaderBadge">Power {{ power }}</span>
+          {% endif %}
+          {% if attribute %}
+          <span class="leaderBadge">{{ attribute }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="leaderInsightSignalWrap" id="leaderInsightSignalWrap">
+        <button class="leaderInsightSignal" id="leaderInsightToggle" type="button"
+                aria-expanded="false" aria-controls="leaderInsightExpand" data-insight-type="">
+          Insight <span class="leaderInsightChevron" aria-hidden="true">▾</span>
+        </button>
+      </div>
+    </div>
+    <div class="leaderInsightExpand" id="leaderInsightExpand" role="region" aria-label="Miru Insight">
+      <div class="leaderInsightPrimary" id="leaderInsightPrimary"></div>
+      <div class="leaderInsightAdditionalWrap" id="leaderInsightAdditionalWrap" style="display:none">
+        <div class="leaderInsightMore" id="leaderInsightMoreLabel">More</div>
+        <div class="leaderInsightAdditionalList" id="leaderInsightAdditionalList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Section 3: Overview (real card text) ── -->
+  <div class="leaderPanel leaderPanel--flat">
+    <div class="leaderPanelTitle">Overview</div>
+    {% if effect_text %}
+    <div class="leaderFieldRow">
+      <div class="leaderFieldLabel">Effect</div>
+      <div class="leaderFieldValue">{{ effect_text }}</div>
+    </div>
+    {% endif %}
+    {% if trigger_text %}
+    <div class="leaderFieldRow leaderFieldRow--trigger">
+      <div class="leaderFieldLabel">Trigger</div>
+      <div class="leaderFieldValue">{{ trigger_text }}</div>
+    </div>
+    {% endif %}
+    {% if not effect_text and not trigger_text %}
+    <div style="font-size:12px;color:var(--muted2)">No card text available in catalog.</div>
+    {% endif %}
+  </div>
+
+  <!-- ── Miru Insight (deck/meta placeholders, collapsible) ── -->
+  <div class="leaderCollapse">
+    <button class="leaderCollapseToggle" type="button" aria-expanded="false" aria-controls="leaderCollapseMiruInsight">
+      Miru Insight <span class="leaderCollapseChevron" aria-hidden="true">▾</span>
+    </button>
+    <div class="leaderCollapseBody" id="leaderCollapseMiruInsight">
+      <p class="leaderPlaceholderIntro">Deck and meta data will appear here when linked to this leader.</p>
+      <div class="leaderDeckSummary" id="leaderDeckSummaryContent" aria-live="polite"></div>
+      <div class="leaderSubGrid">
+        <div class="leaderSubPanel leaderSubPanel--compact">
+          <div class="leaderSubTitle">Core Cards</div>
+          <div class="leaderPlaceholderText" id="leaderCoreCardsContent">When deck shells are linked.</div>
+        </div>
+        <div class="leaderSubPanel leaderSubPanel--compact">
+          <div class="leaderSubTitle">Flex Cards</div>
+          <div class="leaderPlaceholderText" id="leaderFlexCardsContent">When deck sample data is available.</div>
+        </div>
+        <div class="leaderSubPanel leaderSubPanel--compact">
+          <div class="leaderSubTitle">Deck Variants</div>
+          <div class="leaderPlaceholderText" id="leaderVariantsContent">When variant analysis is linked.</div>
+        </div>
+        <div class="leaderSubPanel leaderSubPanel--compact">
+          <div class="leaderSubTitle">Budget Build</div>
+          <div class="leaderPlaceholderText">When shell and pricing are linked.</div>
+        </div>
+      </div>
+      <div class="leaderPanel leaderPanel--placeholder leaderPanel--compact" style="margin-top:10px;margin-bottom:0">
+        <div class="leaderPanelTitle" style="color:var(--muted)">Meta Signals</div>
+        <div class="leaderPlaceholderText">Tournament and matchup data when event intel is attached.</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.leaderShell -->
+
+<script>
+  (function () {
+    "use strict";
+
+    var leaderCode = {{ leader_code | tojson }};
+    var signalWrap = document.getElementById("leaderInsightSignalWrap");
+    var toggleBtn = document.getElementById("leaderInsightToggle");
+    var expandEl  = document.getElementById("leaderInsightExpand");
+    var primaryEl = document.getElementById("leaderInsightPrimary");
+    var additionalWrap = document.getElementById("leaderInsightAdditionalWrap");
+    var additionalList = document.getElementById("leaderInsightAdditionalList");
+
+    if (toggleBtn && expandEl) {
+      toggleBtn.addEventListener("click", function () {
+        var open = expandEl.classList.toggle("isOpen");
+        toggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    }
+
+    fetch("/api/miru/insight/" + encodeURIComponent(leaderCode))
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var primary = data && (data.primary || (data.insight ? { insight: data.insight, type: data.type || "" } : null));
+        var insightText = primary && (primary.insight || primary.insight_text);
+        if (!insightText || !String(insightText).trim()) return;
+        if (primaryEl) { primaryEl.textContent = String(insightText).trim(); }
+        var type = (primary && (primary.type || data.type)) || "";
+        if (toggleBtn) {
+          toggleBtn.setAttribute("data-insight-type", type);
+          toggleBtn.classList.remove("leaderInsightSignal--meta", "leaderInsightSignal--price", "leaderInsightSignal--strength", "leaderInsightSignal--synergy", "leaderInsightSignal--lore");
+          if (type && ["meta", "price", "strength", "synergy", "lore"].indexOf(type) >= 0) {
+            toggleBtn.classList.add("leaderInsightSignal--" + type);
+          }
+        }
+        var additional = (data.additional && data.additional.length) ? data.additional : [];
+        if (additional.length && additionalWrap && additionalList) {
+          additionalWrap.style.display = "block";
+          additionalList.innerHTML = additional.map(function (a) {
+            var t = (a.insight || "").trim();
+            return t ? "<div class=\"leaderInsightAdditionalItem\">" + escapeHtml(t) + "</div>" : "";
+          }).join("");
+        } else if (additionalWrap) { additionalWrap.style.display = "none"; }
+        if (signalWrap) { signalWrap.classList.add("isVisible"); }
+      })
+      .catch(function () { });
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function renderDeckIntelChips(cards) {
+      if (!cards || cards.length === 0) return "";
+      var parts = [];
+      for (var i = 0; i < cards.length; i++) {
+        var c = cards[i];
+        var code = (c.card_code || "").trim();
+        if (!code) continue;
+        var pct = typeof c.usage_percent === "number" ? Math.round(c.usage_percent * 100) : "";
+        var label = pct ? code + " " + pct + "%" : code;
+        parts.push("<span class=\"leaderDeckIntelChip\">" + escapeHtml(label) + "</span>");
+      }
+      return parts.length ? "<div class=\"leaderDeckIntelList\">" + parts.join("") + "</div>" : "";
+    }
+    function renderVariants(variants) {
+      if (!variants || variants.length === 0) return "";
+      var blocks = [];
+      for (var v = 0; v < variants.length; v++) {
+        var variant = variants[v];
+        var aid = (variant.archetype_id || "").trim();
+        if (!aid) continue;
+        var deckCount = variant.deck_count || 0;
+        var meta = deckCount === 1 ? "1 deck" : deckCount + " decks";
+        var cardChips = [];
+        var cards = variant.cards || [];
+        for (var i = 0; i < cards.length; i++) {
+          var code = (cards[i].card_code || "").trim();
+          if (code) cardChips.push("<span class=\"leaderDeckIntelChip\">" + escapeHtml(code) + "</span>");
+        }
+        blocks.push(
+          "<div class=\"leaderVariantBlock\">" +
+            "<div class=\"leaderVariantId\">Variant " + escapeHtml(aid) + "</div>" +
+            "<div class=\"leaderVariantMeta\">" + escapeHtml(meta) + "</div>" +
+            (cardChips.length ? "<div class=\"leaderVariantCards\">" + cardChips.join("") + "</div>" : "") +
+          "</div>"
+        );
+      }
+      return blocks.length ? blocks.join("") : "";
+    }
+    fetch("/api/leader-deck-intel/" + encodeURIComponent(leaderCode))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data) return;
+        var summaryEl = document.getElementById("leaderDeckSummaryContent");
+        if (summaryEl) {
+          var parts = [];
+          if (data.decks_sampled > 0) {
+            parts.push("Decks analyzed: " + data.decks_sampled);
+          }
+          if (data.confidence_label) {
+            var cap = data.confidence_label.charAt(0).toUpperCase() + (data.confidence_label.slice(1) || "");
+            parts.push("Confidence: " + cap);
+          }
+          if (data.dominant_archetype_id) {
+            parts.push("Dominant archetype: " + data.dominant_archetype_id);
+          }
+          if (parts.length > 0) {
+            summaryEl.textContent = parts.join(" · ");
+          }
+        }
+        var coreEl = document.getElementById("leaderCoreCardsContent");
+        var flexEl = document.getElementById("leaderFlexCardsContent");
+        if (coreEl && data.core_cards && data.core_cards.length > 0) {
+          coreEl.innerHTML = renderDeckIntelChips(data.core_cards);
+          coreEl.classList.remove("leaderPlaceholderText");
+        }
+        if (flexEl && data.flex_cards && data.flex_cards.length > 0) {
+          flexEl.innerHTML = renderDeckIntelChips(data.flex_cards);
+          flexEl.classList.remove("leaderPlaceholderText");
+        }
+        var variantsEl = document.getElementById("leaderVariantsContent");
+        if (variantsEl && data.variants && data.variants.length > 0) {
+          variantsEl.innerHTML = renderVariants(data.variants);
+          variantsEl.classList.remove("leaderPlaceholderText");
+        }
+      })
+      .catch(function () { });
+
+    var collapseToggles = document.querySelectorAll(".leaderCollapseToggle");
+    collapseToggles.forEach(function (btn) {
+      var id = btn.getAttribute("aria-controls");
+      var body = id ? document.getElementById(id) : null;
+      if (!body) return;
+      btn.addEventListener("click", function () {
+        var open = body.classList.toggle("isOpen");
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+ * Tip: There are .env files present. Install python-dotenv to use them.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8765
+ * Running on http://192.168.50.91:8765
+Press CTRL+C to quit
+127.0.0.1 - - [08/Mar/2026 10:34:58] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:34:58] "GET /ask HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:34:58] "GET /status HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:34:58] "GET /api/health HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:34:58] "GET /static/miru_ai.css HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:34:58] "GET /static/miru_ai.js HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:35:22] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:35:22] "GET /static/miru_ai.css?v=1772991111079638300 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:35:22] "GET /static/miru_ai.js?v=1772991111079638300 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:35:23] "GET /ask HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:35:23] "GET /static/miru_ai.css?v=1772991111079638300 HTTP/1.1" 304 -
+127.0.0.1 - - [08/Mar/2026 10:35:23] "GET /static/miru_ai.js?v=1772991111079638300 HTTP/1.1" 304 -
+127.0.0.1 - - [08/Mar/2026 10:35:24] "POST /api/run HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:35:26] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:35:26] "GET /static/miru_ai.css?v=1772991111079638300 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:35:26] "GET /static/miru_ai.js?v=1772991111079638300 HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:35:26] "GET /ask HTTP/1.1" 200 -
+127.0.0.1 - - [08/Mar/2026 10:35:26] "GET /static/miru_ai.css?v=1772991111079638300 HTTP/1.1" 304 -
+127.0.0.1 - - [08/Mar/2026 10:35:26] "GET /static/miru_ai.js?v=1772991111079638300 HTTP/1.1" 304 -
+127.0.0.1 - - [08/Mar/2026 10:35:41] "GET /api/health HTTP/1.1" 200 -
+100.88.228.28 - - [08/Mar/2026 10:38:10] "GET / HTTP/1.1" 200 -
+100.88.228.28 - - [08/Mar/2026 10:38:10] "GET /static/miru_ai.css?v=1772991111079638300 HTTP/1.1" 200 -
+100.88.228.28 - - [08/Mar/2026 10:38:10] "GET /static/miru_ai.js?v=1772991111079638300 HTTP/1.1" 200 -

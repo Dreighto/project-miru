@@ -1,0 +1,12 @@
+{
+  "mode": "overlap",
+  "action": "overlap_blocked",
+  "overlap_count": 0,
+  "blocker": "Snapshot does not contain any of the meta-bearing catalog codes.",
+  "meta_bearing_count": 0,
+  "snapshot_card_count": 2,
+  "sample_meta_bearing_codes": [],
+  "exact_snapshot_needed": "A card-list JSON (same schema as community_cardlist) that includes at least some of sample_meta_bearing_codes (e.g. OP01-002, OP01-004, ...). Place it at data/snapshots/community_cardlist.json (replace/expand) or data/snapshots/official_cardlist.json, then re-run this script.",
+  "next_learning_targets": [],
+  "timestamp": "2026-03-17T23:20:42.902214+00:00"
+}

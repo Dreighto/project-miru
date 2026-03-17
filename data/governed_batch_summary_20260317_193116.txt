@@ -1,0 +1,22 @@
+Governed ingestion run summary
+
+1. What I added automatically
+   Nothing this time.
+
+2. What I held for your review
+   - OP01-001: proposed legal. I held it because it could change something meaningful that players may see.
+
+3. What I skipped (and what I rejected)
+   Nothing.
+
+4. What I'm not fully sure about
+   The items in the review queue above. I trust the source, but I want you to see them before I apply.
+
+5. Why this run was or was not successful
+   Status: success.
+   I used real approved-source data, routed everything correctly, and either applied safe updates or put meaningful items in your review queue. All writes stayed in the worktree.
+
+6. Safe to leave Miru running for the rest of the day?
+   Yes. All writes stay in this worktree only. Nothing is promoted to the main repo.
+   Ethics and provenance rules stay on. Duplicates are skipped, not spammed into review.
+   If something needs your attention, it will be in the review queue and in this summary.

@@ -1,0 +1,18 @@
+{
+  "home_status_ok": true,
+  "brand_logo_visible": true,
+  "hero_logo_visible": true,
+  "brand_logo_src": "/static/icons/miru-fruit.png",
+  "hero_logo_src": "/static/icons/miru-fruit.png",
+  "brand_logo_natural": {
+    "width": 1024,
+    "height": 1024
+  },
+  "hero_logo_natural": {
+    "width": 1024,
+    "height": 1024
+  },
+  "page_contains_placeholder_svg": false,
+  "logo_http_status": 200,
+  "logo_content_type": "image/png"
+}

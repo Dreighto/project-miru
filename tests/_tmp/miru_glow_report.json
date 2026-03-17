@@ -1,0 +1,12 @@
+{
+  "home_status_ok": true,
+  "hero_logo_visible": true,
+  "brand_logo_visible": true,
+  "hero_logo_src": "/static/icons/miru-fruit.png",
+  "animation_name": "miruFruitGlow",
+  "animation_duration": "4s",
+  "filter_start": "drop-shadow(rgba(0, 0, 0, 0.28) 0px 14px 28px) brightness(1) saturate(1)",
+  "filter_mid": "drop-shadow(rgba(0, 0, 0, 0.28) 0px 14px 28px) drop-shadow(rgba(196, 173, 255, 0.16) 0px 0px 10px) brightness(1.05) saturate(1.08)",
+  "filter_changed_over_time": true,
+  "mobile_home_no_horizontal_overflow": true
+}

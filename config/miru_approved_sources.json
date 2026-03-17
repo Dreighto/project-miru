@@ -1,0 +1,32 @@
+{
+  "approved_sources": [
+    {
+      "source_id": "community-cardlist",
+      "source_name": "Community card list (snapshot)",
+      "source_type": "community-card-database",
+      "trust_tier": 3,
+      "enabled": true,
+      "allowed_access": "public_page",
+      "request_spacing_seconds": 2.0,
+      "requires_api": false,
+      "snapshot_url": "",
+      "base_url": "",
+      "domain": "",
+      "notes": "First approved external source; snapshot-only. Place JSON at data/snapshots/community_cardlist.json (see data/snapshots/README.md). No live HTTP yet."
+    },
+    {
+      "source_id": "official-cardlist",
+      "source_name": "Official card list (snapshot)",
+      "source_type": "official-cardlist-snapshot",
+      "trust_tier": 1,
+      "enabled": true,
+      "allowed_access": "public_page",
+      "request_spacing_seconds": 1.0,
+      "requires_api": false,
+      "snapshot_url": "",
+      "base_url": "",
+      "domain": "",
+      "notes": "Second approved source; snapshot-only. Place JSON at data/snapshots/official_cardlist.json. Same schema as community_cardlist (OfficialCardListSourceAdapter). No live HTTP yet. Use for two-source agreement and stronger baseline."
+    }
+  ]
+}
