@@ -19,6 +19,8 @@ Stage order
 5. Deck signals        miru_compute_deck_signals
 6. Cost curves         miru_compute_cost_curves
 7. Trait signals       miru_compute_trait_signals
+8. Card insights       run_worktree_card_insight_sync  -> miru_card_insights in card_catalog.db
+9. Self-report         miru_self_report.write_self_report -> data/miru_self_report.json (read-only)
 
 A stage is SKIP when its required inputs are absent.
 A stage is WARN when it completes with non-fatal issues.
@@ -635,6 +637,61 @@ def stage_trait_signals(db_path: Path, dossiers_db: Path, dry_run: bool) -> Stag
     return result
 
 
+def stage_card_insight_sync(dry_run: bool) -> StageResult:
+    """
+    Project dossier/deck signals into catalog miru_card_insights via the normal
+    worktree sync path (enrich + sync_miru_card_insights). No governance bypass.
+    """
+    result = StageResult("sync_card_insights")
+    if dry_run:
+        result.notes.append("dry-run: catalog card insight sync skipped (no DB writes)")
+        return result
+
+    from tools.miru_project_sync import run_worktree_card_insight_sync
+
+    t0 = time.monotonic()
+    try:
+        report = run_worktree_card_insight_sync()
+        syn = report.get("sync_result") or {}
+        n_total = int(report.get("insight_count_after") or 0)
+        written = int(syn.get("written_insights") or 0)
+        result.duration_s = time.monotonic() - t0
+        note = (
+            f"catalog miru_card_insights total={n_total}"
+            + (f", written this run={written}" if written else "")
+        )
+        result.ok(n_total, note=note)
+    except Exception as exc:
+        result.duration_s = time.monotonic() - t0
+        result.fail(f"run_worktree_card_insight_sync: {type(exc).__name__}: {exc}")
+    return result
+
+
+def stage_self_report(dry_run: bool) -> StageResult:
+    """
+    Write operator self-report JSON (read-only queries; no governance changes).
+    Failure surfaces as WARN so the pipeline exit code stays driven by data stages.
+    """
+    result = StageResult("self_report")
+    if dry_run:
+        result.notes.append("dry-run: self-report file not written")
+        return result
+
+    t0 = time.monotonic()
+    try:
+        from tools.miru_self_report import write_self_report
+
+        report = write_self_report()
+        result.duration_s = time.monotonic() - t0
+        cap = str(report.get("capability_level") or "?")
+        out = str(report.get("output_path") or "data/miru_self_report.json")
+        result.ok(note=f"{out} capability={cap}")
+    except Exception as exc:
+        result.duration_s = time.monotonic() - t0
+        result.warn(f"self_report: {type(exc).__name__}: {exc}")
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Summary printer
 # ---------------------------------------------------------------------------
@@ -790,6 +847,7 @@ def main(argv: list[str] | None = None) -> int:
             if s.name in (
                 "summarize_deck_stats", "compute_deck_signals",
                 "compute_cost_curves", "compute_trait_signals",
+                "sync_card_insights",
             )
             and s.status == "OK"
         ]
@@ -830,6 +888,8 @@ def main(argv: list[str] | None = None) -> int:
             "compute_deck_signals",
             "compute_cost_curves",
             "compute_trait_signals",
+            "sync_card_insights",
+            "self_report",
         ):
             sr = StageResult(name)
             sr.notes.append("skipped due to upstream failure")
@@ -865,6 +925,23 @@ def main(argv: list[str] | None = None) -> int:
     print("Stage 7: compute trait signals")
     s7 = stage_trait_signals(paths["db_path"], paths["dossiers_db"], dry_run)
     stages.append(s7)
+    if _should_stop(s7):
+        print_summary(stages, dry_run, time.monotonic() - t_start, _make_manifest(s3))
+        return 1
+
+    # Stage 8: catalog card insights (dossier + deck intel -> miru_card_insights)
+    print("Stage 8: sync card insights to catalog")
+    s8 = stage_card_insight_sync(dry_run)
+    stages.append(s8)
+    if _should_stop(s8):
+        print_summary(stages, dry_run, time.monotonic() - t_start, _make_manifest(s3))
+        return 1
+
+    # Stage 9: operator self-report (read-only metrics -> JSON)
+    print("Stage 9: write operator self-report")
+    s9 = stage_self_report(dry_run)
+    stages.append(s9)
+    # self_report warnings do not stop the cycle
 
     print_summary(stages, dry_run, time.monotonic() - t_start, _make_manifest(s3))
 

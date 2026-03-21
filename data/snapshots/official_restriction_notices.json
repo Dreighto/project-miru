@@ -1,0 +1,66 @@
+{
+  "source": {
+    "source_id": "official-restriction-notices",
+    "snapshot_taken_at": "2026-03-20 12:00:00",
+    "base_url": "https://en.onepiece-cardgame.com/rules/restriction/",
+    "payload_origin": "manual_normalization_official_en_site",
+    "record_count": 20
+  },
+  "notices": [
+    {
+      "notice_id": "bandai-opcg-restriction-active-banned-2026-03-16",
+      "title": "Banned/Restricted Card Addition Notice — active banned cards (bulleted list)",
+      "source_id": "official",
+      "source_url": "https://en.onepiece-cardgame.com/rules/restriction/",
+      "source_reference": "RULES / Banned/Restricted Card Addition Notice / Cards with Active Restrictions / Banned Cards",
+      "published_at": "2026-03-16",
+      "effective_at": "",
+      "summary": "Cards listed under Banned Cards in the official English restriction notice as of March 16, 2026.",
+      "affected_cards": [
+        {"card_code": "OP02-024", "legality_state": "banned", "notes": "Moby Dick — official restriction page."},
+        {"card_code": "OP06-116", "legality_state": "banned", "notes": "Reject — official restriction page."},
+        {"card_code": "ST06-015", "legality_state": "banned", "notes": "Great Eruption — official restriction page."},
+        {"card_code": "OP03-098", "legality_state": "banned", "notes": "Enies Lobby — official restriction page."},
+        {"card_code": "ST10-001", "legality_state": "banned", "notes": "Trafalgar Law — official restriction page."},
+        {"card_code": "EB01-059", "legality_state": "banned", "notes": "Kingdom Come — official restriction page."},
+        {"card_code": "OP02-117", "legality_state": "banned", "notes": "Ice Age — official restriction page."},
+        {"card_code": "OP07-045", "legality_state": "banned", "notes": "Jinbe — official restriction page (see also April 1, 2026 update on same page)."},
+        {"card_code": "OP06-086", "legality_state": "banned", "notes": "Gecko Moria — official restriction page."},
+        {"card_code": "OP03-040", "legality_state": "banned", "notes": "Nami — official restriction page."}
+      ]
+    },
+    {
+      "notice_id": "bandai-opcg-restriction-banned-pairs-2026-03-16",
+      "title": "Banned pair cards (cannot be in the same deck)",
+      "source_id": "official",
+      "source_url": "https://en.onepiece-cardgame.com/rules/restriction/",
+      "source_reference": "RULES / Banned Pair Cards section",
+      "published_at": "2026-03-16",
+      "summary": "Official English restriction page: banned pairs as published March 16, 2026.",
+      "affected_cards": [
+        {"card_code": "OP11-067", "legality_state": "restricted", "notes": "Banned pair with OP11-040 per official list."},
+        {"card_code": "OP11-040", "legality_state": "restricted", "notes": "Banned pair with OP11-067 or OP08-069 per official list."},
+        {"card_code": "OP08-069", "legality_state": "restricted", "notes": "Banned pair with OP11-040 per official list."}
+      ]
+    },
+    {
+      "notice_id": "bandai-opcg-restriction-update-effective-2026-04-01",
+      "title": "Banned/Restricted changes effective April 1, 2026 (announced March 16, 2026)",
+      "source_id": "official",
+      "source_url": "https://en.onepiece-cardgame.com/rules/restriction/",
+      "source_reference": "Details: https://en.onepiece-cardgame.com/topics/029.php",
+      "published_at": "2026-03-16",
+      "effective_at": "2026-04-01",
+      "summary": "Per March 16, 2026 English restriction page: OP06-047 Charlotte Pudding added as banned effective April 1, 2026; OP07-045 Jinbe, EB01-059 Kingdom Come, ST06-015 Great Eruption, OP02-024 Moby Dick, OP03-098 Enies Lobby, OP02-117 Ice Age unbanned effective April 1, 2026.",
+      "affected_cards": [
+        {"card_code": "OP06-047", "legality_state": "banned", "effective_at": "2026-04-01", "notes": "Charlotte Pudding — new ban per official announcement."},
+        {"card_code": "OP07-045", "legality_state": "legal", "effective_at": "2026-04-01", "notes": "Jinbe — removed from banned list per official announcement."},
+        {"card_code": "EB01-059", "legality_state": "legal", "effective_at": "2026-04-01", "notes": "Kingdom Come — removed from banned list per official announcement."},
+        {"card_code": "ST06-015", "legality_state": "legal", "effective_at": "2026-04-01", "notes": "Great Eruption — removed from banned list per official announcement."},
+        {"card_code": "OP02-024", "legality_state": "legal", "effective_at": "2026-04-01", "notes": "Moby Dick — removed from banned list per official announcement."},
+        {"card_code": "OP03-098", "legality_state": "legal", "effective_at": "2026-04-01", "notes": "Enies Lobby — removed from banned list per official announcement."},
+        {"card_code": "OP02-117", "legality_state": "legal", "effective_at": "2026-04-01", "notes": "Ice Age — removed from banned list per official announcement."}
+      ]
+    }
+  ]
+}

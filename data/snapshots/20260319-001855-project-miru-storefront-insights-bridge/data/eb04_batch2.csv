@@ -1,0 +1,10 @@
+card_code,name,set_code,set_name,rarity,color,card_type,cost,attribute,power,counter,life,effect_text
+EB04-014,Kozuki Sukiyaki,EB04,-THE AZURE SEA’S SEVEN- [OP14-EB04],C,Green,Character,3,Wisdom,0,,,"[Blocker] (After your opponent declares an attack, you may rest this card to make it the new target of the attack.)
+[Activate: Main] [Once Per Turn] Give up to 1 rested DON!! card to your {Land of Wano} type Leader."
+EB04-015,Jinbe,EB04,-THE AZURE SEA’S SEVEN- [OP14-EB04],R,Green,Character,7,Strike,8000,,,"[Blocker]
+[On K.O.] You may rest 1 of your cards: If your Leader has the {Fish-Man} or {Merfolk} type, play up to 1 green Character card with a cost of 6 or less from your hand."
+EB04-016,Bird Neptunian,EB04,-THE AZURE SEA’S SEVEN- [OP14-EB04],C,Green,Character,5,Strike,7000,,,"[Activate: Main] Set up to 1 of your DON!! cards as active. Then, you cannot set DON!! cards as active using Character effects during this turn.
+[When Attacking] If you have 3 or more {Neptunian} type Characters, rest up to 1 of your opponent's Characters with a cost of 8 or less."
+EB04-017,Mystoms,EB04,-THE AZURE SEA’S SEVEN- [OP14-EB04],C,Green,Character,3,Strike,5000,1000,,"[Your Turn] If you have 3 or more {Minks} type Characters, give all of your opponent's Characters −1 cost.
+[On Play] If your Leader has the {Minks} type, play up to 1 {Minks} type Character card with a cost of 5 or less from your hand."
+EB04-018,Megalo,EB04,-THE AZURE SEA’S SEVEN- [OP14-EB04],R,Green,Character,4,Wisdom,4000,2000,,"[On Play] You may rest this Character: K.O. up to 1 of your opponent's rested Characters with 8000 power or less."

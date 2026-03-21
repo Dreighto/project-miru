@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import sqlite3
 import struct
 from contextlib import closing
@@ -14,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import sys
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Sequence
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -45,23 +46,39 @@ from tools.miru_learning_notifications import (
     save_learning_notification_baseline,
 )
 from tools.miru_source_adapters import (
+    CommunityStructuredSourceAdapter,
     MiruSourceCache,
     NormalizedImageRecord,
     NormalizedSourceRecord,
     OfficialCardImageSourceAdapter,
     OfficialCardListSourceAdapter,
+    OfficialStructuredSourceAdapter,
+    OptcgApiSourceAdapter,
     SourceAdapterError,
 )
 from tools.miru_source_registry import (
     MiruSourceEntry,
     build_source_registry,
+    find_source_registry_matches,
     get_source_entry,
+    is_source_approved_in_config,
 )
 from tools.miru_project_sync import MiruProjectDbSync, ensure_catalog_sync_schema
 from tools.miru_pushover import send_operator_notification
+from tools.miru_ethics_gates import can_auto_intake_discovered_source
+from tools.miru_official_notice_ingest import ingest_notice_file
+from tools.miru_official_rulings_ingest import ingest_rulings_file
+try:
+    from tools.miru_mongo_client import MiruMongoClient, MiruMongoSettings
+    from tools.miru_mongo_intake import stage_source_verification
+except Exception:  # pragma: no cover - runtime optional dependency
+    MiruMongoClient = None  # type: ignore[assignment]
+    MiruMongoSettings = None  # type: ignore[assignment]
+    stage_source_verification = None  # type: ignore[assignment]
 from tools.miru_source_discovery import (
     DiscoveredSourceCandidate,
     discover_source_candidates,
+    infer_source_discovery_profile,
 )
 from tools.miru_visual_intelligence import VisualAnalysisResult, analyze_card_image
 
@@ -102,6 +119,34 @@ DEFAULT_WORKER_HEARTBEAT_STALE_SECONDS = 180
 DEFAULT_LOCK_FILE_PATH = PROJECT_ROOT / "data" / "miru_learning_engine.lock"
 LEARNING_ENGINE_SCHEMA_VERSION = "2026-03-stability-1"
 
+# Phase 1 discovery → learning_queue: only these lanes map to bulk_ingest_registry today.
+# optcg-api is reference-only (learning-intake fails); bridge fails closed with audit record.
+_PHASE1_BULK_INGEST_LANES: frozenset[str] = frozenset({"official-cardlist", "official-restriction-notices"})
+_PHASE1_REFERENCE_ONLY_LANES: frozenset[str] = frozenset({"optcg-api"})
+_PHASE1_HANDOFF_DONE_STATUSES: frozenset[str] = frozenset(
+    {
+        "enqueued",
+        "skipped_duplicate_queue",
+        "failed_closed_unsupported_lane",
+        "failed_closed_no_queue_candidate",
+        "failed_closed_no_adapter_payload",
+        "failed_closed_governance",
+        "failed_closed_enqueue",
+    }
+)
+
+# Approved-sources config historically used these labels; map to the shared adapter implementation.
+_EXECUTION_ADAPTER_ALIASES: dict[str, str] = {
+    "community-deck-meta": "community-structured",
+    "community-card-reference": "community-structured",
+}
+
+
+def normalize_source_execution_adapter_key(raw: str) -> str:
+    key = str(raw or "").strip().lower()
+    return _EXECUTION_ADAPTER_ALIASES.get(key, key)
+
+
 DEFAULT_SOURCE_SNAPSHOT_ENV: dict[str, tuple[str, str]] = {
     "official-cardlist": (
         "MIRU_OFFICIAL_CARDLIST_SNAPSHOT_PATH",
@@ -114,6 +159,38 @@ DEFAULT_SOURCE_SNAPSHOT_ENV: dict[str, tuple[str, str]] = {
     "official-card-images": (
         "MIRU_OFFICIAL_CARD_IMAGES_SNAPSHOT_PATH",
         "MIRU_OFFICIAL_CARD_IMAGES_SNAPSHOT_URL",
+    ),
+    "official-deck-features": (
+        "MIRU_OFFICIAL_DECK_FEATURES_SNAPSHOT_PATH",
+        "MIRU_OFFICIAL_DECK_FEATURES_SNAPSHOT_URL",
+    ),
+    "official-rules-faq": (
+        "MIRU_OFFICIAL_RULES_FAQ_SNAPSHOT_PATH",
+        "MIRU_OFFICIAL_RULES_FAQ_SNAPSHOT_URL",
+    ),
+    "official-restriction-notices": (
+        "MIRU_OFFICIAL_RESTRICTION_NOTICES_SNAPSHOT_PATH",
+        "MIRU_OFFICIAL_RESTRICTION_NOTICES_SNAPSHOT_URL",
+    ),
+    "official-errata-cards": (
+        "MIRU_OFFICIAL_ERRATA_CARDS_SNAPSHOT_PATH",
+        "MIRU_OFFICIAL_ERRATA_CARDS_SNAPSHOT_URL",
+    ),
+    "limitless": (
+        "MIRU_LIMITLESS_SNAPSHOT_PATH",
+        "MIRU_LIMITLESS_SNAPSHOT_URL",
+    ),
+    "optcg-gg": (
+        "MIRU_OPTCG_GG_SNAPSHOT_PATH",
+        "MIRU_OPTCG_GG_SNAPSHOT_URL",
+    ),
+    "onepiece-cardgame-dev": (
+        "MIRU_ONEPIECE_CARDGAME_DEV_SNAPSHOT_PATH",
+        "MIRU_ONEPIECE_CARDGAME_DEV_SNAPSHOT_URL",
+    ),
+    "optcg-api": (
+        "MIRU_OPTCG_API_SNAPSHOT_PATH",
+        "MIRU_OPTCG_API_SNAPSHOT_URL",
     ),
 }
 
@@ -130,6 +207,22 @@ DEFAULT_SOURCE_SNAPSHOT_PATHS: dict[str, tuple[Path, ...]] = {
         PROJECT_ROOT / "data" / "official-card-images-snapshot.json",
         PROJECT_ROOT / "data" / "official_card_images_snapshot.json",
     ),
+    "official-deck-features": (
+        PROJECT_ROOT / "data" / "snapshots" / "official_deck_features.json",
+    ),
+    "official-rules-faq": (
+        PROJECT_ROOT / "data" / "snapshots" / "official_rules_faq.json",
+    ),
+    "official-restriction-notices": (
+        PROJECT_ROOT / "data" / "snapshots" / "official_restriction_notices.json",
+    ),
+    "official-errata-cards": (
+        PROJECT_ROOT / "data" / "snapshots" / "official_errata_cards.json",
+    ),
+    "limitless": (PROJECT_ROOT / "data" / "snapshots" / "limitless_tcg.json",),
+    "optcg-gg": (PROJECT_ROOT / "data" / "snapshots" / "optcg_gg.json",),
+    "onepiece-cardgame-dev": (PROJECT_ROOT / "data" / "snapshots" / "onepiece_cardgame_dev.json",),
+    "optcg-api": (PROJECT_ROOT / "data" / "snapshots" / "optcg_api.json",),
 }
 
 
@@ -500,6 +593,9 @@ class MiruLearningEngine:
             notifier=self.send_operator_notification,
         )
         self.official_source_adapter = OfficialCardListSourceAdapter(cache=self.source_cache)
+        self.structured_source_adapter = OfficialStructuredSourceAdapter(cache=self.source_cache)
+        self.optcg_api_adapter = OptcgApiSourceAdapter(cache=self.source_cache)
+        self.community_structured_adapter = CommunityStructuredSourceAdapter(cache=self.source_cache)
         self.official_image_adapter = OfficialCardImageSourceAdapter(cache=self.source_cache)
         self.project_sync = MiruProjectDbSync(
             project_db_path=self.project_db_path,
@@ -509,6 +605,7 @@ class MiruLearningEngine:
         )
         self.verified_dossier_store = MiruDossierStore(self.verified_dossier_db_path)
         self._last_milestone_check = 0.0
+        self._mongo_client: MiruMongoClient | None = None
 
     def ensure_datastores(self) -> None:
         for path in (self.queue_db_path, self.status_db_path, self.dossier_db_path, self.verified_dossier_db_path, self.catalog_db_path, self.project_db_path):
@@ -3316,6 +3413,652 @@ class MiruLearningEngine:
             )
         return existing is None
 
+    @staticmethod
+    def _coerce_discovered_source_candidate(candidate: DiscoveredSourceCandidate | dict[str, Any]) -> DiscoveredSourceCandidate:
+        if isinstance(candidate, DiscoveredSourceCandidate):
+            return candidate
+        signals = candidate.get("signals") or ()
+        metadata = candidate.get("metadata") or {}
+        return DiscoveredSourceCandidate(
+            url=str(candidate.get("url") or "").strip(),
+            host=str(candidate.get("host") or "").strip(),
+            source_kind=str(candidate.get("source_kind") or "").strip(),
+            confidence_score=float(candidate.get("confidence_score") or 0.0),
+            review_status=str(candidate.get("review_status") or "pending_review").strip(),
+            detected_at=str(candidate.get("detected_at") or "").strip(),
+            title=str(candidate.get("title") or "").strip(),
+            notes=str(candidate.get("notes") or "").strip(),
+            signals=tuple(str(item).strip() for item in signals if str(item).strip()),
+            metadata=dict(metadata) if isinstance(metadata, dict) else {},
+        )
+
+    def list_discovered_source_candidates(
+        self,
+        *,
+        review_status: str = "",
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
+        params: list[Any] = []
+        query = """
+            SELECT *
+            FROM discovered_sources
+        """
+        normalized_status = str(review_status or "").strip()
+        if normalized_status:
+            query += " WHERE review_status = ?"
+            params.append(normalized_status)
+        query += " ORDER BY confidence_score DESC, updated_at DESC, url ASC LIMIT ?"
+        params.append(max(1, int(limit or 50)))
+        with closing(connect_sqlite(self.status_db_path)) as conn:
+            rows = conn.execute(query, tuple(params)).fetchall()
+
+        results: list[dict[str, Any]] = []
+        for row in rows:
+            item = {key: row[key] for key in row.keys()}
+            try:
+                item["signals"] = tuple(json.loads(str(item.get("signals_json") or "[]")))
+            except json.JSONDecodeError:
+                item["signals"] = ()
+            try:
+                metadata = json.loads(str(item.get("metadata_json") or "{}"))
+            except json.JSONDecodeError:
+                metadata = {}
+            item["metadata"] = dict(metadata) if isinstance(metadata, dict) else {}
+            results.append(item)
+        return results
+
+    def _record_phase1_queue_handoff_metadata(self, *, url: str, handoff: dict[str, Any]) -> bool:
+        """Merge queue_handoff into metadata.autonomy_phase1 for operator audit (status_db discovered_sources)."""
+        resolved_url = str(url or "").strip()
+        if not resolved_url or not handoff:
+            return False
+        with closing(connect_sqlite(self.status_db_path)) as conn:
+            row = conn.execute(
+                "SELECT metadata_json FROM discovered_sources WHERE url = ? LIMIT 1",
+                (resolved_url,),
+            ).fetchone()
+            if row is None:
+                return False
+            try:
+                metadata = json.loads(str(row["metadata_json"] or "{}"))
+            except json.JSONDecodeError:
+                metadata = {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+            ap1 = metadata.get("autonomy_phase1")
+            if not isinstance(ap1, dict):
+                ap1 = {}
+            prev_qh = ap1.get("queue_handoff") if isinstance(ap1.get("queue_handoff"), dict) else {}
+            ap1["queue_handoff"] = {**prev_qh, **handoff}
+            metadata["autonomy_phase1"] = ap1
+            conn.execute(
+                """
+                UPDATE discovered_sources
+                SET metadata_json = ?, updated_at = ?
+                WHERE url = ?
+                """,
+                (
+                    json.dumps(metadata, ensure_ascii=False, sort_keys=True),
+                    utc_timestamp(),
+                    resolved_url,
+                ),
+            )
+        return True
+
+    def _phase1_bulk_payload_has_adapter_input(self, source_id: str, task_payload: dict[str, Any]) -> bool:
+        if self.source_payload_has_adapter_input(task_payload):
+            return True
+        if source_id == "official-cardlist" and self.knowledge_cache_path.is_file():
+            try:
+                return bool(self.load_cached_knowledge_source_records(source_id="official-cardlist"))
+            except Exception:
+                return False
+        return False
+
+    def _learning_queue_signature_busy(self, task_signature: str) -> bool:
+        with closing(connect_sqlite(self.queue_db_path)) as conn:
+            row = conn.execute(
+                """
+                SELECT 1
+                FROM learning_queue
+                WHERE task_signature = ?
+                  AND status IN ('queued', 'running')
+                LIMIT 1
+                """,
+                (task_signature,),
+            ).fetchone()
+            return bool(row)
+
+    def enqueue_phase1_queue_candidate_handoffs(
+        self,
+        *,
+        limit: int = 24,
+    ) -> dict[str, Any]:
+        """Enqueue bounded bulk_ingest_registry tasks from Phase 1 autonomy_accepted rows.
+
+        Reads ``discovered_sources`` (review_status=autonomy_accepted) with
+        ``metadata.autonomy_phase1.queue_candidate``. Marks ``queue_handoff`` metadata to
+        prevent duplicate flooding. Reference-only lanes (e.g. optcg-api) fail closed with audit.
+        """
+        bounded = max(1, min(int(limit or 24), 48))
+        rows = self.list_discovered_source_candidates(review_status="autonomy_accepted", limit=max(bounded * 3, 32))
+        handed_off: list[dict[str, Any]] = []
+        failed_closed: list[dict[str, Any]] = []
+        skipped: list[dict[str, Any]] = []
+        processed = 0
+
+        for row in rows:
+            if processed >= bounded:
+                break
+            url = str(row.get("url") or "").strip()
+            metadata = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+            ap1 = metadata.get("autonomy_phase1") if isinstance(metadata.get("autonomy_phase1"), dict) else {}
+            qh = ap1.get("queue_handoff") if isinstance(ap1.get("queue_handoff"), dict) else {}
+            if str(qh.get("status") or "").strip() in _PHASE1_HANDOFF_DONE_STATUSES:
+                skipped.append({"url": url, "reason": "prior_handoff", "prior": dict(qh)})
+                continue
+
+            processed += 1
+            qc = ap1.get("queue_candidate") if isinstance(ap1.get("queue_candidate"), dict) else {}
+            source_id = str(qc.get("source_id") or "").strip().lower()
+            if not source_id:
+                failed_closed.append({"url": url, "reason": "missing_queue_candidate_source_id"})
+                self._record_phase1_queue_handoff_metadata(
+                    url=url,
+                    handoff={
+                        "status": "failed_closed_no_queue_candidate",
+                        "at": utc_timestamp(),
+                        "detail": "autonomy_phase1.queue_candidate missing or empty source_id",
+                    },
+                )
+                continue
+
+            if source_id in _PHASE1_REFERENCE_ONLY_LANES:
+                failed_closed.append(
+                    {
+                        "url": url,
+                        "source_id": source_id,
+                        "reason": "reference_only_lane_no_bulk_learning_path",
+                    }
+                )
+                self._record_phase1_queue_handoff_metadata(
+                    url=url,
+                    handoff={
+                        "status": "failed_closed_unsupported_lane",
+                        "at": utc_timestamp(),
+                        "source_id": source_id,
+                        "detail": "Lane is reference-only; existing bulk_ingest_registry uses learning-intake only.",
+                    },
+                )
+                continue
+
+            if source_id not in _PHASE1_BULK_INGEST_LANES:
+                failed_closed.append({"url": url, "source_id": source_id, "reason": "unsupported_lane_for_phase1_bridge"})
+                self._record_phase1_queue_handoff_metadata(
+                    url=url,
+                    handoff={
+                        "status": "failed_closed_unsupported_lane",
+                        "at": utc_timestamp(),
+                        "source_id": source_id,
+                        "detail": "Not in governed bulk-ingest lane allowlist for Phase 1 handoff.",
+                    },
+                )
+                continue
+
+            base_payload = self.resolve_default_source_task_payload(source_id)
+            if not self._phase1_bulk_payload_has_adapter_input(source_id, base_payload):
+                failed_closed.append({"url": url, "source_id": source_id, "reason": "no_snapshot_or_cache_for_lane"})
+                self._record_phase1_queue_handoff_metadata(
+                    url=url,
+                    handoff={
+                        "status": "failed_closed_no_adapter_payload",
+                        "at": utc_timestamp(),
+                        "source_id": source_id,
+                        "detail": "No governed snapshot/cache input available for bulk ingestion.",
+                    },
+                )
+                continue
+
+            gov = self.evaluate_source_execution_gate(source_id=source_id, execution_kind="learning-intake")
+            if not bool(gov.get("proceed")):
+                failed_closed.append(
+                    {
+                        "url": url,
+                        "source_id": source_id,
+                        "reason": "governance_blocked",
+                        "governance_reason": str(gov.get("reason") or gov.get("policy_summary") or ""),
+                    }
+                )
+                self._record_phase1_queue_handoff_metadata(
+                    url=url,
+                    handoff={
+                        "status": "failed_closed_governance",
+                        "at": utc_timestamp(),
+                        "source_id": source_id,
+                        "detail": str(gov.get("reason") or gov.get("policy_summary") or "governance_blocked"),
+                    },
+                )
+                continue
+
+            batch_limit = min(max(self.seed_batch_size * 4, 80), 150)
+            bulk_payload: dict[str, Any] = {
+                **dict(base_payload),
+                "sources": [source_id],
+                "batch_limit": batch_limit,
+                "phase1_handoff": True,
+                "phase1_discovered_url": url,
+            }
+            task_sig = build_task_signature(
+                card_code="",
+                variant_key="",
+                task_type="bulk_ingest_registry",
+                source_id=source_id,
+                task_payload=bulk_payload,
+            )
+            ok = self.enqueue_task(
+                card_code="",
+                task_type="bulk_ingest_registry",
+                source_id=source_id,
+                priority=42,
+                task_payload=bulk_payload,
+            )
+            if ok:
+                handed_off.append(
+                    {
+                        "url": url,
+                        "source_id": source_id,
+                        "task_type": "bulk_ingest_registry",
+                        "task_signature": task_sig,
+                        "batch_limit": batch_limit,
+                    }
+                )
+                self._record_phase1_queue_handoff_metadata(
+                    url=url,
+                    handoff={
+                        "status": "enqueued",
+                        "at": utc_timestamp(),
+                        "source_id": source_id,
+                        "task_type": "bulk_ingest_registry",
+                        "task_signature": task_sig,
+                        "batch_limit": batch_limit,
+                    },
+                )
+                continue
+
+            if self._learning_queue_signature_busy(task_sig):
+                handed_off.append(
+                    {
+                        "url": url,
+                        "source_id": source_id,
+                        "task_type": "bulk_ingest_registry",
+                        "task_signature": task_sig,
+                        "note": "duplicate_signature_active_queue",
+                    }
+                )
+                self._record_phase1_queue_handoff_metadata(
+                    url=url,
+                    handoff={
+                        "status": "skipped_duplicate_queue",
+                        "at": utc_timestamp(),
+                        "source_id": source_id,
+                        "task_type": "bulk_ingest_registry",
+                        "task_signature": task_sig,
+                        "detail": "Matching bulk_ingest_registry already queued or running.",
+                    },
+                )
+            else:
+                failed_closed.append({"url": url, "source_id": source_id, "reason": "enqueue_returned_false"})
+                self._record_phase1_queue_handoff_metadata(
+                    url=url,
+                    handoff={
+                        "status": "failed_closed_enqueue",
+                        "at": utc_timestamp(),
+                        "source_id": source_id,
+                        "detail": "enqueue_task returned False without an active duplicate signature.",
+                    },
+                )
+
+        return {
+            "ok": True,
+            "backend_only": True,
+            "phase": "governed_autonomy_phase1_queue_handoff",
+            "limit": bounded,
+            "handed_off": handed_off,
+            "failed_closed": failed_closed,
+            "skipped_prior_handoff": skipped,
+            "supported_bulk_lanes": sorted(_PHASE1_BULK_INGEST_LANES),
+            "reference_only_lanes_fail_closed": sorted(_PHASE1_REFERENCE_ONLY_LANES),
+        }
+
+    def update_discovered_source_candidate_assessment(
+        self,
+        *,
+        url: str,
+        review_status: str,
+        autonomy_payload: dict[str, Any] | None = None,
+    ) -> bool:
+        resolved_url = str(url or "").strip()
+        if not resolved_url:
+            return False
+        with closing(connect_sqlite(self.status_db_path)) as conn:
+            row = conn.execute(
+                "SELECT metadata_json FROM discovered_sources WHERE url = ? LIMIT 1",
+                (resolved_url,),
+            ).fetchone()
+            if row is None:
+                return False
+            try:
+                metadata = json.loads(str(row["metadata_json"] or "{}"))
+            except json.JSONDecodeError:
+                metadata = {}
+            if not isinstance(metadata, dict):
+                metadata = {}
+            if autonomy_payload:
+                metadata["autonomy_phase1"] = dict(autonomy_payload)
+            conn.execute(
+                """
+                UPDATE discovered_sources
+                SET review_status = ?,
+                    metadata_json = ?,
+                    updated_at = ?
+                WHERE url = ?
+                """,
+                (
+                    str(review_status or "pending_review").strip(),
+                    json.dumps(metadata, ensure_ascii=False, sort_keys=True),
+                    utc_timestamp(),
+                    resolved_url,
+                ),
+            )
+        return True
+
+    def evaluate_discovered_source_candidate(
+        self,
+        candidate: DiscoveredSourceCandidate | dict[str, Any],
+    ) -> dict[str, Any]:
+        candidate_record = self._coerce_discovered_source_candidate(candidate)
+        profile = infer_source_discovery_profile(candidate_record)
+        registry_matches = find_source_registry_matches(
+            url=candidate_record.url,
+            host=candidate_record.host,
+            hint_text=(
+                candidate_record.title,
+                candidate_record.notes,
+                candidate_record.source_kind,
+                " ".join(candidate_record.signals),
+            ),
+            registry=self.source_registry,
+        )
+        candidate_kind = str(candidate_record.source_kind or "").strip().lower()
+        candidate_path = str((candidate_record.metadata or {}).get("path") or "").strip().lower()
+
+        def _registry_match_priority(match: dict[str, Any]) -> tuple[float, int, str]:
+            entry = match.get("entry")
+            source_id = str(getattr(entry, "source_id", "") or "").strip().lower()
+            score = float(match.get("match_score") or 0.0)
+            if "cardlist" in candidate_path and "cardlist" in source_id:
+                score += 1.8
+            if "restriction" in candidate_path and "restriction" in source_id:
+                score += 1.8
+            if "faq" in candidate_path and "faq" in source_id:
+                score += 1.4
+            if "errata" in candidate_path and "errata" in source_id:
+                score += 1.6
+            if candidate_kind == "card_database":
+                if "cardlist" in source_id:
+                    score += 1.4
+                if "image" in source_id:
+                    score -= 0.5
+            elif candidate_kind == "rules_legality":
+                if any(token in source_id for token in ("rules", "restriction", "errata")):
+                    score += 1.2
+            elif candidate_kind == "structured_api":
+                if "api" in source_id:
+                    score += 1.2
+            elif candidate_kind == "deck_database":
+                if "deck" in source_id:
+                    score += 1.0
+                if source_id in {"limitless", "optcg-gg"}:
+                    score += 1.2
+            elif candidate_kind == "card_database":
+                if source_id == "onepiece-cardgame-dev":
+                    score += 1.1
+            gap_overlap = set(profile.expected_gap_support) & set(getattr(entry, "gap_support", ()) or ())
+            score += 0.35 * len(gap_overlap)
+            return (
+                score,
+                -int(getattr(entry, "trust_tier", 4) or 4),
+                source_id,
+            )
+
+        registry_matches = sorted(
+            registry_matches,
+            key=_registry_match_priority,
+            reverse=True,
+        )
+        registry_summaries: list[dict[str, Any]] = []
+        primary_match: dict[str, Any] | None = None
+        primary_learning_gate: dict[str, Any] | None = None
+        primary_reference_gate: dict[str, Any] | None = None
+        auto_intake_allowed = False
+        auto_intake_reason = "Candidate source is not yet policy-approved for autonomous intake."
+        recommended_next_action = "defer_operator_review"
+        autonomy_state = "deferred"
+
+        for match in registry_matches[:4]:
+            entry = match.get("entry")
+            if entry is None:
+                continue
+            learning_gate = self.evaluate_source_execution_gate(
+                source_id=entry.source_id,
+                execution_kind="learning-intake",
+            )
+            reference_gate = self.evaluate_source_execution_gate(
+                source_id=entry.source_id,
+                execution_kind="reference-safe",
+            )
+            registry_summary = {
+                "source_id": str(entry.source_id or "").strip().lower(),
+                "source_name": str(entry.source_name or "").strip(),
+                "source_category": str(getattr(entry, "source_category", "") or "").strip(),
+                "trust_tier": int(getattr(entry, "trust_tier", 4) or 4),
+                "match_score": float(match.get("match_score") or 0.0),
+                "match_reasons": list(match.get("match_reasons") or ()),
+                "learning_gate": {
+                    "proceed": bool(learning_gate.get("proceed")),
+                    "gate_action": str(learning_gate.get("gate_action") or "").strip(),
+                    "execution_outcome": str(learning_gate.get("execution_outcome") or "").strip(),
+                    "policy_evidence_role": str(learning_gate.get("policy_evidence_role") or "").strip(),
+                },
+                "reference_gate": {
+                    "proceed": bool(reference_gate.get("proceed")),
+                    "gate_action": str(reference_gate.get("gate_action") or "").strip(),
+                    "execution_outcome": str(reference_gate.get("execution_outcome") or "").strip(),
+                    "policy_evidence_role": str(reference_gate.get("policy_evidence_role") or "").strip(),
+                },
+            }
+            registry_summaries.append(registry_summary)
+            if primary_match is None:
+                primary_match = registry_summary
+                primary_learning_gate = learning_gate
+                primary_reference_gate = reference_gate
+
+        if primary_match is not None:
+            selected_gate = primary_learning_gate if bool((primary_learning_gate or {}).get("proceed")) else primary_reference_gate
+            selected_execution_kind = (
+                "learning-intake"
+                if bool((primary_learning_gate or {}).get("proceed"))
+                else "reference-safe"
+            )
+            auto_intake_allowed, auto_intake_reason = can_auto_intake_discovered_source(
+                source_id=str(primary_match.get("source_id") or "").strip(),
+                registry_matched=True,
+                gate_action=str((selected_gate or {}).get("gate_action") or "").strip(),
+                execution_outcome=str((selected_gate or {}).get("execution_outcome") or "").strip(),
+                manual_approval_required=bool((selected_gate or {}).get("manual_approval_required")),
+                permission_status=str((selected_gate or {}).get("permission_status") or "").strip(),
+            )
+            if auto_intake_allowed:
+                autonomy_state = "accepted"
+                recommended_next_action = (
+                    "queue_learning_intake"
+                    if selected_execution_kind == "learning-intake"
+                    else "queue_reference_safe_intake"
+                )
+            elif str((selected_gate or {}).get("gate_action") or "").strip() == "manual-review":
+                autonomy_state = "deferred"
+                recommended_next_action = "defer_manual_registry_review"
+            else:
+                autonomy_state = "rejected"
+                recommended_next_action = "reject_policy_blocked_source"
+        else:
+            if profile.permission_posture == "manual_only_or_login":
+                autonomy_state = "rejected"
+                recommended_next_action = "reject_manual_only_source"
+                auto_intake_reason = "Candidate appears gated behind login, membership, or manual access, so Miru fails closed."
+            elif profile.evidence_role == "market-hint-only":
+                autonomy_state = "rejected"
+                recommended_next_action = "reject_market_signal_source"
+                auto_intake_reason = "Marketplace-style candidates are not safe for automatic corroboration or truth-critical intake."
+            elif profile.manual_approval_required:
+                autonomy_state = "deferred"
+                recommended_next_action = "recommend_registry_review"
+                auto_intake_reason = "Candidate may be useful, but Miru cannot self-authorize a new source lane without registry review."
+
+        operator_summary = {
+            "autonomy_state": autonomy_state,
+            "recommended_next_action": recommended_next_action,
+            "auto_intake_allowed": auto_intake_allowed,
+            "auto_intake_reason": auto_intake_reason,
+            "queue_candidate": (
+                {
+                    "source_id": str(primary_match.get("source_id") or "").strip(),
+                    "execution_kind": (
+                        "learning-intake"
+                        if recommended_next_action == "queue_learning_intake"
+                        else "reference-safe"
+                    ),
+                    "policy_evidence_role": (
+                        str((primary_learning_gate or {}).get("policy_evidence_role") or "").strip()
+                        if recommended_next_action == "queue_learning_intake"
+                        else str((primary_reference_gate or {}).get("policy_evidence_role") or "").strip()
+                    ),
+                }
+                if auto_intake_allowed and primary_match is not None
+                else None
+            ),
+        }
+
+        return {
+            "candidate": candidate_record.to_dict(),
+            "discovery_profile": profile.to_dict(),
+            "registry_matches": registry_summaries,
+            "primary_registry_match": primary_match,
+            "governance": {
+                "learning_gate": primary_learning_gate or {},
+                "reference_gate": primary_reference_gate or {},
+            },
+            "operator_summary": operator_summary,
+        }
+
+    def run_governed_source_discovery_phase1(
+        self,
+        *,
+        candidate_rows: Sequence[dict[str, Any]] | None = None,
+        limit: int = 12,
+        review_status: str = "pending_review",
+        persist_candidates: bool = False,
+        persist_assessments: bool = False,
+    ) -> dict[str, Any]:
+        bounded_limit = max(1, min(int(limit or 12), 40))
+        discovered_candidates: list[DiscoveredSourceCandidate] = []
+        detected_at = utc_timestamp()
+
+        if candidate_rows:
+            discovered_candidates = discover_source_candidates(
+                [dict(item) for item in candidate_rows if isinstance(item, dict)],
+                detected_at=detected_at,
+            )[:bounded_limit]
+            if persist_candidates:
+                for candidate in discovered_candidates:
+                    self.store_discovered_source_candidate(candidate)
+        else:
+            for item in self.list_discovered_source_candidates(
+                review_status=str(review_status or "").strip(),
+                limit=bounded_limit,
+            ):
+                discovered_candidates.append(self._coerce_discovered_source_candidate(item))
+
+        assessments: list[dict[str, Any]] = []
+        for candidate in discovered_candidates[:bounded_limit]:
+            assessment = self.evaluate_discovered_source_candidate(candidate)
+            assessments.append(assessment)
+            if persist_assessments:
+                summary = dict(assessment.get("operator_summary") or {})
+                summary["primary_registry_match"] = dict(assessment.get("primary_registry_match") or {})
+                summary["discovery_profile"] = dict(assessment.get("discovery_profile") or {})
+                self.update_discovered_source_candidate_assessment(
+                    url=str((assessment.get("candidate") or {}).get("url") or "").strip(),
+                    review_status=(
+                        "autonomy_accepted"
+                        if str(summary.get("autonomy_state") or "") == "accepted"
+                        else "autonomy_rejected"
+                        if str(summary.get("autonomy_state") or "") == "rejected"
+                        else "autonomy_deferred"
+                    ),
+                    autonomy_payload=summary,
+                )
+
+        grouped: dict[str, list[dict[str, Any]]] = {"accepted": [], "deferred": [], "rejected": []}
+        recommended_action_counts: dict[str, int] = {}
+        gap_demand_counts: dict[str, int] = {}
+        for assessment in assessments:
+            summary = dict(assessment.get("operator_summary") or {})
+            state = str(summary.get("autonomy_state") or "deferred")
+            grouped.setdefault(state, []).append(assessment)
+            action = str(summary.get("recommended_next_action") or "").strip()
+            if action:
+                recommended_action_counts[action] = recommended_action_counts.get(action, 0) + 1
+            for gap in list((assessment.get("discovery_profile") or {}).get("expected_gap_support") or []):
+                gap_key = str(gap or "").strip()
+                if gap_key:
+                    gap_demand_counts[gap_key] = gap_demand_counts.get(gap_key, 0) + 1
+
+        def _representative(items: list[dict[str, Any]], *, count: int = 3) -> list[dict[str, Any]]:
+            examples: list[dict[str, Any]] = []
+            for item in items[:count]:
+                candidate = dict(item.get("candidate") or {})
+                summary = dict(item.get("operator_summary") or {})
+                profile = dict(item.get("discovery_profile") or {})
+                examples.append(
+                    {
+                        "url": str(candidate.get("url") or "").strip(),
+                        "source_kind": str(candidate.get("source_kind") or "").strip(),
+                        "source_classification": str(profile.get("source_classification") or "").strip(),
+                        "permission_posture": str(profile.get("permission_posture") or "").strip(),
+                        "expected_gap_support": list(profile.get("expected_gap_support") or []),
+                        "recommended_next_action": str(summary.get("recommended_next_action") or "").strip(),
+                        "auto_intake_allowed": bool(summary.get("auto_intake_allowed")),
+                    }
+                )
+            return examples
+
+        return {
+            "ok": True,
+            "backend_only": True,
+            "phase": "governed_autonomy_phase1",
+            "total_candidates_assessed": len(assessments),
+            "accepted_count": len(grouped.get("accepted") or []),
+            "deferred_count": len(grouped.get("deferred") or []),
+            "rejected_count": len(grouped.get("rejected") or []),
+            "recommended_action_counts": recommended_action_counts,
+            "gap_demand_counts": gap_demand_counts,
+            "accepted_examples": _representative(grouped.get("accepted") or []),
+            "deferred_examples": _representative(grouped.get("deferred") or []),
+            "rejected_examples": _representative(grouped.get("rejected") or []),
+            "assessments": assessments,
+        }
+
     def update_status(
         self,
         *,
@@ -3537,12 +4280,599 @@ class MiruLearningEngine:
                 payload["snapshot_path"] = str(candidate)
                 return payload
 
+        for candidate in self.default_source_snapshot_candidates(key, source_entry=source_entry):
+            if candidate.is_file():
+                payload["snapshot_path"] = str(candidate)
+                return payload
+
+        inline_payload = self.build_inline_source_task_payload(key, source_entry=source_entry)
+        if inline_payload:
+            return inline_payload
+
         snapshot_url = str(os.getenv(env_url_key, "") or "").strip() if env_url_key else ""
         if not snapshot_url:
             snapshot_url = str(source_entry.snapshot_url or "").strip()
         if snapshot_url:
             payload["snapshot_url"] = snapshot_url
         return payload
+
+    @staticmethod
+    def _extract_snapshot_note_hints(*values: Any) -> list[Path]:
+        hints: list[Path] = []
+        seen: set[str] = set()
+        for value in values:
+            text = str(value or "").strip()
+            if not text:
+                continue
+            for match in re.findall(r"(?:^|[\s(])((?:data|config)[/\\][^)\s]+?\.json)", text, flags=re.IGNORECASE):
+                candidate = Path(match)
+                key = str(candidate).lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                hints.append(candidate)
+        return hints
+
+    def default_source_snapshot_candidates(
+        self,
+        source_id: str,
+        *,
+        source_entry: MiruSourceEntry | None = None,
+    ) -> list[Path]:
+        key = str(source_id or "").strip().lower()
+        if not key:
+            return []
+        entry = source_entry or self.resolve_source_entry(key)
+        token_variants = tuple(
+            value
+            for value in {
+                key,
+                key.replace("-", "_"),
+                key.replace("_", "-"),
+                key.replace("-", ""),
+            }
+            if value
+        )
+        candidates: list[Path] = []
+        seen: set[str] = set()
+
+        def add(path_like: Path | str) -> None:
+            candidate = Path(path_like)
+            if not candidate.is_absolute():
+                candidate = PROJECT_ROOT / candidate
+            resolved = str(candidate)
+            if resolved.lower() in seen:
+                return
+            seen.add(resolved.lower())
+            candidates.append(candidate)
+
+        for hint in self._extract_snapshot_note_hints(entry.notes, entry.snapshot_url):
+            add(hint)
+        for hint in tuple(getattr(entry, "snapshot_candidates", ()) or ()):
+            if str(hint or "").strip():
+                add(str(hint).strip())
+        for token in token_variants:
+            add(PROJECT_ROOT / "data" / "snapshots" / f"{token}.json")
+            add(PROJECT_ROOT / "data" / f"{token}.json")
+            add(PROJECT_ROOT / "data" / f"{token}_snapshot.json")
+            add(PROJECT_ROOT / "data" / f"{token}-snapshot.json")
+        return candidates
+
+    @staticmethod
+    def _payload_looks_like_non_live_official_data(*values: Any) -> bool:
+        tokens = ("template", "example", "sample", "timing_test", "test-only", "fixture")
+        flattened: list[str] = []
+
+        def collect(value: Any) -> None:
+            if isinstance(value, dict):
+                for item in value.values():
+                    collect(item)
+                return
+            if isinstance(value, (list, tuple)):
+                for item in value:
+                    collect(item)
+                return
+            text = str(value or "").strip().lower()
+            if text:
+                flattened.append(text)
+
+        for value in values:
+            collect(value)
+        if not flattened:
+            return False
+        joined = " ".join(flattened)
+        if "example.com" in joined:
+            return True
+        return any(token in joined for token in tokens)
+
+    def _official_rules_db_path(self) -> Path:
+        return PROJECT_ROOT / "data" / "miru_official_rules.db"
+
+    def _build_inline_rules_faq_snapshot_payload(self) -> dict[str, Any]:
+        rules_db_path = self._official_rules_db_path()
+        if not rules_db_path.is_file():
+            return {}
+        with closing(sqlite3.connect(rules_db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT
+                    ruling_id,
+                    card_code,
+                    topic_key,
+                    question_text,
+                    ruling_text,
+                    normalized_summary,
+                    source_id,
+                    source_type,
+                    source_title,
+                    source_url,
+                    source_reference,
+                    source_anchor,
+                    published_at,
+                    effective_at,
+                    status,
+                    tags
+                FROM official_card_rulings
+                WHERE lower(coalesce(source_type, '')) IN ('faq', 'ruling', 'rules_update')
+                ORDER BY effective_at DESC, published_at DESC, id DESC
+                """
+            ).fetchall()
+        rulings: list[dict[str, Any]] = []
+        for row in rows:
+            item = {key: row[key] for key in row.keys()}
+            if self._payload_looks_like_non_live_official_data(item):
+                continue
+            if not str(item.get("card_code") or "").strip():
+                continue
+            rulings.append(item)
+        if not rulings:
+            return {}
+        return {
+            "source": {
+                "source_id": "official-rules-faq",
+                "snapshot_taken_at": utc_timestamp(),
+                "payload_origin": "official-rules-db",
+                "record_count": len(rulings),
+            },
+            "rulings": rulings,
+        }
+
+    def _build_inline_restriction_notice_snapshot_payload(self) -> dict[str, Any]:
+        rules_db_path = self._official_rules_db_path()
+        if not rules_db_path.is_file():
+            return {}
+        with closing(sqlite3.connect(rules_db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT
+                    n.notice_id,
+                    n.title,
+                    n.source_id,
+                    n.source_url,
+                    n.source_reference,
+                    n.region,
+                    n.format_name,
+                    n.notice_type,
+                    n.published_at,
+                    n.effective_at,
+                    n.status,
+                    n.summary,
+                    h.card_code,
+                    h.legality_state,
+                    h.effective_start,
+                    h.notes
+                FROM official_rule_notices n
+                JOIN official_legality_history h
+                  ON h.notice_id = n.notice_id
+                WHERE lower(coalesce(n.notice_type, '')) IN ('banlist', 'tournament_rule', 'block_update', 'rules_update')
+                ORDER BY n.effective_at DESC, n.published_at DESC, h.card_code ASC
+                """
+            ).fetchall()
+        notices_by_key: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            item = {key: row[key] for key in row.keys()}
+            if self._payload_looks_like_non_live_official_data(item):
+                continue
+            notice_id = str(item.get("notice_id") or "").strip()
+            if not notice_id or not str(item.get("card_code") or "").strip():
+                continue
+            notice = notices_by_key.setdefault(
+                notice_id,
+                {
+                    "notice_id": notice_id,
+                    "title": str(item.get("title") or "").strip(),
+                    "source_id": str(item.get("source_id") or "").strip(),
+                    "source_url": str(item.get("source_url") or "").strip(),
+                    "source_reference": str(item.get("source_reference") or "").strip(),
+                    "region": str(item.get("region") or "").strip(),
+                    "format_name": str(item.get("format_name") or "").strip(),
+                    "notice_type": str(item.get("notice_type") or "").strip(),
+                    "published_at": str(item.get("published_at") or "").strip(),
+                    "effective_at": str(item.get("effective_at") or "").strip(),
+                    "status": str(item.get("status") or "").strip(),
+                    "summary": str(item.get("summary") or "").strip(),
+                    "affected_cards": [],
+                },
+            )
+            notice["affected_cards"].append(
+                {
+                    "card_code": str(item.get("card_code") or "").strip().upper(),
+                    "legality_state": str(item.get("legality_state") or "").strip().lower(),
+                    "effective_at": str(item.get("effective_start") or item.get("effective_at") or "").strip(),
+                    "notes": str(item.get("notes") or "").strip(),
+                }
+            )
+        notices = [item for item in notices_by_key.values() if item.get("affected_cards")]
+        if not notices:
+            return {}
+        return {
+            "source": {
+                "source_id": "official-restriction-notices",
+                "snapshot_taken_at": utc_timestamp(),
+                "payload_origin": "official-rules-db",
+                "record_count": sum(len(item.get("affected_cards") or []) for item in notices),
+            },
+            "notices": notices,
+        }
+
+    def _build_inline_errata_snapshot_payload(self) -> dict[str, Any]:
+        rules_db_path = self._official_rules_db_path()
+        if not rules_db_path.is_file():
+            return {}
+        with closing(sqlite3.connect(rules_db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            ruling_rows = conn.execute(
+                """
+                SELECT
+                    ruling_id,
+                    card_code,
+                    topic_key,
+                    question_text,
+                    ruling_text,
+                    normalized_summary,
+                    source_id,
+                    source_type,
+                    source_title,
+                    source_url,
+                    source_reference,
+                    source_anchor,
+                    published_at,
+                    effective_at,
+                    status,
+                    tags
+                FROM official_card_rulings
+                WHERE lower(coalesce(source_type, '')) = 'errata'
+                ORDER BY effective_at DESC, published_at DESC, id DESC
+                """
+            ).fetchall()
+            notice_rows = conn.execute(
+                """
+                SELECT
+                    notice_id,
+                    title,
+                    source_id,
+                    source_url,
+                    source_reference,
+                    published_at,
+                    effective_at,
+                    status,
+                    summary,
+                    payload_json
+                FROM official_rule_notices
+                WHERE lower(coalesce(notice_type, '')) = 'errata'
+                ORDER BY effective_at DESC, published_at DESC, notice_id DESC
+                """
+            ).fetchall()
+        rulings = []
+        for row in ruling_rows:
+            item = {key: row[key] for key in row.keys()}
+            if self._payload_looks_like_non_live_official_data(item):
+                continue
+            if not str(item.get("card_code") or "").strip():
+                continue
+            rulings.append(item)
+        notices = []
+        for row in notice_rows:
+            item = {key: row[key] for key in row.keys()}
+            payload_json = {}
+            try:
+                payload_json = json.loads(str(item.get("payload_json") or "{}"))
+            except json.JSONDecodeError:
+                payload_json = {}
+            if self._payload_looks_like_non_live_official_data(item, payload_json):
+                continue
+            notices.append(
+                {
+                    "notice_id": str(item.get("notice_id") or "").strip(),
+                    "title": str(item.get("title") or "").strip(),
+                    "source_id": str(item.get("source_id") or "").strip(),
+                    "source_url": str(item.get("source_url") or "").strip(),
+                    "source_reference": str(item.get("source_reference") or "").strip(),
+                    "published_at": str(item.get("published_at") or "").strip(),
+                    "effective_at": str(item.get("effective_at") or "").strip(),
+                    "status": str(item.get("status") or "").strip(),
+                    "summary": str(item.get("summary") or "").strip(),
+                    "affected_cards": list(payload_json.get("affected_cards") or []),
+                }
+            )
+        if not rulings and not any(item.get("affected_cards") for item in notices):
+            return {}
+        return {
+            "source": {
+                "source_id": "official-errata-cards",
+                "snapshot_taken_at": utc_timestamp(),
+                "payload_origin": "official-rules-db",
+                "record_count": len(rulings) + sum(len(item.get("affected_cards") or []) for item in notices),
+            },
+            "rulings": rulings,
+            "notices": notices,
+        }
+
+    def build_inline_source_task_payload(
+        self,
+        source_id: str,
+        *,
+        source_entry: MiruSourceEntry | None = None,
+    ) -> dict[str, Any]:
+        key = str(source_id or "").strip().lower()
+        if not key:
+            return {}
+        _ = source_entry or self.resolve_source_entry(key)
+        if key == "official-rules-faq":
+            payload = self._build_inline_rules_faq_snapshot_payload()
+        elif key == "official-restriction-notices":
+            payload = self._build_inline_restriction_notice_snapshot_payload()
+        elif key == "official-errata-cards":
+            payload = self._build_inline_errata_snapshot_payload()
+        else:
+            payload = {}
+        if not isinstance(payload, dict) or not payload:
+            return {}
+        return {"payload": payload}
+
+    @staticmethod
+    def _read_json_file(path: Path) -> Any:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+
+    def canonical_source_snapshot_path(self, source_id: str) -> Path:
+        entry = self.resolve_source_entry(source_id)
+        for candidate in tuple(getattr(entry, "snapshot_candidates", ()) or ()):
+            text = str(candidate or "").strip()
+            if text:
+                path = Path(text)
+                return path if path.is_absolute() else PROJECT_ROOT / path
+        fallback = PROJECT_ROOT / "data" / "snapshots" / f"{str(source_id or '').strip().lower().replace('-', '_')}.json"
+        return fallback
+
+    def _validate_real_official_snapshot_file(
+        self,
+        *,
+        source_id: str,
+        path: Path,
+    ) -> dict[str, Any]:
+        result = {
+            "ok": False,
+            "path": str(path),
+            "reason": "",
+            "record_count": 0,
+        }
+        try:
+            payload = self._read_json_file(path)
+        except Exception as exc:
+            result["reason"] = f"Read/parse failed: {exc}"
+            return result
+        if self._payload_looks_like_non_live_official_data(payload):
+            result["reason"] = "Rejected fail-closed because the payload appears to be template/example/test data."
+            return result
+        try:
+            records = self.fetch_official_source_records(
+                source_id=source_id,
+                task_payload={"payload": payload},
+            )
+        except Exception as exc:
+            result["reason"] = f"Normalization failed: {exc}"
+            return result
+        if not records:
+            result["reason"] = "Normalization produced zero card records."
+            return result
+        result["ok"] = True
+        result["record_count"] = len(records)
+        return result
+
+    def ingest_mounted_real_official_payloads(
+        self,
+        *,
+        rules_db_path: Path | None = None,
+    ) -> dict[str, Any]:
+        resolved_rules_db = Path(rules_db_path or self._official_rules_db_path())
+        candidates = {
+            "official_notices": [
+                Path(item)
+                for item in (
+                    os.getenv("MIRU_OFFICIAL_NOTICE_STAGING_PATH", "") or "",
+                    PROJECT_ROOT / "data" / "staging" / "official_notices.json",
+                )
+                if str(item or "").strip()
+            ],
+            "official_rulings": [
+                Path(item)
+                for item in (
+                    os.getenv("MIRU_OFFICIAL_RULINGS_STAGING_PATH", "") or "",
+                    PROJECT_ROOT / "data" / "staging" / "official_rulings.json",
+                )
+                if str(item or "").strip()
+            ],
+        }
+        summary: dict[str, Any] = {}
+        for key, paths in candidates.items():
+            chosen_path = next((path for path in paths if path.is_file()), None)
+            if chosen_path is None:
+                summary[key] = {
+                    "ingested": False,
+                    "path": "",
+                    "reason": "No mounted staging file was available.",
+                }
+                continue
+            try:
+                payload = self._read_json_file(chosen_path)
+            except Exception as exc:
+                summary[key] = {
+                    "ingested": False,
+                    "path": str(chosen_path),
+                    "reason": f"Read/parse failed: {exc}",
+                }
+                continue
+            if self._payload_looks_like_non_live_official_data(payload):
+                summary[key] = {
+                    "ingested": False,
+                    "path": str(chosen_path),
+                    "reason": "Rejected fail-closed because the staging payload appears to be template/example/test data.",
+                }
+                continue
+            if key == "official_notices":
+                ingest_result = ingest_notice_file(chosen_path, rules_db_path=resolved_rules_db)
+                errors = list(ingest_result.get("errors") or [])
+                summary[key] = {
+                    "ingested": not errors,
+                    "path": str(chosen_path),
+                    "result": ingest_result,
+                    "reason": "; ".join(errors),
+                }
+            else:
+                ingest_result = ingest_rulings_file(chosen_path, rules_db_path=resolved_rules_db)
+                errors = list(ingest_result.get("errors") or [])
+                summary[key] = {
+                    "ingested": not errors,
+                    "path": str(chosen_path),
+                    "result": ingest_result,
+                    "reason": "; ".join(errors),
+                }
+        return summary
+
+    def materialize_real_official_source_snapshot(
+        self,
+        *,
+        source_id: str,
+        overwrite: bool = False,
+    ) -> dict[str, Any]:
+        resolved_source_id = str(source_id or "").strip().lower()
+        destination = self.canonical_source_snapshot_path(resolved_source_id)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        summary = {
+            "source_id": resolved_source_id,
+            "real_payload_ready": False,
+            "record_count": 0,
+            "materialized_snapshot_path": str(destination),
+            "payload_origin": "",
+            "operational_prerequisite": "",
+            "rejected_candidates": [],
+        }
+
+        seen_paths: set[str] = set()
+        for candidate in self.default_source_snapshot_candidates(resolved_source_id):
+            candidate_path = Path(candidate)
+            try:
+                resolved_candidate = str(candidate_path.resolve())
+            except OSError:
+                resolved_candidate = str(candidate_path)
+            if resolved_candidate.lower() in seen_paths or not candidate_path.is_file():
+                continue
+            seen_paths.add(resolved_candidate.lower())
+            validation = self._validate_real_official_snapshot_file(
+                source_id=resolved_source_id,
+                path=candidate_path,
+            )
+            if validation["ok"]:
+                if overwrite or not destination.is_file() or destination.resolve() != candidate_path.resolve():
+                    shutil.copyfile(candidate_path, destination)
+                summary["real_payload_ready"] = True
+                summary["record_count"] = int(validation["record_count"] or 0)
+                summary["payload_origin"] = "mounted_snapshot"
+                summary["materialized_snapshot_path"] = str(destination)
+                return summary
+            summary["rejected_candidates"].append(validation)
+
+        inline_payload = self.build_inline_source_task_payload(resolved_source_id)
+        if inline_payload:
+            payload = dict(inline_payload.get("payload") or {})
+            if not self._payload_looks_like_non_live_official_data(payload):
+                try:
+                    records = self.fetch_official_source_records(
+                        source_id=resolved_source_id,
+                        task_payload=inline_payload,
+                    )
+                except Exception as exc:
+                    records = []
+                    summary["rejected_candidates"].append(
+                        {
+                            "ok": False,
+                            "path": "",
+                            "reason": f"Inline payload normalization failed: {exc}",
+                            "record_count": 0,
+                        }
+                    )
+                if records:
+                    destination.write_text(
+                        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+                        encoding="utf-8",
+                    )
+                    summary["real_payload_ready"] = True
+                    summary["record_count"] = len(records)
+                    summary["payload_origin"] = "official_rules_db_materialized"
+                    return summary
+
+        prerequisite_map = {
+            "official-deck-features": (
+                "Mount a real official deck-features snapshot at "
+                f"{destination} or set MIRU_OFFICIAL_DECK_FEATURES_SNAPSHOT_PATH."
+            ),
+            "official-rules-faq": (
+                "Provide a real mounted official rulings snapshot or ingest real official rulings into "
+                f"{self._official_rules_db_path()} using data/staging/official_rulings.json or MIRU_OFFICIAL_RULINGS_STAGING_PATH."
+            ),
+            "official-restriction-notices": (
+                "Provide a real mounted official notices snapshot or ingest real official notices into "
+                f"{self._official_rules_db_path()} using data/staging/official_notices.json or MIRU_OFFICIAL_NOTICE_STAGING_PATH."
+            ),
+            "official-errata-cards": (
+                "Provide a real mounted official errata/rulings snapshot or ingest real official errata entries into "
+                f"{self._official_rules_db_path()} via mounted official notices/rulings JSON."
+            ),
+        }
+        summary["operational_prerequisite"] = prerequisite_map.get(
+            resolved_source_id,
+            f"Mount a real official snapshot for {resolved_source_id}.",
+        )
+        return summary
+
+    def materialize_real_official_source_snapshots(
+        self,
+        *,
+        source_ids: Sequence[str],
+        overwrite: bool = False,
+        ingest_staging: bool = True,
+    ) -> dict[str, Any]:
+        ingest_summary = self.ingest_mounted_real_official_payloads() if ingest_staging else {}
+        snapshots = {
+            str(source_id or "").strip().lower(): self.materialize_real_official_source_snapshot(
+                source_id=str(source_id or "").strip().lower(),
+                overwrite=overwrite,
+            )
+            for source_id in source_ids
+            if str(source_id or "").strip()
+        }
+        ready_lanes = [
+            source_id
+            for source_id, item in snapshots.items()
+            if bool((item or {}).get("real_payload_ready"))
+        ]
+        return {
+            "ingest_summary": ingest_summary,
+            "snapshots": snapshots,
+            "ready_lanes": ready_lanes,
+        }
 
     def source_available_for_queueing(self, source_id: str) -> bool:
         return bool(self.resolve_default_source_task_payload(source_id))
@@ -3952,16 +5282,13 @@ class MiruLearningEngine:
                   AND (
                       validations.card_code IS NULL
                       OR COALESCE(validations.confidence, 0.0) < 0.85
-                      OR COALESCE(validations.verification_status, '') LIKE 'pending%'
-                      OR COALESCE(validations.confidence_level, '') IN ('', 'low', 'medium')
-                      OR COALESCE(c.illustrator, '') = ''
                       OR COALESCE(c.rarity, '') = ''
-                      OR COALESCE(c.source_rollup_json, '') = ''
+                      OR TRIM(COALESCE(c.effect_text, '')) = ''
                       OR COALESCE(dossiers.confidence, 0.0) < 0.85
                       OR COALESCE(dossiers.verification_state, '') IN ('pending-confirmation', 'local-bootstrap', 'source-backed', 'pending-review-image-conflict')
                   )
                 ORDER BY
-                    CASE WHEN COALESCE(c.illustrator, '') = '' THEN 0 ELSE 1 END ASC,
+                    CASE WHEN TRIM(COALESCE(c.effect_text, '')) = '' THEN 0 ELSE 1 END ASC,
                     CASE WHEN COALESCE(c.rarity, '') = '' THEN 0 ELSE 1 END ASC,
                     COALESCE(validations.confidence, 0.0) ASC,
                     COALESCE(dossiers.confidence, 0.0) ASC,
@@ -4260,12 +5587,16 @@ class MiruLearningEngine:
             )
 
     def catalog_card_row(self, card_code: str) -> dict[str, Any]:
+        """Load a catalog card row for local profile merge.
+
+        Uses columns present in ``ensure_catalog_sync_schema`` / worktree
+        ``card_catalog.db`` (``canonical_code`` key, no ``set_family`` / ``illustrator``).
+        """
         with closing(connect_sqlite(self.catalog_db_path)) as conn:
             row = conn.execute(
                 """
                 SELECT
                     c.canonical_code,
-                    c.set_family,
                     c.set_code,
                     c.card_number,
                     c.set_name,
@@ -4282,7 +5613,6 @@ class MiruLearningEngine:
                     c.block_icon,
                     c.effect_text,
                     c.trigger_text,
-                    c.illustrator,
                     COUNT(v.id) AS variant_count,
                     SUM(
                         CASE
@@ -4301,7 +5631,10 @@ class MiruLearningEngine:
             ).fetchone()
         if row is None:
             return {}
-        return {key: row[key] for key in row.keys()}
+        result = {key: row[key] for key in row.keys()}
+        result.setdefault("set_family", derive_set_family(str(result.get("set_code") or "")))
+        result.setdefault("illustrator", "")
+        return result
 
     def resolve_local_profile(self, card_code: str) -> dict[str, Any]:
         canonical = normalize_card_code(card_code)
@@ -4464,6 +5797,9 @@ class MiruLearningEngine:
             return "community"
         if tokens & {"reference", "db", "database", "catalog", "local", "corroboration", "analysis", "cache", "wiki"}:
             return "reference"
+        # Deck/meta snapshot lanes (e.g. hybrid-deck-meta-snapshot) are reference-style signals, not unknown.
+        if ("deck" in tokens and "meta" in tokens) or ("hybrid" in tokens and "deck" in tokens):
+            return "reference"
         return "unknown"
 
     def evaluate_source_trust_intake(
@@ -4585,7 +5921,7 @@ class MiruLearningEngine:
             profile = self.resolve_source_entry(resolved_source_id)
         except KeyError:
             return self.evaluate_source_trust_intake(source_id=resolved_source_id)
-        return self.evaluate_source_trust_intake(
+        intake = self.evaluate_source_trust_intake(
             source_id=profile.source_id,
             source_type=profile.source_type,
             source_url=profile.base_url or profile.snapshot_url,
@@ -4597,6 +5933,34 @@ class MiruLearningEngine:
             respect_site_policies=profile.respect_site_policies,
             review_state=profile.review_state,
         )
+        if (
+            is_source_approved_in_config(profile.source_id)
+            and profile.enabled
+            and profile.allowed_access == "public_page"
+            and not profile.requires_api
+            and intake.get("allowed_for_learning")
+        ):
+            if int(profile.trust_tier or 4) <= 1:
+                intake.update(
+                    {
+                        "source_classification": "official",
+                        "eligibility": "eligible_public_official",
+                        "evidence_role": "verified-facts",
+                        "manual_approval_required": False,
+                        "rationale": "Source is explicitly approved in Miru's worktree allowlist for public snapshot-backed verified fact use.",
+                    }
+                )
+            else:
+                intake.update(
+                    {
+                        "source_classification": "reference",
+                        "eligibility": "eligible_public_reference",
+                        "evidence_role": "reference-facts",
+                        "manual_approval_required": False,
+                        "rationale": "Source is explicitly approved in Miru's worktree allowlist for bounded snapshot-backed reference use.",
+                    }
+                )
+        return intake
 
     def upsert_reviewed_source_candidate(
         self,
@@ -5937,6 +7301,20 @@ class MiruLearningEngine:
         )
         aggregate_result = self.rebuild_card_usage_intelligence(card_code=resolved_card_code)
         verified_sync = self.sync_card_to_verified_dossier_store(card_code=resolved_card_code)
+        if not verified_sync.get("stored") and str(verified_sync.get("reason") or "") == "missing-learning-dossier":
+            usage_rows = self.fetch_learning_card_usage(card_code=resolved_card_code)
+            if usage_rows:
+                self._upsert_verified_usage_rows_from_learning(resolved_card_code, usage_rows)
+                self._sync_usage_postures_to_verified_store(
+                    card_code=resolved_card_code,
+                    usage_rows=usage_rows,
+                    verification_state="pending-confirmation",
+                )
+                verified_sync = {
+                    "stored": True,
+                    "reason": "usage-synced-without-learning-dossier",
+                    "usage_count": len(usage_rows),
+                }
         return {
             "stored": bool(evidence_result.get("stored")) and bool(aggregate_result.get("stored")),
             "card_code": resolved_card_code,
@@ -5944,6 +7322,115 @@ class MiruLearningEngine:
             "usage_aggregate": aggregate_result,
             "verified_dossier_sync": verified_sync,
             "governance": governance,
+        }
+
+    def ingest_community_structured_usage_snapshot(
+        self,
+        *,
+        source_id: str,
+        task_payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Extract deck usage signals from a community-structured snapshot and run through ingest_decklist_usage_evidence.
+
+        Fail-closed unless the execution adapter is ``community-structured`` and ``snapshot_path`` / ``snapshot_url``
+        or inline ``payload`` is present. Does not bypass governance or publish gates.
+        """
+        resolved_source = str(source_id or "").strip().lower()
+        if not resolved_source:
+            return {"ok": False, "reason": "missing-source-id", "signals_total": 0, "signals_ingested": 0}
+        try:
+            source_entry = self.resolve_source_entry(resolved_source)
+        except KeyError:
+            return {"ok": False, "reason": "unknown-source-id", "signals_total": 0, "signals_ingested": 0}
+        adapter_key = normalize_source_execution_adapter_key(str(getattr(source_entry, "execution_adapter", "") or ""))
+        if adapter_key != "community-structured":
+            return {
+                "ok": False,
+                "reason": "adapter-not-community-structured",
+                "execution_adapter": adapter_key,
+                "signals_total": 0,
+                "signals_ingested": 0,
+            }
+        merged_payload = self.resolve_source_task_payload(resolved_source, task_payload)
+        if not self.source_payload_has_adapter_input(merged_payload):
+            return {
+                "ok": False,
+                "reason": "missing-snapshot-input",
+                "signals_total": 0,
+                "signals_ingested": 0,
+            }
+        inline_payload = merged_payload.get("payload") if isinstance(merged_payload.get("payload"), dict) else None
+        snapshot_path = str(merged_payload.get("snapshot_path") or "").strip()
+        snapshot_url = str(merged_payload.get("snapshot_url") or "").strip()
+        batch_limit = merged_payload.get("batch_limit")
+        try:
+            max_signals = max(int(batch_limit), 1) if batch_limit is not None else 5000
+        except (TypeError, ValueError):
+            max_signals = 5000
+        card_filter = str(merged_payload.get("card_code") or "").strip().upper()
+
+        signals = self.community_structured_adapter.extract_usage_signals(
+            source_entry=source_entry,
+            payload=inline_payload,
+            snapshot_path=snapshot_path or None,
+            snapshot_url=snapshot_url or None,
+        )
+        total = len(signals)
+        ingested = 0
+        results: list[dict[str, Any]] = []
+        cards_touched: set[str] = set()
+        leaders_touched: set[str] = set()
+        for sig in signals[:max_signals]:
+            cc = str(sig.get("card_code") or "").strip().upper()
+            if card_filter and cc != card_filter:
+                continue
+            out = self.ingest_decklist_usage_evidence(
+                source_id=str(sig.get("source_id") or resolved_source).strip().lower(),
+                source_type=str(sig.get("source_type") or source_entry.source_type or "").strip().lower(),
+                source_url=str(sig.get("source_url") or "").strip(),
+                source_reference=str(sig.get("source_reference") or "").strip(),
+                event_key=str(sig.get("event_key") or "").strip(),
+                event_name=str(sig.get("event_name") or "").strip(),
+                placement=int(sig.get("placement") or 0),
+                decklist_key=str(sig.get("decklist_key") or "").strip(),
+                card_code=cc,
+                leader_code=str(sig.get("leader_code") or "").strip().upper(),
+                leader_name=str(sig.get("leader_name") or "").strip(),
+                archetype_label=str(sig.get("archetype_label") or "").strip(),
+                role_classification=str(sig.get("role_classification") or "").strip().lower(),
+                appearance_count=int(sig.get("appearance_count") or 1),
+                confidence_input=float(sig.get("confidence_input") or 0.0),
+                observed_at=str(sig.get("observed_at") or "").strip(),
+                citation_payload=dict(sig.get("citation_payload") or {}),
+                provenance=dict(sig.get("provenance") or {}),
+                public_data_only=source_entry.public_data_only,
+                requires_login=source_entry.requires_login,
+                respect_site_policies=source_entry.respect_site_policies,
+            )
+            results.append(out)
+            if out.get("stored"):
+                ingested += 1
+                cards_touched.add(cc)
+                lc = str(sig.get("leader_code") or "").strip().upper()
+                if lc:
+                    leaders_touched.add(lc)
+
+        meta_card: list[dict[str, Any]] = []
+        meta_leader: list[dict[str, Any]] = []
+        for code in sorted(cards_touched):
+            meta_card.append(self.rebuild_card_meta_intel(card_code=code))
+        for code in sorted(leaders_touched):
+            meta_leader.append(self.rebuild_leader_meta_intel(leader_code=code))
+
+        return {
+            "ok": True,
+            "source_id": resolved_source,
+            "signals_total": total,
+            "signals_processed": min(total, max_signals),
+            "signals_ingested": ingested,
+            "ingest_results_sample": results[:5],
+            "rebuild_card_meta_intel": meta_card,
+            "rebuild_leader_meta_intel": meta_leader,
         }
 
     def store_card_usage_intelligence(
@@ -7044,6 +8531,116 @@ class MiruLearningEngine:
             "synergy_records_written": stored_count,
         }
 
+    def _upsert_verified_usage_rows_from_learning(
+        self,
+        card_code: str,
+        usage_rows: list[dict[str, Any]],
+    ) -> None:
+        """Write learning_card_usage rows to verified card_usage / leader_links (no posture)."""
+        resolved_card_code = str(card_code or "").strip().upper()
+        if not resolved_card_code or not usage_rows:
+            return
+        for usage_row in usage_rows:
+            usage_source_ids = self._compact_signal_list(
+                [str(usage_row.get("source_id") or "").strip().lower()],
+                limit=4,
+            )
+            usage_citation = {
+                "source_reference": str(usage_row.get("source_reference") or "").strip(),
+                "source_url": str(usage_row.get("source_url") or "").strip(),
+            }
+            usage_provenance = dict(usage_row.get("provenance") or {})
+            if str(usage_row.get("source_id") or "").strip():
+                self.verified_dossier_store.upsert_card_source(
+                    card_code=resolved_card_code,
+                    source_id=str(usage_row.get("source_id") or "").strip().lower(),
+                    source_type="decklist-usage-evidence",
+                    source_url=str(usage_row.get("source_url") or "").strip(),
+                    source_reference=str(usage_row.get("source_reference") or "").strip(),
+                    fetched_at=str(usage_row.get("freshness_at") or "").strip(),
+                    trust_level="official" if str(usage_row.get("source_id") or "").strip().lower().startswith("official") else "trusted",
+                    trust_score=0.95 if str(usage_row.get("source_id") or "").strip().lower().startswith("official") else 0.74,
+                    citation_payload=usage_citation,
+                    notes="usage-intelligence-source",
+                )
+            self.verified_dossier_store.upsert_card_usage(
+                card_code=resolved_card_code,
+                leader_code=str(usage_row.get("leader_code") or "").strip().upper(),
+                leader_name=str(usage_row.get("leader_name") or "").strip(),
+                archetype_label=str(usage_row.get("archetype_key") or "").strip(),
+                role_classification=str(usage_row.get("role_classification") or "").strip().lower(),
+                support_count=int(usage_row.get("sample_size") or 0),
+                confidence=float(usage_row.get("usage_frequency") or 0.0),
+                status=str(usage_row.get("fact_status") or "tentative").strip(),
+                primary_source_id=str(usage_row.get("source_id") or "").strip().lower(),
+                source_ids=usage_source_ids,
+                citation_payload=usage_citation,
+                provenance=usage_provenance,
+                freshness_at=str(usage_row.get("freshness_at") or "").strip(),
+            )
+            if str(usage_row.get("leader_code") or "").strip():
+                self.verified_dossier_store.upsert_leader_link(
+                    card_code=resolved_card_code,
+                    leader_code=str(usage_row.get("leader_code") or "").strip().upper(),
+                    leader_name=str(usage_row.get("leader_name") or "").strip(),
+                    archetype_label=str(usage_row.get("archetype_key") or "").strip(),
+                    role_classification=str(usage_row.get("role_classification") or "").strip().lower(),
+                    support_count=int(usage_row.get("sample_size") or 0),
+                    confidence=float(usage_row.get("usage_frequency") or 0.0),
+                    status=str(usage_row.get("fact_status") or "tentative").strip(),
+                    primary_source_id=str(usage_row.get("source_id") or "").strip().lower(),
+                    source_ids=usage_source_ids,
+                    citation_payload=usage_citation,
+                    provenance=usage_provenance,
+                    freshness_at=str(usage_row.get("freshness_at") or "").strip(),
+                )
+
+    def _sync_usage_postures_to_verified_store(
+        self,
+        *,
+        card_code: str,
+        usage_rows: list[dict[str, Any]],
+        verification_state: str = "pending-confirmation",
+    ) -> None:
+        """confidence_posture + optional usage_posture + leader intelligence rebuild."""
+        resolved_card_code = str(card_code or "").strip().upper()
+        if not resolved_card_code:
+            return
+        vs = str(verification_state or "pending-confirmation").strip() or "pending-confirmation"
+        posture = self.verified_dossier_store.build_answer_posture(resolved_card_code)
+        self.verified_dossier_store.upsert_answer_fragment(
+            card_code=resolved_card_code,
+            fragment_key="confidence_posture",
+            fragment_type=str(posture.get("evidence_posture") or "no_evidence_found"),
+            answer_text=str(posture.get("reassurance_note") or posture.get("caution_note") or "").strip(),
+            confidence_label=str(posture.get("confidence_label") or "no_evidence"),
+            status=vs,
+            provenance={"caution_note": str(posture.get("caution_note") or "")},
+        )
+        usage_posture = self.verified_dossier_store.build_usage_posture(resolved_card_code)
+        if usage_rows:
+            self.verified_dossier_store.upsert_answer_fragment(
+                card_code=resolved_card_code,
+                fragment_key="usage_posture",
+                fragment_type=str(usage_posture.get("evidence_posture") or "no_usage_evidence_found"),
+                answer_text=str(
+                    usage_posture.get("reassurance_note") or usage_posture.get("caution_note") or ""
+                ).strip(),
+                confidence_label=str(usage_posture.get("confidence_label") or "no_evidence"),
+                status=vs,
+                provenance={
+                    "leader_code": str(usage_posture.get("leader_code") or ""),
+                    "archetype_label": str(usage_posture.get("archetype_label") or ""),
+                    "role_classification": str(usage_posture.get("role_classification") or ""),
+                },
+            )
+            for leader_code in {
+                str(item.get("leader_code") or "").strip().upper()
+                for item in usage_rows
+                if str(item.get("leader_code") or "").strip()
+            }:
+                self.rebuild_leader_intelligence(leader_code=leader_code)
+
     def sync_card_to_verified_dossier_store(
         self,
         *,
@@ -7181,95 +8778,12 @@ class MiruLearningEngine:
                 provenance={"source_count": int(resolved_rollup.get("source_count") or 0)},
             )
         usage_rows = self.fetch_learning_card_usage(card_code=resolved_card_code)
-        for usage_row in usage_rows:
-            usage_source_ids = self._compact_signal_list(
-                [str(usage_row.get("source_id") or "").strip().lower()],
-                limit=4,
-            )
-            usage_citation = {
-                "source_reference": str(usage_row.get("source_reference") or "").strip(),
-                "source_url": str(usage_row.get("source_url") or "").strip(),
-            }
-            usage_provenance = dict(usage_row.get("provenance") or {})
-            if str(usage_row.get("source_id") or "").strip():
-                self.verified_dossier_store.upsert_card_source(
-                    card_code=resolved_card_code,
-                    source_id=str(usage_row.get("source_id") or "").strip().lower(),
-                    source_type="decklist-usage-evidence",
-                    source_url=str(usage_row.get("source_url") or "").strip(),
-                    source_reference=str(usage_row.get("source_reference") or "").strip(),
-                    fetched_at=str(usage_row.get("freshness_at") or "").strip(),
-                    trust_level="official" if str(usage_row.get("source_id") or "").strip().lower().startswith("official") else "trusted",
-                    trust_score=0.95 if str(usage_row.get("source_id") or "").strip().lower().startswith("official") else 0.74,
-                    citation_payload=usage_citation,
-                    notes="usage-intelligence-source",
-                )
-            self.verified_dossier_store.upsert_card_usage(
-                card_code=resolved_card_code,
-                leader_code=str(usage_row.get("leader_code") or "").strip().upper(),
-                leader_name=str(usage_row.get("leader_name") or "").strip(),
-                archetype_label=str(usage_row.get("archetype_key") or "").strip(),
-                role_classification=str(usage_row.get("role_classification") or "").strip().lower(),
-                support_count=int(usage_row.get("sample_size") or 0),
-                confidence=float(usage_row.get("usage_frequency") or 0.0),
-                status=str(usage_row.get("fact_status") or "tentative").strip(),
-                primary_source_id=str(usage_row.get("source_id") or "").strip().lower(),
-                source_ids=usage_source_ids,
-                citation_payload=usage_citation,
-                provenance=usage_provenance,
-                freshness_at=str(usage_row.get("freshness_at") or "").strip(),
-            )
-            if str(usage_row.get("leader_code") or "").strip():
-                self.verified_dossier_store.upsert_leader_link(
-                    card_code=resolved_card_code,
-                    leader_code=str(usage_row.get("leader_code") or "").strip().upper(),
-                    leader_name=str(usage_row.get("leader_name") or "").strip(),
-                    archetype_label=str(usage_row.get("archetype_key") or "").strip(),
-                    role_classification=str(usage_row.get("role_classification") or "").strip().lower(),
-                    support_count=int(usage_row.get("sample_size") or 0),
-                    confidence=float(usage_row.get("usage_frequency") or 0.0),
-                    status=str(usage_row.get("fact_status") or "tentative").strip(),
-                    primary_source_id=str(usage_row.get("source_id") or "").strip().lower(),
-                    source_ids=usage_source_ids,
-                    citation_payload=usage_citation,
-                    provenance=usage_provenance,
-                    freshness_at=str(usage_row.get("freshness_at") or "").strip(),
-                )
-        posture = self.verified_dossier_store.build_answer_posture(resolved_card_code)
-        self.verified_dossier_store.upsert_answer_fragment(
+        self._upsert_verified_usage_rows_from_learning(resolved_card_code, usage_rows)
+        self._sync_usage_postures_to_verified_store(
             card_code=resolved_card_code,
-            fragment_key="confidence_posture",
-            fragment_type=str(posture.get("evidence_posture") or "no_evidence_found"),
-            answer_text=str(posture.get("reassurance_note") or posture.get("caution_note") or "").strip(),
-            confidence_label=str(posture.get("confidence_label") or "no_evidence"),
-            status=str(dossier.get("verification_state") or "pending-confirmation"),
-            provenance={"caution_note": str(posture.get("caution_note") or "")},
+            usage_rows=usage_rows,
+            verification_state=str(dossier.get("verification_state") or "pending-confirmation"),
         )
-        usage_posture = self.verified_dossier_store.build_usage_posture(resolved_card_code)
-        if usage_rows:
-            self.verified_dossier_store.upsert_answer_fragment(
-                card_code=resolved_card_code,
-                fragment_key="usage_posture",
-                fragment_type=str(usage_posture.get("evidence_posture") or "no_usage_evidence_found"),
-                answer_text=str(
-                    usage_posture.get("reassurance_note")
-                    or usage_posture.get("caution_note")
-                    or ""
-                ).strip(),
-                confidence_label=str(usage_posture.get("confidence_label") or "no_evidence"),
-                status=str(dossier.get("verification_state") or "pending-confirmation"),
-                provenance={
-                    "leader_code": str(usage_posture.get("leader_code") or ""),
-                    "archetype_label": str(usage_posture.get("archetype_label") or ""),
-                    "role_classification": str(usage_posture.get("role_classification") or ""),
-                },
-            )
-            for leader_code in {
-                str(item.get("leader_code") or "").strip().upper()
-                for item in usage_rows
-                if str(item.get("leader_code") or "").strip()
-            }:
-                self.rebuild_leader_intelligence(leader_code=leader_code)
         return {
             "stored": True,
             "card_code": resolved_card_code,
@@ -8741,15 +10255,52 @@ class MiruLearningEngine:
     ) -> list[NormalizedSourceRecord]:
         source_entry = self.resolve_source_entry(source_id)
         payload = dict(task_payload or {})
+        inline_payload = payload.get("payload") if isinstance(payload.get("payload"), dict) else None
         snapshot_path = payload.get("snapshot_path") or ""
         snapshot_url = payload.get("snapshot_url") or ""
-        return self.official_source_adapter.fetch_records(
-            source_entry=source_entry,
-            card_code=card_code,
-            set_code=set_code,
-            snapshot_path=snapshot_path,
-            snapshot_url=snapshot_url,
-        )
+        adapter_key = str(getattr(source_entry, "execution_adapter", "") or "").strip().lower()
+        if adapter_key in {"", "official-cardlist"}:
+            return self.official_source_adapter.fetch_records(
+                source_entry=source_entry,
+                card_code=card_code,
+                set_code=set_code,
+                payload=inline_payload,
+                snapshot_path=snapshot_path,
+                snapshot_url=snapshot_url,
+            )
+        if adapter_key in {
+            "official-deck-features",
+            "official-rules-faq",
+            "official-restriction-notices",
+            "official-errata-cards",
+        }:
+            return self.structured_source_adapter.fetch_records(
+                source_entry=source_entry,
+                card_code=card_code,
+                set_code=set_code,
+                payload=inline_payload,
+                snapshot_path=snapshot_path,
+                snapshot_url=snapshot_url,
+            )
+        if adapter_key == "optcg-api":
+            return self.optcg_api_adapter.fetch_records(
+                source_entry=source_entry,
+                card_code=card_code,
+                set_code=set_code,
+                payload=inline_payload,
+                snapshot_path=snapshot_path,
+                snapshot_url=snapshot_url,
+            )
+        if adapter_key == "community-structured":
+            return self.community_structured_adapter.fetch_records(
+                source_entry=source_entry,
+                card_code=card_code,
+                set_code=set_code,
+                payload=inline_payload,
+                snapshot_path=snapshot_path,
+                snapshot_url=snapshot_url,
+            )
+        return []
 
     def resolve_source_task_payload(self, source_id: str, task_payload: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = dict(task_payload or {})
@@ -8760,6 +10311,360 @@ class MiruLearningEngine:
             if key in payload and key not in merged:
                 merged[key] = payload[key]
         return merged
+
+    def _resolve_mongo_client(self) -> MiruMongoClient | None:
+        if MiruMongoClient is None or MiruMongoSettings is None:
+            return None
+        if self._mongo_client is not None:
+            return self._mongo_client
+        settings = MiruMongoSettings.from_env(default_enabled=False)
+        if not bool(settings.enabled):
+            return None
+        self._mongo_client = MiruMongoClient(settings)
+        return self._mongo_client
+
+    def _load_source_payload_for_mongo_stage(
+        self,
+        *,
+        source_id: str,
+        card_code: str,
+        set_code: str = "",
+        task_payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        source_entry = self.resolve_source_entry(source_id)
+        payload = dict(task_payload or {})
+        inline_payload = payload.get("payload") if isinstance(payload.get("payload"), (dict, list)) else None
+        snapshot_path = payload.get("snapshot_path") or ""
+        snapshot_url = payload.get("snapshot_url") or ""
+        adapter_key = normalize_source_execution_adapter_key(str(getattr(source_entry, "execution_adapter", "") or ""))
+
+        if adapter_key in {"", "official-cardlist"}:
+            loaded = self.official_source_adapter.load_payload(
+                source_entry=source_entry,
+                payload=inline_payload if isinstance(inline_payload, dict) else None,
+                snapshot_path=snapshot_path,
+                snapshot_url=snapshot_url,
+            )
+            return {
+                "payload": loaded,
+                "source_url": str(snapshot_url or source_entry.snapshot_url or source_entry.base_url or "").strip(),
+                "source_reference": str(card_code or "").strip().upper(),
+                "payload_kind": "official-cardlist",
+            }
+
+        if adapter_key in {
+            "official-deck-features",
+            "official-rules-faq",
+            "official-restriction-notices",
+            "official-errata-cards",
+        }:
+            loaded = self.structured_source_adapter.load_payload(
+                source_entry=source_entry,
+                payload=inline_payload if isinstance(inline_payload, dict) else None,
+                snapshot_path=snapshot_path,
+                snapshot_url=snapshot_url,
+            )
+            return {
+                "payload": loaded,
+                "source_url": str(snapshot_url or source_entry.snapshot_url or source_entry.base_url or "").strip(),
+                "source_reference": str(card_code or "").strip().upper(),
+                "payload_kind": adapter_key,
+            }
+
+        if adapter_key == "optcg-api":
+            endpoint = self.optcg_api_adapter.fetch_endpoint_payload(
+                source_entry=source_entry,
+                endpoint_family=str(payload.get("endpoint_family") or "").strip(),
+                card_code=card_code,
+                set_code=str(payload.get("set_code") or set_code or "").strip(),
+                filters=payload.get("filters") if isinstance(payload.get("filters"), dict) else None,
+                payload=inline_payload,
+                snapshot_path=snapshot_path,
+                snapshot_url=snapshot_url,
+                allow_catalog_pull=bool(payload.get("allow_catalog_pull")),
+            )
+            return {
+                "payload": endpoint.get("payload"),
+                "source_url": str(endpoint.get("request_url") or source_entry.base_url or "").strip(),
+                "source_reference": str(card_code or "").strip().upper(),
+                "payload_kind": str(endpoint.get("endpoint_family") or "optcg-api").strip(),
+                "row_count": int(endpoint.get("row_count") or 0),
+            }
+
+        if adapter_key == "community-structured":
+            loaded = self.community_structured_adapter.load_payload(
+                source_entry=source_entry,
+                payload=inline_payload,
+                snapshot_path=snapshot_path,
+                snapshot_url=snapshot_url,
+            )
+            return {
+                "payload": loaded,
+                "source_url": str(snapshot_url or source_entry.snapshot_url or source_entry.base_url or "").strip(),
+                "source_reference": str(card_code or "").strip().upper(),
+                "payload_kind": "community-structured",
+            }
+
+        raise SourceAdapterError(f"Mongo staging does not support execution adapter '{adapter_key}'.")
+
+    def maybe_stage_source_verification_to_mongo(
+        self,
+        *,
+        card_code: str,
+        source_id: str,
+        task_type: str,
+        execution_kind: str,
+        task_payload: dict[str, Any] | None = None,
+        normalized_records: Sequence[NormalizedSourceRecord] | None = None,
+        status: str = "processed",
+        extra_metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        client = self._resolve_mongo_client()
+        if client is None or stage_source_verification is None:
+            return {"enabled": False, "status": "disabled"}
+        try:
+            raw_snapshot = self._load_source_payload_for_mongo_stage(
+                source_id=source_id,
+                card_code=card_code,
+                set_code=str((task_payload or {}).get("set_code") or "").strip(),
+                task_payload=task_payload,
+            )
+        except Exception as exc:
+            return {
+                "enabled": True,
+                "status": "stage_failed_closed",
+                "error": str(exc),
+            }
+        try:
+            result = stage_source_verification(
+                client=client,
+                source_id=source_id,
+                card_code=card_code,
+                source_reference=str(raw_snapshot.get("source_reference") or ""),
+                source_url=str(raw_snapshot.get("source_url") or ""),
+                task_type=task_type,
+                execution_kind=execution_kind,
+                status=status,
+                raw_payload=raw_snapshot.get("payload"),
+                normalized_records=[record.to_dict() for record in (normalized_records or ())],
+                task_payload=task_payload,
+                metadata={
+                    "payload_kind": str(raw_snapshot.get("payload_kind") or "").strip(),
+                    "row_count": int(raw_snapshot.get("row_count") or 0),
+                    **dict(extra_metadata or {}),
+                },
+            )
+        except Exception as exc:
+            return {
+                "enabled": True,
+                "status": "stage_failed_closed",
+                "error": str(exc),
+            }
+        return result
+
+    def plan_approved_source_support_lanes(
+        self,
+        *,
+        card_code: str,
+        limit: int = 3,
+        preferred_source_ids: Sequence[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        resolved_card_code = str(normalize_card_code(card_code).get("canonical_code") or card_code or "").strip().upper()
+        existing_source_ids = {
+            str(item.get("source_id") or "").strip().lower()
+            for item in self.fetch_dossier_source_records(resolved_card_code)
+            if str(item.get("source_id") or "").strip()
+        }
+        preferred = [str(item or "").strip().lower() for item in preferred_source_ids or () if str(item or "").strip()]
+        candidate_ids = preferred or [
+            str(entry.source_id or "").strip().lower()
+            for entry in sorted(self.source_registry.values(), key=lambda item: (int(item.trust_tier or 4), str(item.source_id or "")))
+            if str(entry.source_id or "").strip()
+        ]
+        planned: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for source_id in candidate_ids:
+            if source_id in seen:
+                continue
+            seen.add(source_id)
+            try:
+                source_entry = self.resolve_source_entry(source_id)
+            except KeyError:
+                continue
+            if not source_entry.enabled or "image" in str(source_entry.source_type or "").lower():
+                continue
+            if normalize_source_execution_adapter_key(str(getattr(source_entry, "execution_adapter", "") or "")) not in {
+                "",
+                "official-cardlist",
+                "official-deck-features",
+                "official-rules-faq",
+                "official-restriction-notices",
+                "official-errata-cards",
+                "optcg-api",
+                "community-structured",
+            }:
+                continue
+            payload = self.resolve_source_task_payload(source_id, {})
+            has_adapter_input = self.source_payload_has_adapter_input(payload)
+            learning_gate = self.evaluate_source_execution_gate(source_id=source_id, execution_kind="learning-intake")
+            governance = learning_gate
+            execution_kind = "learning-intake"
+            if not bool(learning_gate.get("proceed")):
+                reference_gate = self.evaluate_source_execution_gate(source_id=source_id, execution_kind="reference-safe")
+                if bool(reference_gate.get("proceed")):
+                    governance = reference_gate
+                    execution_kind = "reference-safe"
+            planned.append(
+                {
+                    "card_code": resolved_card_code,
+                    "source_id": source_id,
+                    "source_name": str(source_entry.source_name or "").strip(),
+                    "trust_tier": int(source_entry.trust_tier or 4),
+                    "already_present": source_id in existing_source_ids,
+                    "task_payload": payload,
+                    "has_adapter_input": has_adapter_input,
+                    "execution_kind": execution_kind,
+                    "governance": governance,
+                    "attemptable": source_id not in existing_source_ids and has_adapter_input and bool(governance.get("proceed")),
+                }
+            )
+            if len(planned) >= max(int(limit or 1), 1):
+                break
+        return planned
+
+    def verify_card_from_source_lane(
+        self,
+        *,
+        card_code: str,
+        source_id: str,
+        task_payload: dict[str, Any] | None = None,
+        execution_kind: str = "learning-intake",
+        task_type: str = "verify_official_fields",
+        suppress_notifications: bool = True,
+    ) -> dict[str, Any]:
+        resolved_card_code = str(normalize_card_code(card_code).get("canonical_code") or card_code or "").strip().upper()
+        payload = self.resolve_source_task_payload(source_id, task_payload)
+        governance = self.evaluate_source_execution_gate(source_id=source_id, execution_kind=execution_kind)
+        before_source_ids = {
+            str(item.get("source_id") or "").strip().lower()
+            for item in self.fetch_dossier_source_records(resolved_card_code)
+            if str(item.get("source_id") or "").strip()
+        }
+        if not bool(governance.get("proceed")):
+            return {
+                "card_code": resolved_card_code,
+                "source_id": str(source_id or "").strip().lower(),
+                "task_type": task_type,
+                "execution_kind": execution_kind,
+                "task_payload": payload,
+                "attempted": False,
+                "skipped": True,
+                "reason": str(governance.get("reason") or governance.get("policy_summary") or "").strip(),
+                "governance": governance,
+                "new_source_ids": [],
+            }
+        if not self.source_payload_has_adapter_input(payload):
+            return {
+                "card_code": resolved_card_code,
+                "source_id": str(source_id or "").strip().lower(),
+                "task_type": task_type,
+                "execution_kind": execution_kind,
+                "task_payload": payload,
+                "attempted": False,
+                "skipped": True,
+                "reason": "No approved snapshot or URL input was available for this source lane.",
+                "governance": governance,
+                "new_source_ids": [],
+            }
+
+        records = self.fetch_official_source_records(
+            source_id=source_id,
+            card_code=resolved_card_code,
+            task_payload=payload,
+        )
+        if not records:
+            mongo_stage = self.maybe_stage_source_verification_to_mongo(
+                card_code=resolved_card_code,
+                source_id=source_id,
+                task_type=task_type,
+                execution_kind=execution_kind,
+                task_payload=payload,
+                normalized_records=[],
+                status="processed_no_match",
+                extra_metadata={"match_found": False},
+            )
+            return {
+                "card_code": resolved_card_code,
+                "source_id": str(source_id or "").strip().lower(),
+                "task_type": task_type,
+                "execution_kind": execution_kind,
+                "task_payload": payload,
+                "attempted": True,
+                "skipped": True,
+                "reason": "No matching approved source record was available for this card.",
+                "governance": governance,
+                "new_source_ids": [],
+                "mongo_staging": mongo_stage,
+            }
+
+        record = records[0]
+        stored_verification_state = "verified-source-fields" if execution_kind == "learning-intake" else "reference-source-fields"
+        dossier_verification_state = "source-backed" if execution_kind == "learning-intake" else "reference-source-backed"
+        self.store_source_record(record, verification_state=stored_verification_state)
+        fact_acceptance = self.merge_source_record_into_dossier(
+            record,
+            verification_state=dossier_verification_state,
+        )
+        if bool(fact_acceptance.get("stored")):
+            sync_result = self.queue_validated_card_for_project_sync(
+                record,
+                task_type=task_type,
+                suppress_notifications=suppress_notifications,
+            )
+        else:
+            sync_result = {
+                "skipped": True,
+                "reason": str(
+                    fact_acceptance.get("storage_reason")
+                    or "Source record was stored without verified dossier promotion."
+                ).strip(),
+            }
+        after_source_ids = {
+            str(item.get("source_id") or "").strip().lower()
+            for item in self.fetch_dossier_source_records(resolved_card_code)
+            if str(item.get("source_id") or "").strip()
+        }
+        new_source_ids = sorted(after_source_ids - before_source_ids)
+        mongo_stage = self.maybe_stage_source_verification_to_mongo(
+            card_code=resolved_card_code,
+            source_id=source_id,
+            task_type=task_type,
+            execution_kind=execution_kind,
+            task_payload=payload,
+            normalized_records=records,
+            status="processed_matched",
+            extra_metadata={
+                "match_found": True,
+                "stored": bool(fact_acceptance.get("stored")),
+                "new_distinct_source_added": str(record.source_id or "").strip().lower() in new_source_ids,
+            },
+        )
+        return {
+            "card_code": resolved_card_code,
+            "source_id": str(record.source_id or "").strip().lower(),
+            "source_reference": str(record.source_reference or "").strip(),
+            "task_type": task_type,
+            "execution_kind": execution_kind,
+            "task_payload": payload,
+            "attempted": True,
+            "skipped": False,
+            "governance": governance,
+            "fact_acceptance": fact_acceptance,
+            "project_sync": sync_result,
+            "new_source_ids": new_source_ids,
+            "new_distinct_source_added": str(record.source_id or "").strip().lower() in new_source_ids,
+            "mongo_staging": mongo_stage,
+        }
 
     def store_source_record(
         self,
@@ -11461,6 +13366,16 @@ def handle_verify_official_fields(engine: MiruLearningEngine, task: LearningTask
         execution_kind="learning-intake",
     )
     if not governance["proceed"]:
+        # Reference-only approved sources (e.g. community-cardlist) may proceed under reference-safe
+        # when snapshot-backed adapter input is present; learning-intake remains deferred.
+        if str(governance.get("execution_outcome") or "").strip() == "defer-reference-only":
+            ref_governance = engine.evaluate_source_execution_gate(
+                source_id=source_id,
+                execution_kind="reference-safe",
+            )
+            if ref_governance.get("proceed"):
+                governance = ref_governance
+    if not governance["proceed"]:
         limited_use_result = engine.execute_limited_use_source_path(task=task, governance=governance)
         if limited_use_result is not None:
             return limited_use_result
@@ -11874,6 +13789,15 @@ def handle_discover_sources(engine: MiruLearningEngine, task: LearningTask) -> d
         "discovered_candidates": len(candidates),
         "new_candidates": created,
     }
+
+
+def handle_ingest_community_usage_snapshot(engine: MiruLearningEngine, task: LearningTask) -> dict[str, Any]:
+    """Batch ingest deck/meta usage signals from an approved community-structured snapshot (governed)."""
+    source_id = str(task.source_id or "").strip().lower()
+    if not source_id:
+        raise ValueError("ingest_community_usage_snapshot requires source_id")
+    payload = dict(task.task_payload or {})
+    return engine.ingest_community_structured_usage_snapshot(source_id=source_id, task_payload=payload)
 
 
 def handle_fetch_card_image(engine: MiruLearningEngine, task: LearningTask) -> dict[str, Any]:
@@ -12927,6 +14851,7 @@ TASK_HANDLERS: dict[str, Callable[[MiruLearningEngine, LearningTask], dict[str, 
     "refresh_from_source": handle_refresh_from_source,
     "discover_set_cards": handle_discover_set_cards,
     "discover_sources": handle_discover_sources,
+    "ingest_community_usage_snapshot": handle_ingest_community_usage_snapshot,
     "fetch_card_image": handle_fetch_card_image,
     "verify_card_image": handle_verify_card_image,
     "refresh_card_image": handle_refresh_card_image,
@@ -12966,6 +14891,179 @@ def format_age_compact(seconds: int | None) -> str:
     return f"{seconds // 86400}d"
 
 
+# Snapshot freshness: card-data JSON changes often; reference snapshots change slowly.
+_SNAPSHOT_FRESHNESS_GROUPS: dict[str, dict[str, Any]] = {
+    "card_data": {
+        "aging_seconds": 7 * 86400,
+        "stale_seconds": 14 * 86400,
+        "keys": frozenset(
+            {
+                "official-cardlist",
+                "reputable-card-db",
+                "official-card-images",
+                "community-cardlist",
+            }
+        ),
+    },
+    "reference": {
+        "aging_seconds": 30 * 86400,
+        "stale_seconds": 90 * 86400,
+        "keys": frozenset(
+            {
+                "official-deck-features",
+                "official-rules-faq",
+                "official-restriction-notices",
+                "official-errata-cards",
+            }
+        ),
+    },
+}
+
+_SNAPSHOT_INPUT_LABELS: dict[str, str] = {
+    "official-cardlist": "Official cardlist",
+    "community-cardlist": "Community cardlist",
+    "reputable-card-db": "Reputable card DB",
+    "official-card-images": "Official card images",
+    "official-deck-features": "Deck features",
+    "official-rules-faq": "Rules FAQ",
+    "official-restriction-notices": "Restriction notices",
+    "official-errata-cards": "Errata cards",
+}
+
+_SNAPSHOT_INPUT_ORDER: tuple[str, ...] = (
+    "official-cardlist",
+    "community-cardlist",
+    "reputable-card-db",
+    "official-card-images",
+    "official-deck-features",
+    "official-rules-faq",
+    "official-restriction-notices",
+    "official-errata-cards",
+)
+
+_EXTRA_SNAPSHOT_PATHS: dict[str, tuple[Path, ...]] = {
+    "community-cardlist": (PROJECT_ROOT / "data" / "snapshots" / "community_cardlist.json",),
+}
+
+_STATUS_RANK = {"missing": 4, "stale": 3, "aging": 2, "fresh": 1}
+
+
+def _snapshot_freshness_params(source_key: str) -> tuple[int, int]:
+    for group in _SNAPSHOT_FRESHNESS_GROUPS.values():
+        if source_key in group["keys"]:
+            return int(group["aging_seconds"]), int(group["stale_seconds"])
+    return 14 * 86400, 30 * 86400
+
+
+def evaluate_snapshot_input_freshness() -> dict[str, Any]:
+    """Classify local snapshot files by mtime for operator visibility (read-only)."""
+    now = time.time()
+    items: list[dict[str, Any]] = []
+    required_warnings: list[str] = []
+    worst = "fresh"
+    worst_rank = 0
+
+    for source_key in _SNAPSHOT_INPUT_ORDER:
+        label = _SNAPSHOT_INPUT_LABELS.get(source_key, source_key)
+        paths = tuple(DEFAULT_SOURCE_SNAPSHOT_PATHS.get(source_key) or _EXTRA_SNAPSHOT_PATHS.get(source_key) or ())
+        resolved: Path | None = None
+        for candidate in paths:
+            if candidate.is_file():
+                resolved = candidate
+                break
+        aging_s, stale_s = _snapshot_freshness_params(source_key)
+        if resolved is None:
+            status = "missing"
+            age_seconds: int | None = None
+            age_display = "—"
+        else:
+            try:
+                mtime = resolved.stat().st_mtime
+                age_seconds = max(int(now - mtime), 0)
+            except OSError:
+                age_seconds = None
+            if age_seconds is None:
+                status = "fresh"
+                age_display = "?"
+            elif age_seconds >= stale_s:
+                status = "stale"
+                age_display = format_age_compact(age_seconds)
+            elif age_seconds >= aging_s:
+                status = "aging"
+                age_display = format_age_compact(age_seconds)
+            else:
+                status = "fresh"
+                age_display = format_age_compact(age_seconds)
+
+        rank = int(_STATUS_RANK.get(status, 0))
+        if rank > worst_rank:
+            worst_rank = rank
+            worst = status
+
+        rel = ""
+        if resolved is not None:
+            try:
+                rel = str(resolved.relative_to(PROJECT_ROOT))
+            except ValueError:
+                rel = str(resolved)
+        items.append(
+            {
+                "source_key": source_key,
+                "label": label,
+                "status": status,
+                "resolved_path": str(resolved) if resolved else "",
+                "path_hint": rel or (str(paths[0]) if paths else ""),
+                "age_seconds": age_seconds,
+                "age_display": age_display,
+                "aging_after_display": format_age_compact(aging_s),
+                "stale_after_display": format_age_compact(stale_s),
+            }
+        )
+
+        if source_key == "official-cardlist":
+            if status == "missing":
+                required_warnings.append("Official cardlist snapshot is missing — learning intake may be impaired.")
+            elif status == "stale":
+                required_warnings.append(
+                    "Official cardlist snapshot is stale — refresh data/official-cardlist-snapshot.json (or env override)."
+                )
+        if source_key == "community-cardlist" and status == "missing":
+            required_warnings.append("Community cardlist snapshot is missing — worktree batch tools may lack card scope.")
+
+    parts: list[str] = []
+    for it in items[:4]:
+        lab = str(it["label"])
+        if len(lab) > 22:
+            lab = lab[:19] + "…"
+        parts.append(f"{lab}: {it['status']}")
+    summary = "; ".join(parts)
+    if len(items) > 4:
+        summary += f" (+{len(items) - 4} more)"
+
+    operator_alert = bool(
+        any(
+            it["source_key"] == "official-cardlist" and it["status"] in {"missing", "stale"}
+            for it in items
+        )
+    )
+
+    return {
+        "items": items,
+        "worst_status": worst,
+        "summary": summary,
+        "required_warnings": required_warnings,
+        "operator_alert": operator_alert,
+    }
+
+
+def _snapshot_alert_suffix(snapshot: dict[str, Any]) -> str:
+    si = snapshot.get("snapshot_inputs") or {}
+    if not si.get("operator_alert"):
+        return ""
+    msg = str(si.get("summary") or "").strip()
+    return f" Snapshot inputs: {msg}" if msg else " Snapshot inputs need attention."
+
+
 def build_learning_worker_status(snapshot: dict[str, Any], *, stale_after_seconds: int = DEFAULT_WORKER_HEARTBEAT_STALE_SECONDS) -> dict[str, Any]:
     last_heartbeat = str(snapshot.get("last_heartbeat") or "").strip()
     heartbeat_age_seconds: int | None = None
@@ -12976,57 +15074,81 @@ def build_learning_worker_status(snapshot: dict[str, Any], *, stale_after_second
     running_count = int(snapshot.get("running_count") or 0)
     queue_length = int(snapshot.get("queue_length") or 0)
     has_status = bool(snapshot.get("status_db_exists"))
+    si = snapshot.get("snapshot_inputs") or {}
+    snap_worst = str(si.get("worst_status") or "")
+    snap_alert = bool(si.get("operator_alert"))
+
+    def _wrap(base: dict[str, Any]) -> dict[str, Any]:
+        out = dict(base)
+        out["snapshot_inputs_worst"] = snap_worst
+        out["snapshot_operator_alert"] = snap_alert
+        detail = str(out.get("detail") or "")
+        out["detail"] = (detail + _snapshot_alert_suffix(snapshot)).strip()
+        return out
+
     if not has_status:
-        return {
+        return _wrap(
+            {
+                "status": "stopped",
+                "label": "Stopped",
+                "detail": "Worker status DB does not exist yet.",
+                "heartbeat_age_seconds": None,
+                "heartbeat_stale": False,
+            }
+        )
+    if not last_heartbeat:
+        return _wrap(
+            {
+                "status": "no_heartbeat",
+                "label": "No heartbeat",
+                "detail": "Worker status DB exists, but no heartbeat has been recorded yet.",
+                "heartbeat_age_seconds": None,
+                "heartbeat_stale": False,
+            }
+        )
+    if heartbeat_age_seconds is not None and heartbeat_age_seconds > stale_after_seconds:
+        return _wrap(
+            {
+                "status": "stale",
+                "label": "Stale",
+                "detail": f"Last heartbeat was {format_age_compact(heartbeat_age_seconds)} ago.",
+                "heartbeat_age_seconds": heartbeat_age_seconds,
+                "heartbeat_stale": True,
+            }
+        )
+    if current_state in {"processing", "running", "starting"} or running_count > 0:
+        return _wrap(
+            {
+                "status": "running",
+                "label": "Running",
+                "detail": "Worker heartbeat is fresh and learning work is active.",
+                "heartbeat_age_seconds": heartbeat_age_seconds,
+                "heartbeat_stale": False,
+            }
+        )
+    if current_state in {"idle", "sleeping"}:
+        return _wrap(
+            {
+                "status": "idle",
+                "label": "Idle",
+                "detail": (
+                    "Worker heartbeat is fresh and the queue is empty."
+                    if queue_length <= 0
+                    else "Worker heartbeat is fresh and the worker is waiting for the next task."
+                ),
+                "heartbeat_age_seconds": heartbeat_age_seconds,
+                "heartbeat_stale": False,
+            }
+        )
+    return _wrap(
+        {
             "status": "stopped",
             "label": "Stopped",
-            "detail": "Worker status DB does not exist yet.",
-            "heartbeat_age_seconds": None,
-            "heartbeat_stale": False,
-        }
-    if not last_heartbeat:
-        return {
-            "status": "no_heartbeat",
-            "label": "No heartbeat",
-            "detail": "Worker status DB exists, but no heartbeat has been recorded yet.",
-            "heartbeat_age_seconds": None,
-            "heartbeat_stale": False,
-        }
-    if heartbeat_age_seconds is not None and heartbeat_age_seconds > stale_after_seconds:
-        return {
-            "status": "stale",
-            "label": "Stale",
-            "detail": f"Last heartbeat was {format_age_compact(heartbeat_age_seconds)} ago.",
-            "heartbeat_age_seconds": heartbeat_age_seconds,
-            "heartbeat_stale": True,
-        }
-    if current_state in {"processing", "running", "starting"} or running_count > 0:
-        return {
-            "status": "running",
-            "label": "Running",
-            "detail": "Worker heartbeat is fresh and learning work is active.",
+            "detail": "Worker status exists, but it is not currently reporting a running or idle loop.",
             "heartbeat_age_seconds": heartbeat_age_seconds,
             "heartbeat_stale": False,
         }
-    if current_state in {"idle", "sleeping"}:
-        return {
-            "status": "idle",
-            "label": "Idle",
-            "detail": (
-                "Worker heartbeat is fresh and the queue is empty."
-                if queue_length <= 0
-                else "Worker heartbeat is fresh and the worker is waiting for the next task."
-            ),
-            "heartbeat_age_seconds": heartbeat_age_seconds,
-            "heartbeat_stale": False,
-        }
-    return {
-        "status": "stopped",
-        "label": "Stopped",
-        "detail": "Worker status exists, but it is not currently reporting a running or idle loop.",
-        "heartbeat_age_seconds": heartbeat_age_seconds,
-        "heartbeat_stale": False,
-    }
+    )
 
 
 def load_learning_engine_status(
@@ -13256,6 +15378,7 @@ def load_learning_engine_status(
             ):
                 if key in available_keys:
                     snapshot[key] = row[key]
+    snapshot["snapshot_inputs"] = evaluate_snapshot_input_freshness()
     snapshot["worker_status"] = build_learning_worker_status(snapshot)
 
     dossier_path = Path(dossier_db_path)

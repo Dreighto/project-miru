@@ -138,7 +138,7 @@ def _update_rollup(
     """Merge this run into the day's rollup. Returns updated rollup."""
     date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     if rollup.get("date") != date_key:
-        rollup = {"date": date_key, "runs": 0, "runs_skipped_overlap": 0, "total_auto_applied": 0, "newly_surfaced_review": 0, "total_skipped": 0, "failure_count": 0, "partial_count": 0, "open_review_items": [], "last_run_ts": "", "last_summary_path": ""}
+        rollup = {"date": date_key, "runs": 0, "runs_skipped_overlap": 0, "total_auto_applied": 0, "newly_surfaced_review": 0, "total_skipped": 0, "total_upcoming_stored": 0, "failure_count": 0, "partial_count": 0, "open_review_items": [], "last_run_ts": "", "last_summary_path": ""}
     rollup["runs"] = rollup.get("runs", 0) + (0 if run_skipped_overlap else 1)
     if run_skipped_overlap:
         rollup["runs_skipped_overlap"] = rollup.get("runs_skipped_overlap", 0) + 1
@@ -146,6 +146,7 @@ def _update_rollup(
         rollup["total_auto_applied"] = rollup.get("total_auto_applied", 0) + report.get("total_auto_applied", 0)
         rollup["newly_surfaced_review"] = rollup.get("newly_surfaced_review", 0) + newly_surfaced
         rollup["total_skipped"] = rollup.get("total_skipped", 0) + report.get("total_skipped", 0)
+        rollup["total_upcoming_stored"] = rollup.get("total_upcoming_stored", 0) + report.get("total_upcoming_stored", 0)
         status = report.get("graduation_status", "")
         if status == "failed":
             rollup["failure_count"] = rollup.get("failure_count", 0) + 1
@@ -175,11 +176,11 @@ def _load_rollup() -> dict[str, Any]:
     date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     path = DATA_DIR / f"{ROLLUP_JSON_PREFIX}{date_key}.json"
     if not path.is_file():
-        return {"date": date_key, "runs": 0, "runs_skipped_overlap": 0, "total_auto_applied": 0, "newly_surfaced_review": 0, "total_skipped": 0, "failure_count": 0, "partial_count": 0, "open_review_items": [], "last_run_ts": "", "last_summary_path": ""}
+        return {"date": date_key, "runs": 0, "runs_skipped_overlap": 0, "total_auto_applied": 0, "newly_surfaced_review": 0, "total_skipped": 0, "total_upcoming_stored": 0, "failure_count": 0, "partial_count": 0, "open_review_items": [], "last_run_ts": "", "last_summary_path": ""}
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
-        return {"date": date_key, "runs": 0, "runs_skipped_overlap": 0, "total_auto_applied": 0, "newly_surfaced_review": 0, "total_skipped": 0, "failure_count": 0, "partial_count": 0, "open_review_items": [], "last_run_ts": "", "last_summary_path": ""}
+        return {"date": date_key, "runs": 0, "runs_skipped_overlap": 0, "total_auto_applied": 0, "newly_surfaced_review": 0, "total_skipped": 0, "total_upcoming_stored": 0, "failure_count": 0, "partial_count": 0, "open_review_items": [], "last_run_ts": "", "last_summary_path": ""}
 
 
 def _write_rollup(rollup: dict[str, Any]) -> None:

@@ -14,7 +14,6 @@
     :root {
       --bg:          #08060f;
       --panel:       rgba(10, 14, 22, 0.88);
-      --panelStrong: rgba(14, 19, 31, 0.94);
       --stroke:      rgba(255, 255, 255, 0.10);
       --strokeBrand: rgba(201, 176, 255, 0.18);
       --strokeGold:  rgba(244, 208, 120, 0.18);
@@ -40,27 +39,29 @@
       font-family: var(--font-ui);
       margin: 0;
       padding: 0 14px 52px;
+      padding-bottom: calc(52px + env(safe-area-inset-bottom, 0));
       font-size: 13px;
       overflow-x: clip;
       max-width: 100vw;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Shell ──────────────────────────────────────── */
     .leaderShell {
       width: min(780px, 100%);
       margin: 0 auto;
     }
 
-    /* ── Top bar (safe-area integrated) ───────────────── */
     .leaderPageHeader {
       position: sticky;
       top: 0;
       z-index: 2;
-      background: var(--bg);
+      background: rgba(8, 6, 15, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--stroke);
-      padding-top: calc(env(safe-area-inset-top, 0) + 8px);
-      padding-bottom: 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      padding-top: calc(env(safe-area-inset-top, 0) + 10px);
+      padding-bottom: 12px;
       padding-left: 14px;
       padding-right: 14px;
       margin: 0 -14px 0;
@@ -72,30 +73,41 @@
       }
     }
 
-    /* ── Slim nav ───────────────────────────────────── */
-    .leaderNav {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 0;
-    }
+    .leaderNav { display: flex; align-items: stretch; gap: 10px; padding: 0; min-height: 44px; }
     .leaderNavBack {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 500;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      min-width: 44px;
+      padding: 10px 18px;
+      color: var(--textSoft);
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
       text-decoration: none;
-      border: 1px solid var(--stroke);
-      border-radius: 8px;
-      padding: 5px 11px;
-      background: rgba(255, 255, 255, 0.04);
-      transition: color 0.14s, background 0.14s;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+      transition: color 0.14s, background 0.14s, border-color 0.14s;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: rgba(255, 255, 255, 0.08);
     }
-    .leaderNavBack:hover { color: white; background: rgba(255, 255, 255, 0.07); }
+    .leaderNavBack:hover { color: white; background: rgba(255, 255, 255, 0.10); border-color: rgba(255, 255, 255, 0.20); }
+    .leaderNavBack:focus-visible {
+      outline: 2px solid rgba(184, 160, 255, 0.85);
+      outline-offset: 3px;
+    }
+    .leaderNavBackIcon {
+      font-size: 18px;
+      line-height: 1;
+      opacity: 0.9;
+      flex-shrink: 0;
+    }
+    .leaderNavBackText { line-height: 1.2; }
 
-    /* ── Not-found banner ───────────────────────────── */
     .leaderNotFound {
       background: rgba(255, 90, 60, 0.07);
       border: 1px solid rgba(255, 90, 60, 0.20);
@@ -107,7 +119,6 @@
       line-height: 1.65;
     }
 
-    /* ── Panel card ─────────────────────────────────── */
     .leaderPanel {
       position: relative;
       overflow: hidden;
@@ -131,34 +142,22 @@
       box-shadow: none;
     }
 
-    /* ── Leader header (compact) ─────────────────────── */
-    .leaderHeader {
-      display: flex;
-      gap: 14px;
-      align-items: flex-start;
+    /* Top: details + Miru Insight side-by-side on wide screens */
+    .leaderTopGrid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      align-items: start;
     }
-    .leaderImgWrap { flex-shrink: 0; width: clamp(88px, 20vw, 128px); }
-    .leaderImg {
-      width: 100%;
-      height: auto;
-      display: block;
-      border-radius: 12px;
-      object-fit: cover;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.44);
+    @media (min-width: 720px) {
+      .leaderTopGrid {
+        grid-template-columns: minmax(0, 1fr) minmax(260px, 1fr);
+        gap: 20px;
+      }
     }
-    .leaderImgPlaceholder {
-      width: 100%;
-      aspect-ratio: 0.72;
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px dashed var(--stroke);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--muted2);
-      font-size: 10px;
-    }
-    .leaderMeta { min-width: 0; flex: 1; }
+
+    .leaderDetailsBlock { min-width: 0; }
+
     .leaderCodeLabel {
       font-family: var(--font-display);
       font-size: 10px;
@@ -170,16 +169,20 @@
     }
     .leaderName {
       font-family: var(--font-display);
-      font-size: clamp(16px, 4vw, 22px);
+      font-size: clamp(18px, 4.5vw, 24px);
       font-weight: 700;
       line-height: 1.2;
-      margin: 0 0 10px;
+      margin: 0 0 12px;
       color: white;
     }
-    .leaderBadgeRow { display: flex; flex-wrap: wrap; gap: 6px; }
+    .leaderBadgeRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
     .leaderBadge {
       display: inline-block;
-      padding: 3px 10px;
+      padding: 4px 10px;
       border-radius: 999px;
       border: 1px solid var(--stroke);
       background: rgba(255, 255, 255, 0.05);
@@ -191,7 +194,54 @@
     .leaderBadge--set   { border-color: var(--strokeBrand); color: var(--brandPurple); background: rgba(184, 160, 255, 0.08); }
     .leaderBadge--color { border-color: var(--strokeGold);  color: var(--brandGold);   background: rgba(244, 208, 120, 0.07); }
 
-    /* ── Panel titles ───────────────────────────────── */
+    /* Miru Insight — upper area, no accordion */
+    .leaderInsightAside {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      padding: 14px 16px;
+      min-height: 0;
+    }
+    .leaderInsightAsideTitle {
+      font-family: var(--font-display);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--brandPurple);
+      margin: 0 0 10px;
+    }
+    .leaderInsightPlaceholder {
+      font-size: 12px;
+      color: var(--muted2);
+      line-height: 1.55;
+      margin: 0;
+    }
+    .leaderInsightPlaceholder.isHidden { display: none; }
+    .leaderInsightPanelBody {
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--textSoft);
+      margin: 0;
+    }
+    .leaderInsightPanelBody.isHidden { display: none; }
+    .leaderInsightMore {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted2);
+      margin: 12px 0 6px;
+    }
+    .leaderInsightAdditionalItem {
+      font-size: 11px;
+      line-height: 1.55;
+      color: var(--muted);
+      margin-bottom: 6px;
+      padding-left: 8px;
+      border-left: 2px solid var(--stroke);
+    }
+
     .leaderPanelTitle {
       font-family: var(--font-display);
       font-size: 12px;
@@ -201,7 +251,6 @@
       letter-spacing: 0.02em;
     }
 
-    /* ── Text field rows ────────────────────────────── */
     .leaderFieldRow { margin-bottom: 12px; }
     .leaderFieldRow:last-child { margin-bottom: 0; }
     .leaderFieldRow + .leaderFieldRow--trigger {
@@ -223,111 +272,26 @@
       color: var(--textSoft);
     }
 
-    /* ── Miru Insight: small optional button + compact panel ───────── */
-    .leaderInsightSignalWrap {
-      display: none;
-      flex-shrink: 0;
-      align-self: flex-start;
-      margin-left: auto;
-    }
-    .leaderInsightSignalWrap.isVisible {
-      display: block;
-      animation: leaderInsightFadeIn 0.5s ease;
-    }
-    @keyframes leaderInsightFadeIn {
-      from { opacity: 0; transform: translateY(2px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .leaderInsightSignal {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 6px 11px;
-      min-height: 36px;
-      border-radius: 10px;
-      border: 1px solid var(--strokeBrand);
-      background: rgba(184, 160, 255, 0.06);
-      color: var(--textSoft);
-      font-family: var(--font-ui);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-      cursor: pointer;
-      transition: background 0.14s, border-color 0.14s, box-shadow 0.2s;
-      box-shadow: 0 0 10px var(--leaderInsightGlow, rgba(184, 160, 255, 0.12));
-    }
-    .leaderInsightSignal:hover {
-      background: rgba(255, 255, 255, 0.06);
-      box-shadow: 0 0 14px var(--leaderInsightGlow, rgba(184, 160, 255, 0.18));
-    }
-    .leaderInsightSignal--meta {
-      --leaderInsightGlow: rgba(136, 104, 255, 0.22);
-      border-color: rgba(136, 104, 255, 0.28);
-    }
-    .leaderInsightSignal--price {
-      --leaderInsightGlow: rgba(244, 208, 120, 0.2);
-      border-color: rgba(244, 208, 120, 0.25);
-    }
-    .leaderInsightSignal--strength {
-      --leaderInsightGlow: rgba(255, 160, 100, 0.2);
-      border-color: rgba(255, 160, 100, 0.28);
-    }
-    .leaderInsightSignal--synergy {
-      --leaderInsightGlow: rgba(120, 200, 180, 0.2);
-      border-color: rgba(120, 200, 180, 0.28);
-    }
-    .leaderInsightSignal--lore {
-      --leaderInsightGlow: rgba(200, 160, 255, 0.18);
-      border-color: rgba(200, 160, 255, 0.25);
-    }
-    .leaderInsightSignal[aria-expanded="true"] .leaderInsightChevron { transform: rotate(180deg); }
-    .leaderInsightChevron { font-size: 9px; color: var(--muted2); transition: transform 0.2s; }
-    .leaderInsightExpand {
-      display: none;
-      margin-top: 10px;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--stroke);
-      background: rgba(255, 255, 255, 0.02);
-    }
-    .leaderInsightExpand.isOpen { display: block; }
-    .leaderInsightPrimary {
+    .leaderPlaceholderIntro {
       font-size: 12px;
-      line-height: 1.6;
-      color: var(--textSoft);
-      margin-bottom: 0;
-    }
-    .leaderInsightMore {
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted2);
-      margin-top: 10px;
-      margin-bottom: 6px;
-    }
-    .leaderInsightAdditionalItem {
-      font-size: 11px;
-      line-height: 1.55;
       color: var(--muted);
-      margin-bottom: 6px;
-      padding-left: 8px;
-      border-left: 2px solid var(--stroke);
+      line-height: 1.55;
+      margin: 0 0 14px;
     }
-    .leaderInsightAdditionalItem:last-child { margin-bottom: 0; }
-
-    /* ── Placeholder sub-panels grid ────────────────── */
     .leaderSubGrid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
       margin-bottom: 12px;
     }
+    @media (max-width: 500px) {
+      .leaderSubGrid { grid-template-columns: 1fr; }
+    }
     .leaderSubPanel {
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--stroke);
       border-radius: 16px;
-      padding: 16px 18px;
+      padding: 14px 16px;
     }
     .leaderSubTitle {
       font-size: 11px;
@@ -337,36 +301,16 @@
       letter-spacing: 0.06em;
       margin-bottom: 8px;
     }
-    .leaderComingSoon {
-      display: inline-block;
-      margin-bottom: 8px;
-      padding: 2px 9px;
-      border-radius: 999px;
-      border: 1px solid rgba(244, 208, 120, 0.20);
-      background: rgba(244, 208, 120, 0.06);
-      color: rgba(244, 208, 120, 0.65);
-      font-size: 10px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
     .leaderPlaceholderText {
       font-size: 12px;
       color: var(--muted2);
       line-height: 1.7;
     }
-    .leaderPlaceholderIntro {
+    .leaderDeckSummary {
       font-size: 12px;
       color: var(--muted);
-      line-height: 1.55;
-      margin: 0 0 14px;
-    }
-    .leaderSubPanel--compact {
-      padding: 12px 14px;
-    }
-    .leaderSubPanel--compact .leaderPlaceholderText {
-      font-size: 11px;
-      margin: 0;
+      line-height: 1.6;
+      margin-bottom: 12px;
     }
     .leaderDeckIntelList {
       display: flex;
@@ -384,22 +328,7 @@
       color: var(--textSoft);
       font-weight: 500;
     }
-    .leaderDeckSummary {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.6;
-      margin-bottom: 12px;
-    }
-    .leaderDeckSummaryItem {
-      display: inline;
-    }
-    .leaderDeckSummaryItem + .leaderDeckSummaryItem::before {
-      content: " · ";
-      color: var(--muted2);
-    }
-    .leaderVariantBlock {
-      margin-bottom: 10px;
-    }
+    .leaderVariantBlock { margin-bottom: 10px; }
     .leaderVariantBlock:last-child { margin-bottom: 0; }
     .leaderVariantId {
       font-size: 11px;
@@ -417,66 +346,20 @@
       flex-wrap: wrap;
       gap: 5px;
     }
-    .leaderPanel--compact .leaderPlaceholderText {
-      font-size: 11px;
-      margin: 0;
-    }
-
-    /* ── Collapsible sections ───────────────────────── */
-    .leaderCollapse {
-      border: 1px solid var(--stroke);
-      border-radius: 14px;
-      margin-bottom: 10px;
-      overflow: hidden;
-      background: rgba(255, 255, 255, 0.02);
-    }
-    .leaderCollapseToggle {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      padding: 12px 16px;
-      border: none;
-      background: none;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      cursor: pointer;
-      transition: color 0.14s, background 0.14s;
-    }
-    .leaderCollapseToggle:hover { color: var(--textSoft); background: rgba(255,255,255,0.04); }
-    .leaderCollapseToggle[aria-expanded="true"] .leaderCollapseChevron { transform: rotate(180deg); }
-    .leaderCollapseChevron { font-size: 10px; transition: transform 0.2s; }
-    .leaderCollapseBody { display: none; padding: 0 16px 14px; }
-    .leaderCollapseBody .leaderPlaceholderIntro { padding: 0; }
-    .leaderCollapseBody.isOpen { display: block; }
-
-    @media (prefers-reduced-motion: reduce) {
-      .leaderInsightSignalWrap.isVisible { animation: none; }
-    }
-
-    /* ── Responsive ─────────────────────────────────── */
-    @media (max-width: 500px) {
-      .leaderSubGrid { grid-template-columns: 1fr; }
-      .leaderHeader   { flex-wrap: wrap; }
-      .leaderImgWrap  { width: clamp(88px, 28vw, 140px); }
-      .leaderInsightSignalWrap { margin-left: 0; margin-top: 8px; }
-    }
   </style>
 </head>
 <body>
 <div class="leaderShell">
 
-  <!-- ── Top bar (safe-area integrated) ── -->
   <header class="leaderPageHeader">
     <nav class="leaderNav" aria-label="Leader page navigation">
-      <a class="leaderNavBack" href="/leaders">← Leaders</a>
+      <a class="leaderNavBack" href="/leaders" aria-label="Back to Leaders list">
+        <span class="leaderNavBackIcon" aria-hidden="true">←</span>
+        <span class="leaderNavBackText">Back to Leaders</span>
+      </a>
     </nav>
   </header>
 
-  <!-- ── Not-found banner (shown only if card is missing from catalog) ── -->
   {% if not_found %}
   <div class="leaderNotFound" role="alert">
     <strong>{{ leader_code }}</strong> is not yet in the card catalog.
@@ -484,51 +367,41 @@
   </div>
   {% endif %}
 
-  <!-- ── Section 1: Leader Header + optional Miru insight signal ── -->
   <div class="leaderPanel">
-    <div class="leaderHeader">
-      <div class="leaderImgWrap">
-        {% if image_src %}
-        <img class="leaderImg" src="{{ image_src }}" alt="{{ name }}" loading="eager">
-        {% else %}
-        <div class="leaderImgPlaceholder" aria-label="No image available">No image</div>
-        {% endif %}
-      </div>
-      <div class="leaderMeta">
+    <div class="leaderTopGrid">
+      <div class="leaderDetailsBlock">
         <div class="leaderCodeLabel">{{ leader_code }}</div>
         <h1 class="leaderName">{{ name }}</h1>
         <div class="leaderBadgeRow">
           {% if set_name %}
           <span class="leaderBadge leaderBadge--set">{{ set_name }}</span>
           {% endif %}
-          {% if color %}
-          <span class="leaderBadge leaderBadge--color">{{ color }}</span>
-          {% endif %}
+          {% for tag in color_tags %}
+          <span class="leaderBadge leaderBadge--color">{{ tag }}</span>
+          {% endfor %}
           {% if power %}
           <span class="leaderBadge">Power {{ power }}</span>
           {% endif %}
           {% if attribute %}
           <span class="leaderBadge">{{ attribute }}</span>
           {% endif %}
+          {% for t in trait_pills %}
+          <span class="leaderBadge">{{ t }}</span>
+          {% endfor %}
         </div>
       </div>
-      <div class="leaderInsightSignalWrap" id="leaderInsightSignalWrap">
-        <button class="leaderInsightSignal" id="leaderInsightToggle" type="button"
-                aria-expanded="false" aria-controls="leaderInsightExpand" data-insight-type="">
-          Insight <span class="leaderInsightChevron" aria-hidden="true">▾</span>
-        </button>
-      </div>
-    </div>
-    <div class="leaderInsightExpand" id="leaderInsightExpand" role="region" aria-label="Miru Insight">
-      <div class="leaderInsightPrimary" id="leaderInsightPrimary"></div>
-      <div class="leaderInsightAdditionalWrap" id="leaderInsightAdditionalWrap" style="display:none">
-        <div class="leaderInsightMore" id="leaderInsightMoreLabel">More</div>
-        <div class="leaderInsightAdditionalList" id="leaderInsightAdditionalList"></div>
-      </div>
+      <aside class="leaderInsightAside" id="leaderInsightAside" aria-label="Miru Insight">
+        <div class="leaderInsightAsideTitle">Miru Insight</div>
+        <p class="leaderInsightPlaceholder" id="leaderInsightPlaceholder">Loading insight…</p>
+        <p class="leaderInsightPanelBody isHidden" id="leaderInsightPrimary"></p>
+        <div id="leaderInsightAdditionalWrap" style="display:none">
+          <div class="leaderInsightMore" id="leaderInsightMoreLabel">More</div>
+          <div id="leaderInsightAdditionalList"></div>
+        </div>
+      </aside>
     </div>
   </div>
 
-  <!-- ── Section 3: Overview (real card text) ── -->
   <div class="leaderPanel leaderPanel--flat">
     <div class="leaderPanelTitle">Overview</div>
     {% if effect_text %}
@@ -548,58 +421,48 @@
     {% endif %}
   </div>
 
-  <!-- ── Miru Insight (deck/meta placeholders, collapsible) ── -->
-  <div class="leaderCollapse">
-    <button class="leaderCollapseToggle" type="button" aria-expanded="false" aria-controls="leaderCollapseMiruInsight">
-      Miru Insight <span class="leaderCollapseChevron" aria-hidden="true">▾</span>
-    </button>
-    <div class="leaderCollapseBody" id="leaderCollapseMiruInsight">
-      <p class="leaderPlaceholderIntro">Deck and meta data will appear here when linked to this leader.</p>
-      <div class="leaderDeckSummary" id="leaderDeckSummaryContent" aria-live="polite"></div>
-      <div class="leaderSubGrid">
-        <div class="leaderSubPanel leaderSubPanel--compact">
-          <div class="leaderSubTitle">Core Cards</div>
-          <div class="leaderPlaceholderText" id="leaderCoreCardsContent">When deck shells are linked.</div>
-        </div>
-        <div class="leaderSubPanel leaderSubPanel--compact">
-          <div class="leaderSubTitle">Flex Cards</div>
-          <div class="leaderPlaceholderText" id="leaderFlexCardsContent">When deck sample data is available.</div>
-        </div>
-        <div class="leaderSubPanel leaderSubPanel--compact">
-          <div class="leaderSubTitle">Deck Variants</div>
-          <div class="leaderPlaceholderText" id="leaderVariantsContent">When variant analysis is linked.</div>
-        </div>
-        <div class="leaderSubPanel leaderSubPanel--compact">
-          <div class="leaderSubTitle">Budget Build</div>
-          <div class="leaderPlaceholderText">When shell and pricing are linked.</div>
-        </div>
+  <div class="leaderPanel leaderPanel--flat">
+    <div class="leaderPanelTitle">Deck signals</div>
+    <p class="leaderPlaceholderIntro">Deck intelligence when linked to this leader.</p>
+    <div class="leaderDeckSummary" id="leaderDeckSummaryContent" aria-live="polite"></div>
+    <div class="leaderSubGrid">
+      <div class="leaderSubPanel leaderSubPanel--compact">
+        <div class="leaderSubTitle">Core Cards</div>
+        <div class="leaderPlaceholderText" id="leaderCoreCardsContent">When deck shells are linked.</div>
       </div>
-      <div class="leaderPanel leaderPanel--placeholder leaderPanel--compact" style="margin-top:10px;margin-bottom:0">
-        <div class="leaderPanelTitle" style="color:var(--muted)">Meta Signals</div>
-        <div class="leaderPlaceholderText">Tournament and matchup data when event intel is attached.</div>
+      <div class="leaderSubPanel leaderSubPanel--compact">
+        <div class="leaderSubTitle">Flex Cards</div>
+        <div class="leaderPlaceholderText" id="leaderFlexCardsContent">When deck sample data is available.</div>
       </div>
+      <div class="leaderSubPanel leaderSubPanel--compact">
+        <div class="leaderSubTitle">Deck Variants</div>
+        <div class="leaderPlaceholderText" id="leaderVariantsContent">When variant analysis is linked.</div>
+      </div>
+      <div class="leaderSubPanel leaderSubPanel--compact">
+        <div class="leaderSubTitle">Budget Build</div>
+        <div class="leaderPlaceholderText">When shell and pricing are linked.</div>
+      </div>
+    </div>
+    <div class="leaderPanel leaderPanel--placeholder leaderPanel--compact" style="margin-top:10px;margin-bottom:0">
+      <div class="leaderPanelTitle" style="color:var(--muted)">Meta Signals</div>
+      <div class="leaderPlaceholderText">Tournament and matchup data when event intel is attached.</div>
     </div>
   </div>
 
-</div><!-- /.leaderShell -->
+</div>
 
 <script>
   (function () {
     "use strict";
 
     var leaderCode = {{ leader_code | tojson }};
-    var signalWrap = document.getElementById("leaderInsightSignalWrap");
-    var toggleBtn = document.getElementById("leaderInsightToggle");
-    var expandEl  = document.getElementById("leaderInsightExpand");
+    var placeholderEl = document.getElementById("leaderInsightPlaceholder");
     var primaryEl = document.getElementById("leaderInsightPrimary");
     var additionalWrap = document.getElementById("leaderInsightAdditionalWrap");
     var additionalList = document.getElementById("leaderInsightAdditionalList");
 
-    if (toggleBtn && expandEl) {
-      toggleBtn.addEventListener("click", function () {
-        var open = expandEl.classList.toggle("isOpen");
-        toggleBtn.setAttribute("aria-expanded", open ? "true" : "false");
-      });
+    function escapeHtml(s) {
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 
     fetch("/api/miru/insight/" + encodeURIComponent(leaderCode))
@@ -607,15 +470,18 @@
       .then(function (data) {
         var primary = data && (data.primary || (data.insight ? { insight: data.insight, type: data.type || "" } : null));
         var insightText = primary && (primary.insight || primary.insight_text);
-        if (!insightText || !String(insightText).trim()) return;
-        if (primaryEl) { primaryEl.textContent = String(insightText).trim(); }
-        var type = (primary && (primary.type || data.type)) || "";
-        if (toggleBtn) {
-          toggleBtn.setAttribute("data-insight-type", type);
-          toggleBtn.classList.remove("leaderInsightSignal--meta", "leaderInsightSignal--price", "leaderInsightSignal--strength", "leaderInsightSignal--synergy", "leaderInsightSignal--lore");
-          if (type && ["meta", "price", "strength", "synergy", "lore"].indexOf(type) >= 0) {
-            toggleBtn.classList.add("leaderInsightSignal--" + type);
+        if (!insightText || !String(insightText).trim()) {
+          if (placeholderEl) {
+            placeholderEl.textContent = "No Miru insight for this leader yet.";
           }
+          return;
+        }
+        if (placeholderEl) {
+          placeholderEl.classList.add("isHidden");
+        }
+        if (primaryEl) {
+          primaryEl.textContent = String(insightText).trim();
+          primaryEl.classList.remove("isHidden");
         }
         var additional = (data.additional && data.additional.length) ? data.additional : [];
         if (additional.length && additionalWrap && additionalList) {
@@ -624,14 +490,16 @@
             var t = (a.insight || "").trim();
             return t ? "<div class=\"leaderInsightAdditionalItem\">" + escapeHtml(t) + "</div>" : "";
           }).join("");
-        } else if (additionalWrap) { additionalWrap.style.display = "none"; }
-        if (signalWrap) { signalWrap.classList.add("isVisible"); }
+        } else if (additionalWrap) {
+          additionalWrap.style.display = "none";
+        }
       })
-      .catch(function () { });
+      .catch(function () {
+        if (placeholderEl) {
+          placeholderEl.textContent = "Insight unavailable.";
+        }
+      });
 
-    function escapeHtml(s) {
-      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-    }
     function renderDeckIntelChips(cards) {
       if (!cards || cards.length === 0) return "";
       var parts = [];
@@ -670,6 +538,7 @@
       }
       return blocks.length ? blocks.join("") : "";
     }
+
     fetch("/api/leader-deck-intel/" + encodeURIComponent(leaderCode))
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
@@ -708,17 +577,6 @@
         }
       })
       .catch(function () { });
-
-    var collapseToggles = document.querySelectorAll(".leaderCollapseToggle");
-    collapseToggles.forEach(function (btn) {
-      var id = btn.getAttribute("aria-controls");
-      var body = id ? document.getElementById(id) : null;
-      if (!body) return;
-      btn.addEventListener("click", function () {
-        var open = body.classList.toggle("isOpen");
-        btn.setAttribute("aria-expanded", open ? "true" : "false");
-      });
-    });
   })();
 </script>
 </body>

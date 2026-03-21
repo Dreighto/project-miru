@@ -240,6 +240,88 @@ def normalize_card_code(value: str) -> dict[str, str]:
     }
 
 
+VALID_ONE_PIECE_SET_FAMILIES = {"OP", "EB", "P", "PRB"}
+PLACEHOLDER_SET_REFERENCES = {"OP00", "OP99", "EB00", "EB99", "PRB00", "PRB99", "TEST", "TEMP"}
+PLACEHOLDER_CARD_REFERENCE_RE = re.compile(r"(?i)\b(?:OP(?:00|99)|EB(?:00|99)|PRB(?:00|99)|TEST|TEMP)[-_]?\d*[A-Z]?\b")
+
+
+def is_placeholder_card_reference(value: str) -> bool:
+    text = str(value or "").strip().upper()
+    if not text:
+        return False
+    normalized = normalize_card_code(text)
+    canonical_code = str(normalized.get("canonical_code") or text).strip().upper()
+    set_code = str(normalized.get("set_code") or "").strip().upper()
+    return bool(
+        PLACEHOLDER_CARD_REFERENCE_RE.search(text)
+        or canonical_code.startswith(("OP99-", "OP00-", "EB99-", "EB00-", "PRB99-", "PRB00-", "TEST", "TEMP"))
+        or set_code in PLACEHOLDER_SET_REFERENCES
+    )
+
+
+def validate_one_piece_reference(
+    *,
+    card_code: str = "",
+    set_code: str = "",
+    known_set_codes: set[str] | None = None,
+) -> dict[str, Any]:
+    normalized_card = normalize_card_code(card_code) if card_code else {"canonical_code": "", "set_code": "", "card_number": "", "print_code": ""}
+    normalized_set = normalize_set_code(set_code or normalized_card.get("set_code") or "")
+    family = ""
+    if normalized_set == "P":
+        family = "P"
+    elif normalized_set:
+        family = re.sub(r"[^A-Z]", "", normalized_set)
+        if family.startswith("PRB"):
+            family = "PRB"
+        elif family.startswith("OP"):
+            family = "OP"
+        elif family.startswith("EB"):
+            family = "EB"
+        elif family.startswith("P"):
+            family = "P"
+    known = set(code.strip().upper() for code in (known_set_codes or set()) if str(code).strip())
+    if card_code and is_placeholder_card_reference(card_code):
+        return {
+            "ok": False,
+            "reason": "invalid_set_reference",
+            "canonical_code": str(normalized_card.get("canonical_code") or "").strip().upper(),
+            "set_code": normalized_set,
+            "family": family,
+        }
+    if normalized_set in PLACEHOLDER_SET_REFERENCES:
+        return {
+            "ok": False,
+            "reason": "invalid_set_reference",
+            "canonical_code": str(normalized_card.get("canonical_code") or "").strip().upper(),
+            "set_code": normalized_set,
+            "family": family,
+        }
+    if family and family not in VALID_ONE_PIECE_SET_FAMILIES:
+        return {
+            "ok": False,
+            "reason": "invalid_set_reference",
+            "canonical_code": str(normalized_card.get("canonical_code") or "").strip().upper(),
+            "set_code": normalized_set,
+            "family": family,
+        }
+    if normalized_set and normalized_set != "P" and known and normalized_set not in known:
+        return {
+            "ok": False,
+            "reason": "invalid_set_reference",
+            "canonical_code": str(normalized_card.get("canonical_code") or "").strip().upper(),
+            "set_code": normalized_set,
+            "family": family,
+        }
+    return {
+        "ok": True,
+        "reason": "",
+        "canonical_code": str(normalized_card.get("canonical_code") or "").strip().upper(),
+        "set_code": normalized_set,
+        "family": family,
+    }
+
+
 def normalize_variant_text(value: str) -> dict[str, Any]:
     text = normalize_lookup_text(value)
     if not text:

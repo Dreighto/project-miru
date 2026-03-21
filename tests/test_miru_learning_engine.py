@@ -9,6 +9,7 @@ from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
+from tools.miru_dossier_store import MiruDossierStore
 from tools.miru_learning_engine import (
     MiruLearningEngine,
     load_learning_engine_status,
@@ -120,6 +121,57 @@ class MiruLearningEngineTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
+
+    def test_community_usage_snapshot_ingest_updates_verified_card_usage(self) -> None:
+        """Deck/meta snapshot signals reach verified card_usage when no learning dossier exists."""
+        root = Path(self.temp_dir.name)
+        verified_db = root / "miru_verified_for_usage.db"
+        snap = root / "limitless_usage.json"
+        snap.write_text(
+            json.dumps(
+                {
+                    "source": {
+                        "snapshot_taken_at": "2026-03-10 12:00:00",
+                        "base_url": "https://example.com",
+                    },
+                    "decklists": [
+                        {
+                            "leader_code": "OP01-001",
+                            "leader_name": "Monkey D. Luffy",
+                            "archetype_label": "aggro-test",
+                            "event_key": "evt1",
+                            "decklist_key": "deck-a",
+                            "observed_at": "2026-03-10 12:00:00",
+                            "placement": 1,
+                            "cards": [{"card_code": "OP01-060", "count": 4}],
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        engine = MiruLearningEngine(
+            queue_db_path=self.queue_db,
+            status_db_path=self.status_db,
+            dossier_db_path=self.dossier_db,
+            verified_dossier_db_path=verified_db,
+            catalog_db_path=self.catalog_db,
+            knowledge_cache_path=self.knowledge_cache,
+            sleep_seconds=0.1,
+            max_attempts=2,
+            seed_batch_size=2,
+            max_parallel_validations=2,
+        )
+        engine.ensure_datastores()
+        out = engine.ingest_community_structured_usage_snapshot(
+            source_id="limitless",
+            task_payload={"snapshot_path": str(snap)},
+        )
+        self.assertTrue(out.get("ok"), msg=str(out))
+        self.assertGreaterEqual(int(out.get("signals_ingested") or 0), 1)
+        store = MiruDossierStore(verified_db)
+        rows = store.fetch_card_usage("OP01-060")
+        self.assertTrue(rows, msg="verified card_usage should list OP01-060 after usage ingest")
 
     def test_run_once_bootstraps_dossier_and_updates_status(self) -> None:
         result = self.engine.run_once(card_code="OP01-001", task_type="bootstrap_dossier")
@@ -280,10 +332,16 @@ class MiruLearningEngineTests(unittest.TestCase):
         self.assertEqual(source_row[0], "community-cardlist")
         self.assertEqual(source_row[2], "verified-source-fields")
 
-        dossier = self.engine.fetch_dossier("OP01-001")
-        self.assertIsNotNone(dossier)
-        self.assertEqual(dossier["basic_facts"]["source_id"], "community-cardlist")
-        self.assertGreaterEqual(dossier.get("confidence", 0), 0.0)
+        # Reference-tier community snapshot: provenance is stored on source rows; corroboration may
+        # defer full verified dossier merge (keep_reference_only) — must not imply official override.
+        fa = result.get("fact_acceptance") or {}
+        if result.get("verified_fact_storage") is False or not bool(fa.get("stored", True)):
+            self.assertIn(str(fa.get("storage_outcome") or ""), ("keep_reference_only", "insufficient_support"))
+        else:
+            dossier = self.engine.fetch_dossier("OP01-001")
+            self.assertIsNotNone(dossier)
+            self.assertEqual(dossier["basic_facts"]["source_id"], "community-cardlist")
+            self.assertGreaterEqual(dossier.get("confidence", 0), 0.0)
 
     def test_discover_set_cards_queues_verification_for_entire_set(self) -> None:
         result = self.engine.run_once(

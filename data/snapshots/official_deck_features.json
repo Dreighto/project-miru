@@ -1,0 +1,38 @@
+{
+  "source": {
+    "source_id": "official-deck-features",
+    "snapshot_taken_at": "2026-03-20 12:00:00",
+    "base_url": "https://en.onepiece-cardgame.com/feature/deck/",
+    "payload_origin": "manual_normalization_official_en_site",
+    "record_count": 14
+  },
+  "features": [
+    {
+      "feature_id": "deck_094_red_blue_nefeltari_vivi",
+      "title": "(Red/Blue) Nefeltari Vivi",
+      "source_url": "https://en.onepiece-cardgame.com/feature/deck/deck_094.php",
+      "published_at": "2026-02-13",
+      "leader": {
+        "card_code": "EB03-001",
+        "card_name": "Nefeltari Vivi",
+        "card_type": "Leader"
+      },
+      "leader_code": "EB03-001",
+      "cards": [
+        "EB03-011",
+        "OP06-007",
+        "OP09-009",
+        "EB03-027",
+        "EB03-026",
+        "OP13-054",
+        "OP13-011",
+        "EB03-025",
+        "EB03-024",
+        "EB03-006",
+        "OP10-011",
+        "OP13-012",
+        "OP13-007"
+      ]
+    }
+  ]
+}

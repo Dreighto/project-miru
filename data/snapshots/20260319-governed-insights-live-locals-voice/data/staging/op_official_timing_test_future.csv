@@ -1,0 +1,2 @@
+card_code,ban_status,restriction_count,format_code,effective_date,notes,source_reference
+OP01-001,banned,,standard,2026-12-31,Staged timing test: future-dated official change; should be stored as upcoming not conflict,official_timing_test

@@ -1,0 +1,2894 @@
+{% extends "miru_nav_shell.html" %}
+{% block data_page %}deck-builder{% endblock %}
+{% block title %}Deck Builder{% endblock %}
+{% block meta_description %}Deck Builder — Project Miru{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Phase 1–3 — Deck Builder (scoped to this page) */
+  /* deck-forge-console-pass — verify in served /deck-builder CSS */
+  /* phase-4a-forge-console-slim — Deck Builder search surface (Phase 4A) */
+  html[data-page="deck-builder"] {
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+    --deck-tool-radius: 7px;
+    --deck-tool-radius-sm: 6px;
+    --deck-tool-edge: rgba(255, 255, 255, 0.11);
+    --deck-tool-edge-strong: rgba(255, 255, 255, 0.15);
+    --deck-tool-face: rgba(18, 16, 28, 0.98);
+    --deck-tool-row: rgba(10, 9, 17, 0.99);
+    --deck-forge-top: rgba(255, 255, 255, 0.072);
+    --deck-forge-bottom: rgba(0, 0, 0, 0.38);
+    --deck-accent-amber: rgba(212, 178, 95, 0.5);
+    --deck-accent-amber-mid: rgba(212, 178, 95, 0.28);
+    --deck-accent-amber-field: rgba(212, 178, 95, 0.14);
+    --deck-tool-press: inset 0 3px 6px rgba(0, 0, 0, 0.58);
+    --deck-chassis-outset: inset 0 1px 0 var(--deck-forge-top), inset 0 -1px 0 var(--deck-forge-bottom), 0 1px 0 rgba(0, 0, 0, 0.35);
+    --deck-tool-shell: var(--deck-chassis-outset), inset 0 2px 4px rgba(0, 0, 0, 0.4);
+  }
+
+  html[data-page="deck-builder"] body {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.06);
+  }
+
+  /* Deck Builder: avoid iOS text selection / callout on card surfaces */
+  .deckBuilderApp,
+  .deckBuilderApp .deckBrowserCard,
+  .deckBuilderApp .deckBrowserCardFaceWrap,
+  .deckBuilderApp .deckBrowserCardFace,
+  .deckBuilderApp .deckBrowserCardLabel,
+  .deckBuilderApp .deckBrowserCardPrice,
+  .deckBuilderApp .deckBrowserCardBadge,
+  .deckBuilderApp .deckBrowserCardInfo,
+  .deckBuilderApp .deckBrowserCardControls,
+  .deckBuilderApp .deckStripCard,
+  .deckBuilderApp .deckStripCardStack,
+  .deckBuilderApp .deckStripCardInner,
+  .deckBuilderApp .deckStripCardName,
+  .deckBuilderApp .deckStripQty,
+  .deckBuilderApp .deckStripCardInfo,
+  .deckBuilderApp .deckStripCardControls {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
+  }
+
+  html[data-page="deck-builder"] .deckCardModal .deckCardModalFace,
+  html[data-page="deck-builder"] .deckCardModal .deckCardModalFaceInner {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-user-drag: none;
+  }
+
+  html.deckCardModalOpen body {
+    overflow: hidden;
+  }
+
+  /* Tactile press — tool-like, consistent (includes dock/modal/dialog outside .deckBuilderApp) */
+  html[data-page="deck-builder"] .deckBuilderApp button:active:not(:disabled),
+  html[data-page="deck-builder"] .deckBuilderApp .deckBuilderChip:active,
+  html[data-page="deck-builder"] .deckBuildDock button:active:not(:disabled),
+  html[data-page="deck-builder"] .deckCardModal button:active:not(:disabled),
+  html[data-page="deck-builder"] .deckClearDialog button:active:not(:disabled),
+  html[data-page="deck-builder"] .miruDeckInsightPanel__done:active:not(:disabled) {
+    transform: scale(0.976);
+    filter: brightness(0.84);
+    box-shadow: var(--deck-tool-press);
+  }
+
+  html[data-page="deck-builder"] .deckBuilderApp .deckBuilderChip:active {
+    transform: scale(0.988);
+  }
+
+  html[data-page="deck-builder"] .deckBuilderControlsSummary:active {
+    filter: brightness(0.9);
+  }
+
+  html[data-page="deck-builder"] .deckBuilderActions a:active {
+    transform: scale(0.976);
+    filter: brightness(0.84);
+    box-shadow: var(--deck-tool-press);
+  }
+
+  .deckBuilderApp {
+    --deck-gap: 14px;
+    --deck-rail-pad: 12px;
+    --deck-card-w: min(26vw, 98px);
+    --deck-card-radius: 10px;
+    --deck-dock-h: 52px;
+    --deck-main-max: 50;
+    display: flex;
+    flex-direction: column;
+    gap: var(--deck-gap);
+    padding-bottom: calc(8px + var(--bottom-nav-height, 56px) + var(--deck-dock-h) + 18px + env(safe-area-inset-bottom, 0px));
+    position: relative;
+    z-index: 1;
+    max-width: 100%;
+    transition: opacity 0.2s ease;
+  }
+
+  .deckBuilderApp.deckBuilderApp--deck-full {
+    opacity: 0.985;
+  }
+
+  @media (min-width: 720px) {
+    .deckBuilderApp {
+      --deck-card-w: min(18vw, 120px);
+    }
+  }
+
+  .deckBuilderIntro {
+    margin: 0 0 4px;
+  }
+
+  .deckBuilderIntro .miruShellPageTitle {
+    margin-bottom: 6px;
+  }
+
+  .deckBuilderKicker {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(184, 160, 255, 0.58);
+    margin: 0 0 6px;
+  }
+
+  html[data-page="deck-builder"] .miruShellPageTitle {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .deckBuilderBlurb {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.55;
+    color: rgba(237, 243, 255, 0.78);
+    max-width: 36em;
+    font-weight: 400;
+  }
+
+  .deckBuilderControlsShell {
+    border: 1px solid rgba(196, 173, 255, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+    overflow: hidden;
+  }
+
+  .deckBuilderControlsShell[open]>.deckBuilderControlsSummary {
+    border-bottom: 1px solid rgba(196, 173, 255, 0.08);
+  }
+
+  .deckBuilderControlsSummary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(237, 243, 255, 0.92);
+    user-select: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .deckBuilderControlsSummary::-webkit-details-marker {
+    display: none;
+  }
+
+  .deckBuilderControlsSummary .deckBuilderChevron {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    opacity: 0.45;
+    transition: transform 0.2s ease;
+  }
+
+  .deckBuilderControlsShell[open] .deckBuilderChevron {
+    transform: rotate(180deg);
+  }
+
+  .deckBuilderControlsInner {
+    padding: 12px 14px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .deckBuilderToolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Forged Console Slim: tighter chassis, recessed command channel, tool-system aligned */
+  .deckBuilderSearchWrap {
+    position: relative;
+    width: 100%;
+    max-width: min(100%, 380px);
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: var(--deck-tool-radius);
+    padding: 1px;
+    background: linear-gradient(168deg, rgba(255, 255, 255, 0.09) 0%, rgba(0, 0, 0, 0.52) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: var(--deck-chassis-outset), inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  }
+
+  .deckBuilderSearchWrap:focus-within {
+    border-color: var(--deck-accent-amber-mid);
+    box-shadow: var(--deck-chassis-outset), inset 0 2px 7px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--deck-accent-amber-field);
+  }
+
+  .deckBuilderSearch {
+    width: 100%;
+    min-height: 40px;
+    padding: 7px 10px 7px 34px;
+    border-radius: var(--deck-tool-radius-sm);
+    border: 1px solid rgba(0, 0, 0, 0.58);
+    background-color: rgba(6, 5, 11, 0.99);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.042) 0%, transparent 38%),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.62) 0%, rgba(0, 0, 0, 0.62) 30px, transparent 30px);
+    color: rgba(237, 243, 255, 0.96);
+    font-size: 16px;
+    font-family: var(--font-ui);
+    font-weight: 500;
+    letter-spacing: 0.015em;
+    outline: none;
+    box-sizing: border-box;
+    touch-action: manipulation;
+    box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  }
+
+  .deckBuilderSearch::placeholder {
+    color: rgba(188, 194, 212, 0.36);
+    font-weight: 450;
+    letter-spacing: 0.025em;
+  }
+
+  .deckBuilderSearch:focus {
+    border-color: var(--deck-accent-amber-mid);
+    box-shadow: inset 0 4px 14px rgba(0, 0, 0, 0.68), inset 0 0 0 1px var(--deck-accent-amber-field);
+  }
+
+  .deckBuilderSearchIcon {
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 13px;
+    height: 13px;
+    opacity: 0.52;
+    color: rgba(188, 196, 215, 0.62);
+    pointer-events: none;
+    z-index: 1;
+    filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.55));
+  }
+
+  .deckBuilderFilterRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .deckBuilderFilterLabel {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.42);
+    width: 100%;
+    margin-bottom: 2px;
+  }
+
+  .deckBuilderFilterLabel--secondary {
+    margin-top: 4px;
+    color: rgba(255, 255, 255, 0.32);
+  }
+
+  .deckBuilderChip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 6px 12px;
+    border-radius: var(--deck-tool-radius);
+    border: 1px solid var(--deck-tool-edge);
+    background: var(--deck-tool-face);
+    color: rgba(237, 243, 255, 0.88);
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckBuilderChip[aria-pressed="true"] {
+    border-color: rgba(244, 208, 120, 0.42);
+    background: rgba(244, 208, 120, 0.08);
+    color: rgba(244, 208, 120, 0.98);
+    box-shadow: var(--deck-tool-press);
+  }
+
+  .deckBuilderChip--type[aria-pressed="true"] {
+    border-color: rgba(184, 160, 255, 0.4);
+    background: rgba(165, 118, 255, 0.1);
+    color: rgba(230, 220, 255, 0.98);
+    box-shadow: var(--deck-tool-press);
+  }
+
+  .deckBuilderChip--secondary {
+    min-height: 30px;
+    padding: 5px 10px;
+    font-size: 10px;
+    font-weight: 600;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(14, 13, 22, 0.95);
+    color: rgba(220, 226, 240, 0.72);
+  }
+
+  .deckLeaderSection {
+    margin: 0;
+  }
+
+  .deckLeaderPick {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(196, 173, 255, 0.14);
+    background: rgba(8, 6, 15, 0.55);
+    text-decoration: none;
+    color: inherit;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.06);
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .deckLeaderPick:hover {
+    border-color: rgba(201, 176, 255, 0.28);
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .deckLeaderPick:focus-visible {
+    outline: 2px solid rgba(184, 160, 255, 0.75);
+    outline-offset: 2px;
+  }
+
+  .deckLeaderAvatar {
+    flex: 0 0 auto;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: radial-gradient(circle at 50% 32%, rgba(165, 118, 255, 0.35), rgba(8, 6, 15, 0.95));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .deckLeaderAvatarImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 22%;
+    display: block;
+  }
+
+  .deckLeaderAvatarPlaceholder {
+    width: 28px;
+    height: 28px;
+    opacity: 0.55;
+  }
+
+  .deckLeaderMeta {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .deckLeaderPickTitle {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(237, 243, 255, 0.95);
+    line-height: 1.25;
+  }
+
+  .deckLeaderPickSub {
+    font-size: 12px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .deckLeaderPickAction {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(184, 160, 255, 0.95);
+    flex-shrink: 0;
+    align-self: center;
+  }
+
+  .deckBuilderSectionLabel {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.38);
+    margin: 0 0 6px;
+  }
+
+  /* Current Build header row */
+  .deckBuildHeaderRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .deckBuildHeaderLeft {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .deckBuildHeaderRow .deckBuilderSectionLabel {
+    margin: 0;
+  }
+
+  .deckBuildCountPill {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: rgba(200, 220, 255, 0.55);
+    padding: 4px 10px;
+    border-radius: var(--deck-tool-radius);
+    border: 1px solid var(--deck-tool-edge);
+    background: var(--deck-tool-face);
+    white-space: nowrap;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckBuildCountPill strong {
+    font-weight: 600;
+    color: rgba(244, 208, 120, 0.98);
+  }
+
+  .deckBuildCountPill.deckBuildCountPill--full {
+    border-color: rgba(244, 208, 120, 0.35);
+    background: rgba(244, 208, 120, 0.08);
+    color: rgba(244, 208, 120, 0.75);
+  }
+
+  .deckBuildCountPill.deckBuildCountPill--full strong {
+    color: rgba(244, 208, 120, 0.95);
+  }
+
+  .deckBuildHeaderActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .deckBuildSoftBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: var(--deck-tool-radius);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-ui);
+    border: 1px solid var(--deck-tool-edge);
+    background: var(--deck-tool-face);
+    color: rgba(220, 226, 240, 0.88);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckBuildSoftBtn--danger {
+    border-color: rgba(255, 100, 85, 0.32);
+    color: rgba(255, 180, 165, 0.94);
+    background: rgba(40, 18, 18, 0.85);
+  }
+
+  .deckPriceStrip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    margin: 0 0 8px;
+    border-radius: 12px;
+    border: 1px dashed rgba(196, 173, 255, 0.14);
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  .deckPriceStripLabel {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.32);
+  }
+
+  .deckPriceStripValues {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(237, 243, 255, 0.62);
+  }
+
+  .deckPricePlaceholder {
+    color: rgba(255, 255, 255, 0.34);
+    font-weight: 450;
+    letter-spacing: 0.03em;
+  }
+
+  .deckStrip {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 4px 2px 10px;
+    margin: 0 -2px;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x manipulation;
+    min-height: 100px;
+  }
+
+  .deckStrip::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .deckStrip::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+  }
+
+  .deckStripEmpty {
+    flex: 1;
+    min-height: 88px;
+    border-radius: 12px;
+    border: 1px dashed rgba(196, 173, 255, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.35);
+    padding: 12px;
+    text-align: center;
+  }
+
+  .deckStripCard {
+    flex: 0 0 auto;
+    width: 72px;
+    position: relative;
+    scroll-snap-align: start;
+    border-radius: 10px;
+    overflow: visible;
+    touch-action: manipulation;
+    cursor: default;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
+  }
+
+  .deckStripCardStack {
+    position: relative;
+    width: 72px;
+    height: 100px;
+  }
+
+  .deckStripStackLayer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 72px;
+    height: 100px;
+    border-radius: 10px;
+    border: 1px solid rgba(196, 173, 255, 0.22);
+    background: rgba(0, 0, 0, 0.28);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+  }
+
+  .deckStripStackLayer--ghost0 {
+    transform: translate(6px, 5px) rotate(-2deg);
+    opacity: 0.42;
+    z-index: 0;
+  }
+
+  .deckStripStackLayer--ghost1 {
+    transform: translate(4px, 4px) rotate(-1.2deg);
+    opacity: 0.55;
+    z-index: 1;
+  }
+
+  .deckStripStackLayer--ghost2 {
+    transform: translate(2px, 2px) rotate(0.6deg);
+    opacity: 0.72;
+    z-index: 2;
+  }
+
+  .deckStripCardInner {
+    width: 72px;
+    height: 100px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(196, 173, 255, 0.35);
+    background: rgba(0, 0, 0, 0.35);
+    position: relative;
+    z-index: 5;
+    box-shadow: 0 2px 0 rgba(255, 255, 255, 0.06) inset;
+  }
+
+  .deckStripCardGrad {
+    position: absolute;
+    inset: 0;
+    background: var(--strip-grad, linear-gradient(160deg, #3a2a55, #120a1a));
+  }
+
+  .deckStripCardName {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 4px 3px;
+    font-size: 8px;
+    line-height: 1.15;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.88);
+    text-align: center;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+    max-height: 28px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  /* Quantity badge — readable, not dominant */
+  .deckStripQty {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: auto;
+    min-width: 26px;
+    height: 24px;
+    padding: 0 6px;
+    border-radius: 8px;
+    background: linear-gradient(145deg, rgba(244, 208, 120, 0.92), rgba(200, 150, 60, 0.88));
+    color: #1a1005;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(8, 6, 15, 0.88);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
+    z-index: 40;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .deckStripCardInfo {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    z-index: 45;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    margin: 0;
+    border: 1px solid var(--deck-tool-edge);
+    border-radius: var(--deck-tool-radius-sm);
+    background: var(--deck-tool-face);
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 22px;
+    text-align: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    opacity: 0.62;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckStripCardInfo:active:not(:disabled) {
+    opacity: 0.92;
+  }
+
+  .deckStripCardControls {
+    position: absolute;
+    left: 50%;
+    bottom: -2px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px 4px;
+    border-radius: var(--deck-tool-radius);
+    border: 1px solid var(--deck-tool-edge-strong);
+    background: var(--deck-tool-row);
+    box-shadow: var(--deck-chassis-outset), 0 3px 0 rgba(0, 0, 0, 0.62), inset 0 2px 5px rgba(0, 0, 0, 0.35);
+    z-index: 50;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+  }
+
+  .deckStripCard.deckStripCard--menuOpen .deckStripCardControls {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .deckStripCtrlBtn {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 4px;
+    border-radius: var(--deck-tool-radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(32, 30, 48, 0.95);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 11px;
+    font-weight: 650;
+    cursor: pointer;
+    line-height: 1;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckStripCtrlBtn--minus {
+    color: rgba(255, 200, 190, 0.95);
+  }
+
+  .deckStripCtrlBtn--plus4 {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0 4px;
+    min-width: 26px;
+  }
+
+  .deckStripCtrlBtn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .deckBuilderMiruRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .deckBuilderMiruChip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 8px 12px;
+    border-radius: var(--deck-tool-radius);
+    border: 1px solid rgba(165, 118, 255, 0.22);
+    background: var(--deck-tool-face);
+    color: rgba(210, 200, 255, 0.78);
+    font-size: 12px;
+    font-weight: 600;
+    touch-action: manipulation;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckBrowser {
+    border: 1px solid rgba(196, 173, 255, 0.1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 12px 10px 14px;
+  }
+
+  .deckBrowserHeader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-top: 2px;
+  }
+
+  .deckBrowserHeader .deckBuilderSectionLabel {
+    margin: 0;
+  }
+
+  .deckBrowserTagline {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+    font-weight: 500;
+  }
+
+  .deckBrowserGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px 8px;
+    justify-items: center;
+  }
+
+  @media (min-width: 480px) {
+    .deckBrowserGrid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (min-width: 720px) {
+    .deckBrowserGrid {
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+    }
+  }
+
+  .deckBrowserCard {
+    position: relative;
+    box-sizing: border-box;
+    width: min(100%, var(--deck-card-w));
+    max-width: var(--deck-card-w);
+    border-radius: var(--deck-card-radius);
+    overflow: visible;
+    aspect-ratio: 2 / 3;
+    background: transparent;
+    border: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .deckBrowserCardFaceWrap {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--deck-card-radius);
+  }
+
+  .deckBrowserStackLayer {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--deck-card-radius);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+  }
+
+  .deckBrowserStackLayer--ghost0 {
+    transform: translate(3px, 3px) scale(0.97) rotate(-1deg);
+    opacity: 0.48;
+    z-index: 0;
+  }
+
+  .deckBrowserStackLayer--ghost1 {
+    transform: translate(2px, 2px) scale(0.985);
+    opacity: 0.6;
+    z-index: 1;
+  }
+
+  .deckBrowserStackLayer--ghost2 {
+    transform: translate(1px, 1px) scale(0.995);
+    opacity: 0.74;
+    z-index: 2;
+  }
+
+  .deckBrowserCardFace {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--deck-card-radius);
+    overflow: hidden;
+    background: var(--face-grad, linear-gradient(155deg, #4a3868, #151018));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 4;
+    cursor: default;
+    touch-action: manipulation;
+  }
+
+  .deckBrowserCard.deckBrowserCard--deckFull .deckBrowserCardFace {
+    cursor: default;
+  }
+
+  .deckBrowserCardLabel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 6px 4px 32px;
+    font-size: 9px;
+    line-height: 1.2;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+    text-align: center;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.78));
+    pointer-events: none;
+  }
+
+  .deckBrowserCardPrice {
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: rgba(200, 220, 255, 0.55);
+    background: rgba(8, 6, 15, 0.65);
+    padding: 2px 6px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+  }
+
+  .deckBrowserCardBadge {
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    right: auto;
+    min-width: 24px;
+    height: 22px;
+    padding: 0 5px;
+    border-radius: 8px;
+    background: linear-gradient(145deg, rgba(244, 208, 120, 0.92), rgba(190, 140, 55, 0.88));
+    color: #1a1005;
+    font-size: 11px;
+    font-weight: 700;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(8, 6, 15, 0.85);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+    z-index: 35;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .deckBrowserCardBadge.is-visible {
+    display: flex;
+  }
+
+  /* ⓘ — sole library modal trigger; kept subtle, always visible */
+  .deckBrowserCardInfo {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    z-index: 45;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    margin: 0;
+    border: 1px solid var(--deck-tool-edge);
+    border-radius: var(--deck-tool-radius-sm);
+    background: var(--deck-tool-face);
+    color: rgba(255, 255, 255, 0.58);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    opacity: 0.62;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckBrowserCardInfo:hover,
+  .deckBrowserCardInfo:focus-visible {
+    opacity: 0.92;
+    outline: none;
+    border-color: rgba(201, 176, 255, 0.35);
+  }
+
+  .deckBrowserCardInfo:active:not(:disabled) {
+    opacity: 1;
+  }
+
+  .deckBrowserCardControls {
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px 4px;
+    border-radius: var(--deck-tool-radius);
+    border: 1px solid var(--deck-tool-edge-strong);
+    background: var(--deck-tool-row);
+    box-shadow: var(--deck-chassis-outset), 0 3px 0 rgba(0, 0, 0, 0.62), inset 0 2px 5px rgba(0, 0, 0, 0.35);
+    z-index: 50;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+  }
+
+  .deckBrowserCard.deckBrowserCard--menuOpen .deckBrowserCardControls {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .deckBrowserCtrlBtn {
+    min-width: 26px;
+    height: 26px;
+    border-radius: var(--deck-tool-radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(32, 30, 48, 0.95);
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+    touch-action: manipulation;
+    padding: 0;
+    line-height: 1;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckBrowserCtrlBtn--minus {
+    color: rgba(255, 200, 190, 0.98);
+  }
+
+  .deckBrowserCtrlBtn--plus4 {
+    min-width: 28px;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0 4px;
+  }
+
+  .deckBrowserCtrlBtn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .deckBrowserGridNote {
+    grid-column: 1 / -1;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.38);
+    margin: 4px 0 0;
+    line-height: 1.35;
+  }
+
+  /* Floating dock — quick access to Current Build */
+  .deckBuildDock {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(var(--bottom-nav-height, 56px) + env(safe-area-inset-bottom, 0px) + 8px);
+    z-index: 55;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: var(--deck-dock-h);
+    padding: 8px 12px;
+    border-radius: var(--deck-tool-radius);
+    border: 1px solid var(--deck-tool-edge-strong);
+    background: rgba(12, 11, 20, 0.97);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: inset 0 1px 0 var(--deck-forge-top), inset 0 -2px 0 rgba(0, 0, 0, 0.48), 0 -6px 22px rgba(0, 0, 0, 0.42);
+    touch-action: manipulation;
+  }
+
+  .deckBuildDockInfo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .deckBuildDockTitle {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(184, 160, 255, 0.85);
+  }
+
+  .deckBuildDockMeta {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(237, 243, 255, 0.92);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .deckBuildDockPrice {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.42);
+  }
+
+  .deckBuildDockBtn {
+    flex-shrink: 0;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: var(--deck-tool-radius);
+    border: 1px solid var(--deck-accent-amber);
+    background: linear-gradient(180deg, rgba(48, 42, 30, 0.98) 0%, rgba(22, 18, 12, 0.99) 100%);
+    color: rgba(244, 218, 160, 0.98);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--deck-chassis-outset), inset 0 2px 4px rgba(0, 0, 0, 0.45);
+  }
+
+  .deckBuilderPanel {
+    border: 1px solid rgba(196, 173, 255, 0.12);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 14px 14px 12px;
+  }
+
+  .deckBuilderPanel h2 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--textSoft);
+  }
+
+  .deckBuilderActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .deckBuilderActions a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: var(--deck-tool-radius);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid rgba(184, 160, 255, 0.26);
+    background: linear-gradient(180deg, rgba(34, 30, 50, 0.98) 0%, rgba(16, 14, 26, 0.99) 100%);
+    color: rgba(237, 243, 255, 0.95);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckBuilderActions a.secondary {
+    background: var(--deck-tool-face);
+    border-color: var(--deck-tool-edge);
+    color: rgba(255, 255, 255, 0.78);
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  /* Clear dialog */
+  .deckClearDialog::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+  }
+
+  .deckClearDialog {
+    border: 1px solid rgba(196, 173, 255, 0.2);
+    border-radius: 16px;
+    background: #121018;
+    color: rgba(237, 243, 255, 0.95);
+    padding: 0;
+    max-width: min(360px, 92vw);
+  }
+
+  .deckClearDialogInner {
+    padding: 18px 18px 14px;
+  }
+
+  .deckClearDialog h3 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: var(--font-display);
+  }
+
+  .deckClearDialog p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .deckClearDialogSkipRow {
+    padding: 0 18px 14px;
+  }
+
+  .deckClearDialogSkipLabel {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1.45;
+    font-weight: 500;
+    color: rgba(210, 216, 230, 0.52);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  .deckClearDialogSkipLabel:active {
+    color: rgba(230, 236, 248, 0.62);
+  }
+
+  .deckClearDialogSkipInput {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    margin: 2px 0 0;
+    border-radius: 5px;
+    accent-color: rgba(200, 168, 88, 0.95);
+    cursor: pointer;
+  }
+
+  .deckClearDialogActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 12px 16px 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .deckClearDialogBtn {
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: var(--deck-tool-radius);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    border: 1px solid var(--deck-tool-edge);
+    background: var(--deck-tool-face);
+    color: rgba(237, 243, 255, 0.9);
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckClearDialogBtn--primary {
+    border-color: rgba(255, 100, 85, 0.38);
+    background: linear-gradient(180deg, rgba(52, 26, 26, 0.98) 0%, rgba(28, 14, 14, 0.99) 100%);
+    color: rgba(255, 200, 185, 0.98);
+    box-shadow: var(--deck-chassis-outset), inset 0 2px 4px rgba(0, 0, 0, 0.45);
+  }
+
+  /* Card inspect / add modal */
+  .deckCardModal::backdrop {
+    background: rgba(0, 0, 0, 0.62);
+  }
+
+  .deckCardModal {
+    border: 1px solid rgba(196, 173, 255, 0.22);
+    border-radius: 16px;
+    background: #121018;
+    color: rgba(237, 243, 255, 0.95);
+    padding: 0;
+    max-width: min(340px, 94vw);
+    max-height: min(92vh, 720px);
+    overflow: hidden;
+  }
+
+  .deckCardModalInner {
+    padding: 14px 16px 16px;
+    max-height: min(88vh, 700px);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .deckCardModalClose {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--deck-tool-radius);
+    border: 1px solid var(--deck-tool-edge);
+    background: var(--deck-tool-face);
+    color: rgba(237, 243, 255, 0.85);
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckCardModalVisual {
+    display: flex;
+    justify-content: center;
+    margin: 8px 0 12px;
+  }
+
+  .deckCardModalFace {
+    position: relative;
+    width: min(82vw, 280px);
+    aspect-ratio: 2 / 3;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--deck-tool-edge-strong);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    background: var(--face-grad, linear-gradient(155deg, #4a3868, #151018));
+  }
+
+  .deckCardModalFaceInner {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: var(--face-grad, linear-gradient(155deg, #4a3868, #151018));
+  }
+
+  .deckCardModalFaceCost {
+    position: absolute;
+    z-index: 1;
+    left: 8px;
+    top: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: rgba(200, 220, 255, 0.88);
+    background: rgba(8, 6, 15, 0.72);
+    padding: 3px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .deckCardModalFaceName {
+    position: absolute;
+    z-index: 1;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 10px 8px 12px;
+    font-size: 12px;
+    line-height: 1.25;
+    font-weight: 600;
+    text-align: center;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.82));
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .deckCardModalTitle {
+    margin: 0 0 6px;
+    font-size: 17px;
+    font-weight: 700;
+    font-family: var(--font-display);
+    line-height: 1.25;
+    padding-right: 36px;
+  }
+
+  .deckCardModalMeta {
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .deckCardModalMeta strong {
+    color: rgba(230, 220, 255, 0.92);
+    font-weight: 600;
+  }
+
+  .deckCardModalActions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .deckCardModalBtn {
+    min-height: 40px;
+    padding: 0 12px;
+    border-radius: var(--deck-tool-radius);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    touch-action: manipulation;
+    border: 1px solid var(--deck-tool-edge);
+    background: var(--deck-tool-face);
+    color: rgba(237, 243, 255, 0.94);
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .deckCardModalBtn--primary {
+    border-color: var(--deck-accent-amber-mid);
+    background: linear-gradient(180deg, rgba(40, 36, 26, 0.98) 0%, rgba(18, 16, 12, 0.99) 100%);
+    color: rgba(244, 228, 200, 0.98);
+    box-shadow: var(--deck-chassis-outset), inset 0 2px 4px rgba(0, 0, 0, 0.42);
+  }
+
+  .deckCardModalBtn--danger {
+    border-color: rgba(255, 100, 85, 0.32);
+    background: linear-gradient(180deg, rgba(48, 28, 28, 0.98) 0%, rgba(22, 12, 12, 0.99) 100%);
+    color: rgba(255, 210, 200, 0.94);
+    box-shadow: var(--deck-chassis-outset), inset 0 2px 4px rgba(0, 0, 0, 0.42);
+  }
+
+  .deckCardModalBtn:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+  }
+
+  .deckCardModalHint {
+    margin: 12px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.42);
+  }
+
+  /* Phase 4 — Miru insight via app bar logo only (deck-builder page) */
+  html[data-page="deck-builder"] .appBarLogoWrap[data-miru-insight="1"] {
+    -webkit-tap-highlight-color: rgba(244, 208, 120, 0.12);
+  }
+
+  /* Settled glow — stronger layered halos, still no infinite loop (pulse = one-shot keyframes) */
+  html[data-page="deck-builder"] .appBarLogoWrap[data-miru-palette="warm"] .appBarLogo.miruDeckLogo--insight:not(.miruDeckLogo--pulse) {
+    filter:
+      drop-shadow(0 0 10px rgba(244, 208, 120, 0.55)) drop-shadow(0 0 26px rgba(244, 208, 120, 0.32));
+    transform: scale(1);
+    transition: filter 0.45s ease, transform 0.45s ease;
+  }
+
+  html[data-page="deck-builder"] .appBarLogoWrap[data-miru-palette="cool"] .appBarLogo.miruDeckLogo--insight:not(.miruDeckLogo--pulse) {
+    filter:
+      drop-shadow(0 0 10px rgba(184, 160, 255, 0.58)) drop-shadow(0 0 28px rgba(120, 90, 200, 0.28));
+    transform: scale(1);
+    transition: filter 0.45s ease, transform 0.45s ease;
+  }
+
+  html[data-page="deck-builder"] .appBarLogoWrap[data-miru-palette="balanced"] .appBarLogo.miruDeckLogo--insight:not(.miruDeckLogo--pulse) {
+    filter:
+      drop-shadow(0 0 10px rgba(210, 200, 255, 0.5)) drop-shadow(0 0 24px rgba(200, 185, 255, 0.26));
+    transform: scale(1);
+    transition: filter 0.45s ease, transform 0.45s ease;
+  }
+
+  html[data-page="deck-builder"] .appBarLogo.miruDeckLogo--pulse {
+    animation: miruDeckLogoPulseOnce 1.85s ease-out 1 forwards;
+  }
+
+  @keyframes miruDeckLogoPulseOnce {
+    0% {
+      transform: scale(1);
+      filter: drop-shadow(0 0 0 transparent);
+    }
+
+    18% {
+      transform: scale(1.028);
+      filter: drop-shadow(0 0 12px rgba(244, 208, 120, 0.65)) drop-shadow(0 0 32px rgba(244, 208, 120, 0.4));
+    }
+
+    36% {
+      transform: scale(1);
+      filter: drop-shadow(0 0 4px rgba(244, 208, 120, 0.25));
+    }
+
+    58% {
+      transform: scale(1.022);
+      filter: drop-shadow(0 0 12px rgba(165, 118, 255, 0.58)) drop-shadow(0 0 32px rgba(120, 90, 200, 0.28));
+    }
+
+    100% {
+      transform: scale(1);
+      filter: drop-shadow(0 0 0 transparent);
+    }
+  }
+
+  .miruDeckInsightPanel {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(var(--bottom-nav-height, 56px) + env(safe-area-inset-bottom, 0px) + var(--deck-dock-h, 52px) + 16px);
+    z-index: 58;
+    max-height: min(52vh, 420px);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 16px;
+    border: 1px solid rgba(196, 173, 255, 0.2);
+    background: rgba(10, 9, 18, 0.97);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    padding: 0;
+    margin: 0;
+    touch-action: manipulation;
+  }
+
+  .miruDeckInsightPanel[hidden] {
+    display: none !important;
+  }
+
+  .miruDeckInsightPanel__head {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .miruDeckInsightPanel__headTop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .miruDeckInsightPanel__title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(184, 160, 255, 0.88);
+  }
+
+  .miruDeckInsightPanel__sub {
+    font-size: 11px;
+    font-weight: 450;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 0.01em;
+  }
+
+  .miruDeckInsightPanel__done {
+    min-height: 36px;
+    padding: 0 12px;
+    border-radius: var(--deck-tool-radius);
+    border: 1px solid var(--deck-tool-edge);
+    background: var(--deck-tool-face);
+    color: rgba(237, 243, 255, 0.92);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: var(--deck-tool-shell);
+  }
+
+  .miruDeckInsightPanel__body {
+    padding: 12px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .miruDeckInsightRow {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .miruDeckInsightRow__avatar {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .miruDeckInsightRow__avatar img {
+    width: 26px;
+    height: 26px;
+    opacity: 0.85;
+  }
+
+  .miruDeckInsightRow__name {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: rgba(237, 243, 255, 0.88);
+    margin-bottom: 4px;
+  }
+
+  .miruDeckInsightRow__reason {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.46);
+    font-weight: 400;
+  }
+</style>
+{% endblock %}
+
+{% block page_body %}
+<div id="pageBody" class="miruShellPageBody deckBuilderApp">
+  <header class="deckBuilderIntro">
+    <span class="deckBuilderKicker">Build</span>
+    <h1 class="miruShellPageTitle">Deck Builder</h1>
+    <p class="deckBuilderBlurb">
+      Browse cards first, shape your list, and set a leader when you’re ready—nothing is locked.
+    </p>
+  </header>
+
+  <section class="deckBrowser" aria-labelledby="browserHeading">
+    <div class="deckBrowserHeader">
+      <div class="deckBuilderSectionLabel" id="browserHeading">Card Browser</div>
+      <span class="deckBrowserTagline">Practice mode · local pool</span>
+    </div>
+
+    <details class="deckBuilderControlsShell" id="deckBuilderControls" open>
+      <summary class="deckBuilderControlsSummary" aria-controls="deckBuilderControlsPanel">
+        <span>Search &amp; filters</span>
+        <svg class="deckBuilderChevron" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </summary>
+      <div class="deckBuilderControlsInner" id="deckBuilderControlsPanel">
+        <div class="deckBuilderToolbar" aria-label="Search and filters">
+          <div class="deckBuilderSearchWrap">
+            <svg class="deckBuilderSearchIcon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3-3" />
+            </svg>
+            <input type="search" class="deckBuilderSearch" id="deckBuilderSearch" name="q"
+              placeholder="Search the pool by name or ID…" autocomplete="off" inputmode="search"
+              enterkeyhint="search" />
+          </div>
+          <div>
+            <div class="deckBuilderFilterLabel">Card type</div>
+            <div class="deckBuilderFilterRow" role="toolbar" aria-label="Card type" id="deckFilterTypeRow">
+              <button type="button" class="deckBuilderChip deckBuilderChip--type" data-filter-type="character"
+                aria-pressed="false">Character</button>
+              <button type="button" class="deckBuilderChip deckBuilderChip--type" data-filter-type="event"
+                aria-pressed="false">Event</button>
+              <button type="button" class="deckBuilderChip deckBuilderChip--type" data-filter-type="stage"
+                aria-pressed="false">Stage</button>
+            </div>
+          </div>
+          <div>
+            <div class="deckBuilderFilterLabel deckBuilderFilterLabel--secondary">Refine</div>
+            <div class="deckBuilderFilterRow" role="toolbar" aria-label="Refine filters" id="deckFilterRefineRow">
+              <button type="button" class="deckBuilderChip deckBuilderChip--secondary" data-refine="Cost"
+                aria-pressed="false">Cost</button>
+              <button type="button" class="deckBuilderChip deckBuilderChip--secondary" data-refine="Color"
+                aria-pressed="false">Color</button>
+              <button type="button" class="deckBuilderChip deckBuilderChip--secondary" data-refine="Counter"
+                aria-pressed="false">Counter</button>
+              <button type="button" class="deckBuilderChip deckBuilderChip--secondary" data-refine="Block"
+                aria-pressed="false">Block</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <div class="deckBrowserGrid" id="deckBuilderBrowserGrid" aria-live="polite"></div>
+    <p class="deckBrowserGridNote" id="deckBrowserGridNote">
+      Local practice cards for building and testing. Your list stays on this device until you clear it.
+    </p>
+  </section>
+
+  <section class="deckLeaderSection" aria-labelledby="leaderHeading" id="deckLeaderSection">
+    <div class="deckBuilderSectionLabel" id="leaderHeading">Leader</div>
+    {% if deck_leader_thumb and deck_leader_code %}
+    <a class="deckLeaderPick" href="/leaders" id="deckLeaderPickLink">
+      <div class="deckLeaderAvatar" aria-hidden="true">
+        <img class="deckLeaderAvatarImg" src="{{ deck_leader_thumb }}" alt="" width="112" height="112" decoding="async"
+          loading="lazy" />
+      </div>
+      <div class="deckLeaderMeta">
+        <span class="deckLeaderPickTitle">{{ deck_leader_name or deck_leader_code }}</span>
+        <span class="deckLeaderPickSub">From the catalog — open Leaders to switch.</span>
+      </div>
+      <span class="deckLeaderPickAction">Change</span>
+    </a>
+    {% else %}
+    <a class="deckLeaderPick" href="/leaders" id="deckLeaderPickLink">
+      <div class="deckLeaderAvatar" aria-hidden="true">
+        <img class="deckLeaderAvatarPlaceholder" src="{{ url_for('static', filename='icons/leaders.svg') }}" alt=""
+          width="28" height="28" decoding="async" />
+      </div>
+      <div class="deckLeaderMeta">
+        <span class="deckLeaderPickTitle">No leader selected</span>
+        <span class="deckLeaderPickSub">Optional—browse cards above first, then choose when you’re ready.</span>
+      </div>
+      <span class="deckLeaderPickAction">Browse</span>
+    </a>
+    {% endif %}
+  </section>
+
+  <section id="deckCurrentBuildSection" aria-labelledby="deckStripHeading">
+    <div class="deckBuildHeaderRow">
+      <div class="deckBuildHeaderLeft">
+        <div class="deckBuilderSectionLabel" id="deckStripHeading">Current Build</div>
+        <span class="deckBuildCountPill" id="deckBuildCountPill" aria-live="polite"><strong
+            id="deckBuildCountNum">0</strong> / 50 main</span>
+      </div>
+      <div class="deckBuildHeaderActions">
+        <button type="button" class="deckBuildSoftBtn deckBuildSoftBtn--danger" id="deckClearOpenBtn">Clear main
+          deck…</button>
+      </div>
+    </div>
+    <div class="deckPriceStrip" aria-label="Practice mode — no live market data">
+      <span class="deckPriceStripLabel">Practice · cost</span>
+      <div class="deckPriceStripValues">
+        <span>Per card <span class="deckPricePlaceholder" id="deckPricePerPlaceholder">—</span></span>
+        <span>Deck total <span class="deckPricePlaceholder" id="deckPriceTotalPlaceholder">—</span></span>
+      </div>
+    </div>
+    <div class="deckStrip" id="deckBuilderStrip" aria-label="Cards in deck"></div>
+  </section>
+
+  <section aria-labelledby="miruHooksHeading">
+    <div class="deckBuilderSectionLabel" id="miruHooksHeading">Miru</div>
+    <div class="deckBuilderMiruRow">
+      <span class="deckBuilderMiruChip">Usage</span>
+      <span class="deckBuilderMiruChip">Price</span>
+      <span class="deckBuilderMiruChip">Ruling</span>
+    </div>
+  </section>
+
+  <section class="deckBuilderPanel" aria-labelledby="deckBuilderStartHeading">
+    <h2 id="deckBuilderStartHeading">Shortcuts</h2>
+    <div class="deckBuilderActions">
+      <a href="/cards">Open library</a>
+      <a class="secondary" href="/leaders">Leaders</a>
+    </div>
+  </section>
+</div>
+
+<div class="deckBuildDock" id="deckBuildDock" role="region" aria-label="Deck summary">
+  <div class="deckBuildDockInfo">
+    <span class="deckBuildDockTitle">Current Build</span>
+    <span class="deckBuildDockMeta" id="deckDockLine1">0 cards</span>
+    <span class="deckBuildDockPrice" id="deckDockLine2">Total —</span>
+  </div>
+  <button type="button" class="deckBuildDockBtn" id="deckDockJumpBtn">View deck</button>
+</div>
+
+<dialog class="deckClearDialog" id="deckClearDialog" aria-labelledby="deckClearTitle">
+  <div class="deckClearDialogInner">
+    <h3 id="deckClearTitle">Clear your main deck?</h3>
+    <p>This empties your 50-card main—every Character, Event, and Stage goes back to zero. Your leader stays as-is;
+      only the list saved in this browser changes.</p>
+  </div>
+  <!-- phase-4a-clear-skip -->
+  <div class="deckClearDialogSkipRow">
+    <label class="deckClearDialogSkipLabel" for="deckClearSkipFuture">
+      <input type="checkbox" class="deckClearDialogSkipInput" id="deckClearSkipFuture" autocomplete="off" />
+      <span>Don’t show this again</span>
+    </label>
+  </div>
+  <div class="deckClearDialogActions">
+    <button type="button" class="deckClearDialogBtn" id="deckClearCancelBtn" value="cancel">Cancel</button>
+    <button type="button" class="deckClearDialogBtn deckClearDialogBtn--primary" id="deckClearConfirmBtn"
+      value="confirm">Clear main deck</button>
+  </div>
+</dialog>
+
+<dialog class="deckCardModal" id="deckCardModal" aria-labelledby="deckCardModalTitle">
+  <div class="deckCardModalInner">
+    <button type="button" class="deckCardModalClose" id="deckCardModalClose" aria-label="Close card">×</button>
+    <div class="deckCardModalVisual">
+      <div class="deckCardModalFace" id="deckCardModalFace" aria-hidden="true">
+        <div class="deckCardModalFaceInner" id="deckCardModalFaceInner"></div>
+        <div class="deckCardModalFaceCost" id="deckCardModalFaceCost"></div>
+        <div class="deckCardModalFaceName" id="deckCardModalFaceName"></div>
+      </div>
+    </div>
+    <h2 class="deckCardModalTitle" id="deckCardModalTitle"></h2>
+    <p class="deckCardModalMeta" id="deckCardModalMeta"></p>
+    <div class="deckCardModalActions">
+      <button type="button" class="deckCardModalBtn deckCardModalBtn--danger" id="deckCardModalRemove">Remove 1</button>
+      <button type="button" class="deckCardModalBtn deckCardModalBtn--primary" id="deckCardModalAdd1">Add 1</button>
+      <button type="button" class="deckCardModalBtn deckCardModalBtn--primary" id="deckCardModalAddPlayset">Add
+        playset</button>
+    </div>
+    <p class="deckCardModalHint" id="deckCardModalHint"></p>
+  </div>
+</dialog>
+
+<div class="miruDeckInsightPanel" id="miruDeckInsightPanel" hidden aria-hidden="true">
+  <div class="miruDeckInsightPanel__head">
+    <div class="miruDeckInsightPanel__headTop">
+      <span class="miruDeckInsightPanel__title">Leader ideas</span>
+      <button type="button" class="miruDeckInsightPanel__done" id="miruDeckInsightPanelDone">Close</button>
+    </div>
+    <p class="miruDeckInsightPanel__sub">From your current list — confirm any pick in Leaders.</p>
+  </div>
+  <div class="miruDeckInsightPanel__body" id="miruDeckInsightPanelBody"></div>
+</div>
+
+<script>
+  (function () {
+    var STORAGE_KEY = 'miru.deckBuilder.v1';
+    var PLAYSET_MAX = 4;
+    var MAIN_DECK_MAX = 50;
+    var SAVE_DEBOUNCE_MS = 160;
+    var MIN_INSIGHT_CARDS = 4;
+    var MIRU_LEADER_IMG = '/static/icons/leaders.svg';
+    var LONG_PRESS_MS = 480;
+    var MOVE_CANCEL_PX = 14;
+    var QUICK_MENU_GRACE_MS = 2200;
+    /** localStorage only — skip clear-deck confirmation when === '1' */
+    var CLEAR_CONFIRM_SKIP_KEY = 'miru.deckBuilder.skipClearConfirm.v1';
+    var quickMenuGraceTimer = null;
+    var quickMenuCardId = null;
+    var quickMenuZone = null;
+
+    /* Stable ids — keep keys so saved localStorage decks keep working */
+    var LOCAL_CARD_POOL = [
+      { id: 'demo-c1', name: 'Azure Striker', type: 'character', hue: 210, cost: '5' },
+      { id: 'demo-c2', name: 'Crimson Guard', type: 'character', hue: 2, cost: '4' },
+      { id: 'demo-e1', name: 'Full Burst', type: 'event', hue: 280, cost: '1' },
+      { id: 'demo-e2', name: 'Second Wind', type: 'event', hue: 140, cost: '2' },
+      { id: 'demo-s1', name: 'Twin Peaks', type: 'stage', hue: 38, cost: '2' },
+      { id: 'demo-s2', name: 'Hidden Cove', type: 'stage', hue: 175, cost: '1' },
+      { id: 'demo-c3', name: 'Iron Hook', type: 'character', hue: 32, cost: '6' },
+      { id: 'demo-c4', name: 'Quiet Tide', type: 'character', hue: 200, cost: '3' },
+      { id: 'demo-e3', name: "King's Edict", type: 'event', hue: 48, cost: '10' }
+    ];
+
+    function hueGrad(h) {
+      return 'linear-gradient(155deg, hsl(' + h + ',42%,38%), hsl(' + h + ',28%,12%))';
+    }
+    function hueGradStrip(h) {
+      return 'linear-gradient(160deg, hsl(' + h + ',45%,32%), hsl(' + h + ',22%,10%))';
+    }
+
+    function defaultState() {
+      return {
+        v: 1,
+        cards: {},
+        leaderCode: null,
+        search: '',
+        typeFilter: null,
+        refine: {}
+      };
+    }
+
+    function loadState() {
+      try {
+        var raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return defaultState();
+        var o = JSON.parse(raw);
+        if (!o || o.v !== 1 || typeof o.cards !== 'object') return defaultState();
+        return {
+          v: 1,
+          cards: o.cards || {},
+          leaderCode: o.leaderCode || null,
+          search: typeof o.search === 'string' ? o.search : '',
+          typeFilter: o.typeFilter || null,
+          refine: typeof o.refine === 'object' && o.refine ? o.refine : {}
+        };
+      } catch (e) {
+        return defaultState();
+      }
+    }
+
+    var state = loadState();
+    var saveTimer = null;
+    function scheduleSave() {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
+    }
+    function flushSave() {
+      saveTimer = null;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) { }
+    }
+
+    /* Optional: reconcile leader URL with stored leader (one redirect, no API) */
+    var qsLeader = (function () {
+      try {
+        return new URLSearchParams(window.location.search).get('leader');
+      } catch (e) { return null; }
+    })();
+    if (qsLeader) {
+      state.leaderCode = String(qsLeader).trim().toUpperCase();
+      scheduleSave();
+    } else if (state.leaderCode) {
+      try {
+        window.location.replace('/deck-builder?leader=' + encodeURIComponent(state.leaderCode));
+        return;
+      } catch (e) { }
+    }
+
+    var gridEl = document.getElementById('deckBuilderBrowserGrid');
+    var stripEl = document.getElementById('deckBuilderStrip');
+    var searchEl = document.getElementById('deckBuilderSearch');
+    var dockLine1 = document.getElementById('deckDockLine1');
+    var dockLine2 = document.getElementById('deckDockLine2');
+    var dockBtn = document.getElementById('deckDockJumpBtn');
+    var clearBtn = document.getElementById('deckClearOpenBtn');
+    var clearDialog = document.getElementById('deckClearDialog');
+    var clearCancel = document.getElementById('deckClearCancelBtn');
+    var clearConfirm = document.getElementById('deckClearConfirmBtn');
+    var noteEl = document.getElementById('deckBrowserGridNote');
+    var cardModal = document.getElementById('deckCardModal');
+    var cardModalClose = document.getElementById('deckCardModalClose');
+    var cardModalFace = document.getElementById('deckCardModalFace');
+    var cardModalFaceInner = document.getElementById('deckCardModalFaceInner');
+    var cardModalFaceCost = document.getElementById('deckCardModalFaceCost');
+    var cardModalFaceName = document.getElementById('deckCardModalFaceName');
+    var cardModalTitle = document.getElementById('deckCardModalTitle');
+    var cardModalMeta = document.getElementById('deckCardModalMeta');
+    var cardModalHint = document.getElementById('deckCardModalHint');
+    var cardModalRemove = document.getElementById('deckCardModalRemove');
+    var cardModalAdd1 = document.getElementById('deckCardModalAdd1');
+    var cardModalAddPlayset = document.getElementById('deckCardModalAddPlayset');
+    var modalCardId = null;
+
+    function getQty(id) {
+      var n = state.cards[id];
+      if (typeof n !== 'number' || !isFinite(n) || n <= 0) return 0;
+      return Math.min(PLAYSET_MAX, Math.floor(n));
+    }
+    function setQty(id, q) {
+      if (q <= 0) delete state.cards[id];
+      else state.cards[id] = Math.min(PLAYSET_MAX, Math.max(0, Math.floor(q)));
+    }
+    function totalCards() {
+      var t = 0;
+      Object.keys(state.cards).forEach(function (k) {
+        t += state.cards[k] || 0;
+      });
+      return t;
+    }
+
+    /* Older saved lists could exceed 50 before main-deck cap existed — trim on load (UI-only). */
+    function clampLoadedDeckToMainMax() {
+      var safety = 0;
+      while (totalCards() > MAIN_DECK_MAX && safety++ < 400) {
+        var ids = Object.keys(state.cards);
+        var cut = false;
+        for (var i = 0; i < ids.length; i++) {
+          var id = ids[i];
+          var q = getQty(id);
+          if (q > 0) {
+            setQty(id, q - 1);
+            cut = true;
+            break;
+          }
+        }
+        if (!cut) break;
+      }
+    }
+    clampLoadedDeckToMainMax();
+
+    function clampLoadedDeckPerPlayset() {
+      Object.keys(state.cards).forEach(function (id) {
+        var q = getQty(id);
+        if (q > PLAYSET_MAX) setQty(id, PLAYSET_MAX);
+      });
+    }
+    clampLoadedDeckPerPlayset();
+    if (totalCards() > 0) scheduleSave();
+
+    function remainingMainSlots() {
+      return Math.max(0, MAIN_DECK_MAX - totalCards());
+    }
+
+    function addCopies(id, delta) {
+      if (delta <= 0) return 0;
+      var cur = getQty(id);
+      var room = remainingMainSlots();
+      if (room <= 0) return 0;
+      var want = Math.min(Math.floor(delta), room);
+      var cap = Math.max(0, PLAYSET_MAX - cur);
+      if (cap <= 0) return 0;
+      var actual = Math.min(want, cap);
+      if (actual <= 0) return 0;
+      setQty(id, cur + actual);
+      return actual;
+    }
+
+    function closeDeckBuilderMenusExcept(exceptEl) {
+      document.querySelectorAll('.deckBrowserCard--menuOpen').forEach(function (el) {
+        if (exceptEl && el === exceptEl) return;
+        el.classList.remove('deckBrowserCard--menuOpen');
+      });
+      document.querySelectorAll('.deckStripCard--menuOpen').forEach(function (el) {
+        if (exceptEl && el === exceptEl) return;
+        el.classList.remove('deckStripCard--menuOpen');
+      });
+    }
+    function clearQuickMenuGraceTimer() {
+      if (quickMenuGraceTimer) {
+        clearTimeout(quickMenuGraceTimer);
+        quickMenuGraceTimer = null;
+      }
+    }
+    function scheduleQuickMenuGrace() {
+      clearQuickMenuGraceTimer();
+      quickMenuGraceTimer = setTimeout(function () {
+        quickMenuGraceTimer = null;
+        closeDeckBuilderMenus();
+      }, QUICK_MENU_GRACE_MS);
+    }
+    function closeDeckBuilderMenus() {
+      clearQuickMenuGraceTimer();
+      quickMenuCardId = null;
+      quickMenuZone = null;
+      closeDeckBuilderMenusExcept(null);
+    }
+    function applyPersistedQuickMenu() {
+      if (!quickMenuCardId || !quickMenuZone) return;
+      if (quickMenuZone === 'browser' && gridEl) {
+        var w = gridEl.querySelector('.deckBrowserCard[data-card-id="' + quickMenuCardId + '"]');
+        if (w) w.classList.add('deckBrowserCard--menuOpen');
+      }
+      if (quickMenuZone === 'strip' && stripEl) {
+        var s = stripEl.querySelector('.deckStripCard[data-card-id="' + quickMenuCardId + '"]');
+        if (s) s.classList.add('deckStripCard--menuOpen');
+      }
+    }
+
+    if (!window.__miruDeckBuilderMenuCloser) {
+      window.__miruDeckBuilderMenuCloser = true;
+      document.addEventListener(
+        'pointerdown',
+        function (e) {
+          var openHost = document.querySelector('.deckBrowserCard--menuOpen, .deckStripCard--menuOpen');
+          if (!openHost) return;
+          if (e.target.closest('.deckBrowserCardControls, .deckStripCardControls')) {
+            scheduleQuickMenuGrace();
+            return;
+          }
+          if (e.target.closest('#deckCardModal')) return;
+          if (openHost.contains(e.target)) {
+            closeDeckBuilderMenus();
+            return;
+          }
+          closeDeckBuilderMenus();
+        },
+        true
+      );
+    }
+
+    function cardById(id) {
+      for (var i = 0; i < LOCAL_CARD_POOL.length; i++) {
+        if (LOCAL_CARD_POOL[i].id === id) return LOCAL_CARD_POOL[i];
+      }
+      return null;
+    }
+
+    function typeLabel(t) {
+      if (!t) return 'Card';
+      return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+
+    function cardCostText(card) {
+      if (!card) return '—';
+      return card.cost != null && String(card.cost).length ? String(card.cost) : '—';
+    }
+
+    function refreshCardModal() {
+      if (!cardModal || !modalCardId) return;
+      var card = cardById(modalCardId);
+      if (!card) return;
+      var q = getQty(modalCardId);
+      var rMain = remainingMainSlots();
+      var roomPlay = Math.max(0, PLAYSET_MAX - q);
+
+      if (cardModalFace) {
+        cardModalFace.style.setProperty('--face-grad', hueGrad(card.hue));
+      }
+      if (cardModalFaceInner) {
+        cardModalFaceInner.style.setProperty('--face-grad', hueGrad(card.hue));
+      }
+      if (cardModalFaceCost) {
+        cardModalFaceCost.textContent = 'Cost ' + cardCostText(card);
+      }
+      if (cardModalFaceName) {
+        cardModalFaceName.textContent = card.name;
+      }
+      if (cardModalTitle) {
+        cardModalTitle.textContent = card.name;
+      }
+      if (cardModalMeta) {
+        cardModalMeta.innerHTML =
+          '<strong>' +
+          typeLabel(card.type) +
+          '</strong> · Cost <strong>' +
+          cardCostText(card) +
+          '</strong> · In deck <strong>' +
+          q +
+          '</strong> / ' +
+          PLAYSET_MAX;
+      }
+      if (cardModalRemove) {
+        cardModalRemove.disabled = q <= 0;
+      }
+      if (cardModalAdd1) {
+        cardModalAdd1.disabled = rMain <= 0 || roomPlay <= 0;
+      }
+      if (cardModalAddPlayset) {
+        var canPlayset = rMain > 0 && roomPlay > 0;
+        cardModalAddPlayset.disabled = !canPlayset;
+        cardModalAddPlayset.textContent = roomPlay >= PLAYSET_MAX ? 'Add playset' : 'Add playset (+' + roomPlay + ')';
+      }
+      if (cardModalHint) {
+        var parts = [];
+        if (rMain <= 0) parts.push('Main deck is full (50).');
+        else parts.push('Main deck room: ' + rMain + '.');
+        if (roomPlay <= 0) parts.push('Playset cap reached for this card.');
+        cardModalHint.textContent = parts.join(' ');
+      }
+    }
+
+    function openCardModal(id) {
+      var c = cardById(id);
+      if (!c || !cardModal) return;
+      closeDeckBuilderMenus();
+      modalCardId = id;
+      refreshCardModal();
+      try {
+        cardModal.showModal();
+      } catch (e) { }
+      document.documentElement.classList.add('deckCardModalOpen');
+    }
+
+    function refreshCardModalIfOpen() {
+      if (cardModal && cardModal.open && modalCardId) {
+        refreshCardModal();
+      }
+    }
+
+    function filterVisible(card) {
+      var q = (state.search || '').trim().toLowerCase();
+      if (q && String(card.name).toLowerCase().indexOf(q) === -1) return false;
+      if (state.typeFilter && card.type !== state.typeFilter) return false;
+      return true;
+    }
+
+    /* Phase 4 — UI-only heuristic (no network / no backend) */
+    function computeMiruInsight() {
+      var total = totalCards();
+      if (total < MIN_INSIGHT_CARDS) return null;
+
+      var typeCounts = { character: 0, event: 0, stage: 0 };
+      var hueSum = 0;
+      var hueW = 0;
+      Object.keys(state.cards).forEach(function (id) {
+        var q = getQty(id);
+        var c = cardById(id);
+        if (!c || !q) return;
+        typeCounts[c.type] += q;
+        hueSum += c.hue * q;
+        hueW += q;
+      });
+      var avgHue = hueW ? hueSum / hueW : 180;
+      var domType = 'character';
+      var best = -1;
+      ['character', 'event', 'stage'].forEach(function (t) {
+        if (typeCounts[t] > best) {
+          best = typeCounts[t];
+          domType = t;
+        }
+      });
+      var palette = 'balanced';
+      if (avgHue < 45 || avgHue > 310) palette = 'warm';
+      else if (avgHue >= 160 && avgHue <= 240) palette = 'cool';
+
+      var uniqueLines = Object.keys(state.cards).filter(function (id) {
+        return getQty(id) > 0;
+      }).length;
+
+      var domLabel = domType.charAt(0).toUpperCase() + domType.slice(1);
+      var names = ['Fast tempo', 'Steady mid', 'Wide options'];
+      var r0 = 'Most copies are ' + domLabel + ' — a leader that likes that cadence will feel cohesive.';
+      var r1 =
+        palette === 'warm'
+          ? 'Warm color spread — aggressive openers often pair well with what you’re building.'
+          : palette === 'cool'
+            ? 'Cool color spread — room to lean control or tempo without fighting the curve.'
+            : 'Balanced spread — flexible leaders reward the mix you’re holding.';
+      var r2 =
+        uniqueLines >= 5
+          ? 'Several lines in play — a leader with a clear identity keeps the plan readable.'
+          : 'Tight copy counts — a focused leader keeps your plan from getting diluted.';
+
+      return {
+        palette: palette,
+        domType: domType,
+        suggestions: [
+          { name: names[0], reason: r0 },
+          { name: names[1], reason: r1 },
+          { name: names[2], reason: r2 }
+        ]
+      };
+    }
+
+    var miruLogoListenerBound = false;
+    var miruPrevInsightReady = false;
+    var miruLastInsight = null;
+
+    function closeMiruInsightPanel() {
+      var panel = document.getElementById('miruDeckInsightPanel');
+      if (!panel) return;
+      panel.hidden = true;
+      panel.setAttribute('aria-hidden', 'true');
+    }
+
+    function openMiruInsightPanel() {
+      var panel = document.getElementById('miruDeckInsightPanel');
+      var body = document.getElementById('miruDeckInsightPanelBody');
+      if (!panel || !body || !miruLastInsight) return;
+      body.innerHTML = '';
+      miruLastInsight.suggestions.forEach(function (s) {
+        var row = document.createElement('div');
+        row.className = 'miruDeckInsightRow';
+        var av = document.createElement('div');
+        av.className = 'miruDeckInsightRow__avatar';
+        var img = document.createElement('img');
+        img.src = MIRU_LEADER_IMG;
+        img.alt = '';
+        img.width = 40;
+        img.height = 40;
+        img.decoding = 'async';
+        av.appendChild(img);
+        var text = document.createElement('div');
+        var nm = document.createElement('div');
+        nm.className = 'miruDeckInsightRow__name';
+        nm.textContent = s.name;
+        var pr = document.createElement('p');
+        pr.className = 'miruDeckInsightRow__reason';
+        pr.textContent = s.reason;
+        text.appendChild(nm);
+        text.appendChild(pr);
+        row.appendChild(av);
+        row.appendChild(text);
+        body.appendChild(row);
+      });
+      panel.hidden = false;
+      panel.setAttribute('aria-hidden', 'false');
+    }
+
+    function onMiruLogoClick(e) {
+      if (!computeMiruInsight()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      openMiruInsightPanel();
+    }
+
+    function onMiruPulseEnd(e) {
+      if (e && e.animationName && String(e.animationName).indexOf('miruDeckLogoPulseOnce') === -1) return;
+      var logo = document.querySelector('.appBarLogo');
+      if (logo) logo.classList.remove('miruDeckLogo--pulse');
+    }
+
+    function updateMiruLogo() {
+      var wrap = document.querySelector('.appBarLogoWrap');
+      var logo = document.querySelector('.appBarLogo');
+      if (!wrap || !logo) return;
+      if (!wrap.dataset.miruDeckOrigAria) {
+        wrap.dataset.miruDeckOrigAria = wrap.getAttribute('aria-label') || 'Project Miru home';
+      }
+
+      var insight = computeMiruInsight();
+      var ready = insight !== null;
+      miruLastInsight = insight;
+
+      if (!ready) {
+        logo.classList.remove('miruDeckLogo--insight', 'miruDeckLogo--pulse');
+        wrap.removeAttribute('data-miru-insight');
+        wrap.removeAttribute('data-miru-palette');
+        wrap.removeAttribute('aria-haspopup');
+        wrap.setAttribute('aria-label', wrap.dataset.miruDeckOrigAria);
+        if (miruLogoListenerBound) {
+          wrap.removeEventListener('click', onMiruLogoClick, true);
+          miruLogoListenerBound = false;
+        }
+        closeMiruInsightPanel();
+        miruPrevInsightReady = false;
+        return;
+      }
+
+      wrap.setAttribute('data-miru-insight', '1');
+      wrap.setAttribute('data-miru-palette', insight.palette || 'balanced');
+      wrap.setAttribute('aria-haspopup', 'dialog');
+      wrap.setAttribute('aria-label', 'Miru — leader ideas from your list');
+
+      logo.classList.add('miruDeckLogo--insight');
+      if (!miruPrevInsightReady) {
+        logo.classList.remove('miruDeckLogo--pulse');
+        void logo.offsetWidth;
+        logo.classList.add('miruDeckLogo--pulse');
+        logo.addEventListener('animationend', onMiruPulseEnd, { once: true });
+      }
+
+      if (!miruLogoListenerBound) {
+        wrap.addEventListener('click', onMiruLogoClick, true);
+        miruLogoListenerBound = true;
+      }
+      miruPrevInsightReady = true;
+    }
+
+    function renderGrid() {
+      if (!gridEl) return;
+      gridEl.innerHTML = '';
+      var shown = 0;
+      var remGlob = remainingMainSlots();
+      LOCAL_CARD_POOL.forEach(function (card) {
+        if (!filterVisible(card)) return;
+        shown++;
+        var qty = getQty(card.id);
+        var wrap = document.createElement('div');
+        wrap.className = 'deckBrowserCard';
+        if (remGlob <= 0) wrap.classList.add('deckBrowserCard--deckFull');
+        wrap.setAttribute('data-card-id', card.id);
+        wrap.setAttribute('role', 'group');
+        wrap.setAttribute('aria-label', card.name);
+
+        var faceWrap = document.createElement('div');
+        faceWrap.className = 'deckBrowserCardFaceWrap';
+
+        var ghostCount = Math.min(Math.max(qty - 1, 0), 3);
+        for (var g = 0; g < ghostCount; g++) {
+          var lx = document.createElement('div');
+          lx.className = 'deckBrowserStackLayer deckBrowserStackLayer--ghost' + g;
+          faceWrap.appendChild(lx);
+        }
+
+        var face = document.createElement('div');
+        face.className = 'deckBrowserCardFace';
+        face.style.setProperty('--face-grad', hueGrad(card.hue));
+        face.setAttribute('role', 'presentation');
+        face.setAttribute('aria-hidden', 'true');
+
+        var pricePh = null;
+        if (qty > 0) {
+          pricePh = document.createElement('div');
+          pricePh.className = 'deckBrowserCardPrice';
+          pricePh.textContent = '—';
+        }
+
+        var label = document.createElement('div');
+        label.className = 'deckBrowserCardLabel';
+        label.textContent = card.name;
+
+        var badge = null;
+        if (qty > 0) {
+          badge = document.createElement('div');
+          badge.className = 'deckBrowserCardBadge is-visible';
+          badge.textContent = '×' + qty;
+        }
+
+        function openThisCardModal(e) {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          closeDeckBuilderMenus();
+          openCardModal(card.id);
+        }
+
+        var infoBtn = document.createElement('button');
+        infoBtn.type = 'button';
+        infoBtn.className = 'deckBrowserCardInfo';
+        infoBtn.setAttribute('aria-label', 'Card details — ' + card.name);
+        infoBtn.setAttribute('title', 'Details');
+        infoBtn.textContent = '\u24D8';
+        infoBtn.setAttribute('tabindex', '0');
+        infoBtn.addEventListener('pointerdown', function (ev) {
+          ev.stopPropagation();
+        });
+        infoBtn.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          openThisCardModal(ev);
+        });
+        infoBtn.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            openThisCardModal(e);
+          }
+        });
+
+        var rMain = remainingMainSlots();
+        var roomPlay = Math.max(0, PLAYSET_MAX - qty);
+        var controls = document.createElement('div');
+        controls.className = 'deckBrowserCardControls';
+        controls.setAttribute('aria-label', 'Quick quantity');
+        function makeBrowserBtn(txt, cls, onActivate) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'deckBrowserCtrlBtn' + (cls ? ' ' + cls : '');
+          b.textContent = txt;
+          b.addEventListener('pointerdown', function (ev) {
+            ev.stopPropagation();
+          });
+          b.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onActivate();
+            syncAll();
+            scheduleQuickMenuGrace();
+          });
+          return b;
+        }
+        var btnMinus = makeBrowserBtn('−', 'deckBrowserCtrlBtn--minus', function () {
+          var q0 = getQty(card.id);
+          if (q0 > 0) setQty(card.id, q0 - 1);
+        });
+        btnMinus.disabled = qty <= 0;
+        var btnPlus1 = makeBrowserBtn('+1', '', function () {
+          addCopies(card.id, 1);
+        });
+        btnPlus1.disabled = rMain <= 0 || roomPlay <= 0;
+        var chunk = Math.min(4, roomPlay, rMain);
+        var btnPlus4 = makeBrowserBtn(chunk >= 4 ? '+4' : '+' + String(chunk), 'deckBrowserCtrlBtn--plus4', function () {
+          addCopies(card.id, 4);
+        });
+        btnPlus4.disabled = chunk <= 0;
+        controls.appendChild(btnMinus);
+        controls.appendChild(btnPlus1);
+        controls.appendChild(btnPlus4);
+
+        var longFired = false;
+        var longTid = null;
+        var pressX = 0;
+        var pressY = 0;
+
+        wrap.addEventListener('pointerdown', function (e) {
+          if (e.target.closest('.deckBrowserCardControls') || e.target.closest('.deckBrowserCardInfo')) return;
+          longFired = false;
+          pressX = e.clientX;
+          pressY = e.clientY;
+          if (longTid) clearTimeout(longTid);
+          longTid = setTimeout(function () {
+            longTid = null;
+            longFired = true;
+            closeDeckBuilderMenusExcept(wrap);
+            wrap.classList.add('deckBrowserCard--menuOpen');
+            quickMenuCardId = card.id;
+            quickMenuZone = 'browser';
+            scheduleQuickMenuGrace();
+          }, LONG_PRESS_MS);
+        });
+        wrap.addEventListener('pointermove', function (e) {
+          if (!longTid) return;
+          if (
+            Math.abs(e.clientX - pressX) > MOVE_CANCEL_PX ||
+            Math.abs(e.clientY - pressY) > MOVE_CANCEL_PX
+          ) {
+            clearTimeout(longTid);
+            longTid = null;
+          }
+        });
+        wrap.addEventListener('pointerup', function (e) {
+          if (longTid) {
+            clearTimeout(longTid);
+            longTid = null;
+          }
+          if (e.target.closest('.deckBrowserCardControls') || e.target.closest('.deckBrowserCardInfo')) return;
+          if (longFired) {
+            if (e.cancelable) e.preventDefault();
+          }
+        });
+        wrap.addEventListener('pointercancel', function () {
+          if (longTid) clearTimeout(longTid);
+          longTid = null;
+        });
+        face.addEventListener('contextmenu', function (e) {
+          e.preventDefault();
+        });
+
+        if (pricePh) face.appendChild(pricePh);
+        face.appendChild(label);
+        faceWrap.appendChild(face);
+        wrap.appendChild(faceWrap);
+        if (badge) wrap.appendChild(badge);
+        wrap.appendChild(infoBtn);
+        wrap.appendChild(controls);
+
+        gridEl.appendChild(wrap);
+      });
+      applyPersistedQuickMenu();
+      if (noteEl) {
+        noteEl.style.display = shown ? '' : 'none';
+      }
+    }
+
+    function renderStrip() {
+      if (!stripEl) return;
+      stripEl.innerHTML = '';
+      var ids = Object.keys(state.cards).filter(function (id) {
+        return getQty(id) > 0;
+      });
+      if (!ids.length) {
+        var empty = document.createElement('div');
+        empty.className = 'deckStripEmpty';
+        empty.textContent =
+          'Tap \u24D8 on a card for details. Hold the card for quick \u2212 / +1 / +4. Stacks appear here.';
+        stripEl.appendChild(empty);
+        if (quickMenuZone === 'strip') closeDeckBuilderMenus();
+        return;
+      }
+      ids.forEach(function (id) {
+        var card = cardById(id);
+        if (!card) return;
+        var qty = getQty(id);
+        var slot = document.createElement('div');
+        slot.className = 'deckStripCard';
+        slot.setAttribute('data-card-id', id);
+        slot.setAttribute('role', 'group');
+        slot.setAttribute('aria-label', card.name + ' in deck');
+
+        var stack = document.createElement('div');
+        stack.className = 'deckStripCardStack';
+
+        var ghostStrip = Math.min(Math.max(qty - 1, 0), 3);
+        for (var gs = 0; gs < ghostStrip; gs++) {
+          var sl = document.createElement('div');
+          sl.className = 'deckStripStackLayer deckStripStackLayer--ghost' + gs;
+          stack.appendChild(sl);
+        }
+
+        var inner = document.createElement('div');
+        inner.className = 'deckStripCardInner';
+        var grad = document.createElement('div');
+        grad.className = 'deckStripCardGrad';
+        grad.style.setProperty('--strip-grad', hueGradStrip(card.hue));
+        var nm = document.createElement('div');
+        nm.className = 'deckStripCardName';
+        nm.textContent = card.name;
+        inner.appendChild(grad);
+        inner.appendChild(nm);
+
+        stack.appendChild(inner);
+
+        var qb = document.createElement('div');
+        qb.className = 'deckStripQty';
+        qb.textContent = '×' + qty;
+
+        function openStripModal(e) {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          closeDeckBuilderMenus();
+          openCardModal(id);
+        }
+
+        var stripInfoBtn = document.createElement('button');
+        stripInfoBtn.type = 'button';
+        stripInfoBtn.className = 'deckStripCardInfo';
+        stripInfoBtn.setAttribute('aria-label', 'Card details — ' + card.name);
+        stripInfoBtn.setAttribute('title', 'Details');
+        stripInfoBtn.textContent = '\u24D8';
+        stripInfoBtn.setAttribute('tabindex', '0');
+        stripInfoBtn.addEventListener('pointerdown', function (ev) {
+          ev.stopPropagation();
+        });
+        stripInfoBtn.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          openStripModal(ev);
+        });
+        stripInfoBtn.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            openStripModal(e);
+          }
+        });
+
+        var rMainS = remainingMainSlots();
+        var roomPlayS = Math.max(0, PLAYSET_MAX - qty);
+        var stripControls = document.createElement('div');
+        stripControls.className = 'deckStripCardControls';
+        stripControls.setAttribute('aria-label', 'Quick quantity');
+        function makeStripBtn(txt, cls, onActivate) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'deckStripCtrlBtn' + (cls ? ' ' + cls : '');
+          b.textContent = txt;
+          b.addEventListener('pointerdown', function (ev) {
+            ev.stopPropagation();
+          });
+          b.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            ev.preventDefault();
+            onActivate();
+            syncAll();
+            scheduleQuickMenuGrace();
+          });
+          return b;
+        }
+        var sMinus = makeStripBtn('−', 'deckStripCtrlBtn--minus', function () {
+          var q0 = getQty(id);
+          if (q0 > 0) setQty(id, q0 - 1);
+        });
+        sMinus.disabled = qty <= 0;
+        var sPlus1 = makeStripBtn('+1', '', function () {
+          addCopies(id, 1);
+        });
+        sPlus1.disabled = rMainS <= 0 || roomPlayS <= 0;
+        var chunkS = Math.min(4, roomPlayS, rMainS);
+        var sPlus4 = makeStripBtn(chunkS >= 4 ? '+4' : '+' + String(chunkS), 'deckStripCtrlBtn--plus4', function () {
+          addCopies(id, 4);
+        });
+        sPlus4.disabled = chunkS <= 0;
+        stripControls.appendChild(sMinus);
+        stripControls.appendChild(sPlus1);
+        stripControls.appendChild(sPlus4);
+
+        var longFiredS = false;
+        var longTidS = null;
+        var pressXS = 0;
+        var pressYS = 0;
+
+        slot.addEventListener('pointerdown', function (e) {
+          if (e.target.closest('.deckStripCardControls') || e.target.closest('.deckStripCardInfo')) return;
+          longFiredS = false;
+          pressXS = e.clientX;
+          pressYS = e.clientY;
+          if (longTidS) clearTimeout(longTidS);
+          longTidS = setTimeout(function () {
+            longTidS = null;
+            longFiredS = true;
+            closeDeckBuilderMenusExcept(slot);
+            slot.classList.add('deckStripCard--menuOpen');
+            quickMenuCardId = id;
+            quickMenuZone = 'strip';
+            scheduleQuickMenuGrace();
+          }, LONG_PRESS_MS);
+        });
+        slot.addEventListener('pointermove', function (e) {
+          if (!longTidS) return;
+          if (
+            Math.abs(e.clientX - pressXS) > MOVE_CANCEL_PX ||
+            Math.abs(e.clientY - pressYS) > MOVE_CANCEL_PX
+          ) {
+            clearTimeout(longTidS);
+            longTidS = null;
+          }
+        });
+        slot.addEventListener('pointerup', function (e) {
+          if (longTidS) {
+            clearTimeout(longTidS);
+            longTidS = null;
+          }
+          if (e.target.closest('.deckStripCardControls') || e.target.closest('.deckStripCardInfo')) return;
+          if (longFiredS) {
+            if (e.cancelable) e.preventDefault();
+          }
+        });
+        slot.addEventListener('pointercancel', function () {
+          if (longTidS) clearTimeout(longTidS);
+          longTidS = null;
+        });
+        slot.addEventListener('contextmenu', function (e) {
+          e.preventDefault();
+        });
+
+        slot.appendChild(stack);
+        slot.appendChild(qb);
+        slot.appendChild(stripInfoBtn);
+        slot.appendChild(stripControls);
+
+        stripEl.appendChild(slot);
+      });
+      applyPersistedQuickMenu();
+    }
+
+    function updateDock() {
+      var n = totalCards();
+      if (dockLine1) {
+        dockLine1.textContent = 'Main ' + n + ' / ' + MAIN_DECK_MAX;
+      }
+      if (dockLine2) {
+        dockLine2.textContent = n >= MAIN_DECK_MAX ? 'Deck full · practice' : 'Practice · room for ' + (MAIN_DECK_MAX - n);
+      }
+    }
+
+    function updateDeckCountPill() {
+      var num = document.getElementById('deckBuildCountNum');
+      var pill = document.getElementById('deckBuildCountPill');
+      if (!num) return;
+      var n = totalCards();
+      num.textContent = String(n);
+      if (pill) {
+        pill.classList.toggle('deckBuildCountPill--full', n >= MAIN_DECK_MAX);
+      }
+    }
+
+    function updateDeckFullState() {
+      var app = document.getElementById('pageBody');
+      if (!app) return;
+      app.classList.toggle('deckBuilderApp--deck-full', totalCards() >= MAIN_DECK_MAX);
+    }
+
+    function syncAll() {
+      renderGrid();
+      renderStrip();
+      updateDock();
+      updateDeckCountPill();
+      updateDeckFullState();
+      updateMiruLogo();
+      refreshCardModalIfOpen();
+      scheduleSave();
+    }
+
+    if (searchEl) {
+      searchEl.value = state.search || '';
+      searchEl.addEventListener('input', function () {
+        state.search = searchEl.value;
+        scheduleSave();
+        renderGrid();
+      });
+    }
+
+    document.querySelectorAll('.deckBuilderChip--type').forEach(function (btn) {
+      var ft = btn.getAttribute('data-filter-type');
+      if (state.typeFilter === ft) btn.setAttribute('aria-pressed', 'true');
+      btn.addEventListener('click', function () {
+        var on = btn.getAttribute('aria-pressed') === 'true';
+        document.querySelectorAll('.deckBuilderChip--type').forEach(function (c) {
+          c.setAttribute('aria-pressed', 'false');
+        });
+        state.typeFilter = (!on && ft) ? ft : null;
+        if (state.typeFilter) btn.setAttribute('aria-pressed', 'true');
+        scheduleSave();
+        renderGrid();
+      });
+    });
+
+    document.querySelectorAll('#deckFilterRefineRow .deckBuilderChip--secondary').forEach(function (btn) {
+      var key = btn.getAttribute('data-refine');
+      if (key && state.refine[key]) btn.setAttribute('aria-pressed', 'true');
+      btn.addEventListener('click', function () {
+        var pressed = btn.getAttribute('aria-pressed') === 'true';
+        btn.setAttribute('aria-pressed', pressed ? 'false' : 'true');
+        if (key) {
+          if (pressed) delete state.refine[key];
+          else state.refine[key] = true;
+        }
+        scheduleSave();
+      });
+    });
+
+    if (dockBtn) {
+      dockBtn.addEventListener('click', function () {
+        var el = document.getElementById('deckCurrentBuildSection');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    function shouldSkipClearConfirm() {
+      try {
+        return localStorage.getItem(CLEAR_CONFIRM_SKIP_KEY) === '1';
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function persistClearSkipPreference() {
+      var cb = document.getElementById('deckClearSkipFuture');
+      if (!cb || !cb.checked) return;
+      try {
+        localStorage.setItem(CLEAR_CONFIRM_SKIP_KEY, '1');
+      } catch (e) { }
+    }
+
+    function resetClearSkipCheckbox() {
+      var cb = document.getElementById('deckClearSkipFuture');
+      if (cb) cb.checked = false;
+    }
+
+    function performClearMainDeck() {
+      state.cards = {};
+      syncAll();
+    }
+
+    if (clearBtn && clearDialog) {
+      clearBtn.addEventListener('click', function () {
+        if (shouldSkipClearConfirm()) {
+          performClearMainDeck();
+          return;
+        }
+        resetClearSkipCheckbox();
+        clearDialog.showModal();
+      });
+    }
+    if (clearCancel && clearDialog) {
+      clearCancel.addEventListener('click', function () { clearDialog.close(); });
+    }
+    if (clearConfirm && clearDialog) {
+      clearConfirm.addEventListener('click', function () {
+        persistClearSkipPreference();
+        clearDialog.close();
+        performClearMainDeck();
+      });
+    }
+
+    if (cardModal) {
+      cardModal.addEventListener('close', function () {
+        document.documentElement.classList.remove('deckCardModalOpen');
+        modalCardId = null;
+      });
+    }
+    if (cardModalClose) {
+      cardModalClose.addEventListener('click', function () {
+        if (cardModal) cardModal.close();
+      });
+    }
+    if (cardModalRemove) {
+      cardModalRemove.addEventListener('click', function () {
+        if (!modalCardId) return;
+        var q = getQty(modalCardId);
+        if (q > 0) setQty(modalCardId, q - 1);
+        syncAll();
+      });
+    }
+    if (cardModalAdd1) {
+      cardModalAdd1.addEventListener('click', function () {
+        if (!modalCardId) return;
+        addCopies(modalCardId, 1);
+        syncAll();
+      });
+    }
+    if (cardModalAddPlayset) {
+      cardModalAddPlayset.addEventListener('click', function () {
+        if (!modalCardId) return;
+        var cur = getQty(modalCardId);
+        var delta = PLAYSET_MAX - cur;
+        if (delta > 0) addCopies(modalCardId, delta);
+        syncAll();
+      });
+    }
+
+    var miruDone = document.getElementById('miruDeckInsightPanelDone');
+    if (miruDone) {
+      miruDone.addEventListener('click', function () {
+        closeMiruInsightPanel();
+      });
+    }
+
+    requestAnimationFrame(function () {
+      syncAll();
+      flushSave();
+    });
+  })();
+</script>
+{% endblock %}

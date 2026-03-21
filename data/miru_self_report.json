@@ -1,0 +1,94 @@
+{
+  "generated_at": "2026-03-21T05:26:08Z",
+  "schema_version": 1,
+  "capability_level": "degraded",
+  "metrics": {
+    "cards_total": 2527,
+    "cards_with_any_insight": 121,
+    "coverage_pct": 4.7883,
+    "coverage_by_type": {
+      "meta": 96,
+      "usage": 72,
+      "ruling": 20,
+      "price": 5
+    },
+    "cards_with_dossier": 2527,
+    "dossier_to_insight_gap": 2406,
+    "avg_confidence_overall": 0.778036,
+    "signal_cards_covered": 96,
+    "signal_leaders_covered": 4,
+    "archetype_clusters_active": 0,
+    "archetype_cards_mapped": 0,
+    "queue_pending": 83,
+    "queue_stale": 0,
+    "promotion_ready": 2,
+    "last_sync_run_at": "2026-03-21T05:20:29Z",
+    "sync_never_run": false,
+    "sources_active": 5,
+    "sources_with_live_adapter": 3,
+    "insight_sync_remaining_candidates": 0
+  },
+  "pipeline_health": {
+    "card_catalog_db_ok": true,
+    "runtime_dossier_db_ok": true,
+    "deck_intel_db_ok": true,
+    "decklist_deck_count": 31,
+    "decklist_table_present": true
+  },
+  "signal_health": {
+    "leader_card_signals_rows": 96,
+    "signals_nonempty": true
+  },
+  "insight_distribution": {
+    "by_insight_type": {
+      "meta": 96,
+      "usage": 72,
+      "ruling": 20,
+      "price": 5
+    },
+    "total_insight_rows": 193
+  },
+  "source_freshness": {
+    "warnings": [
+      "snapshot_missing:limitless:data/snapshots/limitless.json",
+      "snapshot_missing:optcg-gg:data/snapshots/optcg_gg.json",
+      "snapshot_missing:onepiece-cardgame-dev:data/snapshots/onepiece_cardgame_dev.json"
+    ],
+    "snapshots": [
+      {
+        "path": "data/snapshots/limitless.json",
+        "exists": false,
+        "mtime_iso": null,
+        "age_days": null
+      },
+      {
+        "path": "data/snapshots/optcg_gg.json",
+        "exists": false,
+        "mtime_iso": null,
+        "age_days": null
+      },
+      {
+        "path": "data/snapshots/onepiece_cardgame_dev.json",
+        "exists": false,
+        "mtime_iso": null,
+        "age_days": null
+      }
+    ]
+  },
+  "sync_insight_summary": {
+    "updated_at": "2026-03-21T05:20:29Z",
+    "sync_mode": "incremental",
+    "remaining_count": 0,
+    "candidate_count": 138,
+    "inserted_insights": 71,
+    "synced_cards": 92,
+    "skipped_cards": 46
+  },
+  "alerts": [
+    "snapshot:snapshot_missing:limitless:data/snapshots/limitless.json",
+    "snapshot:snapshot_missing:optcg-gg:data/snapshots/optcg_gg.json",
+    "snapshot:snapshot_missing:onepiece-cardgame-dev:data/snapshots/onepiece_cardgame_dev.json"
+  ],
+  "top_blocker": "Publication review queue backlog: 83 pending item(s).",
+  "next_priority": "Triage publication review queue (pending approvals)."
+}

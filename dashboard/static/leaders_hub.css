@@ -1,0 +1,225 @@
+/* Leaders index — single-column premium banner rows (mobile-first) */
+
+.leadersHubIntro {
+  margin-bottom: 22px;
+}
+
+.leadersBannerList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+/* Dark tonal gradients: identity visible but restrained (no loud flat blends) */
+.leaderBanner {
+  --banner-edge: rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  min-height: 76px;
+  border-radius: 16px;
+  overflow: hidden;
+  text-decoration: none;
+  color: #fff;
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 var(--banner-edge);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  position: relative;
+}
+
+.leaderBanner:focus-visible {
+  outline: 2px solid rgba(244, 208, 120, 0.75);
+  outline-offset: 3px;
+}
+
+.leaderBanner:active {
+  transform: scale(0.992);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .leaderBanner:hover {
+    box-shadow:
+      0 12px 36px rgba(0, 0, 0, 0.48),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  }
+}
+
+.leaderBanner[data-color="Red"] {
+  background-image: linear-gradient(122deg, #100a0c 0%, #1a1216 38%, #241a1e 68%, #120e12 100%);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(220, 100, 100, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+.leaderBanner[data-color="Green"] {
+  background-image: linear-gradient(122deg, #080f0c 0%, #101a14 40%, #142018 70%, #0a100d 100%);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(80, 180, 120, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+.leaderBanner[data-color="Blue"] {
+  background-image: linear-gradient(122deg, #080c14 0%, #0e1622 42%, #121c2c 72%, #0a0e16 100%);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(90, 140, 220, 0.11),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+.leaderBanner[data-color="Purple"] {
+  background-image: linear-gradient(125deg, #0c0814 0%, #14101e 40%, #1a1430 70%, #0e0a14 100%);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(150, 120, 220, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+.leaderBanner[data-color="Yellow"] {
+  background-image: linear-gradient(122deg, #100e08 0%, #18140e 42%, #201a0e 70%, #100d08 100%);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(200, 170, 80, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+.leaderBanner[data-color="Black"] {
+  background-image: linear-gradient(122deg, #08080a 0%, #121218 45%, #18181e 72%, #0c0c10 100%);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+.leaderBanner[data-color="Purple/Yellow"],
+.leaderBanner[data-color="Yellow/Purple"] {
+  background-image: linear-gradient(128deg, #0c0818 0%, #161020 38%, #1a1620 68%, #0e0c12 100%);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(160, 130, 200, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+.leaderBanner[data-color=""],
+.leaderBanner:not([data-color]) {
+  background-image: linear-gradient(125deg, #0c0a14 0%, #14101c 45%, #181428 72%, #0e0c12 100%);
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(130, 110, 200, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.leaderBanner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    transparent 42%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/*
+ * Art strip: zoomed crop on face / upper body — reads as hero art, not a sliced card.
+ * Slight scale + top-weighted origin hides frame edges and SAMPLE band.
+ */
+.leaderBannerArt {
+  position: relative;
+  flex: 0 0 30%;
+  max-width: 118px;
+  width: 30%;
+  height: 72px;
+  min-height: 72px;
+  align-self: center;
+  margin: 10px 0 10px 10px;
+  border-radius: 12px;
+  z-index: 2;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.leaderBannerImg {
+  width: 100%;
+  height: 100%;
+  min-height: 72px;
+  object-fit: cover;
+  object-position: 50% 18%;
+  transform: scale(1.22);
+  transform-origin: 50% 28%;
+  display: block;
+}
+
+.leaderBannerBody {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 16px 14px 14px;
+  z-index: 2;
+}
+
+/* Reserved rhythm for a future one-line “why tap” hint (optional content) */
+.leaderBannerCue {
+  display: block;
+  min-height: 0;
+  margin-top: 2px;
+}
+
+.leaderBannerName {
+  font-family: var(--font-display, "Geist", system-ui, sans-serif);
+  font-weight: 700;
+  font-size: clamp(15px, 4vw, 18px);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.leaderBannerCode {
+  font-family: var(--font-display, "Geist", system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.leaderBannerMeta {
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.48);
+  letter-spacing: 0.02em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.leadersEmpty {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--muted, rgba(255, 255, 255, 0.55));
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leaderBanner {
+    transition: none;
+  }
+  .leaderBanner:active {
+    transform: none;
+  }
+  .leaderBannerImg {
+    transform: none;
+  }
+}

@@ -2,15 +2,29 @@ from __future__ import annotations
 
 import json
 import os
+import time
+from pathlib import Path
+from threading import Lock
 from typing import Any, MutableMapping
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from tools.miru_env import inspect_pushover_env
+from tools.miru_env import PROJECT_ROOT, inspect_pushover_env
 
 
 PUSHOVER_API_URL = "https://api.pushover.net/1/messages.json"
+OPERATOR_NOTIFICATION_STATE_PATH = PROJECT_ROOT / "data" / "miru_operator_notifications.json"
+OPERATOR_NOTIFICATION_LOCK = Lock()
+DEFAULT_OPERATOR_EVENT_COOLDOWNS = {
+    "learning_worker_started": 60,
+    "learning_worker_stopped": 60,
+    "learning_worker_restarted": 30,
+    "miru_ai_restarted": 30,
+    "learning_milestone": 1800,
+    "critical_learning_failure": 300,
+    "test": 0,
+}
 
 
 def send_pushover_notification(
@@ -123,3 +137,86 @@ def send_pushover_notification(
             )
 
     return result
+
+
+def _load_operator_state(state_path: Path) -> dict[str, Any]:
+    if not state_path.is_file():
+        return {}
+    try:
+        payload = json.loads(state_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def _save_operator_state(state_path: Path, state: dict[str, Any]) -> None:
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def send_operator_notification(
+    event_type: str,
+    message: str,
+    *,
+    title: str = "Miru Operator",
+    priority: int | None = None,
+    cooldown_seconds: int | None = None,
+    timeout: float = 10.0,
+    environ: MutableMapping[str, str] | None = None,
+    logger: Any | None = None,
+    state_path: Path = OPERATOR_NOTIFICATION_STATE_PATH,
+) -> dict[str, Any]:
+    event_key = str(event_type or "unknown").strip().lower().replace(" ", "_")
+    cooldown = int(
+        cooldown_seconds
+        if cooldown_seconds is not None
+        else DEFAULT_OPERATOR_EVENT_COOLDOWNS.get(event_key, 300)
+    )
+    now = int(time.time())
+
+    with OPERATOR_NOTIFICATION_LOCK:
+        state = _load_operator_state(state_path)
+        notifications = state.get("notifications")
+        if not isinstance(notifications, dict):
+            notifications = {}
+        last_sent = notifications.get(event_key)
+        if isinstance(last_sent, dict):
+            last_sent_at = int(last_sent.get("sent_at") or 0)
+        else:
+            last_sent_at = 0
+
+        age_seconds = now - last_sent_at if last_sent_at > 0 else None
+        if cooldown > 0 and age_seconds is not None and age_seconds < cooldown:
+            return {
+                "ok": False,
+                "suppressed": True,
+                "event_type": event_key,
+                "cooldown_seconds": cooldown,
+                "age_seconds": age_seconds,
+                "error": f"Suppressed duplicate operator notification for {event_key}.",
+            }
+
+        result = send_pushover_notification(
+            title=title.strip() or "Miru Operator",
+            message=message,
+            priority=priority,
+            timeout=timeout,
+            environ=environ,
+            logger=logger,
+        )
+        result["suppressed"] = False
+        result["event_type"] = event_key
+        result["cooldown_seconds"] = cooldown
+
+        if result.get("ok"):
+            notifications[event_key] = {
+                "sent_at": now,
+                "message_preview": str(message or "")[:200],
+            }
+            state["notifications"] = notifications
+            try:
+                _save_operator_state(state_path, state)
+            except OSError:
+                if logger is not None:
+                    logger.warning("Unable to persist operator notification state for %s.", event_key)
+        return result

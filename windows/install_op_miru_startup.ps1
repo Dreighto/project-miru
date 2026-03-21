@@ -2,7 +2,8 @@
 param(
     [string]$TaskName = "OP Miru Startup",
     [switch]$AsSystem,
-    [switch]$SkipAdminCheck
+    [switch]$SkipAdminCheck,
+    [switch]$Worktree
 )
 
 Set-StrictMode -Version Latest
@@ -23,7 +24,14 @@ if (-not (Test-Path $bootstrapPath)) {
     throw "Bootstrap wrapper was not found at $bootstrapPath."
 }
 
-$action = New-ScheduledTaskAction -Execute $bootstrapPath
+if ($Worktree) {
+    $action = New-ScheduledTaskAction -Execute $bootstrapPath -Argument "worktree"
+    $description = "Starts OP Miru worktree stack (dashboard 18080 + Miru AI Dev 18765) after Windows startup."
+}
+else {
+    $action = New-ScheduledTaskAction -Execute $bootstrapPath
+    $description = "Starts Docker-backed OP Miru services and Miru AI (legacy 8080/8765) after Windows startup."
+}
 $trigger = New-ScheduledTaskTrigger -AtStartup
 $settings = New-ScheduledTaskSettingsSet `
     -AllowStartIfOnBatteries `
@@ -47,7 +55,7 @@ if ($PSCmdlet.ShouldProcess($TaskName, "Register OP Miru startup task")) {
         -Trigger $trigger `
         -Settings $settings `
         -Principal $principal `
-        -Description "Starts Docker-backed OP Miru services and Miru AI after Windows startup." `
+        -Description $description `
         -Force
 
     [pscustomobject]@{

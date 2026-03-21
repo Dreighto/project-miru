@@ -133,7 +133,7 @@ function Start-OpMiruWorktreeMiruAi {
     Write-OpMiruWorktreeLine "Starting worktree Miru AI with companion dashboard port $DashboardPort."
     $process = Start-Process `
         -FilePath $pythonCommand.Source `
-        -ArgumentList @("tools\miru_ai_server.py", "--host", $BindHost, "--port", "$MiruAiPort") `
+        -ArgumentList @("tools\miru_ai_server.py", "--host", $BindHost, "--port", "$MiruAiPort", "--debug") `
         -WorkingDirectory $RepoRoot `
         -RedirectStandardOutput $StdoutLog `
         -RedirectStandardError $StderrLog `

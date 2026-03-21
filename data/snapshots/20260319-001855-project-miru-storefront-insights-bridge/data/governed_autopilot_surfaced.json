@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "sig": "ec4f79c6fee6ffd565f2ec6e454ceaab4894cbc6192d9fa89184b9744c2ffb2f",
+      "item_identifier": "OP01-001",
+      "proposed_state": "banned",
+      "why_escalated": "conflict_detected",
+      "first_seen": "2026-03-17T19:46:50.818426+00:00",
+      "first_seen_ts": 1773776810.818415
+    }
+  ],
+  "updated_at": "2026-03-18T14:19:29.226342+00:00"
+}

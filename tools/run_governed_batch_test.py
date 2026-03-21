@@ -25,6 +25,11 @@ DEFAULT_DATA_DIR = PROJECT_ROOT / "data"
 
 from tools.miru_ethics_gates import can_publish
 from tools.miru_import_legality_csv import read_staging_csv
+from tools.miru_official_rules import (
+    DEFAULT_RULES_DB_PATH,
+    is_effective_now,
+    ingest_legality_row,
+)
 from tools.miru_regulation import (
     OFFICIAL_LEGALITY_SOURCE_IDS,
     LEGALITY_LEGAL,
@@ -62,6 +67,7 @@ AUTO_APPLY = "auto_apply"
 REVIEW_QUEUE = "review_queue"
 REJECT_HOLD = "reject_hold"
 SKIPPED = "skipped"
+UPCOMING_STORED = "upcoming_stored"  # Official future-dated change stored; not applied to current; not a conflict
 
 IMPACT_LOW = "low"
 IMPACT_MEDIUM = "medium"
@@ -101,7 +107,7 @@ def _change_type(existing: dict[str, Any] | None, proposed_state: str) -> str:
 
 
 def _conflict_detected(existing: dict[str, Any] | None, proposed_state: str, source_id: str) -> bool:
-    """True if existing official record disagrees with proposed state."""
+    """True if existing official record disagrees with proposed state (for current, effective-now purposes)."""
     if not existing:
         return False
     sid = (existing.get("source_id") or "").strip()
@@ -109,6 +115,13 @@ def _conflict_detected(existing: dict[str, Any] | None, proposed_state: str, sou
         return False
     existing_state = (existing.get("legality_state") or "").strip().lower()
     return proposed_state != existing_state
+
+
+def _conflict_should_escalate(conflict_detected: bool, is_effective_now: bool) -> bool:
+    """True if we should escalate to review as a current conflict. Future-dated official change is not a hard conflict."""
+    if not conflict_detected:
+        return False
+    return is_effective_now
 
 
 def evaluate_candidate(
@@ -133,6 +146,8 @@ def evaluate_candidate(
     impact_level = _impact_level(existing, proposed_state)
     change_type = _change_type(existing, proposed_state)
     conflict_detected = _conflict_detected(existing, proposed_state, source_id)
+    effective_now = is_effective_now(effective_date)
+    is_upcoming = not effective_now and bool(effective_date and effective_date.strip())
 
     # Confidence: not in staging CSV; leave None
     confidence_score: float | None = None
@@ -150,6 +165,8 @@ def evaluate_candidate(
         "change_type": change_type,
         "impact_level": impact_level,
         "conflict_detected": conflict_detected,
+        "is_effective_now": effective_now,
+        "is_upcoming": is_upcoming,
         "publish_allowed": publish_allowed,
         "proposed_state": proposed_state,
         "effective_date": effective_date,
@@ -158,7 +175,7 @@ def evaluate_candidate(
         "format_name": format_name,
     }
 
-    # Apply routing policy
+    # Apply routing policy (future-dated conflict → upcoming_stored, not review_queue)
     final_decision, decision_reason, decision_note = _route(decision_record, publish_reason)
     decision_record["final_decision"] = final_decision
     decision_record["decision_reason"] = decision_reason
@@ -167,13 +184,20 @@ def evaluate_candidate(
 
 
 def _route(rec: dict[str, Any], publish_reason: str) -> tuple[str, str, str]:
-    """Simple explicit policy: auto_apply / review_queue / reject_hold / skipped."""
+    """Simple explicit policy: auto_apply / review_queue / reject_hold / skipped / upcoming_stored."""
     if not rec["source_approval_status"] == "approved":
         return REJECT_HOLD, "source_unapproved", "Source not in official legality allowlist."
     if not rec["provenance_complete"]:
         return REJECT_HOLD, "provenance_incomplete", "Provenance missing or insufficient."
     if not rec["publish_allowed"]:
         return REJECT_HOLD, "publish_refused", publish_reason or "Publish gate refused."
+    # Future-dated official change that would conflict with current: store as upcoming, do not surface as current conflict
+    if rec.get("conflict_detected") and rec.get("is_upcoming"):
+        return (
+            UPCOMING_STORED,
+            "upcoming_official_change",
+            "This looks like an upcoming official legality change; stored as upcoming until it becomes active.",
+        )
     if rec["conflict_detected"]:
         return REVIEW_QUEUE, "conflict_detected", "Existing official record disagrees with proposed state."
     # Duplicate/no-value: skip; do not treat as policy failure
@@ -228,6 +252,8 @@ def run_batch(
     review_items: list[dict[str, Any]] = []
     rejected: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
+    upcoming_stored: list[dict[str, Any]] = []
+    rules_db_path = (data_dir / "miru_official_rules.db") if data_dir else DEFAULT_RULES_DB_PATH
 
     for rec in decisions:
         if rec["final_decision"] == AUTO_APPLY:
@@ -246,6 +272,19 @@ def run_batch(
                     auto_applied.append(rec)
             else:
                 auto_applied.append(rec)
+        elif rec["final_decision"] == UPCOMING_STORED:
+            if not dry_run:
+                ingest_legality_row(
+                    rules_db_path,
+                    rec["item_identifier"],
+                    rec["format_name"],
+                    rec["proposed_state"],
+                    effective_date=rec.get("effective_date") or "",
+                    source_id=source_id,
+                    source_reference=rec.get("source_reference") or "",
+                    notes=rec.get("notes") or "",
+                )
+            upcoming_stored.append(rec)
         elif rec["final_decision"] == REVIEW_QUEUE:
             review_items.append(rec)
         elif rec["final_decision"] == SKIPPED:
@@ -267,6 +306,7 @@ def run_batch(
         "total_analyzed": len(decisions),
         "total_auto_applied": len(auto_applied),
         "total_queued_for_review": len(review_items),
+        "total_upcoming_stored": len(upcoming_stored),
         "total_rejected_held": len(rejected),
         "total_skipped": len(skipped),
         "reason_counts": reason_counts,
@@ -292,6 +332,16 @@ def run_batch(
                 "publish_eligibility": r["publish_allowed"],
             }
             for r in review_items
+        ],
+        "upcoming_stored": [
+            {
+                "item_identifier": r["item_identifier"],
+                "format_name": r["format_name"],
+                "proposed_state": r["proposed_state"],
+                "effective_date": r.get("effective_date", ""),
+                "decision_reason": r["decision_reason"],
+            }
+            for r in upcoming_stored
         ],
         "rejected_held": [
             {
@@ -372,6 +422,15 @@ def run_batch(
         summary_lines.append("")
     else:
         summary_lines.append("   Nothing.")
+        summary_lines.append("")
+
+    if upcoming_stored:
+        summary_lines.append("2b. Upcoming official changes (stored, not applied yet)")
+        for r in upcoming_stored:
+            ident = r.get("item_identifier", "")
+            state = r.get("proposed_state", "")
+            eff = r.get("effective_date", "")
+            summary_lines.append(f"   - {ident}: {state} (effective {eff or 'future'}). Stored as upcoming; I did not overwrite current legality.")
         summary_lines.append("")
 
     summary_lines.append("3. What I skipped (and what I rejected)")

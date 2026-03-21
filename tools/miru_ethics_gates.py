@@ -128,6 +128,43 @@ def can_auto_fetch(
     return True, ""
 
 
+def can_auto_intake_discovered_source(
+    *,
+    source_id: str = "",
+    registry_matched: bool,
+    gate_action: str,
+    execution_outcome: str,
+    manual_approval_required: bool,
+    permission_status: str = "",
+) -> tuple[bool, str]:
+    """
+    Gate: no autonomous intake for newly discovered sources unless they already map to an
+    existing governed registry lane and policy explicitly allows the execution path.
+    """
+    if not registry_matched:
+        _record_block(
+            "can_auto_intake_discovered_source",
+            "Autonomous intake refused: discovered source is not already governed in Miru's registry.",
+            {"source_id": source_id, "permission_status": permission_status},
+        )
+        return False, "Autonomous intake refused: discovered source is not already governed in Miru's registry."
+    if manual_approval_required or str(gate_action or "").strip().lower() == "manual-review":
+        _record_block(
+            "can_auto_intake_discovered_source",
+            "Autonomous intake refused: source still requires manual approval.",
+            {"source_id": source_id, "gate_action": gate_action, "permission_status": permission_status},
+        )
+        return False, "Autonomous intake refused: source still requires manual approval."
+    if str(execution_outcome or "").strip().lower() not in {"allow-learning", "allow-reference-only"}:
+        _record_block(
+            "can_auto_intake_discovered_source",
+            "Autonomous intake refused: execution path is not policy-approved for automatic use.",
+            {"source_id": source_id, "gate_action": gate_action, "execution_outcome": execution_outcome},
+        )
+        return False, "Autonomous intake refused: execution path is not policy-approved for automatic use."
+    return True, ""
+
+
 def insight_confidence_gate(
     confidence: float,
     threshold: float,

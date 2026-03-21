@@ -1,0 +1,20 @@
+{
+  "batch_run_ts": "20260318_063708",
+  "items": [
+    {
+      "item_identifier": "OP01-001",
+      "source_id": "official",
+      "proposed_state": "banned",
+      "why_escalated": "conflict_detected",
+      "decision_note": "Existing official record disagrees with proposed state.",
+      "confidence_score": null,
+      "conflict_detected": true,
+      "publish_eligibility": true,
+      "simple_title": "Possible conflict with existing legality",
+      "simple_reason": "This update might disagree with what we already have on file. I want you to decide.",
+      "why_it_matters": "If we apply it without checking, players could see the wrong legality for this card.",
+      "confidence_note": "The source is approved, but I'm not sure which version is correct.",
+      "suggested_action": "Review and choose which record to keep."
+    }
+  ]
+}

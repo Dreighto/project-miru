@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import atexit
 import copy
 from contextlib import closing
 import argparse
@@ -53,8 +54,25 @@ from tools.miru_project_sync import (
     list_validation_audit_insights,
     run_worktree_card_insight_sync,
 )
+from tools.miru_action_governance import (
+    build_action_governance_snapshot,
+    build_publication_batch_summary,
+    execute_governed_action,
+    load_publication_batch_summary,
+    load_publication_stage_summary,
+    load_review_queue_summary,
+    resolve_review_queue_item,
+    update_review_queue_item,
+)
 from tools.miru_source_adapters import NormalizedSourceRecord
 from tools.miru_learner_config import get_learner_mode, set_learner_mode, LEARNER_MODES
+from tools.miru_self_report import build_self_report
+from tools.miru_operator_handoff_resolution import (
+    clear_operator_handoff_resolution,
+    compute_operator_handoff_need_fingerprint,
+    is_operator_handoff_acknowledged_for_fingerprint,
+    save_operator_handoff_resolution,
+)
 
 
 TOOL_ROOT = Path(__file__).resolve().parent
@@ -69,10 +87,12 @@ DECK_INTEL_DB_PATH = PROJECT_ROOT / "data" / "miru_deck_intel.db"
 LEARNING_QUEUE_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_queue.db"
 LEARNING_STATUS_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_log.db"
 LEARNING_DOSSIER_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_dossiers.db"
+PRICES_PATH = PROJECT_ROOT / "data" / "prices.json"
 LIMITS_STATUS_PATH = PROJECT_ROOT / "data" / "miru_limits_status.json"
 PUSHOVER_LEARNING_SNAPSHOT_PATH = PROJECT_ROOT / "data" / "miru_pushover_learning_snapshot.json"
 WORKTREE_LEARNER_PID_DIR = PROJECT_ROOT / "data" / "startup-logs"
 WORKTREE_LEARNER_PID_FILE = WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree.pid"
+MIRU_AI_DEV_PID_FILE = WORKTREE_LEARNER_PID_DIR / "miru_ai_worktree.pid"
 WORKER_LAST_RUN_PATH = PROJECT_ROOT / "data" / "miru_worker_last_run.json"
 GOVERNED_AUTOPILOT_DATA_DIR = PROJECT_ROOT / "data"
 WORKTREE_LEARNER_STDOUT_LOG = WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree_stdout.log"
@@ -295,7 +315,8 @@ NAV_ITEMS = (
     {"endpoint": "training_page", "label": "Training"},
     {"endpoint": "status_page", "label": "Status"},
     {"endpoint": "leader_hub", "label": "Leader Hub", "path": "/leader/OP10-001"},
-    {"endpoint": "dev_page", "label": "Dev Monitor"},
+    {"endpoint": "dev_page", "label": "Dev"},
+    {"endpoint": "dev_monitor_page", "label": "Dev · Full", "path": "/dev/monitor"},
 )
 
 ROADMAP_SECTIONS = (
@@ -1981,15 +2002,99 @@ def build_companion_url(port: int, path: str = "/") -> str:
     return f"{request.scheme}://{host}:{port}{route_path}"
 
 
-def inspect_local_http_route(url: str) -> dict[str, Any]:
+def inspect_local_http_route(url: str, *, timeout_seconds: float = 0.35) -> dict[str, Any]:
+    started = time.perf_counter()
     try:
-        with closing(urlopen(url, timeout=0.35)) as response:
-            return {"reachable": True, "status_code": int(response.getcode() or 200), "detail": f"HTTP {int(response.getcode() or 200)}"}
+        req = Request(url, headers={"User-Agent": "Miru-Runtime-Probe/1"})
+        with closing(urlopen(req, timeout=timeout_seconds)) as response:
+            elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+            return {
+                "reachable": True,
+                "status_code": int(response.getcode() or 200),
+                "detail": f"HTTP {int(response.getcode() or 200)}",
+                "timeout_seconds": timeout_seconds,
+                "elapsed_ms": elapsed_ms,
+            }
     except HTTPError as exc:
-        return {"reachable": True, "status_code": int(exc.code), "detail": f"HTTP {int(exc.code)}"}
+        elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        return {
+            "reachable": True,
+            "status_code": int(exc.code),
+            "detail": f"HTTP {int(exc.code)}",
+            "timeout_seconds": timeout_seconds,
+            "elapsed_ms": elapsed_ms,
+        }
     except (URLError, OSError) as exc:
         reason = getattr(exc, "reason", exc)
-        return {"reachable": False, "status_code": 0, "detail": f"{exc.__class__.__name__}: {reason}"}
+        elapsed_ms = round((time.perf_counter() - started) * 1000.0, 1)
+        return {
+            "reachable": False,
+            "status_code": 0,
+            "detail": f"{exc.__class__.__name__}: {reason}",
+            "timeout_seconds": timeout_seconds,
+            "elapsed_ms": elapsed_ms,
+        }
+
+
+def build_runtime_status_payload() -> dict[str, Any]:
+    fast_probe = inspect_local_http_route(f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/", timeout_seconds=0.35)
+    confirm_probe: dict[str, Any] | None = None
+    project_state = "confirmed_healthy"
+    project_certainty = "confirmed"
+    project_detail = str(fast_probe.get("detail") or "")
+    project_status_value = "ok"
+    fast_ok = bool(fast_probe.get("reachable")) and int(fast_probe.get("status_code") or 0) == 200
+    if fast_ok:
+        project_detail = (
+            f"Fast runtime probe returned HTTP 200 in {fast_probe.get('elapsed_ms', 0)}ms."
+        )
+    else:
+        confirm_probe = inspect_local_http_route(f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/", timeout_seconds=1.5)
+        confirm_ok = bool(confirm_probe.get("reachable")) and int(confirm_probe.get("status_code") or 0) == 200
+        if confirm_ok:
+            project_state = "direct_check_healthy"
+            project_certainty = "degraded"
+            project_status_value = "ok"
+            project_detail = (
+                "Fast runtime probe was inconclusive, but a confirmatory direct check returned HTTP 200 "
+                f"in {confirm_probe.get('elapsed_ms', 0)}ms."
+            )
+        else:
+            project_state = "confirmed_unhealthy"
+            project_certainty = "confirmed"
+            project_status_value = "unhealthy"
+            project_detail = str((confirm_probe or fast_probe).get("detail") or "")
+    main_port = int(PROJECT_MIRU_PORT)
+    main_probe = inspect_local_http_route(f"http://127.0.0.1:{main_port}/", timeout_seconds=0.45)
+    main_code = int(main_probe.get("status_code") or 0)
+    main_ok = bool(main_probe.get("reachable")) and main_code in (200, 204, 301, 302, 304, 403, 404)
+    main_site_value = "ok" if main_ok else "unhealthy"
+
+    payload: dict[str, Any] = {
+        "18765": "ok",
+        "18080": project_status_value,
+        str(main_port): main_site_value,
+        "worktree": True,
+        "project_detail": project_detail,
+        "project_probe_state": project_state,
+        "project_probe_certainty": project_certainty,
+        "project_fast_probe": fast_probe,
+        "project_confirm_probe": confirm_probe or {},
+        "main_site_probe": main_probe,
+        "checked_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+    return payload
+
+
+def load_runtime_status_payload(*, force: bool = False) -> dict[str, Any]:
+    if force:
+        return build_runtime_status_payload()
+    return get_ttl_cached_value(
+        "runtime_status_payload",
+        ttl_seconds=5.0,
+        signature=(PROJECT_MIRU_DEV_PORT, PROJECT_MIRU_PORT),
+        builder=build_runtime_status_payload,
+    )
 
 
 def build_issue_card(label: str, issues: list[str], *, ok_detail: str, warn_detail: str) -> dict[str, Any]:
@@ -2026,6 +2131,10 @@ def build_issue_detection(
     for ev in learning_status.get("api_permission_events") or []:
         msg = ev.get("message") or ev.get("event_type") or "API/permission event"
         miru_issues.append(f"Learner: {msg}")
+    for warning in (learning_status.get("snapshot_inputs") or {}).get("required_warnings") or []:
+        w = str(warning or "").strip()
+        if w:
+            miru_issues.append(w)
 
     with MIRU_ACTIVITY_LOCK:
         recent_error = str(MIRU_ACTIVITY_STATE.get("last_error") or "")
@@ -2554,14 +2663,16 @@ def build_dev_bootstrap_status() -> dict[str, Any]:
                 )
                 payload["truth_source"] = dict(source)
                 payload["dev_environment"] = build_dev_environment_descriptor()
-                return ensure_governed_autopilot_payload(payload)
+                payload = ensure_governed_autopilot_payload(payload)
+                _apply_worker_heartbeat_fallback(payload)
+                return ensure_control_layer_payload(payload, force_runtime_probe=True)
 
     training_status = build_training_status()
-    return ensure_governed_autopilot_payload(build_dev_status(
+    return ensure_control_layer_payload(ensure_governed_autopilot_payload(build_dev_status(
         training_status,
         lightweight=True,
         fetch_truth_source=False,
-    ))
+    )), force_runtime_probe=True)
 
 
 def resolve_runtime_monitor_status_url() -> str:
@@ -2589,6 +2700,52 @@ def _worktree_learner_pid_record(pid: int) -> dict[str, Any]:
         "learner": "miru_learning_engine",
         "mode": "continuous",
     }
+
+
+def _miru_ai_dev_pid_record(pid: int, port: int) -> dict[str, Any]:
+    """Build PID file record for the worktree Dev server on 18765."""
+    return {
+        "pid": pid,
+        "miru_ai_port": port,
+        "started_at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()),
+        "repo_root": str(PROJECT_ROOT),
+    }
+
+
+def _write_miru_ai_dev_pid_record(pid: int, port: int) -> None:
+    """Write the authoritative PID file for the worktree Dev server."""
+    WORKTREE_LEARNER_PID_DIR.mkdir(parents=True, exist_ok=True)
+    MIRU_AI_DEV_PID_FILE.write_text(
+        json.dumps(_miru_ai_dev_pid_record(pid, port), indent=2),
+        encoding="utf-8",
+    )
+
+
+def _clear_miru_ai_dev_pid_record_if_owned(pid: int) -> None:
+    """Clear the Dev PID file only when it still belongs to this process."""
+    if not MIRU_AI_DEV_PID_FILE.is_file():
+        return
+    try:
+        raw = MIRU_AI_DEV_PID_FILE.read_text(encoding="utf-8").strip()
+        record = json.loads(raw) if raw else {}
+        record_pid = int(record.get("pid") or 0)
+    except (OSError, ValueError, TypeError):
+        record_pid = pid
+    if record_pid and record_pid != pid:
+        return
+    try:
+        MIRU_AI_DEV_PID_FILE.unlink()
+    except OSError:
+        pass
+
+
+def _register_miru_ai_dev_pid_lifecycle(port: int) -> None:
+    """Keep the 18765 PID file aligned with the actual Dev server process."""
+    if int(port or 0) != 18765:
+        return
+    pid = os.getpid()
+    _write_miru_ai_dev_pid_record(pid, int(port))
+    atexit.register(_clear_miru_ai_dev_pid_record_if_owned, pid)
 
 
 def _read_worktree_learner_pid() -> dict[str, Any] | None:
@@ -3440,7 +3597,7 @@ def _format_timestamp_readable(ts: str | None) -> str:
 
 
 def _learner_state_display(learning_engine: dict[str, Any]) -> str:
-    """Single label for Dev strip: Stopped, Running, Waiting for work, Sleeping, Learning, Error, Needs attention."""
+    """Single label for Dev strip: Idle, Running, Waiting for work, Learning, Error, Needs attention. Avoid 'Stopped' for healthy no-work state."""
     state = str(learning_engine.get("learner_state") or "").strip()
     pid = learning_engine.get("learner_pid")
     has_pid = pid is not None and str(pid).strip() != ""
@@ -3448,26 +3605,26 @@ def _learner_state_display(learning_engine: dict[str, Any]) -> str:
         return "Learning"
     if state == "Running (waiting)" or (state == "Idle" and has_pid):
         return "Waiting for work"
-    if state == "Idle" and not has_pid:
-        return "Stopped"
+    if state == "Idle":
+        return "Idle"
     if state == "Offline":
-        return "Stopped"
+        return "Idle"
     if state == "Error":
         return "Error"
     if state == "Stale":
         return "Needs attention"
     if state and state != "—":
         return state
-    return "Stopped" if not has_pid else "Waiting for work"
+    return "Idle" if not has_pid else "Waiting for work"
 
 
 def _worker_action_display(action: str, data: dict[str, Any]) -> str:
-    """Human-readable scheduled worker action for Dev display."""
+    """Human-readable scheduled worker action for Dev display. Use Idle/Ready so post-governed state feels alive, not blocked."""
     a = (action or "").strip().lower()
     if a == "overlap_blocked":
-        return "Blocked (overlap)"
+        return "Idle (run in progress)"
     if a == "no_new_work":
-        return "No new work"
+        return "Idle (no new work)"
     if a == "growth":
         return "Growth"
     if a == "bulk_growth_and_sync":
@@ -3501,10 +3658,79 @@ def load_governed_autopilot_rollup() -> dict[str, Any]:
         return {}
 
 
+def _load_last_governed_report_cards(rollup: dict[str, Any]) -> dict[str, list[str]]:
+    """Load card identifiers from the last governed batch report (auto_applied and skipped). Truthful, read-only."""
+    out: dict[str, list[str]] = {"auto_applied": [], "skipped": []}
+    last_ts = str(rollup.get("last_run_ts") or "").strip()
+    if not last_ts:
+        return out
+    path = GOVERNED_AUTOPILOT_DATA_DIR / f"governed_batch_report_{last_ts}.json"
+    if not path.is_file():
+        return out
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return out
+        for r in (data.get("auto_applied") or [])[:12]:
+            ident = str((r or {}).get("item_identifier") or "").strip()
+            if ident:
+                out["auto_applied"].append(ident)
+        for r in (data.get("skipped") or [])[:12]:
+            ident = str((r or {}).get("item_identifier") or "").strip()
+            if ident:
+                out["skipped"].append(ident)
+    except Exception:
+        pass
+    return out
+
+
+def _build_governed_recent_activity(rollup: dict[str, Any]) -> list[dict[str, str]]:
+    """Build a short list of recent-activity messages from the governed rollup for the Dev 'Recently touched cards' section."""
+    activities: list[dict[str, str]] = []
+    if not rollup or not isinstance(rollup, dict):
+        return activities
+    runs = int(rollup.get("runs") or 0)
+    if runs <= 0:
+        return activities
+    total_auto = int(rollup.get("total_auto_applied") or 0)
+    total_skipped = int(rollup.get("total_skipped") or 0)
+    open_items = rollup.get("open_review_items") or []
+    n_review = len(open_items)
+    parts = [f"{runs} run{'s' if runs != 1 else ''} today"]
+    if total_auto > 0:
+        parts.append(f"{total_auto} safe update{'s' if total_auto != 1 else ''} applied")
+    if total_skipped > 0:
+        parts.append(f"{total_skipped} skipped (no change)")
+    if n_review > 0:
+        parts.append(f"{n_review} need{'s' if n_review == 1 else ''} your review")
+    activities.append({"message": "Governed batch: " + ", ".join(parts) + ".", "label": "Governed batch"})
+    report_cards = _load_last_governed_report_cards(rollup)
+    if report_cards["auto_applied"]:
+        codes = ", ".join(report_cards["auto_applied"][:8])
+        activities.append({"message": f"Safely updated: {codes}.", "label": "Safe update"})
+    if report_cards["skipped"]:
+        codes = ", ".join(report_cards["skipped"][:8])
+        activities.append({"message": f"Checked (no change): {codes}.", "label": "Checked"})
+    for item in open_items[:4]:
+        ident = str(item.get("item_identifier") or "").strip()
+        state = str(item.get("proposed_state") or "").strip()
+        title = str(item.get("simple_title") or "Item for review").strip()
+        if ident:
+            activities.append({"message": f"{ident} ({state}): {title}" if state else f"{ident}: {title}", "label": "Needs review"})
+    return activities
+
+
 def ensure_governed_autopilot_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
-    """Ensure governed_autopilot is always present in Dev payloads."""
+    """Ensure governed_autopilot and official_rules summary are present in Dev payloads."""
     out = dict(payload or {})
-    out["governed_autopilot"] = load_governed_autopilot_rollup()
+    rollup = load_governed_autopilot_rollup()
+    out["governed_autopilot"] = rollup
+    out["governed_recent_activity"] = _build_governed_recent_activity(rollup)
+    try:
+        from tools.miru_official_rules import DEFAULT_RULES_DB_PATH, get_official_rules_summary
+        out["official_rules"] = get_official_rules_summary(DEFAULT_RULES_DB_PATH)
+    except Exception:
+        out["official_rules"] = {"current_notices": 0, "upcoming_notices": 0, "upcoming_legality_count": 0}
     return out
 
 
@@ -3514,6 +3740,38 @@ def _enrich_worker_last_run_display(worker_last_run: dict[str, Any]) -> dict[str
     out["action_display"] = _worker_action_display(out.get("action", ""), out)
     out["timestamp_display"] = _format_timestamp_readable(out.get("timestamp"))
     return out
+
+
+def _parse_worker_timestamp_age(ts: str) -> tuple[float | None, str]:
+    """Return (age_seconds, formatted_display) for worker timestamp (ISO). (None, '') if unparseable."""
+    if not ts or not isinstance(ts, str):
+        return None, ""
+    try:
+        from datetime import datetime, timezone
+        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        age = (now - dt).total_seconds()
+        formatted = dt.strftime("%Y-%m-%d %H:%M:%S")
+        return age, formatted
+    except Exception:
+        return None, ""
+
+
+def _apply_worker_heartbeat_fallback(payload: dict[str, Any]) -> None:
+    """When learner heartbeat is stale but worker ran recently (overlap_blocked/no_new_work), use worker time so Dev page shows fresh."""
+    le = payload.get("learning_engine")
+    wr = payload.get("worker_last_run")
+    if not le or not wr or le.get("heartbeat_freshness") != "stale":
+        return
+    if wr.get("action") not in ("overlap_blocked", "no_new_work"):
+        return
+    ts = wr.get("timestamp")
+    age, formatted = _parse_worker_timestamp_age(ts)
+    if age is not None and 0 <= age <= 600 and formatted:
+        le["last_heartbeat"] = formatted
+        le["heartbeat_freshness"] = "fresh"
 
 
 def load_worker_last_run() -> dict[str, Any]:
@@ -4394,6 +4652,864 @@ def build_resource_metrics_payload() -> dict[str, Any]:
     }
 
 
+def _build_control_observation(
+    *,
+    key: str,
+    label: str,
+    detail: str,
+    source: str,
+    confirmed: bool = False,
+    failed: bool = False,
+) -> dict[str, Any]:
+    if failed:
+        status = "FAILED"
+        tone = "warn"
+    elif confirmed:
+        status = "CONFIRMED WORKING"
+        tone = "good"
+    else:
+        status = "INCONCLUSIVE"
+        tone = "neutral"
+    return {
+        "key": key,
+        "label": label,
+        "status": status,
+        "tone": tone,
+        "detail": detail,
+        "source": source,
+    }
+
+
+def _build_control_recent_issues(payload: dict[str, Any]) -> dict[str, Any]:
+    issues = payload.get("issues") or {}
+    learning_engine = payload.get("learning_engine") or {}
+    intelligence = payload.get("intelligence_status") or {}
+    governed = payload.get("governed_autopilot") or {}
+    worker_last_run = payload.get("worker_last_run") or {}
+    items: list[dict[str, Any]] = []
+
+    miru_issue = issues.get("miru_ai") or {}
+    if str(miru_issue.get("tone") or "") == "warn":
+        items.append({
+            "title": "Miru AI warning",
+            "detail": str(miru_issue.get("detail") or "Miru AI reported a degraded state."),
+            "tone": "warn",
+            "source": "Issue detection from /api/dev-status.",
+        })
+
+    project_issue = issues.get("project_miru") or {}
+    if str(project_issue.get("tone") or "") == "warn":
+        items.append({
+            "title": "Project Miru warning",
+            "detail": str(project_issue.get("detail") or "Project Miru is not answering normally."),
+            "tone": "warn",
+            "source": "Project Miru reachability check from /api/dev-status.",
+        })
+
+    worker_status = (learning_engine.get("worker_status") or {})
+    worker_label = str(worker_status.get("label") or (intelligence.get("worker") or {}).get("label") or "").strip()
+    worker_detail = str(worker_status.get("detail") or (intelligence.get("worker") or {}).get("detail") or "").strip()
+    if worker_label and worker_label.lower() in {"stale", "offline", "stalled"}:
+        items.append({
+            "title": f"Worker heartbeat {worker_label.lower()}",
+            "detail": worker_detail or "The learning worker freshness signal needs a closer look.",
+            "tone": "warn",
+            "source": "Learning engine heartbeat and worker status.",
+        })
+
+    open_review_items = governed.get("open_review_items") or []
+    if int(governed.get("newly_surfaced_review") or 0) > 0 or open_review_items:
+        first_item = open_review_items[0] if open_review_items else {}
+        review_title = str(first_item.get("simple_title") or "Governed review item needs attention")
+        review_detail = str(first_item.get("simple_reason") or "Governed autopilot surfaced an item for operator review.")
+        items.append({
+            "title": review_title,
+            "detail": review_detail,
+            "tone": "warn",
+            "source": "Governed autopilot rollup for today.",
+        })
+
+    worker_action = str(worker_last_run.get("action") or "").strip().lower()
+    worker_blocker = str(worker_last_run.get("blocker") or worker_last_run.get("no_new_work_reason") or "").strip()
+    if worker_action in {"overlap_blocked", "blocked", "error"} and worker_blocker:
+        items.append({
+            "title": humanize_snake_label(worker_action) or "Scheduled worker blocked",
+            "detail": worker_blocker,
+            "tone": "warn",
+            "source": "Scheduled worker last-run record.",
+        })
+
+    if items:
+        return {
+            "status": "FAILED" if any(item["title"].lower().startswith("project miru") for item in items) else "INCONCLUSIVE",
+            "tone": "warn",
+            "headline": items[0]["title"],
+            "summary": items[0]["detail"],
+            "items": items[:4],
+            "source": "Issue detection, worker heartbeat, governed rollup, and scheduled worker history.",
+        }
+    return {
+        "status": "CONFIRMED WORKING",
+        "tone": "good",
+        "headline": "No active issue surfaced",
+        "summary": "The current Dev snapshot did not surface an active warning or review blocker.",
+        "items": [],
+        "source": "Issue detection, worker heartbeat, governed rollup, and scheduled worker history.",
+    }
+
+
+def _build_control_recent_activity(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    activity_feed = payload.get("activity_feed") or []
+    governed_recent = payload.get("governed_recent_activity") or []
+    worker_last_run = payload.get("worker_last_run") or {}
+    items: list[dict[str, Any]] = []
+
+    for entry in activity_feed[:4]:
+        items.append({
+            "title": str(entry.get("title") or "Runtime event"),
+            "detail": str(entry.get("detail") or ""),
+            "timestamp": str(entry.get("timestamp") or ""),
+            "tone": str(entry.get("tone") or "neutral"),
+            "source": "Learning engine event log",
+        })
+
+    worker_action = str(worker_last_run.get("action_display") or worker_last_run.get("action") or "").strip()
+    if worker_action and str(worker_last_run.get("action") or "") != "no_run_recorded":
+        detail_parts = []
+        if worker_last_run.get("blocker"):
+            detail_parts.append(str(worker_last_run["blocker"]))
+        elif worker_last_run.get("no_new_work_reason"):
+            detail_parts.append(str(worker_last_run["no_new_work_reason"]))
+        if worker_last_run.get("insight_count_after") is not None:
+            detail_parts.append(f"{int(worker_last_run['insight_count_after'])} insights after run")
+        items.append({
+            "title": worker_action,
+            "detail": " ".join(part for part in detail_parts if part).strip() or "Latest scheduled worker record.",
+            "timestamp": str(worker_last_run.get("timestamp") or ""),
+            "tone": "neutral" if "idle" in worker_action.lower() else "good",
+            "source": "Scheduled worker last-run record",
+        })
+
+    for entry in governed_recent[:2]:
+        items.append({
+            "title": str(entry.get("label") or "Governed batch"),
+            "detail": str(entry.get("message") or ""),
+            "timestamp": "",
+            "tone": "warn" if "review" in str(entry.get("label") or "").lower() else "neutral",
+            "source": "Governed autopilot rollup",
+        })
+
+    deduped: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in items:
+        key = (item["title"], item["detail"])
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped[:6]
+
+
+def _judgment_tone_for_category(category: str) -> str:
+    normalized = str(category or "").strip().lower()
+    if normalized in {"warning", "failure", "needs_review"}:
+        return "warn"
+    if normalized == "info":
+        return "good"
+    return "neutral"
+
+
+def _judgment_guardrail_for_action(action_class: str) -> str:
+    normalized = str(action_class or "").strip().lower()
+    if normalized == "user_review_required":
+        return "Review required"
+    if normalized in {"safe_check", "investigate", "worker_prompt"}:
+        return "Safe action"
+    return "Read-only"
+
+
+def _judgment_retry_guidance(action_class: str) -> str:
+    normalized = str(action_class or "").strip().lower()
+    if normalized == "user_review_required":
+        return "Do not retry this path until a human review is complete."
+    if normalized == "observe_only":
+        return "No retry is needed right now."
+    if normalized == "safe_check":
+        return "Safe to retry after the recommended check confirms the state."
+    if normalized == "worker_prompt":
+        return "Safe to hand off with a worker prompt before retrying."
+    return "Investigate before retrying any related action."
+
+
+def _judgment_priority(item: dict[str, Any]) -> tuple[int, int, int]:
+    category = str(item.get("category") or "").strip().lower()
+    recommendation = item.get("recommendation") or {}
+    risk = str(recommendation.get("risk") or "").strip().lower()
+    confidence = str(recommendation.get("confidence") or "").strip().lower()
+    category_rank = {
+        "needs_review": 0,
+        "failure": 1,
+        "warning": 2,
+        "watch": 3,
+        "info": 4,
+    }.get(category, 9)
+    risk_rank = {
+        "high": 0,
+        "medium": 1,
+        "low": 2,
+    }.get(risk, 3)
+    confidence_rank = {
+        "high": 0,
+        "medium": 1,
+        "low": 2,
+    }.get(confidence, 3)
+    return (category_rank, risk_rank, confidence_rank)
+
+
+def _build_judgment_item(
+    *,
+    key: str,
+    title: str,
+    summary: str,
+    category: str,
+    issue_type: str,
+    source: str,
+    action_class: str,
+    rationale: str,
+    confidence: str,
+    risk: str,
+    route_task: str = "",
+    detail: str = "",
+) -> dict[str, Any]:
+    category_normalized = str(category or "").strip().lower() or "info"
+    issue_type_normalized = str(issue_type or "").strip().lower() or "environment"
+    action_normalized = str(action_class or "").strip().lower() or "observe_only"
+    tone = _judgment_tone_for_category(category_normalized)
+    recommendation = {
+        "action_class": action_normalized,
+        "label": humanize_snake_label(action_normalized) or "Observe only",
+        "rationale": rationale,
+        "confidence": str(confidence or "medium").strip().lower() or "medium",
+        "risk": str(risk or "medium").strip().lower() or "medium",
+        "guardrail_label": _judgment_guardrail_for_action(action_normalized),
+        "retry_guidance": _judgment_retry_guidance(action_normalized),
+        "route_task": route_task.strip(),
+    }
+    return {
+        "key": key,
+        "title": title.strip() or "Miru judgment",
+        "summary": summary.strip() or "Miru surfaced a state that needs interpretation.",
+        "detail": detail.strip() or summary.strip(),
+        "category": category_normalized,
+        "category_label": humanize_snake_label(category_normalized) or category_normalized.title(),
+        "issue_type": issue_type_normalized,
+        "issue_type_label": humanize_snake_label(issue_type_normalized) or issue_type_normalized.title(),
+        "tone": tone,
+        "source": source.strip() or "Current Dev status signals.",
+        "recommendation": recommendation,
+    }
+
+
+def _build_control_judgment(
+    payload: dict[str, Any],
+    *,
+    system_health: list[dict[str, Any]],
+    recent_issues: dict[str, Any],
+    recent_activity: list[dict[str, Any]],
+) -> dict[str, Any]:
+    issues = payload.get("issues") or {}
+    governed = payload.get("governed_autopilot") or {}
+    truth_source = payload.get("truth_source") or {}
+    learning_engine = payload.get("learning_engine") or {}
+    worker_last_run = payload.get("worker_last_run") or {}
+    items: list[dict[str, Any]] = []
+
+    project_health = next((item for item in system_health if str(item.get("key") or "") == "project_miru"), {})
+    miru_health = next((item for item in system_health if str(item.get("key") or "") == "miru_ai"), {})
+    worker_health = next((item for item in system_health if str(item.get("key") or "") == "worker"), {})
+
+    open_review_items = governed.get("open_review_items") or []
+    if open_review_items:
+        first_item = open_review_items[0] if open_review_items else {}
+        review_title = str(first_item.get("simple_title") or "Governed review item needs attention")
+        review_summary = str(first_item.get("simple_reason") or "Governed autopilot surfaced an item for human review.")
+        suggested_action = str(first_item.get("suggested_action") or "Review the item before applying any related change.")
+        items.append(_build_judgment_item(
+            key="governed_review",
+            title=review_title,
+            summary=review_summary,
+            detail=suggested_action,
+            category="needs_review",
+            issue_type="approval",
+            source="Governed autopilot rollup for today.",
+            action_class="user_review_required",
+            rationale="A governed or conflicting item is waiting for a human decision before Miru should treat it as safe.",
+            confidence="high",
+            risk="high",
+        ))
+
+    project_issue = issues.get("project_miru") or {}
+    if str(project_health.get("status") or "").strip().upper() == "FAILED" or str(project_issue.get("tone") or "") == "warn":
+        items.append(_build_judgment_item(
+            key="project_runtime",
+            title="Project Miru runtime needs attention",
+            summary=str(project_health.get("detail") or project_issue.get("detail") or "Project Miru is not answering normally from the Dev surface."),
+            detail=f"Observed from {project_health.get('source') or 'Project Miru runtime health.'}",
+            category="failure",
+            issue_type="runtime",
+            source=str(project_health.get("source") or "Observed via Project Miru runtime health."),
+            action_class="investigate",
+            rationale="If the user-facing site is not healthy, retries or follow-on checks can mislead you until the runtime path is understood.",
+            confidence="high",
+            risk="high",
+            route_task="Investigate the Project Miru runtime path that 18765 is observing, confirm why it is unhealthy, and report the exact live verification evidence without changing any 18080 user-facing files.",
+        ))
+
+    if str(miru_health.get("status") or "").strip().upper() == "FAILED":
+        items.append(_build_judgment_item(
+            key="dev_runtime",
+            title="Miru Dev surface needs attention",
+            summary=str(miru_health.get("detail") or "The Dev runtime is not healthy."),
+            detail="The control surface itself is degraded, so every downstream signal is less trustworthy until the runtime path is understood.",
+            category="failure",
+            issue_type="environment",
+            source=str(miru_health.get("source") or "Observed from Dev runtime status."),
+            action_class="investigate",
+            rationale="The Dev surface is the authority for these signals, so runtime instability here should be investigated before acting on the page.",
+            confidence="high",
+            risk="high",
+            route_task="Investigate why the Miru Dev surface on 18765 is degraded, verify the failing runtime path live, and explain the safest next step without adding new background actions.",
+        ))
+
+    worker_status = learning_engine.get("worker_status") or {}
+    worker_label = str(worker_status.get("label") or "").strip().lower()
+    worker_detail = str(worker_health.get("detail") or worker_status.get("detail") or "").strip()
+    if worker_label in {"stale", "offline", "stalled"}:
+        items.append(_build_judgment_item(
+            key="worker_heartbeat",
+            title="Worker heartbeat needs investigation",
+            summary=worker_detail or "The learner heartbeat looks stale or offline.",
+            detail=str(worker_health.get("source") or "Derived from the learning engine heartbeat."),
+            category="warning",
+            issue_type="worker",
+            source="Learning engine heartbeat and worker status.",
+            action_class="worker_prompt",
+            rationale="Miru can still answer from cached state, but a stale worker signal can hide blocked learning or an idle process that needs confirmation.",
+            confidence="high" if worker_label in {"stale", "stalled"} else "medium",
+            risk="medium",
+            route_task="Inspect the Miru learner heartbeat and worker state on 18765, explain why the signal is stale, and verify whether the worker is safely idle or blocked before recommending any retry.",
+        ))
+
+    worker_action = str(worker_last_run.get("action") or "").strip().lower()
+    worker_blocker = str(worker_last_run.get("blocker") or worker_last_run.get("no_new_work_reason") or "").strip()
+    if worker_action in {"overlap_blocked", "blocked", "error"} and worker_blocker:
+        issue_type = "source_freshness" if "snapshot" in worker_blocker.lower() or "overlap" in worker_action else "intelligence"
+        items.append(_build_judgment_item(
+            key="worker_last_run",
+            title=humanize_snake_label(worker_action) or "Scheduled worker blocked",
+            summary=worker_blocker,
+            detail=str(worker_last_run.get("exact_snapshot_needed") or worker_last_run.get("timestamp_display") or ""),
+            category="watch" if worker_action == "overlap_blocked" else "warning",
+            issue_type=issue_type,
+            source="Scheduled worker last-run record.",
+            action_class="safe_check",
+            rationale="A read-only source or overlap check can confirm whether the worker is blocked by incomplete inputs before you try anything else.",
+            confidence="medium",
+            risk="low" if worker_action == "overlap_blocked" else "medium",
+            route_task="Check the scheduled worker blocker that Miru is surfacing on 18765, confirm whether the snapshot or overlap state is incomplete, and report the safest next action without changing 18080.",
+        ))
+
+    truth_mode = str(truth_source.get("mode") or "").strip().lower()
+    if truth_mode == "local_fallback":
+        items.append(_build_judgment_item(
+            key="truth_source",
+            title="Using local worktree truth source",
+            summary=str(truth_source.get("detail") or "Miru is using local worktree data for this view."),
+            detail="The page is grounded in local worktree signals rather than a remote truth source.",
+            category="info",
+            issue_type="environment",
+            source="Truth-source descriptor.",
+            action_class="observe_only",
+            rationale="This is informative rather than broken, but it matters when comparing what you see here to another runtime.",
+            confidence="high",
+            risk="low",
+        ))
+
+    if not items:
+        items.append(_build_judgment_item(
+            key="stable",
+            title="Miru looks stable from this Dev surface",
+            summary="The current runtime, worker, and governed signals do not surface an active failure or review blocker.",
+            detail="Keep observing from the current Dev control layer.",
+            category="info",
+            issue_type="runtime",
+            source="Rules-based interpretation of current control-layer signals.",
+            action_class="observe_only",
+            rationale="No surfaced signal currently justifies a retry, intervention, or human review step.",
+            confidence="medium",
+            risk="low",
+        ))
+
+    ranked_items = sorted(items, key=_judgment_priority)
+    primary = ranked_items[0]
+    recommendation = primary.get("recommendation") or {}
+    primary_category = str(primary.get("category") or "").strip().lower()
+    primary_type = str(primary.get("issue_type") or "").strip().lower()
+
+    if primary_category == "needs_review":
+        what_i_think = "Miru looks operational, but a governed item is waiting for a human decision."
+    elif primary_type == "worker":
+        what_i_think = "Miru is up, but the learning worker signal looks stale or blocked."
+    elif primary_type == "runtime":
+        what_i_think = "One of the observed runtime paths needs attention before Miru should trust follow-on actions."
+    elif primary_type == "source_freshness":
+        what_i_think = "Miru is up, but one of the supporting source inputs looks incomplete or stale."
+    else:
+        what_i_think = "Miru is interpreting the current worktree signals without surfacing a hard failure."
+
+    what_matters = str(primary.get("summary") or recent_issues.get("summary") or "No dominant concern surfaced.")
+    action_label = str(recommendation.get("label") or "Observe only")
+    if str(recommendation.get("guardrail_label") or "") == "Review required":
+        what_next = f"{action_label}. Human review should happen before any related retry or apply step."
+    else:
+        what_next = f"{action_label}. {recommendation.get('rationale') or 'Use the current judgment to choose the next safe step.'}"
+
+    return {
+        "status": primary_category or "info",
+        "status_label": str(primary.get("category_label") or "Info"),
+        "tone": str(primary.get("tone") or "neutral"),
+        "headline": str(primary.get("title") or "Miru judgment"),
+        "what_i_think": what_i_think,
+        "what_matters_most": what_matters,
+        "what_i_recommend_next": what_next,
+        "guardrail_label": str(recommendation.get("guardrail_label") or "Read-only"),
+        "retry_guidance": str(recommendation.get("retry_guidance") or "Observe the current state before retrying."),
+        "primary": primary,
+        "items": ranked_items[:4],
+        "secondary": ranked_items[1:4],
+        "source": "Rules-based interpretation of runtime health, worker freshness, governed review state, scheduled worker signals, and truth-source context.",
+        "activity_hint": str((recent_activity[0] or {}).get("title") or "") if recent_activity else "",
+    }
+
+
+def build_dev_control_layer(
+    payload: dict[str, Any],
+    *,
+    force_runtime_probe: bool = False,
+) -> dict[str, Any]:
+    issues = payload.get("issues") or {}
+    project = payload.get("project_miru") or {}
+    surface_status = payload.get("surface_status") or {}
+    learning_engine = payload.get("learning_engine") or {}
+    intelligence = payload.get("intelligence_status") or {}
+    truth_source = payload.get("truth_source") or {}
+    runtime_status = load_runtime_status_payload(force=force_runtime_probe)
+
+    miru_surface = surface_status.get("miru_ai") or {}
+    miru_running = str(miru_surface.get("status") or "").strip().lower() == "running"
+    miru_issue_warn = str((issues.get("miru_ai") or {}).get("tone") or "") == "warn"
+    project_reachable = bool(project.get("reachable"))
+    project_status_code = int(project.get("status_code") or 0)
+    project_runtime_ok = str(runtime_status.get("18080") or "").strip().lower() == "ok"
+    project_probe_state = str(runtime_status.get("project_probe_state") or "").strip().lower()
+    project_probe_certainty = str(runtime_status.get("project_probe_certainty") or "").strip().lower()
+    runtime_checked_at = _format_timestamp_readable(str(runtime_status.get("checked_at") or "")) or str(runtime_status.get("checked_at") or "")
+    worker_status = learning_engine.get("worker_status") or {}
+    worker_state = str(worker_status.get("status") or "").strip().lower()
+    worker_detail = str(worker_status.get("detail") or (intelligence.get("worker") or {}).get("detail") or "").strip()
+    worker_has_heartbeat = bool(str(learning_engine.get("last_heartbeat") or "").strip())
+    worker_store_visible = bool(learning_engine.get("status_db_exists"))
+
+    system_health = [
+        _build_control_observation(
+            key="miru_ai",
+            label="18765 Dev surface",
+            detail=str((issues.get("miru_ai") or {}).get("detail") or "Miru AI Dev status is available."),
+            source="Observed from the local /api/dev-status worktree payload.",
+            confirmed=miru_running and not miru_issue_warn,
+            failed=not miru_running,
+        ),
+        _build_control_observation(
+            key="project_miru",
+            label="18080 Project Miru",
+            detail=(
+                f"Observed healthy via local runtime probe ({runtime_checked_at})."
+                if project_runtime_ok and project_probe_certainty == "confirmed" and runtime_checked_at
+                else (
+                    "Storefront answered the confirmatory direct check, but the fast runtime probe was inconclusive."
+                    if project_runtime_ok and project_probe_certainty != "confirmed"
+                    else str(project.get("detail") or runtime_status.get("project_detail") or "Project Miru observation is not available yet.")
+                )
+            ),
+            source=(
+                "Observed from the cached runtime probe plus a confirmatory direct localhost check when the fast probe is inconclusive."
+            ),
+            confirmed=project_runtime_ok and project_probe_certainty == "confirmed",
+            failed=(not project_runtime_ok) and (not project_reachable) and project_probe_state == "confirmed_unhealthy",
+        ),
+        _build_control_observation(
+            key="worker",
+            label="Learner / worker heartbeat",
+            detail=worker_detail or "Worker freshness is not available yet.",
+            source=(
+                f"Heartbeat from {learning_engine.get('last_heartbeat')}."
+                if learning_engine.get("last_heartbeat")
+                else "Worker freshness derived from learning engine status."
+            ),
+            confirmed=worker_state in {"fresh", "ok"} or str((intelligence.get("worker") or {}).get("tone") or "") == "good",
+            failed=not worker_store_visible and not worker_has_heartbeat,
+        ),
+    ]
+
+    recent_issues = _build_control_recent_issues(payload)
+    recent_activity = _build_control_recent_activity(payload)
+    judgment = _build_control_judgment(
+        payload,
+        system_health=system_health,
+        recent_issues=recent_issues,
+        recent_activity=recent_activity,
+    )
+    status_sources = {
+        "health": (
+            f"Health cards reuse /api/dev-status and the same cached local runtime probe used by /api/runtime/status."
+            + (f" Last checked {runtime_checked_at}." if runtime_checked_at else "")
+        ),
+        "judgment": judgment.get("source") or "Rules-based interpretation of current Dev signals.",
+        "recent_issues": recent_issues.get("source") or "Issue detection and runtime freshness signals.",
+        "recent_activity": "Recent activity reuses the learning engine event log, governed autopilot rollup, and scheduled worker run record.",
+        "truth": str(truth_source.get("detail") or "Using the current Dev runtime snapshot."),
+    }
+    summary = (
+        f"18765: {system_health[0]['status']}. "
+        f"18080: {system_health[1]['status']}. "
+        f"Worker: {system_health[2]['status']}. "
+        f"Judgment: {judgment.get('headline') or recent_issues['headline']}."
+    )
+    copy_summary = "\n".join([
+        "Miru Control Layer summary",
+        summary,
+        f"What Miru thinks: {judgment.get('what_i_think') or 'Judgment summary unavailable.'}",
+        f"What matters most: {judgment.get('what_matters_most') or recent_issues.get('summary') or 'No dominant concern surfaced.'}",
+        f"Recommended next: {judgment.get('what_i_recommend_next') or 'Observe the current state.'}",
+        f"Guardrail: {judgment.get('guardrail_label') or 'Read-only'}",
+        f"Health source: {status_sources['health']}",
+        f"Judgment source: {status_sources['judgment']}",
+        f"Issue source: {status_sources['recent_issues']}",
+        f"Activity source: {status_sources['recent_activity']}",
+        f"Truth source: {status_sources['truth']}",
+    ])
+    return {
+        "summary": summary,
+        "judgment": judgment,
+        "system_health": system_health,
+        "runtime_reliability": {
+            "project_miru": {
+                "healthy": project_runtime_ok,
+                "uncertain": project_runtime_ok and project_probe_certainty != "confirmed",
+                "state": project_probe_state or ("confirmed_healthy" if project_runtime_ok else "confirmed_unhealthy"),
+                "certainty": project_probe_certainty or ("confirmed" if project_runtime_ok else "confirmed"),
+                "detail": str(runtime_status.get("project_detail") or ""),
+                "fast_probe": dict(runtime_status.get("project_fast_probe") or {}),
+                "confirm_probe": dict(runtime_status.get("project_confirm_probe") or {}),
+            }
+        },
+        "recent_issues": recent_issues,
+        "recent_activity": recent_activity,
+        "status_sources": status_sources,
+        "copy_summary": copy_summary,
+    }
+
+
+def ensure_control_layer_payload(
+    payload: dict[str, Any] | None,
+    *,
+    force_runtime_probe: bool = False,
+) -> dict[str, Any]:
+    out = dict(payload or {})
+    out["control_layer"] = build_dev_control_layer(out, force_runtime_probe=force_runtime_probe)
+    try:
+        out["action_governance"] = build_action_governance_snapshot(
+            dev_payload=out,
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+            runtime_dossier_db_path=LEARNING_DOSSIER_DB_PATH,
+            canonical_dossier_db_path=DOSSIER_DB_PATH,
+            rules_db_path=PROJECT_ROOT / "data" / "miru_official_rules.db",
+            deck_intel_db_path=DECK_INTEL_DB_PATH,
+            prices_path=PRICES_PATH,
+            persist=False,
+        )
+    except Exception as exc:
+        out["action_governance"] = {
+            "generated_at": current_timestamp(),
+            "error": str(exc),
+            "actions": {"all": [], "allowed_now": [], "allowed_with_review": [], "blocked": [], "not_applicable": []},
+            "publication_readiness": {"counts": {}, "remaining_candidate_count": 0, "top_targets": [], "target_evaluation": {}},
+        }
+    return out
+
+
+def load_operator_self_report() -> dict[str, Any]:
+    """Cached read-only snapshot from data/ DBs via tools.miru_self_report (insight coverage, gaps, next action)."""
+    try:
+        sig = (
+            path_signature(FALLBACK_CATALOG_DB_PATH),
+            path_signature(LEARNING_DOSSIER_DB_PATH),
+        )
+
+        def _builder() -> dict[str, Any]:
+            return build_self_report(PROJECT_ROOT)
+
+        return get_ttl_cached_value(
+            "operator_self_report_v2",
+            ttl_seconds=20.0,
+            signature=sig,
+            builder=_builder,
+        )
+    except Exception as exc:
+        return {
+            "error": str(exc),
+            "generated_at": None,
+            "schema_version": 0,
+            "metrics": {},
+            "intelligence_surface": {},
+        }
+
+
+def _operator_handoff_resolution_payload(
+    *,
+    fingerprint: str,
+    acknowledged_match: bool,
+    underlying_need_still_present: bool,
+    resolved_state: dict[str, Any] | None = None,
+    self_report_error: bool = False,
+) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "need_signature_sha256": fingerprint or None,
+        "operator_acknowledged_for_signature": acknowledged_match,
+        "underlying_need_still_present": underlying_need_still_present,
+    }
+    if self_report_error:
+        out["self_report_error"] = True
+    if acknowledged_match and resolved_state:
+        ra = resolved_state.get("resolved_at")
+        if ra:
+            out["resolved_at"] = ra
+    return out
+
+
+def build_operator_handoff_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """
+    Ready-to-copy worker prompt grounded in operator_self_report + dev issues.
+    Read-only; does not change governance or publication rules.
+
+    When self-report stays \"urgent\" after a worker completes a scoped task, the operator
+    can POST /api/dev/operator-handoff/resolve to persist a fingerprint match; while the
+    live fingerprint equals the stored one, has_active_handoff is false (backend truth).
+    """
+    dev_env = payload.get("dev_environment") or {}
+    env_label = str(dev_env.get("environment") or "local").strip() or "local"
+    runtime_target = str(dev_env.get("runtime_target") or "worktree").strip() or "worktree"
+    target_environment = f"{env_label} · {runtime_target}"
+
+    boundaries = (
+        "Hard scope: Miru AI / this worktree (port 18765) only. "
+        "Do not edit Project Miru site code or the port 18080 implementation. "
+        "Do not edit dashboard/app.py. "
+        "Preserve governance, publish gate, truth hierarchy, fail-closed behavior, autonomy rules, and source permissions."
+    )
+
+    osr = payload.get("operator_self_report") or {}
+    intel = osr.get("intelligence_surface") or {}
+    met = osr.get("metrics") or {}
+    issues = payload.get("issues") or {}
+    miru_issue_tone = str((issues.get("miru_ai") or {}).get("tone") or "good").strip().lower()
+
+    if osr.get("error"):
+        err = str(osr.get("error"))
+        what = "Restore operator self-report so /dev can read live catalog intelligence metrics."
+        why = f"Self-report error: {err}"
+        prompt_text = "\n".join(
+            [
+                "Worker: Cursor",
+                f"Target: {target_environment} (Miru AI Dev).",
+                "",
+                boundaries,
+                "",
+                "Problem:",
+                why,
+                "",
+                "Task:",
+                what,
+            ]
+        )
+        return {
+            "schema_version": 1,
+            "state": "actionable",
+            "has_active_handoff": True,
+            "what_miru_needs": what,
+            "why": why,
+            "recommended_worker": "Cursor",
+            "target_environment": target_environment,
+            "prompt_text": prompt_text,
+            "boundaries": boundaries,
+            "resolution": _operator_handoff_resolution_payload(
+                fingerprint="",
+                acknowledged_match=False,
+                underlying_need_still_present=True,
+                self_report_error=True,
+            ),
+        }
+
+    fp = compute_operator_handoff_need_fingerprint(osr, issues)
+    ack_match, resolved_state = is_operator_handoff_acknowledged_for_fingerprint(fp)
+
+    cap = str(osr.get("capability_level") or "").strip()
+    primary_code = str(intel.get("primary_limitation_code") or "").strip()
+    top_blocker = str(osr.get("top_blocker") or "").strip()
+    next_priority = str(osr.get("next_priority") or "").strip()
+    primary_human = str(intel.get("primary_limitation_human") or "").strip()
+    rec = str(intel.get("recommended_next_operator_action") or "").strip()
+
+    cov = met.get("coverage_pct")
+    cwi = met.get("cards_with_any_insight")
+    strong = met.get("cards_with_strong_insight")
+
+    urgent = (
+        primary_code not in ("", "balanced")
+        or cap in ("blocked", "minimal")
+        or miru_issue_tone == "warn"
+    )
+
+    if not urgent:
+        # Clear state: no copyable worker prompt; metrics live in self-report / monitor.
+        return {
+            "schema_version": 1,
+            "state": "clear",
+            "has_active_handoff": False,
+            "what_miru_needs": "No active handoff.",
+            "why": "Current self-report shows no urgent limitation and Miru AI issues are not in warn state.",
+            "recommended_worker": "Cursor",
+            "target_environment": target_environment,
+            "prompt_text": "",
+            "boundaries": boundaries,
+            "resolution": _operator_handoff_resolution_payload(
+                fingerprint=fp,
+                acknowledged_match=ack_match,
+                underlying_need_still_present=False,
+                resolved_state=resolved_state if ack_match else None,
+            ),
+        }
+
+    if ack_match:
+        return {
+            "schema_version": 1,
+            "state": "clear",
+            "has_active_handoff": False,
+            "what_miru_needs": "No active handoff.",
+            "why": (
+                "Operator marked this worker handoff resolved for the current need signature. "
+                "Self-report may still show a catalog limitation until data catches up; "
+                "an active handoff returns automatically if the actionable need signature changes. "
+                "Use 'Show handoff again' on /dev if you need to re-open before then."
+            ),
+            "recommended_worker": "Cursor",
+            "target_environment": target_environment,
+            "prompt_text": "",
+            "boundaries": boundaries,
+            "resolution": _operator_handoff_resolution_payload(
+                fingerprint=fp,
+                acknowledged_match=True,
+                underlying_need_still_present=True,
+                resolved_state=resolved_state,
+            ),
+        }
+
+    what = (next_priority or rec or top_blocker or primary_human or "").strip() or (
+        "Address the catalog intelligence gap indicated by the current self-report."
+    )
+    why = (primary_human or top_blocker or "").strip() or (
+        "Operator self-report indicates a non-balanced limitation, degraded capability, or Miru AI warn state."
+    )
+
+    cov_s = f"{float(cov):.2f}" if cov is not None else "—"
+    cwi_s = str(cwi) if cwi is not None else "—"
+    strong_s = str(strong) if strong is not None else "—"
+
+    prompt_text = "\n".join(
+        [
+            "Worker: Cursor",
+            f"Target environment: {target_environment} (Miru AI Dev, port 18765).",
+            "",
+            boundaries,
+            "",
+            "Current facts (from live operator self-report):",
+            f"- Capability: {cap or 'unknown'}",
+            f"- Primary limitation ({primary_code or '—'}): {primary_human or '—'}",
+            f"- Top blocker: {top_blocker or '—'}",
+            f"- Next priority: {next_priority or rec or '—'}",
+            f"- Insight coverage: {cov_s}% of catalog with any row ({cwi_s} cards); strong tier: {strong_s}",
+            f"- Dev issues (miru_ai tone): {miru_issue_tone}",
+            "",
+            "Task:",
+            what,
+            "",
+            "Do not weaken governance, publish gate, truth hierarchy, or fail-closed behavior.",
+        ]
+    )
+
+    return {
+        "schema_version": 1,
+        "state": "actionable",
+        "has_active_handoff": True,
+        "what_miru_needs": what,
+        "why": why,
+        "recommended_worker": "Cursor",
+        "target_environment": target_environment,
+        "prompt_text": prompt_text,
+        "boundaries": boundaries,
+        "resolution": _operator_handoff_resolution_payload(
+            fingerprint=fp,
+            acknowledged_match=False,
+            underlying_need_still_present=True,
+        ),
+    }
+
+
+def _strip_dev_cockpit_dev_status_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """
+    Smaller JSON for /dev cockpit refresh (view=summary&surface=cockpit).
+    Preserves operator_self_report, operator_handoff, issues, learning_engine, runtime fields.
+    Read-only trim; does not change governance or stored data.
+    """
+    out = dict(payload)
+    for k in (
+        "activity_feed",
+        "monitor",
+        "image_coverage_by_set",
+        "resource_metrics",
+        "learning_metrics",
+        "worktree_update_summary",
+    ):
+        out.pop(k, None)
+    voy = out.get("voyage")
+    if isinstance(voy, dict):
+        out["voyage"] = {
+            "sea_label": str(voy.get("sea_label") or "").strip(),
+            "_cockpit_trimmed": True,
+        }
+    cl = out.get("control_layer")
+    if isinstance(cl, dict):
+        jud = cl.get("judgment") or {}
+        out["control_layer"] = {
+            "judgment": {
+                "status_label": str(jud.get("status_label") or "—"),
+                "tone": str(jud.get("tone") or "neutral"),
+            },
+            "_cockpit_trimmed": True,
+        }
+    return out
+
+
 def build_dev_status(
     training_status: dict[str, Any] | None = None,
     *,
@@ -4409,7 +5525,11 @@ def build_dev_status(
         if remote_payload:
             out = dict(remote_payload)
             out["dev_environment"] = build_dev_environment_descriptor()
-            return ensure_governed_autopilot_payload(out)
+            out["operator_self_report"] = load_operator_self_report()
+            out["operator_handoff"] = build_operator_handoff_payload(out)
+            out = ensure_governed_autopilot_payload(out)
+            _apply_worker_heartbeat_fallback(out)
+            return ensure_control_layer_payload(out)
     training_status = training_status or build_training_status()
     _learning_sig = (
         path_signature(LEARNING_QUEUE_DB_PATH),
@@ -4486,9 +5606,10 @@ def build_dev_status(
             monitor = build_deferred_monitor_payload(training_status, learning_status, activity)
             resource_metrics = []
     _updated = current_timestamp()
-    return ensure_governed_autopilot_payload({
+    payload = {
         "updated_at": _updated,
         "updated_at_display": _format_timestamp_readable(_updated),
+        "snapshot_inputs": learning_status.get("snapshot_inputs") or {},
         "links": links,
         "activity": activity,
         "activity_states": build_activity_states(activity["key"]),
@@ -4544,6 +5665,7 @@ def build_dev_status(
             status_url=resolve_runtime_monitor_status_url() or "",
         ),
         "worker_last_run": _enrich_worker_last_run_display(load_worker_last_run()),
+        "pending_approvals_count": len(load_pending_approvals(status_db_path=LEARNING_STATUS_DB_PATH)),
         "dev_environment": (dev_environment_descriptor := build_dev_environment_descriptor()),
         "worktree_update_summary": build_worktree_update_summary(
             training_status,
@@ -4566,7 +5688,12 @@ def build_dev_status(
             limit=20 if lightweight else 40,
         )["recent_activity"],
         "last_insight_sync": _get_last_insight_sync_report(),
-    })
+        "operator_self_report": load_operator_self_report(),
+    }
+    payload["operator_handoff"] = build_operator_handoff_payload(payload)
+    payload = ensure_governed_autopilot_payload(payload)
+    _apply_worker_heartbeat_fallback(payload)
+    return ensure_control_layer_payload(payload, force_runtime_probe=lightweight)
 
 
 def log_pushover_startup_status(logger: Any) -> None:
@@ -5388,6 +6515,7 @@ def render_page(page_key: str, current_endpoint: str):
     brand_assets = build_brand_assets()
     training_status: dict[str, Any] = {}
     dev_status = None
+    runtime_restart_token = ""
     status_snapshot: list[dict[str, Any]] = []
     runtime_dependencies: list[dict[str, Any]] = []
     runtime_issues: list[str] = []
@@ -5395,8 +6523,9 @@ def render_page(page_key: str, current_endpoint: str):
     if page_key == "training":
         training_status = build_training_status()
         training_status["voyage"] = ensure_voyage_state(training_status, training_status.get("voyage"))
-    elif page_key == "dev":
+    elif page_key in ("dev", "dev_monitor"):
         dev_status = build_dev_bootstrap_status()
+        runtime_restart_token = (os.environ.get("MIRU_RUNTIME_RESTART_TOKEN") or "").strip()
     elif page_key == "status":
         status_snapshot = build_status_snapshot()
         runtime_dependencies = collect_runtime_dependencies()
@@ -5437,6 +6566,8 @@ def render_page(page_key: str, current_endpoint: str):
         status_url=url_for("status_page"),
         dev_status=dev_status,
         dev_status_url=url_for("dev_status"),
+        runtime_restart_token=runtime_restart_token,
+        main_site_port=int(PROJECT_MIRU_PORT),
     )
 
 
@@ -5495,6 +6626,11 @@ def create_app() -> Flask:
     def dev_page():
         return render_page("dev", "dev_page")
 
+    @app.get("/dev/monitor")
+    def dev_monitor_page():
+        """Full Dev monitor (legacy tools, diagnostics). Main /dev is the compact cockpit."""
+        return render_page("dev_monitor", "dev_monitor_page")
+
     @app.get("/leader/<leader_code>")
     def leader_hub(leader_code: str):
         leader_data = load_leader_hub_data(leader_code)
@@ -5543,13 +6679,223 @@ def create_app() -> Flask:
                 "helper_script_ready": SCRIPT_PATH.is_file(),
                 "api_key_ready": bool(os.getenv("OPENAI_API_KEY", "").strip()),
                 "default_mode": MODE_CONFIGS[0]["key"],
-                "pages": ["/", "/ask", "/dossiers", "/gaps", "/training", "/status", "/dev"],
+                "pages": ["/", "/ask", "/dossiers", "/gaps", "/training", "/status", "/dev", "/dev/monitor"],
                 "runtime_dependencies": runtime_dependencies,
                 "runtime_issues": runtime_issue_messages(),
                 "fallback_catalog": catalog_status,
                 "training_status": build_training_status(),
             }
         )
+
+    @app.get("/api/worktree-status")
+    def worktree_status():
+        """Lightweight status for worktree runtime: 18765 (self) and 18080 (dashboard). One request from phone to verify both."""
+        payload = {
+            "18765": "ok",
+            "18080": "unhealthy",
+            str(int(PROJECT_MIRU_PORT)): "unhealthy",
+            "worktree": True,
+        }
+        try:
+            req = Request("http://127.0.0.1:18080/", headers={"User-Agent": "Miru-Worktree-Status/1"})
+            with closing(urlopen(req, timeout=3)) as resp:
+                body = resp.read().decode("utf-8", errors="replace")
+                if (resp.getcode() or 0) == 200 and "Miru" in body:
+                    payload["18080"] = "ok"
+        except (HTTPError, URLError, OSError, ValueError):
+            pass
+        mp = str(int(PROJECT_MIRU_PORT))
+        try:
+            req_m = Request(f"http://127.0.0.1:{mp}/", headers={"User-Agent": "Miru-Worktree-Status/1"})
+            with closing(urlopen(req_m, timeout=3)) as resp_m:
+                code = int(resp_m.getcode() or 0)
+                if code in (200, 204, 301, 302, 304):
+                    payload[mp] = "ok"
+        except (HTTPError, URLError, OSError, ValueError):
+            pass
+        return jsonify(payload)
+
+    _TAILSCALE_NET = ipaddress.ip_network("100.0.0.0/8")  # Tailscale IPv4
+    _TAILSCALE_NET6 = ipaddress.ip_network("fd7a:115c:a1e0::/48")  # Tailscale IPv6 ULA
+    _RUNTIME_RESTART_TOKEN = (os.environ.get("MIRU_RUNTIME_RESTART_TOKEN") or "").strip()
+
+    def _runtime_control_client_ip() -> str:
+        """Client IP for runtime allowlist: X-Forwarded-For (first), X-Real-IP, then REMOTE_ADDR."""
+        forwarded = (request.headers.get("X-Forwarded-For") or "").strip()
+        if forwarded:
+            # First IP is the original client (client, proxy1, proxy2)
+            return forwarded.split(",")[0].strip()
+        real = (request.headers.get("X-Real-IP") or "").strip()
+        if real:
+            return real
+        return (request.environ.get("REMOTE_ADDR") or "").strip()
+
+    def _is_runtime_control_allowed() -> bool:
+        """True if request is from localhost, private LAN, Tailscale, or has valid MIRU_RUNTIME_RESTART_TOKEN."""
+        if _RUNTIME_RESTART_TOKEN:
+            token = (request.headers.get("X-Miru-Runtime-Token") or "").strip()
+            if token and token == _RUNTIME_RESTART_TOKEN:
+                return True
+        try:
+            remote = _runtime_control_client_ip()
+            if not remote:
+                return True
+            if remote in ("127.0.0.1", "::1"):
+                return True
+            try:
+                addr = ipaddress.ip_address(remote)
+            except ValueError:
+                return False
+            if getattr(addr, "is_private", lambda: False)():
+                return True
+            if addr in _TAILSCALE_NET:
+                return True
+            if getattr(addr, "version", 0) == 6 and addr in _TAILSCALE_NET6:
+                return True
+            return False
+        except Exception:
+            return False
+
+    @app.get("/api/runtime/status")
+    def runtime_status():
+        """Runtime status for Dev page control: 18765 and 18080 health. Same as worktree-status with a checked_at timestamp."""
+        payload = load_runtime_status_payload(force=True)
+        payload["restart_allowed"] = _is_runtime_control_allowed()
+        return jsonify(payload)
+
+    def _run_worktree_script(script_name: str, args: list[str] | None = None, wait: bool = True, timeout: int = 120) -> tuple[int, str, str]:
+        """Run a PowerShell script from windows/ using authoritative worktree scripts. Returns (returncode, stdout, stderr)."""
+        windows_dir = PROJECT_ROOT / "windows"
+        script_path = windows_dir / script_name
+        if not script_path.is_file():
+            return -1, "", f"Script not found: {script_path}"
+        pwsh = shutil.which("powershell.exe") or "powershell.exe"
+        cmd = [pwsh, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)]
+        if args:
+            cmd.extend(args)
+        env = os.environ.copy()
+        is_dashboard_restart = "start_project_miru_dashboard.ps1" in script_name
+        if is_dashboard_restart:
+            env["MIRU_DASHBOARD_NO_RELOAD"] = "1"
+            # The Dev server can be started from a Werkzeug-managed process tree.
+            # If those reloader vars leak into the dashboard restart path on Windows,
+            # Werkzeug will attempt socket.fromfd() against a non-socket handle.
+            env.pop("WERKZEUG_SERVER_FD", None)
+            env.pop("WERKZEUG_RUN_MAIN", None)
+        try:
+            if wait:
+                if is_dashboard_restart:
+                    # Avoid captured pipes here: the dashboard child can keep inherited
+                    # handles alive on Windows and make the parent restart call hang.
+                    proc = subprocess.Popen(
+                        cmd,
+                        cwd=str(PROJECT_ROOT),
+                        stdin=subprocess.DEVNULL,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        env=env,
+                    )
+                    return (int(proc.wait(timeout=timeout)), "", "")
+                r = subprocess.run(
+                    cmd,
+                    cwd=str(PROJECT_ROOT),
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    env=env,
+                )
+                return (r.returncode, r.stdout or "", r.stderr or "")
+            # Fire-and-forget (for restart self or worktree)
+            subprocess.Popen(
+                cmd,
+                cwd=str(PROJECT_ROOT),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+                env=env,
+            )
+            return (0, "initiated", "")
+        except subprocess.TimeoutExpired:
+            return (-2, "", "timeout")
+        except Exception as e:
+            return (-1, "", str(e))
+
+    @app.post("/api/runtime/restart/18080")
+    def runtime_restart_18080():
+        """Restart Project Miru dashboard (18080). Local-only. Uses authoritative start_project_miru_dashboard.ps1 with -Force."""
+        if not _is_runtime_control_allowed():
+            return jsonify({"ok": False, "error": "Restart allowed only from this machine or Tailscale"}), 403
+        code, out, err = _run_worktree_script("start_project_miru_dashboard.ps1", ["-Force"], wait=True, timeout=90)
+        if code == 0:
+            return jsonify({
+                "ok": True,
+                "service": "18080",
+                "message": "Project Miru restarted",
+                "detail": (out or "").strip() or "Script completed successfully",
+            })
+        return jsonify({
+            "ok": False,
+            "service": "18080",
+            "error": "Restart failed",
+            "detail": (err or out or f"exit code {code}").strip(),
+        }), 502
+
+    @app.post("/api/runtime/restart/18765")
+    def runtime_restart_18765():
+        """Restart Miru AI Dev (18765). Local-only. Fire-and-forget; this process will be replaced."""
+        if not _is_runtime_control_allowed():
+            return jsonify({"ok": False, "error": "Restart allowed only from this machine or Tailscale"}), 403
+        _run_worktree_script("start_miru_ai_dev.ps1", ["-Force"], wait=False)
+        return jsonify({
+            "ok": True,
+            "service": "18765",
+            "message": "Restart initiated",
+            "detail": "This tab will close. Reconnect to /dev in a few seconds.",
+        }), 202
+
+    @app.post("/api/runtime/restart/worktree")
+    def runtime_restart_worktree():
+        """Restart full worktree stack (18080 + 18765). Local-only. Fire-and-forget."""
+        if not _is_runtime_control_allowed():
+            return jsonify({"ok": False, "error": "Restart allowed only from this machine or Tailscale"}), 403
+        _run_worktree_script("start_op_miru_worktree.ps1", ["-Native"], wait=False)
+        return jsonify({
+            "ok": True,
+            "service": "worktree",
+            "message": "Worktree restart initiated",
+            "detail": "Reconnect to /dev in a few seconds.",
+        }), 202
+
+    @app.post("/api/runtime/restart/main-site")
+    def runtime_restart_main_site():
+        """
+        Ensure main stable site (PROJECT_MIRU_PORT, default 8080) is running.
+        Uses start_main_stable.ps1 -Start (docker compose when available); does not stack duplicate listeners.
+        """
+        if not _is_runtime_control_allowed():
+            return jsonify({"ok": False, "error": "Restart allowed only from this machine or Tailscale"}), 403
+        port = int(PROJECT_MIRU_PORT)
+        code, out, err = _run_worktree_script(
+            "start_main_stable.ps1",
+            ["-Start", "-Port", str(port)],
+            wait=True,
+            timeout=180,
+        )
+        if code == 0:
+            return jsonify({
+                "ok": True,
+                "service": "main-site",
+                "port": port,
+                "message": "Main site start/verify completed",
+                "detail": (out or "").strip() or "Script completed successfully",
+            })
+        return jsonify({
+            "ok": False,
+            "service": "main-site",
+            "port": port,
+            "error": "Main site script failed",
+            "detail": (err or out or f"exit code {code}").strip(),
+        }), 502
 
     @app.get("/api/training-status")
     def training_status():
@@ -5558,20 +6904,232 @@ def create_app() -> Flask:
     @app.get("/api/dev-status")
     def dev_status():
         summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
+        surface = str(request.args.get("surface") or "").strip().lower()
         include_heavy = str(request.args.get("include") or "").strip().lower() in {"heavy", "all", "full"}
-        return jsonify(build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy))
+        payload = build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy)
+        if summary_only:
+            payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
+        if summary_only and surface == "cockpit":
+            payload = _strip_dev_cockpit_dev_status_payload(payload)
+        return jsonify(payload)
+
+    @app.post("/api/dev/operator-handoff/resolve")
+    def dev_operator_handoff_resolve():
+        """Persist operator acknowledgement for the current handoff need signature (data/miru_operator_handoff_resolution.json)."""
+        if not _is_runtime_control_allowed():
+            return jsonify({
+                "ok": False,
+                "error": "Handoff resolution is only allowed from this machine, private LAN, Tailscale, or with a valid runtime token header.",
+            }), 403
+        body = request.get_json(silent=True) or {}
+        note = str(body.get("note") or "").strip()
+        payload = build_dev_status(lightweight=True, include_heavy_sections=False)
+        osr = payload.get("operator_self_report") or {}
+        issues = payload.get("issues") or {}
+        fp = compute_operator_handoff_need_fingerprint(osr, issues)
+        if not fp:
+            return jsonify({
+                "ok": False,
+                "error": "Cannot record handoff resolution while operator self-report is in error state; fix self-report first.",
+            }), 400
+        saved = save_operator_handoff_resolution(fp, note=note)
+        payload2 = build_dev_status(lightweight=True, include_heavy_sections=False)
+        handoff = build_operator_handoff_payload(payload2)
+        return jsonify({"ok": True, "saved": saved, "operator_handoff": handoff})
+
+    @app.post("/api/dev/operator-handoff/clear-resolution")
+    def dev_operator_handoff_clear_resolution():
+        """Remove stored acknowledgement so an urgent self-report surfaces an active handoff again."""
+        if not _is_runtime_control_allowed():
+            return jsonify({
+                "ok": False,
+                "error": "Clearing handoff resolution is only allowed from this machine, private LAN, Tailscale, or with a valid runtime token header.",
+            }), 403
+        clear_operator_handoff_resolution()
+        payload = build_dev_status(lightweight=True, include_heavy_sections=False)
+        return jsonify({"ok": True, "operator_handoff": build_operator_handoff_payload(payload)})
+
+    @app.get("/api/dev/action-governance")
+    def dev_action_governance():
+        summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
+        target_card = str(request.args.get("card") or "").strip().upper()
+        target_batch = str(request.args.get("batch") or "").strip()
+        payload = build_dev_status(lightweight=summary_only, include_heavy_sections=not summary_only)
+        if summary_only:
+            payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
+        snapshot = build_action_governance_snapshot(
+            dev_payload=payload,
+            target_card_code=target_card,
+            target_batch_id=target_batch,
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+            runtime_dossier_db_path=LEARNING_DOSSIER_DB_PATH,
+            canonical_dossier_db_path=DOSSIER_DB_PATH,
+            rules_db_path=PROJECT_ROOT / "data" / "miru_official_rules.db",
+            deck_intel_db_path=DECK_INTEL_DB_PATH,
+            prices_path=PRICES_PATH,
+            persist=True,
+        )
+        return jsonify(snapshot)
+
+    @app.post("/api/dev/action-governance/execute")
+    def dev_action_governance_execute():
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Governed action execution is only allowed from localhost."}), 403
+        payload = request.get_json(silent=True) or {}
+        action_id = str(payload.get("action_id") or "").strip()
+        target_card = str(payload.get("card_code") or "").strip().upper()
+        target_batch = str(payload.get("batch_id") or "").strip()
+        member_card_codes = payload.get("member_card_codes") or []
+        if not isinstance(member_card_codes, list):
+            member_card_codes = []
+        limit = payload.get("limit")
+        note = str(payload.get("note") or "").strip()
+        current = build_dev_status(lightweight=True, include_heavy_sections=False)
+        result = execute_governed_action(
+            action_id=action_id,
+            dev_payload=current,
+            target_card_code=target_card,
+            batch_id=target_batch,
+            member_card_codes=[str(item or "").strip().upper() for item in member_card_codes if str(item or "").strip()],
+            limit=int(limit) if str(limit or "").strip() else None,
+            note=note,
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+            runtime_dossier_db_path=LEARNING_DOSSIER_DB_PATH,
+            canonical_dossier_db_path=DOSSIER_DB_PATH,
+            rules_db_path=PROJECT_ROOT / "data" / "miru_official_rules.db",
+            deck_intel_db_path=DECK_INTEL_DB_PATH,
+            prices_path=PRICES_PATH,
+        )
+        return jsonify(result), 200 if result.get("ok") else 400
+
+    @app.get("/api/dev/review-queue")
+    def dev_review_queue():
+        limit = min(max(int(request.args.get("limit") or 8), 1), 40)
+        return jsonify(
+            load_review_queue_summary(
+                project_db_path=FALLBACK_CATALOG_DB_PATH,
+                limit=limit,
+            )
+        )
+
+    @app.get("/api/dev/publication-stage")
+    def dev_publication_stage():
+        limit = min(max(int(request.args.get("limit") or 8), 1), 40)
+        return jsonify(
+            load_publication_stage_summary(
+                project_db_path=FALLBACK_CATALOG_DB_PATH,
+                limit=limit,
+            )
+        )
+
+    @app.get("/api/dev/publication-batches")
+    def dev_publication_batches():
+        limit = min(max(int(request.args.get("limit") or 8), 1), 40)
+        batch_id = str(request.args.get("batch") or "").strip()
+        if batch_id:
+            return jsonify(
+                build_publication_batch_summary(
+                    batch_id=batch_id,
+                    project_db_path=FALLBACK_CATALOG_DB_PATH,
+                    limit=limit,
+                )
+            )
+        return jsonify(
+            load_publication_batch_summary(
+                project_db_path=FALLBACK_CATALOG_DB_PATH,
+                limit=limit,
+            )
+        )
+
+    @app.post("/api/dev/review-queue/resolve")
+    def dev_review_queue_resolve():
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Review queue updates are only allowed from localhost."}), 403
+        payload = request.get_json(silent=True) or {}
+        item_key = str(payload.get("item_key") or "").strip()
+        target_id = str(payload.get("target_id") or "").strip().upper()
+        note = str(payload.get("note") or "").strip()
+        result = resolve_review_queue_item(
+            item_key=item_key,
+            target_id=target_id,
+            status="resolved",
+            note=note,
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+        )
+        return jsonify(result), 200 if result.get("ok") else 400
+
+    @app.post("/api/dev/review-queue/defer")
+    def dev_review_queue_defer():
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Review queue updates are only allowed from localhost."}), 403
+        payload = request.get_json(silent=True) or {}
+        item_key = str(payload.get("item_key") or "").strip()
+        target_id = str(payload.get("target_id") or "").strip().upper()
+        note = str(payload.get("note") or "").strip()
+        result = resolve_review_queue_item(
+            item_key=item_key,
+            target_id=target_id,
+            status="deferred",
+            note=note,
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+        )
+        return jsonify(result), 200 if result.get("ok") else 400
+
+    @app.post("/api/dev/review-queue/approve")
+    def dev_review_queue_approve():
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Review queue updates are only allowed from localhost."}), 403
+        payload = request.get_json(silent=True) or {}
+        item_key = str(payload.get("item_key") or "").strip()
+        target_id = str(payload.get("target_id") or "").strip().upper()
+        note = str(payload.get("note") or "").strip()
+        result = update_review_queue_item(
+            item_key=item_key,
+            target_id=target_id,
+            status="resolved",
+            approval_state="approved_for_candidate",
+            note=note,
+            decision_source="dev_review_queue_approve",
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+        )
+        return jsonify(result), 200 if result.get("ok") else 400
+
+    @app.post("/api/dev/review-queue/reject")
+    def dev_review_queue_reject():
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Review queue updates are only allowed from localhost."}), 403
+        payload = request.get_json(silent=True) or {}
+        item_key = str(payload.get("item_key") or "").strip()
+        target_id = str(payload.get("target_id") or "").strip().upper()
+        note = str(payload.get("note") or "").strip()
+        result = update_review_queue_item(
+            item_key=item_key,
+            target_id=target_id,
+            status="resolved",
+            approval_state="rejected",
+            note=note,
+            decision_source="dev_review_queue_reject",
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+        )
+        return jsonify(result), 200 if result.get("ok") else 400
 
     @app.get("/api/dev/status")
     def legacy_dev_status():
         summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
         include_heavy = str(request.args.get("include") or "").strip().lower() in {"heavy", "all", "full"}
-        return jsonify(build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy))
+        payload = build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy)
+        if summary_only:
+            payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
+        return jsonify(payload)
 
     @app.get("/dev-status")
     def legacy_dev_status_root():
         summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
         include_heavy = str(request.args.get("include") or "").strip().lower() in {"heavy", "all", "full"}
-        return jsonify(build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy))
+        payload = build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy)
+        if summary_only:
+            payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
+        return jsonify(payload)
 
     @app.get("/api/dev/monitor-panel")
     def dev_monitor_panel():
@@ -5588,6 +7146,46 @@ def create_app() -> Flask:
     @app.get("/api/dev/resource-metrics")
     def dev_resource_metrics():
         return jsonify(build_resource_metrics_payload())
+
+    @app.get("/api/dev/official-rulings")
+    def dev_official_rulings():
+        """Dev-only: lookup official rulings by card_code and/or topic_key and optional query. Returns best match + more list with citations."""
+        card_code = str(request.args.get("card_code") or "").strip() or None
+        topic_key = str(request.args.get("topic_key") or "").strip() or None
+        query = str(request.args.get("query") or "").strip() or None
+        try:
+            from tools.miru_official_rules import (
+                DEFAULT_RULES_DB_PATH,
+                get_best_official_ruling_match,
+                search_official_rulings,
+                format_source_citation,
+            )
+        except ImportError:
+            return jsonify({"ok": False, "error": "Official rules module not available", "best_match": None, "more": []}), 500
+        if not DEFAULT_RULES_DB_PATH.is_file():
+            return jsonify({"ok": True, "best_match": None, "more": [], "empty": True})
+        best = get_best_official_ruling_match(
+            DEFAULT_RULES_DB_PATH,
+            card_code=card_code,
+            topic_key=topic_key,
+            query=query,
+            prefer_card_specific=True,
+        )
+        candidates = search_official_rulings(
+            DEFAULT_RULES_DB_PATH,
+            card_code=card_code,
+            topic_key=topic_key,
+            query=query,
+            status="current",
+            limit=15,
+        )
+        def with_citation(r: dict[str, Any]) -> dict[str, Any]:
+            out = {k: v for k, v in r.items() if isinstance(v, (type(None), str, int, float, bool))}
+            out["citation"] = format_source_citation(r)
+            return out
+        best_match = with_citation(best) if best else None
+        more = [with_citation(r) for r in candidates if not best_match or r.get("ruling_id") != best_match.get("ruling_id")][:10]
+        return jsonify({"ok": True, "best_match": best_match, "more": more, "empty": best_match is None and not more})
 
     @app.get("/api/dev/operator-console")
     def dev_operator_console():
@@ -6076,6 +7674,26 @@ def create_app() -> Flask:
         """Return latest scheduled worker run (data/miru_worker_last_run.json). Read-only; no DB. Missing file → { \"action\": \"no_run_recorded\" }."""
         return jsonify(load_worker_last_run())
 
+    @app.get("/api/dev/self-report")
+    def dev_self_report():
+        """Localhost-only: Miru operator self-report (data/miru_self_report.json). Read-only file; not on the public storefront."""
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Self-report is only available from localhost."}), 403
+        path = PROJECT_ROOT / "data" / "miru_self_report.json"
+        if not path.is_file():
+            return jsonify(
+                {
+                    "ok": False,
+                    "error": "Self-report not generated yet.",
+                    "hint": "Run: python -m tools.miru_self_report or complete the sandbox cycle (Stage 9).",
+                }
+            ), 404
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            return jsonify({"ok": False, "error": f"Failed to read self-report: {exc}"}), 500
+        return jsonify({"ok": True, "path": "data/miru_self_report.json", "report": payload})
+
     @app.get("/api/dev/validation_insights")
     def legacy_validation_insights():
         return jsonify(build_legacy_validation_insights())
@@ -6253,8 +7871,12 @@ def main() -> None:
     args = parse_args()
     CURRENT_SERVER_PORT = int(args.port)
     _SERVER_STARTED_AT = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    _register_miru_ai_dev_pid_lifecycle(CURRENT_SERVER_PORT)
     app = create_app()
-    app.run(host=args.host, port=args.port, debug=args.debug, threaded=True)
+    if os.name == "nt":
+        os.environ.pop("WERKZEUG_SERVER_FD", None)
+        os.environ.pop("WERKZEUG_RUN_MAIN", None)
+    app.run(host=args.host, port=args.port, debug=args.debug, use_reloader=False, threaded=True)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,5 @@
+card_code,ban_status,restriction_count,format_code,effective_date,notes,source_reference
+OP01-001,legal,,standard,2025-01-15,,https://example.com/op-format
+OP01-001,banned,,standard,2025-01-15,Banned for balance,https://example.com/op-format
+OP01-002,banned,,standard,2025-01-15,Banned for balance,https://example.com/op-format
+OP02-010,legal,,standard,2025-01-15,,https://example.com/op-format

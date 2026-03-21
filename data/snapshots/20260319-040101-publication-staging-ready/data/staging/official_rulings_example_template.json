@@ -1,0 +1,41 @@
+{
+  "_comment": "TEMPLATE/EXAMPLE ONLY — Not live data. Copy and fill for real Bandai/OPTCG official rulings.",
+  "rulings": [
+    {
+      "ruling_id": "optcg-faq-card-effect-timing-001",
+      "card_code": "OP01-001",
+      "topic_key": "card_effect_timing",
+      "question_text": "When this card's [Activate: Main] effect is used, can the cost be paid with DON!! that was just rested this turn?",
+      "ruling_text": "Yes. You may use DON!! that was rested this turn to pay the cost for [Activate: Main] as long as it is your turn and the timing is correct.",
+      "normalized_summary": "DON!! rested this turn can be used to pay [Activate: Main] cost on your turn.",
+      "source_id": "official",
+      "source_type": "faq",
+      "source_title": "OPTCG Official FAQ",
+      "source_url": "https://example.com/optcg-faq",
+      "source_reference": "Q&A No. 001",
+      "source_anchor": "#q001",
+      "published_at": "2024-01-15",
+      "effective_at": "2024-01-15",
+      "status": "current",
+      "tags": "activate_main,don!!,cost"
+    },
+    {
+      "ruling_id": "optcg-general-counter-timing-001",
+      "card_code": null,
+      "topic_key": "counter_timing",
+      "question_text": "When can I use a Counter event?",
+      "ruling_text": "Counter events can be used when your opponent declares an attack, during the timing specified on the card (e.g. \"When your opponent's Leader or Character attacks\").",
+      "normalized_summary": "Counter events are used in response to opponent's attack declaration.",
+      "source_id": "official",
+      "source_type": "ruling",
+      "source_title": "OPTCG Rules Update",
+      "source_url": "https://example.com/optcg-rules",
+      "source_reference": "Section 8.2",
+      "source_anchor": "#section-8-2",
+      "published_at": "2024-01-01",
+      "effective_at": "2024-01-01",
+      "status": "current",
+      "tags": "counter,event,timing"
+    }
+  ]
+}

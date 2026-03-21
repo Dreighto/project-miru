@@ -1,0 +1,26 @@
+[
+  {
+    "provider": "cursor",
+    "plan_name": "Pro",
+    "usage_mode": "requests",
+    "remaining_percent": 85,
+    "remaining_absolute": 425,
+    "reset_at": "2025-04-01",
+    "credits_balance": null,
+    "notes": "Cursor AI requests this cycle.",
+    "updated_at": "2025-03-09 12:00:00",
+    "source": "manual"
+  },
+  {
+    "provider": "codex",
+    "plan_name": "Standard",
+    "usage_mode": "requests",
+    "remaining_percent": 60,
+    "remaining_absolute": 1200,
+    "reset_at": "2025-03-15",
+    "credits_balance": null,
+    "notes": "",
+    "updated_at": "2025-03-09 12:00:00",
+    "source": "manual"
+  }
+]

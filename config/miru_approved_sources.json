@@ -27,6 +27,100 @@
       "base_url": "",
       "domain": "",
       "notes": "Second approved source; snapshot-only. Place JSON at data/snapshots/official_cardlist.json. Same schema as community_cardlist (OfficialCardListSourceAdapter). No live HTTP yet. Use for two-source agreement and stronger baseline."
+    },
+    {
+      "source_id": "limitless",
+      "source_name": "Limitless TCG One Piece",
+      "source_type": "hybrid-deck-meta-snapshot",
+      "trust_tier": 2,
+      "enabled": true,
+      "allowed_access": "public_page",
+      "request_spacing_seconds": 3.0,
+      "requires_api": false,
+      "snapshot_url": "",
+      "base_url": "https://play.limitlesstcg.com/onepiece",
+      "domain": "limitlesstcg.com",
+      "source_category": "leader_meta",
+      "capability_tags": [
+        "decklists",
+        "tournament_results",
+        "usage_signals",
+        "archetype_patterns",
+        "secondary_corroboration"
+      ],
+      "gap_support": [
+        "usage_meta_fill",
+        "leader_profile_expand",
+        "source_depth_fill",
+        "stale_refresh"
+      ],
+      "snapshot_candidates": [
+        "data/snapshots/limitless.json"
+      ],
+      "execution_adapter": "community-structured",
+      "notes": "Pre-approved public tournament and deck data source. Use snapshot-backed intake only and keep it reference-safe beneath official Bandai truth."
+    },
+    {
+      "source_id": "optcg-gg",
+      "source_name": "OPTCG.GG",
+      "source_type": "hybrid-deck-meta-snapshot",
+      "trust_tier": 2,
+      "enabled": true,
+      "allowed_access": "public_page",
+      "request_spacing_seconds": 3.0,
+      "requires_api": false,
+      "snapshot_url": "",
+      "base_url": "https://optcg.gg/",
+      "domain": "optcg.gg",
+      "source_category": "leader_meta",
+      "capability_tags": [
+        "decklists",
+        "meta_support",
+        "usage_signals",
+        "archetype_patterns",
+        "secondary_corroboration"
+      ],
+      "gap_support": [
+        "usage_meta_fill",
+        "leader_profile_expand",
+        "source_depth_fill",
+        "stale_refresh"
+      ],
+      "snapshot_candidates": [
+        "data/snapshots/optcg_gg.json"
+      ],
+      "execution_adapter": "community-deck-meta",
+      "notes": "Pre-approved public decklist and meta source. Use bounded snapshot-backed reference intake only."
+    },
+    {
+      "source_id": "onepiece-cardgame-dev",
+      "source_name": "onepiece-cardgame.dev",
+      "source_type": "reference-card-database-snapshot",
+      "trust_tier": 2,
+      "enabled": true,
+      "allowed_access": "public_page",
+      "request_spacing_seconds": 3.0,
+      "requires_api": false,
+      "snapshot_url": "",
+      "base_url": "https://onepiece-cardgame.dev/",
+      "domain": "onepiece-cardgame.dev",
+      "source_category": "card_identity",
+      "capability_tags": [
+        "card_identity",
+        "card_fields",
+        "secondary_corroboration",
+        "coverage_expansion"
+      ],
+      "gap_support": [
+        "source_depth_fill",
+        "leader_profile_expand",
+        "stale_refresh"
+      ],
+      "snapshot_candidates": [
+        "data/snapshots/onepiece_cardgame_dev.json"
+      ],
+      "execution_adapter": "community-structured",
+      "notes": "Pre-approved public card database reference. Use bounded snapshot-backed corroboration only; it never outranks official sources."
     }
   ]
 }

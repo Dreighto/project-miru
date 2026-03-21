@@ -1,0 +1,17 @@
+Governed ingestion run summary
+
+1. What I added automatically
+   Nothing this time.
+
+2. What I held for your review
+   Nothing.
+
+3. What I skipped (and what I rejected)
+   I skipped 3 item(s) because they didn't add anything new (already on file with the same state).
+
+4. What I'm not fully sure about
+   Nothing that I need to flag. This run was straightforward.
+
+5. Why this run was or was not successful
+   Status: partial_success.
+   I used real approved-source data and routing worked, but nothing was safe to auto-apply and nothing needed review. Outputs are clear and worktree-only.

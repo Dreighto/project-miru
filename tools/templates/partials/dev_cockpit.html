@@ -1,0 +1,116 @@
+        {% set control_deck = dev_status.get('control_deck', {}) %}
+        {% set dev_env = dev_status.get('dev_environment', {}) %}
+        {% set osr = dev_status.get('operator_self_report') or {} %}
+        {% set intel = osr.get('intelligence_surface') or {} %}
+        {% set met = osr.get('metrics') or {} %}
+        {% set oh = dev_status.get('operator_handoff') or {} %}
+        {% set oh_active = oh.get('has_active_handoff') if oh.get('has_active_handoff') is not none else (oh.get('state') != 'clear') %}
+        {% set oh_res = oh.get('resolution') or {} %}
+        {% set show_handoff_resolve = oh.get('has_active_handoff') is sameas true %}
+        {% set show_handoff_clear_ack = oh_res.get('operator_acknowledged_for_signature') and oh_res.get('underlying_need_still_present') %}
+        <section class="panelCard devCockpit" id="devMonitor" data-dev-status-url="{{ dev_status_url }}" data-dev-default-tab="overview" data-project-miru-link="{{ dev_status.get('links', {}).get('project_miru', '') }}" data-runtime-restart-token="{{ runtime_restart_token|default('') }}" data-main-site-port="{{ main_site_port }}">
+            <header class="devCockpitHeader">
+                <div class="devCockpitHeaderLead">
+                    <div class="sectionEyebrow">Operator</div>
+                    <h2 class="devCockpitTitle">Dev</h2>
+                    <p class="devCockpitSub">Essential runtime facts. <a class="devCockpitFullLink" href="/dev/monitor">Diagnostics &amp; tools →</a></p>
+                </div>
+                <div class="devCockpitHeaderMeta">
+                    <span class="devUpdatedAt" id="devUpdatedAt">{{ dev_status.get('updated_at_display') or dev_status.get('updated_at') or '—' }}</span>
+                    <button class="devBtn devBtn--secondary devRefreshButton devRefreshButton--mini" id="devRefreshButton" type="button" title="Refresh status" data-dev-refresh="status">↻</button>
+                </div>
+            </header>
+
+            <h3 class="devCockpitSectionTitle">Service status</h3>
+            <div class="devCockpitGrid" role="list">
+                <article class="devCockpitCard" role="listitem">
+                    <div class="devCockpitCardTop">
+                        <h3 class="devCockpitCardTitle">Miru AI</h3>
+                        <span class="devCockpitCardPort">18765</span>
+                    </div>
+                    <p class="devCockpitCardStatus"><span class="statusPill statusPill--good" id="devRuntimeStatus18765">—</span></p>
+                    <p class="devCockpitCardChecked" id="devChecked18765" aria-live="polite">Last checked —</p>
+                    <div class="devCockpitCardActions">
+                        <a class="devBtn devBtn--secondary" href="{{ control_deck.get('miru_dev_console', '/dev') }}">Open</a>
+                        <button type="button" class="devBtn devBtn--primary" id="devRuntimeRestart18765Btn" data-action="restart-18765" title="Restart Miru AI Dev (replaces this process)">Restart</button>
+                    </div>
+                </article>
+                <article class="devCockpitCard" role="listitem">
+                    <div class="devCockpitCardTop">
+                        <h3 class="devCockpitCardTitle">Project Miru</h3>
+                        <span class="devCockpitCardPort">18080</span>
+                    </div>
+                    <p class="devCockpitCardStatus"><span class="statusPill statusPill--neutral" id="devRuntimeStatus18080">—</span></p>
+                    <p class="devCockpitCardChecked" id="devChecked18080" aria-live="polite">Last checked —</p>
+                    <div class="devCockpitCardActions">
+                        <a class="devBtn devBtn--secondary" href="{{ control_deck.get('worktree_site', 'http://127.0.0.1:18080/') }}" target="_blank" rel="noopener noreferrer">Open</a>
+                        <button type="button" class="devBtn devBtn--primary" id="devRuntimeRestart18080Btn" data-action="restart-18080" title="Restart Project Miru (script stops/restarts listener)">Restart</button>
+                    </div>
+                </article>
+                <article class="devCockpitCard" role="listitem">
+                    <div class="devCockpitCardTop">
+                        <h3 class="devCockpitCardTitle">Main site</h3>
+                        <span class="devCockpitCardPort">{{ main_site_port }}</span>
+                    </div>
+                    <p class="devCockpitCardStatus"><span class="statusPill statusPill--neutral" id="devRuntimeStatus8080">—</span></p>
+                    <p class="devCockpitCardChecked" id="devChecked8080" aria-live="polite">Last checked —</p>
+                    <div class="devCockpitCardActions">
+                        <a class="devBtn devBtn--secondary" href="{{ control_deck.get('main_site', 'http://127.0.0.1:8080/') }}" target="_blank" rel="noopener noreferrer">Open</a>
+                        <button type="button" class="devBtn devBtn--primary" id="devRuntimeRestart8080Btn" data-action="restart-8080" title="Start or refresh main site (docker compose when configured)">Restart</button>
+                    </div>
+                </article>
+            </div>
+
+            {% if osr and not osr.get('error') %}
+            <h3 class="devCockpitSectionTitle">Miru intelligence</h3>
+            <section class="devIntelCard" aria-label="Miru catalog intelligence status">
+                <div class="devIntelCardTop">
+                    <span class="devIntelCardKicker">Catalog</span>
+                    <span class="devIntelCardCovPill">{{ "%.1f"|format(met.get('coverage_pct') or 0) }}% coverage</span>
+                </div>
+                <p class="devIntelCardCounts"><strong>{{ met.get('cards_with_any_insight', '—') }}</strong> with insight
+                    {% if met.get('cards_with_strong_insight') is not none %} · <strong>{{ met.get('cards_with_strong_insight') }}</strong> strong{% endif %}
+                </p>
+                <p class="devIntelCardFocus"><strong>Top gap:</strong> {{ intel.get('primary_limitation_human') or osr.get('top_blocker') or '—' }}</p>
+                <p class="devIntelCardNext"><strong>Next:</strong> {{ osr.get('next_priority') or intel.get('recommended_next_operator_action') or '—' }}</p>
+            </section>
+            {% elif osr.get('error') %}
+            <p class="devCockpitMuted">Intelligence metrics unavailable (self-report error).</p>
+            {% endif %}
+
+            <h3 class="devCockpitSectionTitle">Runtime safety</h3>
+            <section class="devCockpitSafety" aria-label="Runtime safety">
+                <p class="devCockpitGuardState" id="devRuntimeGuardState" aria-live="polite">Loading guard state…</p>
+                <p class="devRuntimeRestartHint devProgressDetail" id="devRuntimeRestartHint" aria-live="polite"></p>
+                <ul class="devCockpitSafetyList devCockpitSafetyList--compact">
+                    <li><strong>Single-listener guard:</strong> restarts use worktree scripts with replace-in-place so the port is not double-bound.</li>
+                    <li><strong>Restart safety:</strong> authorized only from this device when <code>/api/runtime/status</code> allows (localhost / private LAN / Tailscale per server rules).</li>
+                    <li><strong>Tailscale / listener:</strong> live line above reflects whether runtime restarts are allowed from this client.</li>
+                    <li><strong>Environment:</strong> <span id="devStripEnvironment">{{ dev_env.get('environment', '—') }}</span> · <strong>Target:</strong> <span id="devStripRuntimeTarget">{{ dev_env.get('runtime_target', '—') }}</span> · <strong>This tab:</strong> Miru AI <span id="devCockpitThisPort">18765</span></li>
+                </ul>
+            </section>
+
+            <h3 class="devCockpitSectionTitle">Miru handoff prompt</h3>
+            <section class="devHandoffCard" aria-label="Miru worker handoff prompt">
+                <div class="devHandoffTop">
+                    <span class="devHandoffKicker">Copy for worker</span>
+                    <span class="statusPill statusPill--{{ 'warn' if oh_active else 'good' }}" id="devHandoffStatePill">{{ 'Active handoff' if oh_active else 'No active handoff' }}</span>
+                </div>
+                <dl class="devHandoffDl">
+                    <div><dt>What Miru needs</dt><dd id="devHandoffWhat">{{ oh.get('what_miru_needs') or '—' }}</dd></div>
+                    <div><dt>Why</dt><dd id="devHandoffWhy">{{ oh.get('why') or '—' }}</dd></div>
+                    <div><dt>Recommended worker</dt><dd id="devHandoffWorker">{{ oh.get('recommended_worker') or 'Cursor' }}</dd></div>
+                    <div><dt>Target environment</dt><dd id="devHandoffTarget">{{ oh.get('target_environment') or '—' }}</dd></div>
+                </dl>
+                <p class="devHandoffResolutionHint devProgressDetail" id="devHandoffResolutionHint" {% if not show_handoff_clear_ack %}hidden{% endif %}>{% if show_handoff_clear_ack and oh_res.get('resolved_at') %}Handoff acknowledged at {{ oh_res.get('resolved_at') }}. Self-report may still show a catalog gap until metrics change.{% endif %}</p>
+                <label class="devHandoffLabel" for="devHandoffPromptText">Ready-to-copy prompt</label>
+                <textarea id="devHandoffPromptText" class="devHandoffTextarea" readonly rows="10" spellcheck="false">{{ oh.get('prompt_text') or '' }}</textarea>
+                <div class="devHandoffActions">
+                    <button type="button" class="devBtn devBtn--secondary" id="devHandoffCopyBtn">Copy prompt</button>
+                    <button type="button" class="devBtn devBtn--secondary" id="devHandoffResolveBtn" {% if not show_handoff_resolve %}hidden{% endif %} title="Record that the current worker task for this need signature is done (persists across restarts)">Mark handoff resolved</button>
+                    <button type="button" class="devBtn devBtn--secondary" id="devHandoffClearAckBtn" {% if not show_handoff_clear_ack %}hidden{% endif %} title="Discard stored resolution so the active handoff prompt returns">Show handoff again</button>
+                </div>
+            </section>
+
+            <p class="devRuntimeControlFeedback devProgressDetail" id="devRuntimeControlFeedback" aria-live="polite" hidden></p>
+        </section>

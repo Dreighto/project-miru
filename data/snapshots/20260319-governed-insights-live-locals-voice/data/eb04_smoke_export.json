@@ -1,0 +1,50 @@
+{
+  "export_meta": {
+    "sourceKey": "official-cardlist",
+    "snapshotTakenAt": "2026-03-15 00:00:00"
+  },
+  "rows": [
+    {
+      "cardCode": "EB04-001",
+      "name": "Jewelry Bonney",
+      "setCode": "EB04",
+      "setName": "-ADVENTURE ON KAMI'S ISLAND- [OP15-EB04]",
+      "rarity": "L",
+      "color": "Red/Yellow",
+      "cardType": "LEADER",
+      "attribute": "Special",
+      "power": "5000",
+      "counter": "-",
+      "life": "4",
+      "effectText": "[Opponent's Turn] If you have 1 or less Life cards, this Leader gains +2000 power."
+    },
+    {
+      "cardCode": "EB04-002",
+      "name": "Jewelry Bonney",
+      "setCode": "EB04",
+      "setName": "-ADVENTURE ON KAMI'S ISLAND- [OP15-EB04]",
+      "rarity": "R",
+      "color": "Red",
+      "cardType": "CHARACTER",
+      "cost": "1",
+      "attribute": "Special",
+      "power": "2000",
+      "counter": "1000",
+      "effectText": "[On Play] Look at 4 cards from the top of your deck; reveal up to 1 {Egghead} or {Straw Hat Crew} type card other than [Jewelry Bonney] and add it to your hand. Then, place the rest at the bottom of your deck in any order."
+    },
+    {
+      "cardCode": "EB04-003",
+      "name": "Smoker & Tashigi",
+      "setCode": "EB04",
+      "setName": "-ADVENTURE ON KAMI'S ISLAND- [OP15-EB04]",
+      "rarity": "R",
+      "color": "Red",
+      "cardType": "CHARACTER",
+      "cost": "8",
+      "attribute": "Slash/Special",
+      "power": "8000",
+      "counter": "-",
+      "effectText": "[Rush] (This card can attack on the turn in which it is played.) [Opponent's Turn] Your {Navy} type Leader's base power becomes 7000."
+    }
+  ]
+}

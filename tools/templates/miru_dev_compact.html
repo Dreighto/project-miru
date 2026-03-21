@@ -1,0 +1,223 @@
+{% set dev_tp = dev_status.get('training_progress') or dev_status.get('training') or {} %}
+{% set le = dev_status.get('learning_engine', {}) %}
+{% set activity = dev_status.get('activity', {}) %}
+{% set gov = dev_status.get('governed_autopilot', {}) %}
+{% set pending_approvals_count = dev_status.get('pending_approvals_count', 0) %}
+{% set worker_last = dev_status.get('worker_last_run', {}) %}
+{% set control_layer = dev_status.get('control_layer', {}) %}
+{% set judgment = control_layer.get('judgment', {}) %}
+{% set primary_judgment = judgment.get('primary', {}) %}
+{% set recent_activity = control_layer.get('recent_activity', []) %}
+{% set control_health = control_layer.get('system_health', []) %}
+{% set recent_issues = control_layer.get('recent_issues', {}) %}
+{% set control_deck = dev_status.get('control_deck', {}) %}
+{% set links = dev_status.get('links', {}) %}
+{% set surface_status = dev_status.get('surface_status', {}) %}
+{% set miru_surface = surface_status.get('miru_ai', {}) %}
+{% set worktree_surface = surface_status.get('worktree_dashboard', {}) %}
+{% set approvals = gov.get('open_review_items') or [] %}
+{% set issue_tone = primary_judgment.get('tone', 'neutral') %}
+
+<section class="panelCard devCompactShell" id="devMonitor" data-dev-status-url="{{ dev_status_url }}" data-dev-default-tab="overview" data-project-miru-link="{{ links.get('project_miru', '') }}" data-runtime-restart-token="{{ runtime_restart_token|default('') }}">
+    <header class="devMiniHeader devCompactHeader">
+        <div class="devMiniHeaderBrand">
+            <img class="devMiniHeaderIcon" src="/static/icons/miru-fruit-192.png" alt="Miru" aria-hidden="true">
+            <div class="devCompactHeaderCopy">
+                <span class="devMiniHeaderTitle">Miru Dev Deck</span>
+                <p class="devCompactHeaderHint">Compact control surface for Miru runtime, approvals, and linked app health.</p>
+            </div>
+        </div>
+        <div class="devMiniHeaderMeta">
+            <span class="devUpdatedAt" id="devUpdatedAt">{{ dev_status.get('updated_at_display') or dev_status.get('updated_at') or '—' }}</span>
+            <button class="devBtn devBtn--secondary devRefreshButton devRefreshButton--mini" id="devRefreshButton" type="button" title="Refresh status" data-dev-refresh="status">↻</button>
+        </div>
+    </header>
+
+    <div class="devCompactTopGrid">
+        <article class="devCompactCard devCompactCard--summary" id="devHealthCard" data-tone="{{ issue_tone }}">
+            <div class="devCompactCardHead">
+                <div>
+                    <div class="sectionEyebrow">Miru now</div>
+                    <h2>Current runtime state</h2>
+                </div>
+                <span class="statusPill statusPill--{{ issue_tone }}" id="devHealthSignal">{{ judgment.get('status_label', 'Loading') }}</span>
+            </div>
+            <p class="devCurrentStatusLine" id="devCurrentStatusLine">{{ le.get('learner_state_display') or le.get('learner_state') or activity.get('title') or 'Idle' }}</p>
+            <p class="devCompactLead" id="devHealthHeadline">{{ judgment.get('headline', 'Miru is checking the current runtime.') }}</p>
+            <p class="devCompactDetail" id="devHealthSummary">{{ judgment.get('what_matters_most', primary_judgment.get('summary', 'Live status is loading.')) }}</p>
+            <div class="devCompactMetricRow">
+                <div class="devCompactMetric">
+                    <span class="devMetricLabel">Worker</span>
+                    <strong>{{ (le.get('worker_status') or {}).get('label', 'Idle') }}</strong>
+                </div>
+                <div class="devCompactMetric">
+                    <span class="devMetricLabel">Coverage</span>
+                    <strong id="devProgressPercent">{{ "%.1f"|format(dev_tp.get('training_progress_percent', dev_tp.get('progress_percent', 0))) }}%</strong>
+                </div>
+                <div class="devCompactMetric">
+                    <span class="devMetricLabel">Pending review</span>
+                    <strong>{{ pending_approvals_count }}</strong>
+                </div>
+            </div>
+            <div class="devCompactProgressTrack" aria-hidden="true">
+                <span id="devProgressFill" style="width: {{ "%.1f"|format(dev_tp.get('training_progress_percent', dev_tp.get('progress_percent', 0))) }}%;"></span>
+            </div>
+            <p class="devProgressDetail" id="devProgressSummary">{{ dev_tp.get('summary') or dev_tp.get('verified_summary') or 'Training coverage is loading.' }}</p>
+            <p class="devProgressDetail" id="devProgressDetail">Verified card coverage only. This is not a freeform autonomy score.</p>
+            <p class="devProgressDetail" id="devProgressStageLabel">Current learning stage: {{ (dev_status.get('voyage', {}) or {}).get('sea_label', 'Early structured learning') }}</p>
+        </article>
+
+        <article class="devCompactCard devCompactCard--services">
+            <div class="devCompactCardHead">
+                <div>
+                    <div class="sectionEyebrow">Ports and surfaces</div>
+                    <h2>Open the connected apps</h2>
+                </div>
+                <span class="devCompactMeta" id="devRuntimeControlChecked">Checking…</span>
+            </div>
+            <div class="devServiceGrid" aria-label="Miru service status">
+                <a class="devServiceCard" href="{{ control_deck.get('miru_dev_console', links.get('miru_ai', '/dev')) }}" data-service-card="18765">
+                    <div class="devServiceCardHead">
+                        <span class="devServicePort">{{ miru_surface.get('port', '18765') }}</span>
+                        <span class="statusPill statusPill--good" id="devRuntimeStatus18765">{{ miru_surface.get('status', 'Running') }}</span>
+                    </div>
+                    <strong>Miru AI / Dev</strong>
+                    <p>Operator surface and control deck.</p>
+                    <span class="devServiceLink">Open 18765</span>
+                </a>
+                <a class="devServiceCard" href="{{ control_deck.get('worktree_site', links.get('project_miru', '#')) }}" target="_blank" rel="noopener noreferrer" data-service-card="18080">
+                    <div class="devServiceCardHead">
+                        <span class="devServicePort">{{ worktree_surface.get('port', '18080') }}</span>
+                        <span class="statusPill statusPill--{{ 'good' if (worktree_surface.get('status') or '') == 'Running' else 'neutral' }}" id="devRuntimeStatus18080">{{ worktree_surface.get('status', 'Unknown') }}</span>
+                    </div>
+                    <strong>Project Miru worktree</strong>
+                    <p>Testing site for current worktree behavior.</p>
+                    <span class="devServiceLink">Open 18080</span>
+                </a>
+                <a class="devServiceCard" href="{{ control_deck.get('main_site', 'http://localhost:8080') }}" target="_blank" rel="noopener noreferrer" data-service-card="8080">
+                    <div class="devServiceCardHead">
+                        <span class="devServicePort">8080</span>
+                        <span class="statusPill statusPill--neutral" id="devRuntimeStatus8080">Unknown</span>
+                    </div>
+                    <strong>Main repo stable</strong>
+                    <p>Stable surface outside this worktree.</p>
+                    <span class="devServiceLink">Open 8080</span>
+                </a>
+            </div>
+        </article>
+
+        <article class="devCompactCard devCompactCard--actions">
+            <div class="devCompactCardHead">
+                <div>
+                    <div class="sectionEyebrow">Miru access</div>
+                    <h2>Operator controls</h2>
+                </div>
+            </div>
+            <div class="devCompactButtonGrid">
+                <a class="devBtn devBtn--primary" href="{{ links.get('miru_ai', '/') }}">Ask Miru</a>
+                <a class="devBtn devBtn--secondary" href="{{ links.get('training', '/training') }}">Training</a>
+                <a class="devBtn devBtn--secondary" href="{{ links.get('status', '/status') }}">Status</a>
+                <a class="devBtn devBtn--secondary" href="{{ url_for('dossiers_page') }}">Dossiers</a>
+                <button type="button" class="devBtn devBtn--secondary" id="devReviewApprovalsBtn">Review approvals</button>
+                <button type="button" class="devBtn devBtn--secondary" id="devRuntimeRefreshBtn" data-action="refresh">Refresh services</button>
+            </div>
+            <p class="devRuntimeRestartHint devProgressDetail" id="devRuntimeRestartHint">Runtime control checks are local-only when required.</p>
+            <p class="devRuntimeControlFeedback devProgressDetail" id="devRuntimeControlFeedback" hidden></p>
+        </article>
+    </div>
+
+    <div class="devCompactBodyGrid">
+        <article class="devCompactCard">
+            <div class="devCompactCardHead">
+                <div>
+                    <div class="sectionEyebrow">Latest action</div>
+                    <h2>What Miru just did</h2>
+                </div>
+            </div>
+            <div class="devCompactStack">
+                <div>
+                    <span class="devMetricLabel">Learner / worker</span>
+                    <strong id="devWorkerLastRunAction">{{ worker_last.get('action_label') or worker_last.get('action') or 'No recent worker action' }}</strong>
+                </div>
+                <p class="devCompactDetail" id="devWorkerLastRunDetail">{{ worker_last.get('detail') or worker_last.get('blocker') or worker_last.get('no_new_work_reason') or activity.get('detail') or 'Waiting for the next learning task.' }}</p>
+                <p class="devCompactMeta" id="devWorkerLastRunTime">{{ worker_last.get('timestamp_display') or worker_last.get('updated_at_display') or dev_status.get('updated_at_display') or '—' }}</p>
+                <div class="devCompactDivider"></div>
+                <div>
+                    <span class="devMetricLabel">Recent engine activity</span>
+                    <div class="devActivityFeedList" id="devActivityFeedList">
+                        {% for item in recent_activity[:4] %}
+                        <div class="devActivityFeedItem devActivityFeedItem--{{ item.get('tone', 'neutral') }}">
+                            <span class="devActivityFeedTitleText">{{ item.get('title', 'Activity') }}</span>
+                            <span class="devActivityFeedDetail">{{ item.get('detail', '') }}</span>
+                            <span class="devActivityFeedTime">{{ item.get('timestamp_display') or item.get('timestamp') or item.get('source') or '' }}</span>
+                        </div>
+                        {% else %}
+                        <p class="devValidationEmpty">No recent activity surfaced yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <article class="devCompactCard">
+            <div class="devCompactCardHead">
+                <div>
+                    <div class="sectionEyebrow">Attention</div>
+                    <h2>What needs you</h2>
+                </div>
+            </div>
+            <p class="devCompactLead" id="devControlIssuesSummary">{{ recent_issues.get('summary') or primary_judgment.get('summary') or 'No active issue surfaced.' }}</p>
+            <ul class="devIssueList devIssueList--compact" id="devNeedsAttentionList">
+                {% if pending_approvals_count %}
+                <li>{{ pending_approvals_count }} item{{ 's' if pending_approvals_count != 1 else '' }} waiting for approval or review.</li>
+                {% elif recent_issues.get('headline') %}
+                <li>{{ recent_issues.get('headline') }}</li>
+                {% else %}
+                <li>No urgent intervention surfaced.</li>
+                {% endif %}
+            </ul>
+            <details class="devPendingApprovalsSection" id="devPendingApprovalsSection" {% if pending_approvals_count %}open{% endif %}>
+                <summary>Pending approvals and review-needed</summary>
+                <div class="devCompactStack devCompactStack--tight">
+                    <ul class="devPendingApprovalsList" id="devPendingApprovalsList">
+                        {% for item in approvals[:4] %}
+                        <li>{{ item.get('title') or item.get('card_code') or item.get('target_id') or 'Review item' }}</li>
+                        {% else %}
+                        <li id="devPendingApprovalsEmpty">No approval items right now.</li>
+                        {% endfor %}
+                    </ul>
+                    <div class="devControlHealthList" id="devControlHealthList">
+                        {% for item in control_health[:3] %}
+                        <article class="devControlHealthItem">
+                            <div class="devControlHealthHead">
+                                <span class="devMetricLabel">{{ item.get('label', 'System') }}</span>
+                                <span class="statusPill statusPill--{{ item.get('tone', 'neutral') }}">{{ item.get('status', 'INCONCLUSIVE') }}</span>
+                            </div>
+                            <p>{{ item.get('detail', '') }}</p>
+                        </article>
+                        {% endfor %}
+                    </div>
+                    <div class="devControlIssuesList" id="devControlIssuesList">
+                        {% for item in judgment.get('items', [])[:3] %}
+                        <article class="devMonitorListItem devMonitorListItem--{{ item.get('tone', 'neutral') }}">
+                            <span class="devMetricLabel">{{ item.get('title', 'Issue') }}</span>
+                            <strong>{{ item.get('summary', '') }}</strong>
+                            <p>{{ item.get('source', '') }}</p>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </div>
+            </details>
+        </article>
+
+        <details class="devCompactCard devCompactCard--runtime">
+            <summary class="devCompactDetailsSummary">Runtime controls</summary>
+            <div class="devCompactButtonGrid devCompactButtonGrid--runtime">
+                <button type="button" class="devBtn devBtn--secondary" id="devRuntimeRestart18080Btn" data-action="restart-18080">Restart 18080</button>
+                <button type="button" class="devBtn devBtn--secondary" id="devRuntimeRestart18765Btn" data-action="restart-18765">Restart 18765</button>
+                <button type="button" class="devBtn devBtn--secondary" id="devRuntimeRestartWorktreeBtn" data-action="restart-worktree">Restart worktree</button>
+            </div>
+            <p class="devProgressDetail">Use these only when you need to refresh the local worktree runtime itself.</p>
+        </details>
+    </div>
+</section>

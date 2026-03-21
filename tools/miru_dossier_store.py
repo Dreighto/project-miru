@@ -8,10 +8,18 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
 try:
-    from tools.miru_insight_voice import build_insight_display_list
+    from tools.miru_insight_voice import build_insight_display_list, build_single_voice_insight
 except ImportError:
     build_insight_display_list = None  # optional Phase 16 voice layer
+    build_single_voice_insight = None
+
+try:
+    from tools.miru_source_agreement import compute_card_source_agreement
+except ImportError:
+    compute_card_source_agreement = None  # optional compute-on-read agreement layer
 
 try:
     from tools.miru_preflight_safety import (
@@ -662,7 +670,7 @@ def ensure_dossier_schema(db_path: Path) -> None:
             conn,
             DOSSIER_SCHEMA_REQUIRED_COLUMNS,
         )
-        conn.executescript(DOSSIER_SCHEMA_SQL)
+        _execute_schema_script_permissive(conn, DOSSIER_SCHEMA_SQL)
         _ensure_table_columns(
             conn,
             "card_usage",
@@ -967,6 +975,63 @@ def _json_load(value: str, fallback: Any) -> Any:
         return fallback
 
 
+def _execute_schema_script_permissive(conn: sqlite3.Connection, script: str) -> None:
+    statements = [statement.strip() for statement in str(script or "").split(";") if statement.strip()]
+    for statement in statements:
+        try:
+            conn.execute(statement)
+        except sqlite3.OperationalError as exc:
+            message = str(exc).lower()
+            if "no such column" in message or "duplicate column name" in message:
+                continue
+            raise
+
+
+def _cards_table_identity_mode(conn: sqlite3.Connection) -> str:
+    """Detect ``cards`` row shape for snapshot upserts.
+
+    - ``dossier``: Miru dossier store layout (``card_code`` PK).
+    - ``card_catalog``: Project Miru library / ``ensure_catalog_sync_schema`` layout
+      (``canonical_code`` plus ``card_number``, ``aliases_json``, …) — not legacy
+      ``canonical_code``-only projection tables.
+    - ``unsupported``: another ``cards`` shape; skip snapshot writes to avoid
+      corrupting unrelated schemas.
+    """
+    try:
+        if (
+            conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='cards' LIMIT 1"
+            ).fetchone()
+            is None
+        ):
+            return "unknown"
+    except sqlite3.Error:
+        return "unknown"
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(cards)").fetchall()}
+    if "card_code" in cols:
+        return "dossier"
+    if (
+        "canonical_code" in cols
+        and "card_number" in cols
+        and "aliases_json" in cols
+        and "sources_json" in cols
+        and "trigger_text" in cols
+    ):
+        return "card_catalog"
+    return "unsupported"
+
+
+def _coerce_catalog_int(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    if isinstance(value, bool):
+        return int(value)
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
 def _fact_text(value: Any) -> str:
     if isinstance(value, list):
         return ", ".join(str(item).strip() for item in value if str(item).strip())
@@ -979,7 +1044,18 @@ def _parse_utc_timestamp(value: str) -> datetime | None:
     text = str(value or "").strip()
     if not text:
         return None
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
+    if text.endswith("Z"):
+        try:
+            return datetime.fromisoformat(f"{text[:-1]}+00:00")
+        except ValueError:
+            pass
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        parsed = None
+    if parsed is not None:
+        return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
         try:
             return datetime.strptime(text, fmt).replace(tzinfo=timezone.utc)
         except ValueError:
@@ -987,9 +1063,75 @@ def _parse_utc_timestamp(value: str) -> datetime | None:
     return None
 
 
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return int(default)
+
+
+def _clean_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _clean_list(values: Any) -> list[str]:
+    if isinstance(values, list):
+        raw = values
+    elif isinstance(values, tuple):
+        raw = list(values)
+    elif isinstance(values, str):
+        text = values.strip()
+        raw = [part.strip() for part in text.split("|")] if "|" in text else [text]
+    else:
+        raw = []
+    cleaned: list[str] = []
+    for item in raw:
+        text = _clean_text(item)
+        if text and text not in cleaned:
+            cleaned.append(text)
+    return cleaned
+
+
+def _latest_timestamp(values: list[str]) -> str:
+    latest = ""
+    latest_dt: datetime | None = None
+    for value in values:
+        text = _clean_text(value)
+        if not text:
+            continue
+        parsed = _parse_utc_timestamp(text)
+        if parsed is None:
+            if not latest:
+                latest = text
+            continue
+        if latest_dt is None or parsed > latest_dt:
+            latest_dt = parsed
+            latest = text
+    return latest
+
+
+def _first_nonempty(*values: Any) -> Any:
+    for value in values:
+        if isinstance(value, str):
+            if value.strip():
+                return value.strip()
+            continue
+        if value not in (None, "", [], {}, ()):
+            return value
+    return ""
+
+
 class MiruDossierStore:
     def __init__(self, db_path: Path) -> None:
         self.db_path = Path(db_path)
+        self._price_index_cache: dict[str, tuple[float, dict[str, dict[str, Any]]]] = {}
 
     @staticmethod
     def confidence_label(confidence: float) -> str:
@@ -1127,7 +1269,68 @@ class MiruDossierStore:
         now = utc_timestamp()
         payload = dict(facts or {})
         resolved_confidence = float(confidence or 0.0)
+        resolved_code = str(canonical_code or card_code or "").strip().upper()
         with closing(connect_dossier_db(self.db_path)) as conn:
+            mode = _cards_table_identity_mode(conn)
+            if mode == "unsupported":
+                return
+            if mode == "card_catalog":
+                traits_raw = payload.get("traits")
+                if isinstance(traits_raw, list):
+                    traits_text = " / ".join(str(x).strip() for x in traits_raw if str(x).strip())
+                else:
+                    traits_text = str(traits_raw or "").strip()
+                cost_val = _coerce_catalog_int(payload.get("cost"))
+                conn.execute(
+                    """
+                    INSERT INTO cards (
+                        canonical_code, set_code, card_number, set_name, card_name, rarity, color,
+                        card_type, cost, power, counter, attribute, traits, life, block_icon,
+                        effect_text, trigger_text, aliases_json, sources_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(canonical_code) DO UPDATE SET
+                        set_code = excluded.set_code,
+                        card_number = excluded.card_number,
+                        set_name = excluded.set_name,
+                        card_name = excluded.card_name,
+                        rarity = excluded.rarity,
+                        color = excluded.color,
+                        card_type = excluded.card_type,
+                        cost = excluded.cost,
+                        power = excluded.power,
+                        counter = excluded.counter,
+                        attribute = excluded.attribute,
+                        traits = excluded.traits,
+                        life = excluded.life,
+                        block_icon = excluded.block_icon,
+                        effect_text = excluded.effect_text,
+                        trigger_text = excluded.trigger_text,
+                        aliases_json = excluded.aliases_json,
+                        sources_json = excluded.sources_json
+                    """,
+                    (
+                        resolved_code,
+                        str(payload.get("set_code") or "").strip().upper(),
+                        str(payload.get("card_number") or "").strip(),
+                        str(payload.get("set_name") or "").strip(),
+                        str(payload.get("card_name") or "").strip(),
+                        str(payload.get("rarity") or "").strip(),
+                        str(payload.get("color") or "").strip(),
+                        str(payload.get("card_type") or "").strip(),
+                        cost_val,
+                        _fact_text(payload.get("power")),
+                        _fact_text(payload.get("counter")),
+                        str(payload.get("attribute") or "").strip(),
+                        traits_text,
+                        _fact_text(payload.get("life")),
+                        "",
+                        str(payload.get("effect_text") or "").strip(),
+                        str(payload.get("trigger_text") or "").strip(),
+                        "[]",
+                        "[]",
+                    ),
+                )
+                return
             conn.execute(
                 """
                 INSERT INTO cards (card_code, canonical_code, card_name, set_code, set_name, rarity, color, card_type, cost, power, counter, life, attribute, traits_json, confidence, confidence_label, verification_state, answer_state, source_summary, updated_at, verified_at)
@@ -1161,6 +1364,13 @@ class MiruDossierStore:
         now = utc_timestamp()
         resolved_confidence = float(confidence or 0.0)
         with closing(connect_dossier_db(self.db_path)) as conn:
+            fact_cols = {
+                row[1] for row in conn.execute("PRAGMA table_info(card_facts)").fetchall()
+            }
+            if "card_code" not in fact_cols:
+                # Legacy or alternate ``card_facts`` layout (e.g. ``card_id``); skip
+                # to avoid corrupting unrelated schemas.
+                return
             conn.execute(
                 """
                 INSERT INTO card_facts (card_code, fact_key, fact_type, fact_value_json, fact_value_text, confidence, confidence_label, status, verification_state, primary_source_id, source_ids_json, citation_payload_json, provenance_json, updated_at, verified_at)
@@ -1209,6 +1419,12 @@ class MiruDossierStore:
         now = utc_timestamp()
         resolved_confidence = float(confidence or 0.0)
         with closing(connect_dossier_db(self.db_path)) as conn:
+            var_cols = {
+                row[1] for row in conn.execute("PRAGMA table_info(card_variants)").fetchall()
+            }
+            if "card_code" not in var_cols:
+                # Catalog / legacy layouts use ``card_id`` instead of ``card_code``.
+                return
             conn.execute(
                 """
                 INSERT INTO card_variants (card_code, variant_key, variant_label, print_label, finish, promo_flag, alt_art_flag, parallel_flag, language_code, image_path, image_url, print_profile_json, confidence, confidence_label, status, updated_at)
@@ -1496,15 +1712,28 @@ class MiruDossierStore:
             )
 
     def fetch_card_snapshot(self, card_code: str) -> dict[str, Any] | None:
+        cc = str(card_code or "").strip().upper()
         try:
             with closing(connect_dossier_db(self.db_path, readonly=True)) as conn:
-                row = conn.execute("SELECT * FROM cards WHERE card_code = ? LIMIT 1", (str(card_code or "").strip().upper(),)).fetchone()
+                mode = _cards_table_identity_mode(conn)
+                if mode == "card_catalog":
+                    row = conn.execute(
+                        "SELECT * FROM cards WHERE canonical_code = ? LIMIT 1",
+                        (cc,),
+                    ).fetchone()
+                elif mode == "dossier":
+                    row = conn.execute("SELECT * FROM cards WHERE card_code = ? LIMIT 1", (cc,)).fetchone()
+                else:
+                    return None
         except sqlite3.Error:
             return None
         if row is None:
             return None
         item = {key: row[key] for key in row.keys()}
-        item["traits"] = _json_load(item.get("traits_json") or "[]", [])
+        if "traits_json" in item:
+            item["traits"] = _json_load(item.get("traits_json") or "[]", [])
+        elif "traits" in item and isinstance(item.get("traits"), str):
+            item["traits"] = [p.strip() for p in str(item.get("traits") or "").split("/") if p.strip()]
         return item
 
     def fetch_card_facts(self, card_code: str) -> list[dict[str, Any]]:
@@ -3656,10 +3885,10 @@ class MiruDossierStore:
 
         # 1. Role purpose from strategy intel
         if is_verified_or_partial_strategy and role_purpose:
-            tip_text = f"In verified decks, this card is used to {role_purpose}."
+            tip_text = f"In verified lists I'm usually playing this to {role_purpose}."
             tags = [str(t) for t in synergy_tags if t][:3]
             if tags:
-                tip_text += f" Related patterns: {', '.join(tags)}."
+                tip_text += f" Watch: {', '.join(tags)}."
             return {
                 "tip_text": tip_text,
                 "evidence_basis": "strategy_intel",
@@ -3672,7 +3901,7 @@ class MiruDossierStore:
             if ruling_ep.startswith("verified_") or ruling_ep.startswith("partial_"):
                 text = str(rec.get("ruling_text") or "").strip()
                 if text:
-                    tip_text = text[:200] + ("…" if len(text) > 200 else "")
+                    tip_text = text[:120] + ("…" if len(text) > 120 else "")
                     return {
                         "tip_text": tip_text,
                         "evidence_basis": "ruling_intel",
@@ -3683,7 +3912,7 @@ class MiruDossierStore:
         tags = [str(t) for t in synergy_tags if t][:3]
         if tags and is_verified_or_partial_strategy:
             return {
-                "tip_text": f"This card is associated with the following verified patterns: {', '.join(tags)}.",
+                "tip_text": f"Verified patterns I watch here: {', '.join(tags)}.",
                 "evidence_basis": "strategy_intel",
                 "tip_posture": "evidence_based_tip",
             }
@@ -5028,31 +5257,68 @@ class MiruDossierStore:
         if not resolved:
             return out
         with closing(connect_dossier_db(self.db_path, readonly=True)) as conn:
-            usage = conn.execute(
-                "SELECT confidence FROM card_usage WHERE card_code = ? ORDER BY confidence DESC LIMIT 1", (resolved,)
-            ).fetchone()
-            strategy = conn.execute(
-                "SELECT confidence FROM card_strategy_intel WHERE card_code = ? ORDER BY confidence DESC LIMIT 1", (resolved,)
-            ).fetchone()
-            meta = conn.execute(
-                "SELECT confidence FROM card_meta_intel WHERE card_code = ? ORDER BY confidence DESC LIMIT 1", (resolved,)
-            ).fetchone()
-            ruling = conn.execute(
-                "SELECT confidence FROM card_rulings_intel WHERE card_code = ? ORDER BY confidence DESC LIMIT 1", (resolved,)
-            ).fetchone()
-            synergy = conn.execute(
-                "SELECT confidence FROM card_synergy_intel WHERE card_code = ? ORDER BY confidence DESC LIMIT 1", (resolved,)
-            ).fetchone()
-            identity = conn.execute(
-                "SELECT translation_confidence FROM card_identity WHERE card_code = ?", (resolved,)
-            ).fetchone()
-            master_img = conn.execute(
-                "SELECT 1 FROM card_master_images WHERE card_code = ? AND image_verified = 1", (resolved,)
-            ).fetchone()
-            banlist = conn.execute(
-                "SELECT 1 FROM card_banlist WHERE card_code = ? LIMIT 1", (resolved,)
-            ).fetchone()
-            cards_row = conn.execute("SELECT confidence FROM cards WHERE card_code = ?", (resolved,)).fetchone()
+            usage = (
+                conn.execute(
+                    "SELECT confidence FROM card_usage WHERE card_code = ? ORDER BY confidence DESC LIMIT 1", (resolved,)
+                ).fetchone()
+                if _table_exists(conn, "card_usage")
+                else None
+            )
+            strategy = (
+                conn.execute(
+                    "SELECT confidence FROM card_strategy_intel WHERE card_code = ? ORDER BY confidence DESC LIMIT 1", (resolved,)
+                ).fetchone()
+                if _table_exists(conn, "card_strategy_intel")
+                else None
+            )
+            meta = (
+                conn.execute(
+                    "SELECT confidence FROM card_meta_intel WHERE card_code = ? ORDER BY confidence DESC LIMIT 1", (resolved,)
+                ).fetchone()
+                if _table_exists(conn, "card_meta_intel")
+                else None
+            )
+            ruling = (
+                conn.execute(
+                    "SELECT confidence FROM card_rulings_intel WHERE card_code = ? ORDER BY confidence DESC LIMIT 1", (resolved,)
+                ).fetchone()
+                if _table_exists(conn, "card_rulings_intel")
+                else None
+            )
+            synergy = (
+                conn.execute(
+                    "SELECT confidence FROM card_synergy_intel WHERE card_code = ? ORDER BY confidence DESC LIMIT 1", (resolved,)
+                ).fetchone()
+                if _table_exists(conn, "card_synergy_intel")
+                else None
+            )
+            identity = (
+                conn.execute(
+                    "SELECT translation_confidence FROM card_identity WHERE card_code = ?", (resolved,)
+                ).fetchone()
+                if _table_exists(conn, "card_identity")
+                else None
+            )
+            master_img = (
+                conn.execute(
+                    "SELECT 1 FROM card_master_images WHERE card_code = ? AND image_verified = 1", (resolved,)
+                ).fetchone()
+                if _table_exists(conn, "card_master_images")
+                else None
+            )
+            banlist = (
+                conn.execute(
+                    "SELECT 1 FROM card_banlist WHERE card_code = ? LIMIT 1", (resolved,)
+                ).fetchone()
+                if _table_exists(conn, "card_banlist")
+                else None
+            )
+            card_columns = _table_columns(conn, "cards") if _table_exists(conn, "cards") else set()
+            cards_row = None
+            if "card_code" in card_columns:
+                cards_row = conn.execute("SELECT confidence FROM cards WHERE card_code = ?", (resolved,)).fetchone()
+            elif "canonical_code" in card_columns:
+                cards_row = conn.execute("SELECT overall_score FROM cards WHERE canonical_code = ?", (resolved,)).fetchone()
         usage_conf = float(usage[0] or 0) if usage else 0.0
         strategy_conf = float(strategy[0] or 0) if strategy else 0.0
         meta_conf = float(meta[0] or 0) if meta else 0.0
@@ -5071,6 +5337,982 @@ class MiruDossierStore:
         if CONFIDENCE_CATEGORY_CARD_FACT in out:
             out[CONFIDENCE_CATEGORY_CARD_FACT] = float(cards_row[0] or 0) if cards_row else max(usage_conf, strategy_conf, synergy_conf)
         return out
+
+    def _read_legacy_dossier_bundle(self, card_code: str) -> dict[str, Any]:
+        resolved = _clean_text(card_code).upper()
+        if not resolved or not self.db_path.is_file():
+            return {}
+        try:
+            with closing(connect_dossier_db(self.db_path, readonly=True)) as conn:
+                if not _table_exists(conn, "cards"):
+                    return {}
+                card_columns = _table_columns(conn, "cards")
+                if "canonical_code" not in card_columns:
+                    return {}
+                card_row = conn.execute(
+                    "SELECT * FROM cards WHERE canonical_code = ? LIMIT 1",
+                    (resolved,),
+                ).fetchone()
+                if card_row is None:
+                    return {}
+                fact_rows: list[sqlite3.Row] = []
+                if _table_exists(conn, "card_facts"):
+                    source_join = ""
+                    select_sources = "'' AS selected_source_keys"
+                    group_by = ""
+                    if _table_exists(conn, "fact_sources"):
+                        source_join = "LEFT JOIN fact_sources fs ON fs.fact_id = f.id AND fs.is_selected = 1"
+                        select_sources = "COALESCE(group_concat(fs.source_key, '|'), '') AS selected_source_keys"
+                        group_by = "GROUP BY f.id"
+                    fact_rows = conn.execute(
+                        f"""
+                        SELECT
+                            f.*,
+                            {select_sources}
+                        FROM card_facts f
+                        {source_join}
+                        WHERE f.card_id = ?
+                        {group_by}
+                        ORDER BY f.confidence_score DESC, f.supporting_source_count DESC, f.updated_at DESC
+                        """,
+                        (int(card_row["id"]),),
+                    ).fetchall()
+                confidence_rows = (
+                    conn.execute(
+                        """
+                        SELECT scope, scope_key, verification_state, confidence_score, rationale_json
+                        FROM confidence_records
+                        WHERE card_id = ?
+                        ORDER BY updated_at DESC
+                        """,
+                        (int(card_row["id"]),),
+                    ).fetchall()
+                    if _table_exists(conn, "confidence_records")
+                    else []
+                )
+        except sqlite3.Error:
+            return {}
+
+        facts: dict[str, dict[str, Any]] = {}
+        all_source_keys: list[str] = []
+        for row in fact_rows:
+            value_json = _clean_text(row["value_json"]) if "value_json" in row.keys() else ""
+            value_type = _clean_text(row["value_type"]) if "value_type" in row.keys() else ""
+            if value_json and value_type == "json":
+                value = _json_load(value_json, _clean_text(row["value_text"]))
+            else:
+                value = _clean_text(row["value_text"])
+            fact_name = _clean_text(row["field_name"])
+            source_keys = _clean_list(row["selected_source_keys"] if "selected_source_keys" in row.keys() else "")
+            for key in source_keys:
+                if key not in all_source_keys:
+                    all_source_keys.append(key)
+            existing = facts.get(fact_name)
+            candidate = {
+                "fact_name": fact_name,
+                "value": value,
+                "value_text": _fact_text(value),
+                "verification_state": _clean_text(row["verification_state"]),
+                "confidence_score": round(_safe_float(row["confidence_score"]), 3),
+                "supporting_source_count": _safe_int(row["supporting_source_count"]),
+                "source_keys": source_keys,
+                "updated_at": _clean_text(row["updated_at"]) if "updated_at" in row.keys() else "",
+            }
+            if existing is None:
+                facts[fact_name] = candidate
+                continue
+            if candidate["confidence_score"] > float(existing.get("confidence_score") or 0.0):
+                facts[fact_name] = candidate
+                continue
+            if candidate["confidence_score"] == float(existing.get("confidence_score") or 0.0) and candidate["supporting_source_count"] > int(existing.get("supporting_source_count") or 0):
+                facts[fact_name] = candidate
+
+        confidence_map = {
+            f"{_clean_text(row['scope'])}:{_clean_text(row['scope_key'])}": {
+                "verification_state": _clean_text(row["verification_state"]),
+                "confidence_score": round(_safe_float(row["confidence_score"]), 3),
+                "rationale": _json_load(_clean_text(row["rationale_json"]), {}),
+            }
+            for row in confidence_rows
+        }
+        return {
+            "card": dict(card_row),
+            "facts": facts,
+            "confidence_records": confidence_map,
+            "source_keys": all_source_keys,
+        }
+
+    def _read_learning_dossier_bundle(self, card_code: str, learning_db_path: Path | None) -> dict[str, Any]:
+        path = Path(learning_db_path or (PROJECT_ROOT / "data" / "miru_learning_dossiers.db"))
+        resolved = _clean_text(card_code).upper()
+        if not resolved or not path.is_file():
+            return {}
+        try:
+            with closing(sqlite3.connect(path)) as conn:
+                conn.row_factory = sqlite3.Row
+                dossier_row = conn.execute(
+                    """
+                    SELECT card_code, card_name, set_code, rarity, basic_facts_json, source_summary,
+                           confidence, verification_state, updated_at, COALESCE(trivia, '') AS trivia
+                    FROM learning_dossiers
+                    WHERE card_code = ?
+                    LIMIT 1
+                    """,
+                    (resolved,),
+                ).fetchone()
+                source_rows = []
+                if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='learning_dossier_sources'").fetchone():
+                    source_rows = conn.execute(
+                        """
+                        SELECT source_id, source_reference, field_payload_json, verification_state, fetched_at, updated_at
+                        FROM learning_dossier_sources
+                        WHERE card_code = ?
+                        ORDER BY updated_at DESC, source_id ASC
+                        """,
+                        (resolved,),
+                    ).fetchall()
+        except sqlite3.Error:
+            return {}
+        if dossier_row is None:
+            return {}
+        sources: list[dict[str, Any]] = []
+        for row in source_rows:
+            payload = _json_load(_clean_text(row["field_payload_json"]), {})
+            sources.append(
+                {
+                    "source_id": _clean_text(row["source_id"]).lower(),
+                    "source_reference": _clean_text(row["source_reference"]),
+                    "verification_state": _clean_text(row["verification_state"]),
+                    "fetched_at": _clean_text(row["fetched_at"]),
+                    "updated_at": _clean_text(row["updated_at"]),
+                    "payload": payload if isinstance(payload, dict) else {},
+                }
+            )
+        basic_facts = _json_load(_clean_text(dossier_row["basic_facts_json"]), {})
+        return {
+            "card_code": resolved,
+            "card_name": _clean_text(dossier_row["card_name"]),
+            "set_code": _clean_text(dossier_row["set_code"]),
+            "rarity": _clean_text(dossier_row["rarity"]),
+            "basic_facts": basic_facts if isinstance(basic_facts, dict) else {},
+            "source_summary": _clean_text(dossier_row["source_summary"]),
+            "confidence": round(_safe_float(dossier_row["confidence"]), 3),
+            "verification_state": _clean_text(dossier_row["verification_state"]),
+            "updated_at": _clean_text(dossier_row["updated_at"]),
+            "trivia": _clean_text(dossier_row["trivia"]),
+            "sources": sources,
+        }
+
+    def _read_catalog_bundle(self, card_code: str, catalog_db_path: Path | None) -> dict[str, Any]:
+        path = Path(catalog_db_path or (PROJECT_ROOT / "data" / "card_catalog.db"))
+        resolved = _clean_text(card_code).upper()
+        if not resolved or not path.is_file():
+            return {}
+        try:
+            with closing(sqlite3.connect(path)) as conn:
+                conn.row_factory = sqlite3.Row
+                card_row = conn.execute(
+                    "SELECT * FROM cards WHERE canonical_code = ? LIMIT 1",
+                    (resolved,),
+                ).fetchone()
+                intelligence_row = None
+                if card_row is not None and conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='card_intelligence'").fetchone():
+                    intelligence_row = conn.execute(
+                        "SELECT * FROM card_intelligence WHERE card_id = ? LIMIT 1",
+                        (int(card_row["id"]),),
+                    ).fetchone()
+                legality_rows = []
+                if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='miru_card_legality'").fetchone():
+                    legality_rows = conn.execute(
+                        """
+                        SELECT format, legality_state, effective_date, source_id, source_reference, last_checked_at, notes
+                        FROM miru_card_legality
+                        WHERE card_code = ?
+                        ORDER BY last_checked_at DESC, updated_at DESC
+                        """,
+                        (resolved,),
+                    ).fetchall()
+        except sqlite3.Error:
+            return {}
+        return {
+            "card": dict(card_row) if card_row is not None else {},
+            "intelligence": dict(intelligence_row) if intelligence_row is not None else {},
+            "legality": [dict(row) for row in legality_rows],
+        }
+
+    def _read_rules_bundle(self, card_code: str, rules_db_path: Path | None) -> dict[str, Any]:
+        path = Path(rules_db_path or (PROJECT_ROOT / "data" / "miru_official_rules.db"))
+        resolved = _clean_text(card_code).upper()
+        if not resolved or not path.is_file():
+            return {}
+        try:
+            with closing(sqlite3.connect(path)) as conn:
+                conn.row_factory = sqlite3.Row
+                ruling_rows = []
+                legality_rows = []
+                if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='official_card_rulings'").fetchone():
+                    ruling_rows = conn.execute(
+                        """
+                        SELECT card_code, topic_key, ruling_text, source_id, source_reference,
+                               published_at, effective_at, status, normalized_summary, source_url, updated_at
+                        FROM official_card_rulings
+                        WHERE card_code = ?
+                        ORDER BY COALESCE(effective_at, published_at) DESC, updated_at DESC
+                        """,
+                        (resolved,),
+                    ).fetchall()
+                if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='official_legality_history'").fetchone():
+                    legality_rows = conn.execute(
+                        """
+                        SELECT format_name, region, legality_state, effective_start, effective_end,
+                               source_id, source_reference, is_current, is_upcoming, notes, updated_at
+                        FROM official_legality_history
+                        WHERE card_code = ?
+                        ORDER BY is_current DESC, effective_start DESC, updated_at DESC
+                        """,
+                        (resolved,),
+                    ).fetchall()
+        except sqlite3.Error:
+            return {}
+        return {
+            "rulings": [dict(row) for row in ruling_rows],
+            "legality": [dict(row) for row in legality_rows],
+        }
+
+    def _read_deck_bundle(self, card_code: str, deck_intel_db_path: Path | None) -> dict[str, Any]:
+        path = Path(deck_intel_db_path or (PROJECT_ROOT / "data" / "miru_deck_intel.db"))
+        resolved = _clean_text(card_code).upper()
+        if not resolved or not path.is_file():
+            return {}
+        try:
+            with closing(sqlite3.connect(path)) as conn:
+                conn.row_factory = sqlite3.Row
+                if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='leader_card_signals'").fetchone():
+                    return {}
+                rows = conn.execute(
+                    """
+                    SELECT leader_code, role_label, deck_count, total_copies, usage_percent, avg_copies, updated_at
+                    FROM leader_card_signals
+                    WHERE card_code = ?
+                    ORDER BY deck_count DESC, usage_percent DESC, leader_code ASC
+                    """,
+                    (resolved,),
+                ).fetchall()
+        except sqlite3.Error:
+            return {}
+        role_totals: dict[str, int] = {}
+        top_leaders: list[dict[str, Any]] = []
+        total_decks = 0
+        max_usage = 0.0
+        for row in rows:
+            role = _clean_text(row["role_label"]).lower() or "tech"
+            deck_count = _safe_int(row["deck_count"])
+            usage_percent = round(_safe_float(row["usage_percent"]), 4)
+            total_decks += deck_count
+            max_usage = max(max_usage, usage_percent)
+            role_totals[role] = role_totals.get(role, 0) + deck_count
+            if len(top_leaders) < 5:
+                top_leaders.append(
+                    {
+                        "leader_code": _clean_text(row["leader_code"]).upper(),
+                        "role_label": role,
+                        "deck_count": deck_count,
+                        "usage_percent": usage_percent,
+                        "avg_copies": round(_safe_float(row["avg_copies"]), 3),
+                        "updated_at": _clean_text(row["updated_at"]),
+                    }
+                )
+        primary_role = ""
+        if role_totals:
+            primary_role = sorted(role_totals.items(), key=lambda item: (-item[1], item[0]))[0][0]
+        leader_count = len({item["leader_code"] for item in top_leaders if item.get("leader_code")})
+        return {
+            "top_leaders": top_leaders,
+            "primary_role": primary_role,
+            "leader_count": leader_count,
+            "total_decks": total_decks,
+            "max_usage_percent": max_usage,
+            "role_totals": role_totals,
+        }
+
+    def _load_price_index(self, prices_path: Path | None) -> dict[str, dict[str, Any]]:
+        path = Path(prices_path or (PROJECT_ROOT / "data" / "prices.json"))
+        cache_key = str(path.resolve())
+        if not path.is_file():
+            self._price_index_cache.pop(cache_key, None)
+            return {}
+        try:
+            stat = path.stat()
+        except OSError:
+            return {}
+        cached = self._price_index_cache.get(cache_key)
+        if cached and cached[0] == stat.st_mtime:
+            return cached[1]
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+        if not isinstance(payload, dict):
+            return {}
+        source_updated_at = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        index: dict[str, dict[str, Any]] = {}
+        for item in payload.values():
+            if not isinstance(item, dict):
+                continue
+            code = _clean_text(item.get("code")).upper()
+            if not code:
+                continue
+            entry = dict(item)
+            entry.setdefault("source_updated_at", source_updated_at)
+            index[code] = entry
+        self._price_index_cache[cache_key] = (stat.st_mtime, index)
+        return index
+
+    def _read_price_bundle(self, card_code: str, prices_path: Path | None) -> dict[str, Any]:
+        resolved = _clean_text(card_code).upper()
+        if not resolved:
+            return {}
+        return dict(self._load_price_index(prices_path).get(resolved) or {})
+
+    def build_card_dossier(
+        self,
+        card_code: str,
+        *,
+        learning_db_path: Path | None = None,
+        rules_db_path: Path | None = None,
+        deck_intel_db_path: Path | None = None,
+        catalog_db_path: Path | None = None,
+        prices_path: Path | None = None,
+    ) -> dict[str, Any]:
+        resolved = _clean_text(card_code).upper()
+        if not resolved:
+            return {"card_id": "", "builder_path": "MiruDossierStore.build_card_dossier", "available": False}
+
+        legacy = self._read_legacy_dossier_bundle(resolved)
+        learning = self._read_learning_dossier_bundle(resolved, learning_db_path)
+        catalog = self._read_catalog_bundle(resolved, catalog_db_path)
+        rules = self._read_rules_bundle(resolved, rules_db_path)
+        deck = self._read_deck_bundle(resolved, deck_intel_db_path)
+        prices = self._read_price_bundle(resolved, prices_path)
+        summary = self.build_card_intelligence_summary(resolved)
+        modern_confidence = self.get_card_confidence_by_category(resolved)
+
+        legacy_card = dict(legacy.get("card") or {})
+        legacy_facts = dict(legacy.get("facts") or {})
+        learning_facts = dict(learning.get("basic_facts") or {})
+        catalog_card = dict(catalog.get("card") or {})
+        catalog_intel = dict(catalog.get("intelligence") or {})
+        identity_row = self.get_card_identity(resolved) or {}
+
+        def fact_value(name: str) -> Any:
+            row = legacy_facts.get(name) or {}
+            return row.get("value")
+
+        name = _first_nonempty(
+            summary.get("identity", {}).get("card_name"),
+            identity_row.get("card_name_en"),
+            legacy_card.get("card_name"),
+            fact_value("card_name"),
+            learning.get("card_name"),
+            learning_facts.get("card_name"),
+            catalog_card.get("card_name"),
+        )
+        set_code = _first_nonempty(
+            summary.get("identity", {}).get("set_code"),
+            identity_row.get("set_code"),
+            legacy_card.get("set_code"),
+            learning.get("set_code"),
+            learning_facts.get("set_code"),
+            catalog_card.get("set_code"),
+        )
+        set_name = _first_nonempty(
+            summary.get("identity", {}).get("set_name"),
+            identity_row.get("set_name"),
+            legacy_card.get("set_name"),
+            fact_value("set_name"),
+            learning_facts.get("set_name"),
+            catalog_card.get("set_name"),
+        )
+        rarity = _first_nonempty(
+            summary.get("identity", {}).get("rarity"),
+            identity_row.get("rarity"),
+            legacy_card.get("rarity"),
+            fact_value("rarity"),
+            learning.get("rarity"),
+            learning_facts.get("rarity"),
+            catalog_card.get("rarity"),
+        )
+        effect_text_official = _first_nonempty(
+            fact_value("official_text"),
+            legacy_card.get("official_text"),
+            identity_row.get("effect_text_en"),
+            learning_facts.get("official_text"),
+            learning_facts.get("effect_text"),
+            catalog_card.get("effect_text"),
+        )
+        effect_text_translated = _first_nonempty(
+            identity_row.get("translated_text_en"),
+            learning_facts.get("translated_text_en"),
+            learning_facts.get("effect_text_translated"),
+            fact_value("effect_text_translated"),
+            fact_value("translated_text_en"),
+        )
+
+        ruling_rows = list(rules.get("rulings") or [])
+        if not ruling_rows:
+            ruling_rows = [
+                {
+                    "topic_key": _clean_text(item.get("ruling_topic")),
+                    "ruling_text": _clean_text(item.get("ruling_text")),
+                    "source_id": _clean_text(item.get("source_id")),
+                    "source_reference": _clean_text(item.get("source_reference")),
+                    "effective_at": _clean_text(item.get("freshness_at")),
+                    "normalized_summary": _clean_text(item.get("ruling_text")),
+                    "source_url": _clean_text(item.get("source_url")),
+                }
+                for item in self.fetch_card_rulings_intel(resolved, limit=5)
+            ]
+        rulings_summary_parts: list[str] = []
+        rulings_sources: list[dict[str, Any]] = []
+        for row in ruling_rows[:3]:
+            summary_text = _clean_text(row.get("normalized_summary")) or _clean_text(row.get("ruling_text"))
+            if summary_text and summary_text not in rulings_summary_parts:
+                rulings_summary_parts.append(summary_text)
+            source_entry = {
+                "source_id": _clean_text(row.get("source_id")).lower(),
+                "source_reference": _clean_text(row.get("source_reference")),
+                "source_url": _clean_text(row.get("source_url")),
+            }
+            if source_entry not in rulings_sources and any(source_entry.values()):
+                rulings_sources.append(source_entry)
+        if not rulings_summary_parts:
+            catalog_rulings_summary = _clean_text(catalog_intel.get("rulings_summary"))
+            if catalog_rulings_summary:
+                rulings_summary_parts.append(catalog_rulings_summary)
+
+        deck_usage_summary = _first_nonempty(
+            catalog_intel.get("deck_usage_summary"),
+        )
+        derived_deck_usage_summary = ""
+        if deck.get("top_leaders"):
+            leader_count = _safe_int(deck.get("leader_count"))
+            total_decks = _safe_int(deck.get("total_decks"))
+            primary_role = _clean_text(deck.get("primary_role")).lower()
+            strongest = list(deck.get("top_leaders") or [])[:3]
+            leader_parts = []
+            for item in strongest:
+                usage_percent = _safe_float(item.get("usage_percent"))
+                deck_count = _safe_int(item.get("deck_count"))
+                avg_copies = _safe_float(item.get("avg_copies"))
+                pct = f"{int(round(usage_percent * 100))}% inclusion"
+                copies = f", {avg_copies:.1f} avg copies" if avg_copies > 0 else ""
+                leader_parts.append(
+                    f"{item.get('leader_code')} ({_clean_text(item.get('role_label')).lower() or 'tech'}, {pct}, {deck_count} tracked decks{copies})"
+                )
+            usage_prefix = "Relevant in current meta"
+            if primary_role:
+                usage_prefix += f": {primary_role}"
+            if leader_count > 0:
+                usage_prefix += f" in {leader_count} leader{'s' if leader_count != 1 else ''}"
+            if total_decks > 0:
+                usage_prefix += f" across {total_decks} tracked deck slots"
+            derived_deck_usage_summary = usage_prefix + "."
+            if leader_parts:
+                derived_deck_usage_summary += " Strongest observed coverage: " + "; ".join(leader_parts[:2]) + "."
+        if derived_deck_usage_summary and (
+            not _clean_text(deck_usage_summary)
+            or "tracked deck" not in _clean_text(deck_usage_summary).lower()
+            or len(_clean_text(derived_deck_usage_summary)) > len(_clean_text(deck_usage_summary))
+        ):
+            deck_usage_summary = derived_deck_usage_summary
+
+        top_leaders_used_in = []
+        for item in list(deck.get("top_leaders") or []):
+            leader_code = _clean_text(item.get("leader_code")).upper()
+            if not leader_code:
+                continue
+            top_leaders_used_in.append(
+                    {
+                        "leader_code": leader_code,
+                        "role_label": _clean_text(item.get("role_label")).lower(),
+                        "deck_count": _safe_int(item.get("deck_count")),
+                        "usage_percent": round(_safe_float(item.get("usage_percent")), 4),
+                        "avg_copies": round(_safe_float(item.get("avg_copies")), 3),
+                        "updated_at": _clean_text(item.get("updated_at")),
+                    }
+                )
+        gameplay_role = _first_nonempty(
+            summary.get("role_label"),
+            summary.get("strategy_posture", {}).get("role_label"),
+            deck.get("primary_role"),
+            catalog_intel.get("role_label"),
+        )
+        if gameplay_role:
+            gameplay_role = _clean_text(gameplay_role).lower()
+
+        meta_relevance_score = None
+        derived_meta_score = None
+        if deck.get("max_usage_percent") or deck.get("leader_count"):
+            derived_meta_score = round(
+                min(
+                    0.98,
+                    (_safe_float(deck.get("max_usage_percent")) * 0.7)
+                    + (min(_safe_int(deck.get("leader_count")), 4) * 0.07)
+                    + (min(_safe_int(deck.get("total_decks")), 12) * 0.01),
+                ),
+                3,
+            )
+        elif summary.get("meta_posture", {}).get("confidence_label") != "no_evidence":
+            derived_meta_score = round(_safe_float(modern_confidence.get(CONFIDENCE_CATEGORY_META)), 3)
+        catalog_meta_score = catalog_intel.get("meta_relevance_score")
+        if catalog_meta_score not in (None, ""):
+            meta_relevance_score = round(max(_safe_float(catalog_meta_score), _safe_float(derived_meta_score)), 3)
+        elif derived_meta_score not in (None, ""):
+            meta_relevance_score = derived_meta_score
+
+        price_low = None
+        price_value = _first_nonempty(prices.get("price"), catalog_intel.get("price_value"))
+        if price_value not in ("", None):
+            parsed_price = _safe_float(price_value, default=-1.0)
+            if parsed_price > 0:
+                price_low = round(parsed_price, 2)
+        price_source = _first_nonempty(catalog_intel.get("price_source"), "prices.json" if price_low is not None else "")
+        price_trend_note = ""
+        if prices:
+            if prices.get("trend") or prices.get("history") or prices.get("change"):
+                price_trend_note = "Watch data includes a stored price trend signal."
+            elif price_low is not None:
+                price_trend_note = "Single stored watch-price point only."
+        elif price_low is not None:
+            price_trend_note = _clean_text(catalog_intel.get("price_trend_note")) or "Single stored watch-price point only."
+
+        legality_rows = list(rules.get("legality") or []) or list(catalog.get("legality") or [])
+        legality_history: list[dict[str, Any]] = []
+        current_legality_row: dict[str, Any] = {}
+        upcoming_legality_rows: list[dict[str, Any]] = []
+        for row in legality_rows:
+            entry = {
+                "format_name": _first_nonempty(row.get("format_name"), row.get("format"), "standard"),
+                "region": _clean_text(row.get("region")),
+                "legality_state": _clean_text(row.get("legality_state")).lower(),
+                "effective_start": _first_nonempty(row.get("effective_start"), row.get("effective_date")),
+                "effective_end": _clean_text(row.get("effective_end")),
+                "source_id": _clean_text(row.get("source_id")).lower(),
+                "source_reference": _clean_text(row.get("source_reference")),
+                "is_current": bool(row.get("is_current")),
+                "is_upcoming": bool(row.get("is_upcoming")),
+                "notes": _clean_text(row.get("notes")),
+                "updated_at": _clean_text(row.get("updated_at")),
+            }
+            legality_history.append(entry)
+            if entry["is_current"] and not current_legality_row:
+                current_legality_row = entry
+            if entry["is_upcoming"]:
+                upcoming_legality_rows.append(entry)
+        legality_state = _clean_text(current_legality_row.get("legality_state"))
+        if not legality_state and legality_history:
+            legality_state = _clean_text(legality_history[0].get("legality_state"))
+        legality_note = ""
+        if current_legality_row:
+            legality_note = (
+                f"Current official {current_legality_row.get('format_name') or 'standard'} legality is "
+                f"{current_legality_row.get('legality_state') or 'unknown'}."
+            )
+            next_change = next(
+                (
+                    item
+                    for item in upcoming_legality_rows
+                    if _clean_text(item.get("legality_state")) and _clean_text(item.get("effective_start"))
+                ),
+                None,
+            )
+            if next_change:
+                legality_note += (
+                    f" Next stored notice changes it to {next_change.get('legality_state')} "
+                    f"effective {next_change.get('effective_start')}."
+                )
+        elif upcoming_legality_rows:
+            next_change = sorted(
+                upcoming_legality_rows,
+                key=lambda item: (_clean_text(item.get("effective_start")) or "9999-99-99", _clean_text(item.get("source_reference"))),
+            )[0]
+            legality_note = (
+                f"Official {next_change.get('format_name') or 'standard'} notice marks this as "
+                f"{next_change.get('legality_state') or 'unknown'} effective {next_change.get('effective_start') or 'an upcoming date'}."
+            )
+        elif legality_state:
+            legality_note = f"Stored legality state is {legality_state}."
+
+        agreement = (
+            compute_card_source_agreement(resolved, Path(learning_db_path or (PROJECT_ROOT / "data" / "miru_learning_dossiers.db")))
+            if callable(compute_card_source_agreement)
+            else {
+                "card_code": resolved,
+                "source_count": len(list(learning.get("sources") or [])),
+                "agreement_level": "single_source",
+                "agree_count": 0,
+                "conflict_count": 0,
+            }
+        )
+
+        identity_source_ids = _clean_list(legacy.get("source_keys") or [])
+        source_entries_seen: set[tuple[str, str, str, str]] = set()
+        sources: list[dict[str, Any]] = []
+
+        def add_source(section: str, *, source_id: str = "", source_reference: str = "", source_url: str = "", leader_code: str = "") -> None:
+            entry = {
+                "source_id": _clean_text(source_id).lower(),
+                "source_reference": _clean_text(source_reference),
+                "source_url": _clean_text(source_url),
+                "section": _clean_text(section),
+            }
+            if leader_code:
+                entry["leader_code"] = _clean_text(leader_code).upper()
+            key = (
+                entry.get("section", ""),
+                entry.get("source_id", ""),
+                entry.get("source_reference", ""),
+                entry.get("leader_code", ""),
+            )
+            if key in source_entries_seen:
+                return
+            if not any(value for k, value in entry.items() if k != "section"):
+                return
+            source_entries_seen.add(key)
+            sources.append(entry)
+
+        for item in list(learning.get("sources") or []):
+            sid = _clean_text(item.get("source_id")).lower()
+            if sid and sid not in identity_source_ids:
+                identity_source_ids.append(sid)
+            add_source(
+                "identity",
+                source_id=sid,
+                source_reference=item.get("source_reference"),
+            )
+        for source_id in identity_source_ids:
+            add_source("identity", source_id=source_id)
+
+        identity_confidence = round(
+            max(
+                _safe_float(legacy_card.get("overall_score")),
+                _safe_float((legacy.get("confidence_records") or {}).get("card:overall", {}).get("confidence_score")),
+                _safe_float(learning.get("confidence")),
+            ),
+            3,
+        )
+        rules_confidence = round(
+            max(
+                _safe_float(modern_confidence.get(CONFIDENCE_CATEGORY_RULING)),
+                0.92 if rulings_sources else (0.84 if rulings_summary_parts else 0.0),
+            ),
+            3,
+        )
+        usage_confidence = round(
+            max(
+                _safe_float(modern_confidence.get(CONFIDENCE_CATEGORY_META)),
+                min(0.9, ((_safe_float(deck.get("max_usage_percent")) * 0.8) + (min(_safe_int(deck.get("leader_count")), 3) * 0.05))),
+            ),
+            3,
+        )
+        price_confidence = 0.62 if prices.get("trend") or prices.get("history") or prices.get("change") else (0.55 if price_low is not None else 0.0)
+        translation_confidence = round(_safe_float(identity_row.get("translation_confidence")), 3)
+        for item in rulings_sources:
+            add_source(
+                "rulings",
+                source_id=item.get("source_id"),
+                source_reference=item.get("source_reference"),
+                source_url=item.get("source_url"),
+            )
+        for item in legality_history:
+            add_source(
+                "legality",
+                source_id=item.get("source_id"),
+                source_reference=item.get("source_reference"),
+            )
+        for item in top_leaders_used_in:
+            add_source("usage", source_id="deck_intel", leader_code=item.get("leader_code"))
+        if price_low is not None:
+            add_source("market", source_id=price_source or "prices.json")
+
+        overall_candidates = [identity_confidence, usage_confidence, rules_confidence, translation_confidence, price_confidence]
+        overall_values = [value for value in overall_candidates if value > 0]
+        overall_confidence = round(sum(overall_values) / len(overall_values), 3) if overall_values else 0.0
+        # leader_card_signals (miru_deck_intel.db): avoid averaging away usage when deck intel is present —
+        # catalog insight sync uses overall confidence vs MIN_INSIGHT_CONFIDENCE (0.50 in miru_project_sync).
+        if top_leaders_used_in and overall_confidence < 0.5 and usage_confidence >= 0.32:
+            overall_confidence = max(
+                overall_confidence,
+                min(0.76, max(0.5, usage_confidence + 0.06)),
+            )
+        identity_updated_at = _latest_timestamp(
+            [
+                _clean_text(legacy_card.get("updated_at")),
+                _clean_text(learning.get("updated_at")),
+                _clean_text(summary.get("freshness_at")),
+                _clean_text(identity_row.get("updated_at")),
+            ]
+            + [_clean_text(item.get("updated_at")) for item in list(learning.get("sources") or [])]
+        )
+        text_effects_updated_at = _latest_timestamp(
+            [
+                identity_updated_at,
+                _clean_text(legacy_card.get("updated_at")),
+                _clean_text(learning.get("updated_at")),
+            ]
+        )
+        usage_updated_at = _latest_timestamp(
+            [_clean_text(item.get("updated_at")) for item in top_leaders_used_in]
+            + [_clean_text(catalog_intel.get("updated_at"))]
+        )
+        rulings_updated_at = _latest_timestamp(
+            [
+                _clean_text(item.get("updated_at"))
+                or _clean_text(item.get("effective_at"))
+                or _clean_text(item.get("published_at"))
+                for item in ruling_rows
+            ]
+        )
+        legality_updated_at = _latest_timestamp(
+            [
+                _clean_text(item.get("updated_at"))
+                or _clean_text(item.get("effective_start"))
+                for item in legality_history
+            ]
+        )
+        market_updated_at = _latest_timestamp(
+            [
+                _clean_text(prices.get("source_updated_at")),
+                _clean_text(catalog_intel.get("updated_at")) if price_low is not None else "",
+            ]
+        )
+        section_updated_at = {
+            "identity": identity_updated_at,
+            "text_effects": text_effects_updated_at,
+            "usage_meta": usage_updated_at,
+            "rulings": rulings_updated_at,
+            "legality": legality_updated_at,
+            "market": market_updated_at,
+        }
+        source_updated_at = _latest_timestamp(section_updated_at.values())
+        last_verified_at = _latest_timestamp(
+            [
+                _clean_text(legacy_card.get("last_checked_at")),
+                _clean_text(learning.get("updated_at")),
+                _clean_text(summary.get("freshness_at")),
+                _clean_text(identity_row.get("updated_at")),
+                _clean_text(catalog_intel.get("updated_at")),
+                _clean_text(ruling_rows[0].get("effective_at")) if ruling_rows else "",
+                _clean_text(legality_rows[0].get("effective_start")) if legality_rows else "",
+                _clean_text(top_leaders_used_in[0].get("updated_at")) if top_leaders_used_in else "",
+            ]
+        )
+
+        section_confidence = {
+            "identity": identity_confidence,
+            "translation": translation_confidence,
+            "text_effects": max(identity_confidence, translation_confidence),
+            "usage_meta": usage_confidence,
+            "rulings": rules_confidence,
+            "legality": round(max(_safe_float(modern_confidence.get(CONFIDENCE_CATEGORY_LEGALITY)), 0.9 if legality_history else 0.0), 3),
+            "market": round(price_confidence, 3),
+        }
+        source_summary = {
+            "total_sources": len(sources),
+            "agreement_level": _clean_text(agreement.get("agreement_level")),
+            "source_count": _safe_int(agreement.get("source_count")),
+            "sections": {
+                "identity": len([item for item in sources if item.get("section") == "identity"]),
+                "rulings": len([item for item in sources if item.get("section") == "rulings"]),
+                "legality": len([item for item in sources if item.get("section") == "legality"]),
+                "usage": len([item for item in sources if item.get("section") == "usage"]),
+                "market": len([item for item in sources if item.get("section") == "market"]),
+            },
+        }
+        return {
+            "builder_path": "MiruDossierStore.build_card_dossier",
+            "available": any(
+                bool(item)
+                for item in (
+                    name,
+                    effect_text_official,
+                    effect_text_translated,
+                    rulings_summary_parts,
+                    gameplay_role,
+                    deck_usage_summary,
+                    top_leaders_used_in,
+                    price_low,
+                )
+            ),
+            "card_id": resolved,
+            "card_code": resolved,
+            "name": _clean_text(name),
+            "set_code": _clean_text(set_code),
+            "set_name": _clean_text(set_name),
+            "rarity": _clean_text(rarity),
+            "effect_text_official": _clean_text(effect_text_official),
+            "effect_text_translated": _clean_text(effect_text_translated),
+            "rulings_summary": " ".join(rulings_summary_parts[:2]).strip(),
+            "rulings_sources": rulings_sources,
+            "gameplay_role": _clean_text(gameplay_role),
+            "deck_usage_summary": _clean_text(deck_usage_summary),
+            "top_leaders_used_in": top_leaders_used_in,
+            "leader_count": _safe_int(deck.get("leader_count")),
+            "tracked_deck_count": _safe_int(deck.get("total_decks")),
+            "meta_relevance_score": meta_relevance_score,
+            "price_low": price_low,
+            "price_source": _clean_text(price_source),
+            "price_trend_note": price_trend_note,
+            "sources": sources,
+            "source_summary": source_summary,
+            "confidence_score": overall_confidence,
+            "last_verified_at": last_verified_at,
+            "source_updated_at": source_updated_at,
+            "legality_state": legality_state,
+            "legality_note": legality_note,
+            "legality_history": legality_history,
+            "source_agreement": agreement,
+            "agreement_level": _clean_text(agreement.get("agreement_level")),
+            "field_mapping": {
+                "card_id": resolved,
+                "canonical_code": resolved,
+                "card_name": _clean_text(name),
+                "official_text": _clean_text(effect_text_official),
+            },
+            "section_confidence": section_confidence,
+            "section_updated_at": section_updated_at,
+            "sections": {
+                "identity": {
+                    "card_name": _clean_text(name),
+                    "set_code": _clean_text(set_code),
+                    "set_name": _clean_text(set_name),
+                    "rarity": _clean_text(rarity),
+                    "confidence_score": identity_confidence,
+                    "source_ids": identity_source_ids,
+                    "verification_state": _first_nonempty(
+                        legacy_card.get("overall_state"),
+                        learning.get("verification_state"),
+                        summary.get("identity", {}).get("verification_state"),
+                    ),
+                },
+                "translation": {
+                    "confidence_score": translation_confidence,
+                    "source_ids": _clean_list([_clean_text(identity_row.get("source_id")).lower()]),
+                },
+                "text_effects": {
+                    "effect_text_official": _clean_text(effect_text_official),
+                    "effect_text_translated": _clean_text(effect_text_translated),
+                    "confidence_score": max(identity_confidence, translation_confidence),
+                },
+                "usage_meta": {
+                    "summary": _clean_text(deck_usage_summary),
+                    "gameplay_role": _clean_text(gameplay_role),
+                    "confidence_score": usage_confidence,
+                    "leader_count": _safe_int(deck.get("leader_count")),
+                    "total_decks": _safe_int(deck.get("total_decks")),
+                    "top_leaders": top_leaders_used_in,
+                    "meta_relevance_score": meta_relevance_score,
+                },
+                "rulings": {
+                    "summary": " ".join(rulings_summary_parts[:2]).strip(),
+                    "confidence_score": rules_confidence,
+                    "count": len(ruling_rows),
+                    "source_count": len(rulings_sources),
+                    "sources": rulings_sources,
+                },
+                "legality": {
+                    "legality_state": legality_state,
+                    "legality_note": legality_note,
+                    "confidence_score": section_confidence["legality"],
+                    "history": legality_history,
+                },
+                "market": {
+                    "price_low": price_low,
+                    "price_source": _clean_text(price_source),
+                    "price_trend_note": price_trend_note,
+                    "confidence_score": round(price_confidence, 3),
+                    "source_ids": [_clean_text(price_source)] if price_low is not None and _clean_text(price_source) else [],
+                },
+                "provenance": {
+                    "confidence_score": overall_confidence,
+                    "source_summary": source_summary,
+                    "source_agreement": agreement,
+                    "last_verified_at": last_verified_at,
+                    "source_updated_at": source_updated_at,
+                    "section_updated_at": section_updated_at,
+                },
+            },
+        }
+
+    def _generate_card_insight_from_dossier(self, dossier: dict[str, Any]) -> dict[str, Any]:
+        resolved = _clean_text(dossier.get("card_id")).upper()
+        if not resolved:
+            return {
+                "card_id": "",
+                "text": "Not enough verified data yet.",
+                "confidence": 0.0,
+                "used_sections": [],
+                "provenance": [],
+                "builder_path": "MiruDossierStore.generate_card_insight",
+            }
+
+        top_leaders = list(dossier.get("top_leaders_used_in") or [])
+        if build_single_voice_insight:
+            picked = build_single_voice_insight(dossier)
+            if picked:
+                text, used_sections = picked
+                ordered_sections = list(dict.fromkeys(item for item in used_sections if item))
+                return {
+                    "card_id": resolved,
+                    "text": text,
+                    "confidence": round(_safe_float(dossier.get("confidence_score")), 3),
+                    "used_sections": ordered_sections,
+                    "provenance": list(dossier.get("sources") or []),
+                    "builder_path": "MiruDossierStore.generate_card_insight",
+                    "leader_code": _clean_text((top_leaders[0] if top_leaders else {}).get("leader_code")).upper(),
+                    "source_ref": "|".join(
+                        sorted(
+                            {
+                                str(item.get("source_id") or "").strip().lower()
+                                for item in list(dossier.get("sources") or [])
+                                if str(item.get("source_id") or "").strip()
+                            }
+                        )
+                    ),
+                    "dossier": dossier,
+                }
+
+        return {
+            "card_id": resolved,
+            "text": "Not enough verified data yet.",
+            "confidence": round(_safe_float(dossier.get("confidence_score")), 3),
+            "used_sections": [],
+            "provenance": list(dossier.get("sources") or []),
+            "builder_path": "MiruDossierStore.generate_card_insight",
+            "dossier": dossier,
+        }
+
+    def generate_card_insight(
+        self,
+        card_code: str,
+        *,
+        learning_db_path: Path | None = None,
+        rules_db_path: Path | None = None,
+        deck_intel_db_path: Path | None = None,
+        catalog_db_path: Path | None = None,
+        prices_path: Path | None = None,
+        dossier: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if dossier is None:
+            dossier = self.build_card_dossier(
+                card_code,
+                learning_db_path=learning_db_path,
+                rules_db_path=rules_db_path,
+                deck_intel_db_path=deck_intel_db_path,
+                catalog_db_path=catalog_db_path,
+                prices_path=prices_path,
+            )
+        return self._generate_card_insight_from_dossier(dossier)
 
     def ingest_verified_source_record(self, *, source_record: Any, merged_dossier: dict[str, Any], acceptance: dict[str, Any], source_rollup: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = source_record.to_dict() if hasattr(source_record, "to_dict") else dict(source_record or {})
@@ -5112,3 +6354,45 @@ class MiruDossierStore:
 
 def inspect_miru_dossier_store(path: Path | None) -> dict[str, Any]:
     return MiruDossierStore(Path(path or "")).inspect_summary()
+
+
+def build_card_dossier(
+    card_id: str,
+    *,
+    dossier_db_path: Path | None = None,
+    learning_db_path: Path | None = None,
+    rules_db_path: Path | None = None,
+    deck_intel_db_path: Path | None = None,
+    catalog_db_path: Path | None = None,
+    prices_path: Path | None = None,
+) -> dict[str, Any]:
+    store = MiruDossierStore(Path(dossier_db_path or (PROJECT_ROOT / "data" / "miru_dossiers.db")))
+    return store.build_card_dossier(
+        card_id,
+        learning_db_path=learning_db_path,
+        rules_db_path=rules_db_path,
+        deck_intel_db_path=deck_intel_db_path,
+        catalog_db_path=catalog_db_path,
+        prices_path=prices_path,
+    )
+
+
+def generate_card_insight(
+    card_id: str,
+    *,
+    dossier_db_path: Path | None = None,
+    learning_db_path: Path | None = None,
+    rules_db_path: Path | None = None,
+    deck_intel_db_path: Path | None = None,
+    catalog_db_path: Path | None = None,
+    prices_path: Path | None = None,
+) -> dict[str, Any]:
+    store = MiruDossierStore(Path(dossier_db_path or (PROJECT_ROOT / "data" / "miru_dossiers.db")))
+    return store.generate_card_insight(
+        card_id,
+        learning_db_path=learning_db_path,
+        rules_db_path=rules_db_path,
+        deck_intel_db_path=deck_intel_db_path,
+        catalog_db_path=catalog_db_path,
+        prices_path=prices_path,
+    )

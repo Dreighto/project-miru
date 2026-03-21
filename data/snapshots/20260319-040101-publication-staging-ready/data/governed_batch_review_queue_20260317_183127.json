@@ -1,0 +1,15 @@
+{
+  "batch_run_ts": "20260317_183127",
+  "items": [
+    {
+      "item_identifier": "OP01-001",
+      "source_id": "official",
+      "proposed_state": "legal",
+      "why_escalated": "impact_medium_or_high",
+      "decision_note": "Legality state change requires review.",
+      "confidence_score": null,
+      "conflict_detected": false,
+      "publish_eligibility": true
+    }
+  ]
+}

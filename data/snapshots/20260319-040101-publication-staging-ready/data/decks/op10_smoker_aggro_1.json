@@ -1,0 +1,18 @@
+{
+  "leader": "OP10-001",
+  "cards": [
+    { "card_code": "OP10-004", "quantity": 4 },
+    { "card_code": "OP10-008", "quantity": 4 },
+    { "card_code": "OP10-012", "quantity": 4 },
+    { "card_code": "OP10-016", "quantity": 4 },
+    { "card_code": "OP10-017", "quantity": 4 },
+    { "card_code": "OP10-018", "quantity": 4 },
+    { "card_code": "OP10-020", "quantity": 4 },
+    { "card_code": "OP10-026", "quantity": 4 },
+    { "card_code": "OP10-027", "quantity": 4 },
+    { "card_code": "OP10-028", "quantity": 4 },
+    { "card_code": "OP10-033", "quantity": 4 },
+    { "card_code": "OP10-019", "quantity": 3 },
+    { "card_code": "OP10-021", "quantity": 3 }
+  ]
+}

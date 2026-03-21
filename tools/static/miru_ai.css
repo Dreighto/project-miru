@@ -186,6 +186,7 @@ button {
 /* Flatten outer shell radius on dev page */
 .pageBody--dev .devConsoleShell {
     border-radius: 10px;
+    padding: 0.6rem 0.75rem;
 }
 
 /* Flatten status pills inside the dev console */
@@ -2353,12 +2354,12 @@ textarea::placeholder {
 .pageBody--dev .devStatusStrip {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.22rem;
-    margin: 0.2rem 0;
+    gap: 0.14rem;
+    margin: 0.1rem 0;
 }
 
 .pageBody--dev .devStatusStripItem {
-    padding: 0.3rem 0.5rem;
+    padding: 0.22rem 0.4rem;
     border-radius: 4px;
     border: 1px solid rgba(224, 207, 255, 0.07);
     background: rgba(14, 12, 24, 0.72);
@@ -2366,19 +2367,19 @@ textarea::placeholder {
 
 .pageBody--dev .devStatusStripLabel {
     display: block;
-    font-size: 0.6rem;
+    font-size: 0.56rem;
     text-transform: uppercase;
-    letter-spacing: 0.09em;
+    letter-spacing: 0.08em;
     font-weight: 700;
     opacity: 0.45;
-    margin-bottom: 0.08rem;
+    margin-bottom: 0.04rem;
 }
 
 .pageBody--dev .devStatusStripValue {
     display: block;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 600;
-    line-height: 1.25;
+    line-height: 1.2;
     word-break: break-word;
     letter-spacing: 0.01em;
 }
@@ -2523,6 +2524,143 @@ textarea::placeholder {
     color: var(--text-faint);
     margin: 0;
     opacity: 0.9;
+}
+
+/* Captain summary (plain-English at a glance, compact) */
+.pageBody--dev .devCaptainSummary {
+    margin: 0.2rem 0;
+    padding: 0.28rem 0.45rem;
+    border-radius: var(--radius-md);
+    background: rgba(14, 12, 24, 0.72);
+    border: 1px solid rgba(224, 207, 255, 0.08);
+}
+.pageBody--dev .devCaptainSummaryTitle {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    margin: 0 0 0.2rem;
+}
+.pageBody--dev .devCaptainSummaryList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.pageBody--dev .devCaptainSummaryItem {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    margin: 0 0 0.15rem;
+    color: var(--text);
+}
+.pageBody--dev .devCaptainSummaryItem:last-child {
+    margin-bottom: 0;
+}
+.pageBody--dev .devCaptainSummaryItem strong {
+    color: var(--text-soft);
+    font-weight: 600;
+}
+
+/* Achievement / progression strip (compact) */
+.pageBody--dev .devAchievementStrip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.2rem 0.4rem;
+    font-size: 0.68rem;
+    color: var(--text-faint);
+    margin: 0 0 0.2rem;
+    padding: 0.1rem 0;
+}
+.pageBody--dev .devAchievementItem {
+    font-weight: 600;
+    color: var(--text-soft);
+}
+.pageBody--dev .devAchievementItem--milestone {
+    color: rgba(94, 234, 212, 0.85);
+}
+.pageBody--dev .devAchievementSep {
+    opacity: 0.5;
+}
+
+/* Needs your attention block (compact, collapsible) */
+.pageBody--dev .devNeedsAttentionBlock {
+    margin: 0 0 0.5rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid var(--stroke);
+}
+.pageBody--dev .devNeedsAttentionBlock summary.devNeedsAttentionTitle {
+    list-style: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-soft);
+    margin: 0 0 0.25rem;
+    padding: 0.15rem 0;
+    -webkit-tap-highlight-color: transparent;
+}
+.pageBody--dev .devNeedsAttentionBlock summary.devNeedsAttentionTitle::-webkit-details-marker {
+    display: none;
+}
+.pageBody--dev .devNeedsAttentionBlock summary.devNeedsAttentionTitle::before {
+    content: "▶";
+    font-size: 0.65em;
+    opacity: 0.6;
+    margin-right: 0.35rem;
+    transition: transform 0.15s ease;
+    display: inline-block;
+}
+.pageBody--dev .devNeedsAttentionBlock[open] summary.devNeedsAttentionTitle::before {
+    transform: rotate(90deg);
+}
+.pageBody--dev .devNeedsAttentionTitle {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-soft);
+    margin: 0 0 0.25rem;
+}
+
+/* Governed card collapsed (details, light footprint) */
+.pageBody--dev .devGovernedCard--collapsed {
+    margin: 0 0 0.35rem;
+    padding: 0.2rem 0;
+    border: none;
+    background: transparent;
+}
+.pageBody--dev .devGovernedCard--collapsed .devGovernedCardInner {
+    padding: 0.25rem 0;
+}
+.pageBody--dev .devGovernedCardSummary {
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.15rem 0;
+    color: var(--text-faint);
+    list-style: none;
+}
+.pageBody--dev .devGovernedCardSummary::-webkit-details-marker {
+    display: none;
+}
+
+/* Control deck wrap (collapsed by default to keep first screen compact) */
+.pageBody--dev .devControlDeckWrap {
+    margin: 0.4rem 0 0;
+    padding-top: 0.3rem;
+    border-top: 1px solid rgba(224, 207, 255, 0.06);
+}
+.pageBody--dev .devControlDeckSummary {
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.25rem 0;
+    color: var(--text-faint);
+    list-style: none;
+}
+.pageBody--dev .devControlDeckSummary::-webkit-details-marker {
+    display: none;
+}
+.pageBody--dev .devControlDeckWrap .devControlDeck {
+    margin-top: 0.2rem;
 }
 
 .pageBody--dev .devModeBadgeWrap {
@@ -2727,8 +2865,322 @@ textarea::placeholder {
 .pageBody--dev .devCollapseBody .devSurfaceStatus {
     margin-top: 0.6rem;
 }
+.pageBody--dev .devRuntimeControl {
+    margin-top: 0.6rem;
+    padding: 0.5rem 0.5rem 0.6rem;
+    border: 1px solid rgba(224, 207, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(18, 12, 28, 0.4);
+}
+.pageBody--dev .devRuntimeControlStatus {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    margin-bottom: 0.5rem;
+}
+.pageBody--dev .devRuntimeControlStatus .devStatusStripLabel {
+    margin-right: 0.15rem;
+}
+.pageBody--dev .devRuntimeControlChecked {
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    margin-left: auto;
+}
+.pageBody--dev .devRuntimeControlActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.pageBody--dev .devRuntimeBtn {
+    font-size: 0.72rem;
+    padding: 0.35rem 0.5rem;
+}
+.pageBody--dev .devRuntimeControlFeedback {
+    margin-top: 0.4rem;
+    margin-bottom: 0;
+    font-size: 0.72rem;
+    min-height: 1.2em;
+}
+.pageBody--dev .devRuntimeControlFeedback--error {
+    color: var(--text-warn, #e8b84a);
+}
+.pageBody--dev .devRuntimeRestartHint {
+    margin-top: 0.35rem;
+    margin-bottom: 0;
+    font-size: 0.7rem;
+    color: var(--text-faint);
+}
+.pageBody--dev .devRuntimeRestartHint--allowed {
+    color: rgba(180, 220, 180, 0.85);
+}
+.pageBody--dev .devRuntimeRestartHint--restricted {
+    color: var(--text-faint);
+}
+/* Control deck layout: At a Glance first, then status, then Sites & runtime */
+.pageBody--dev .devDeckBlock {
+    margin-top: 0.5rem;
+}
+.pageBody--dev .devCaptainSummary.devDeckBlock {
+    margin-top: 0.35rem;
+    padding: 0.45rem 0.5rem;
+    border-radius: 8px;
+    border: 1px solid rgba(224, 207, 255, 0.08);
+    background: rgba(18, 14, 28, 0.5);
+}
+.pageBody--dev .devCaptainSummaryTitle {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin: 0 0 0.35rem;
+    color: var(--text-soft);
+}
+.pageBody--dev .devCaptainSummaryList {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+.pageBody--dev .devCaptainSummaryItem {
+    margin-bottom: 0.2rem;
+}
+.pageBody--dev .devCurrentStatusWrap.devDeckRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.75rem;
+    margin-top: 0.4rem;
+}
+.pageBody--dev .devCurrentStatusWrap.devDeckRow .devCurrentStatusLine {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.pageBody--dev .devCurrentStatusWrap.devDeckRow .devAchievementStrip {
+    margin: 0;
+    font-size: 0.7rem;
+    opacity: 0.9;
+}
+.pageBody--dev .devCollapse--sites.devDeckBlock {
+    margin-top: 0.5rem;
+    border: 1px solid rgba(224, 207, 255, 0.1);
+    border-radius: 8px;
+    background: rgba(18, 12, 28, 0.4);
+}
+.pageBody--dev .devCollapse--sites .devCollapseSummary {
+    font-weight: 600;
+    font-size: 0.82rem;
+}
+.pageBody--dev .devRuntimeHealthRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    margin-bottom: 0.5rem;
+}
+.pageBody--dev .devSnapshotStrip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    margin-bottom: 0.45rem;
+    padding: 0.35rem 0.45rem;
+    border-radius: 6px;
+    border: 1px solid rgba(224, 207, 255, 0.08);
+    background: rgba(12, 8, 20, 0.35);
+    font-size: 0.72rem;
+    line-height: 1.35;
+}
+.pageBody--dev .devSnapshotStrip.isHidden {
+    display: none;
+}
+.pageBody--dev .devSnapshotStripLabel {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.85;
+}
+.pageBody--dev .devSnapshotStripSummary {
+    flex: 1 1 140px;
+    min-width: 0;
+    opacity: 0.92;
+}
+.pageBody--dev .devSnapshotStrip--good {
+    border-color: rgba(96, 200, 140, 0.2);
+}
+.pageBody--dev .devSnapshotStrip--warn {
+    border-color: rgba(244, 180, 96, 0.35);
+    background: rgba(40, 28, 0, 0.25);
+}
+.pageBody--dev .devSnapshotStrip--bad {
+    border-color: rgba(244, 96, 96, 0.35);
+    background: rgba(40, 12, 12, 0.28);
+}
+.pageBody--dev .devRuntimeHealthLabel {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.8;
+}
+.pageBody--dev .devQuickLinksGrid.devDeckActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.5rem;
+}
+.pageBody--dev .devQuickLinksGrid.devDeckActions .devBtn {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.65rem;
+}
+.pageBody--dev .devStatusDetailsWrap {
+    margin-top: 0.45rem;
+    border: 1px solid rgba(224, 207, 255, 0.06);
+    border-radius: 6px;
+}
+.pageBody--dev .devStatusDetailsSummary {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.35rem 0.5rem;
+    cursor: pointer;
+}
+.pageBody--dev .devStatusDetailsBody {
+    padding: 0.35rem 0.5rem 0.5rem;
+    border-top: 1px solid rgba(224, 207, 255, 0.05);
+}
+.pageBody--dev .devEnvStrip--compact {
+    margin-top: 0.5rem;
+    font-size: 0.7rem;
+}
 .pageBody--dev .devCollapseBody .devActivityFeed {
     margin-top: 0.75rem;
+}
+
+/* Dev-only: official rulings test panel (compact, phone-friendly) */
+.pageBody--dev .devRulingsTest {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--stroke);
+    border-radius: var(--radius-sm);
+    background: var(--panel-alt);
+}
+.pageBody--dev .devRulingsTest--compact .devRulingsTestTitle {
+    font-size: 0.82rem;
+    margin: 0 0 0.15rem;
+}
+.pageBody--dev .devRulingsTest--compact .devRulingsTestHint {
+    font-size: 0.72rem;
+    margin: 0 0 0.35rem;
+}
+.pageBody--dev .devRulingsTestTitle {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem;
+    color: var(--text-soft);
+}
+.pageBody--dev .devRulingsTestHint {
+    font-size: 0.78rem;
+    color: var(--text-faint);
+    margin: 0 0 0.5rem;
+}
+.pageBody--dev .devRulingsTestForm {
+    display: grid;
+    gap: 0.35rem 0.5rem;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+@media (max-width: 480px) {
+    .pageBody--dev .devRulingsTestForm {
+        grid-template-columns: 1fr;
+    }
+}
+.pageBody--dev .devRulingsTestLabel {
+    font-size: 0.8rem;
+    color: var(--text-faint);
+}
+.pageBody--dev .devRulingsTestInput {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.88rem;
+    border: 1px solid var(--stroke);
+    border-radius: var(--radius-xs);
+    background: var(--bg);
+    color: var(--text);
+    min-width: 0;
+}
+.pageBody--dev .devRulingsTestBtn {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: 0.25rem;
+}
+.pageBody--dev .devRulingsTestResult {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--stroke);
+}
+.pageBody--dev .devRulingsTestEmptyText {
+    font-size: 0.88rem;
+    color: var(--text-faint);
+    margin: 0;
+}
+.pageBody--dev .devRulingsTestQuestion {
+    font-size: 0.82rem;
+    color: var(--text-faint);
+    margin: 0 0 0.35rem;
+    font-style: italic;
+}
+.pageBody--dev .devRulingsTestAnswer {
+    font-size: 0.9rem;
+    color: var(--text-soft);
+    margin: 0 0 0.35rem;
+    line-height: 1.4;
+}
+.pageBody--dev .devRulingsTestSummary {
+    font-size: 0.85rem;
+    color: var(--text-faint);
+    margin: 0 0 0.5rem;
+}
+.pageBody--dev .devRulingsTestSummaryLabel {
+    font-weight: 600;
+    color: var(--text-soft);
+}
+.pageBody--dev .devRulingsTestCitation {
+    font-size: 0.78rem;
+    color: var(--text-faint);
+    margin-top: 0.5rem;
+    padding: 0.35rem 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: var(--radius-xs);
+}
+.pageBody--dev .devRulingsTestCitation a {
+    color: var(--cyan);
+    text-decoration: none;
+}
+.pageBody--dev .devRulingsTestCitation a:hover {
+    text-decoration: underline;
+}
+.pageBody--dev .devRulingsTestMoreWrap {
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+}
+.pageBody--dev .devRulingsTestMoreSummary {
+    cursor: pointer;
+    color: var(--text-soft);
+}
+.pageBody--dev .devRulingsTestMoreList {
+    margin: 0.35rem 0 0;
+    padding-left: 1rem;
+    list-style: disc;
+}
+.pageBody--dev .devRulingsTestMoreList li {
+    margin-bottom: 0.35rem;
+    font-size: 0.82rem;
+    color: var(--text-faint);
+}
+.pageBody--dev .devRulingsTestLoading {
+    font-size: 0.88rem;
+    color: var(--text-faint);
+    margin-top: 0.5rem;
 }
 
 .pageBody--dev .devAttentionCta {
@@ -2814,13 +3266,13 @@ textarea::placeholder {
     box-shadow: 0 24px 46px rgba(5, 4, 12, 0.3);
 }
 
-/* ── Mini header ── */
+/* ── Mini header (compact) ── */
 .pageBody--dev .devMiniHeader {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
-    padding-bottom: 0.2rem;
+    gap: 0.4rem;
+    padding: 0.1rem 0 0.15rem;
     margin-bottom: 0;
     border-bottom: 1px solid rgba(224, 207, 255, 0.07);
 }
@@ -2953,8 +3405,8 @@ textarea::placeholder {
 
 /* Current status one-liner (compact) ── */
 .pageBody--dev .devCurrentStatusWrap {
-    margin: 0.3rem 0 0.25rem;
-    padding: 0.3rem 0.45rem;
+    margin: 0.2rem 0 0.15rem;
+    padding: 0.25rem 0.35rem;
     border-radius: 6px;
     background: rgba(14, 12, 24, 0.6);
     border: 1px solid rgba(224, 207, 255, 0.06);
@@ -2976,11 +3428,85 @@ textarea::placeholder {
     line-height: 1;
     opacity: 0.7;
     transition: opacity 140ms ease, transform 140ms ease;
+    transform: none;
 }
 
-.pageBody--dev .devRefreshButton--mini:hover {
-    opacity: 1;
-    transform: rotate(20deg);
+/* Avoid sticky "slanted" hover on touch / coarse pointers (fake :hover sticks after tap). */
+@media (hover: hover) and (pointer: fine) {
+    .pageBody--dev .devRefreshButton--mini:hover:not(:disabled) {
+        opacity: 1;
+        transform: rotate(16deg);
+    }
+}
+
+.pageBody--dev .devRefreshButton--mini:disabled,
+.pageBody--dev .devRefreshButton--mini.is-loading {
+    opacity: 0.5;
+}
+
+.pageBody--dev .devRefreshButton--mini.is-loading {
+    animation: devRefreshBusy 0.55s ease-in-out 2;
+}
+
+@keyframes devRefreshBusy {
+    0%,
+    100% {
+        opacity: 0.45;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pageBody--dev .devRefreshButton--mini.is-loading {
+        animation: none;
+    }
+}
+
+/* Dev Full monitor — slightly calmer density */
+.pageBody--devMonitor .devMonitorFold {
+    border: 1px solid rgba(224, 207, 255, 0.09);
+    border-radius: var(--radius-md);
+    padding: 0.4rem 0.85rem 0.85rem;
+    margin: 0 0 0.75rem;
+    background: rgba(10, 9, 18, 0.42);
+}
+
+.pageBody--devMonitor .devMonitorFoldSummary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: rgba(218, 206, 239, 0.72);
+    list-style: none;
+}
+
+.pageBody--devMonitor .devMonitorFoldSummary::-webkit-details-marker {
+    display: none;
+}
+
+.pageBody--devMonitor .devCaptainSummary--inFold {
+    margin: 0.45rem 0 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+.pageBody--devMonitor .devControlLayer {
+    padding: 0.9rem 1rem;
+}
+
+.pageBody--devMonitor .devControlLayerGrid {
+    gap: 0.7rem;
+}
+
+@media (max-width: 720px) {
+    .pageBody--devMonitor .devJudgmentGrid {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ── Environment / runtime strip ── */
@@ -3224,6 +3750,12 @@ textarea::placeholder {
     letter-spacing: 0.01em;
     opacity: 0.7;
 }
+.pageBody--dev .devInlineLinks--top {
+    margin-bottom: 0.25rem;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid rgba(224, 207, 255, 0.06);
+    font-size: 0.72rem;
+}
 
 .pageBody--dev .devInlineLink {
     color: rgba(196, 181, 255, 0.8);
@@ -3243,6 +3775,25 @@ textarea::placeholder {
 
 .pageBody--dev .devInlineLinkSep {
     opacity: 0.4;
+}
+
+.pageBody--dev .devInlineLink--button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pageBody--dev .devInlineLink--muted {
+    color: var(--text-faint, rgba(170, 159, 199, 0.6));
+    cursor: default;
+}
+
+.pageBody--dev .devInlineLink--muted:hover {
+    opacity: 1;
+    color: var(--text-faint, rgba(170, 159, 199, 0.6));
 }
 
 .pageBody--dev .devConsoleTopbar,
@@ -3366,9 +3917,17 @@ textarea::placeholder {
         0 16px 30px rgba(34, 14, 60, 0.24);
 }
 
+/* Voyage section deferred: hidden from Dev page until needed */
+.devVoyageTab--deferred {
+    display: none;
+}
+.pageBody--dev .devVoyageTab--deferred {
+    display: none !important;
+}
+
 .pageBody--dev .devConsolePanel {
     display: grid;
-    gap: clamp(1.75rem, 3vw, 2.85rem);
+    gap: clamp(1rem, 2vw, 1.5rem);
 }
 
 .pageBody--dev .devConsoleLink {
@@ -3557,7 +4116,7 @@ textarea::placeholder {
 }
 
 .pageBody--dev .devPendingApprovalsSection {
-    margin-top: 1.25rem;
+    margin-top: 0.75rem;
 }
 
 .pageBody--dev .devPendingApprovalsHeader {
@@ -3565,8 +4124,8 @@ textarea::placeholder {
     flex-wrap: wrap;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 0.75rem;
-    margin-bottom: 0.9rem;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
 }
 
 .pageBody--dev .devPendingApprovalsList {
@@ -4239,6 +4798,23 @@ body.hasVoyageMapDialog {
         linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(250, 204, 21, 0.08));
 }
 
+.pageBody--dev .devLaunchpadTile--button {
+    appearance: none;
+    font-family: inherit;
+}
+
+.pageBody--dev .devLaunchpadTile--muted {
+    cursor: default;
+    opacity: 0.7;
+}
+
+.pageBody--dev .devLaunchpadTile--muted:hover,
+.pageBody--dev .devLaunchpadTile--muted:focus {
+    border-color: rgba(224, 207, 255, 0.08);
+    background:
+        linear-gradient(180deg, rgba(18, 14, 31, 0.88), rgba(11, 10, 20, 0.94));
+}
+
 .pageBody--dev .devLaunchpadLabel {
     display: block;
     text-align: center;
@@ -4366,7 +4942,9 @@ body.hasVoyageMapDialog {
 .pageBody--dev .devActivityRing {
     border-radius: 50%;
     border: 1px solid rgba(103, 232, 249, 0.32);
-    animation: devOrbit 7s linear infinite;
+    /* Static rings — continuous orbit read as a broken/stuck refresh control next to "Refresh". */
+    animation: none;
+    opacity: 0.55;
 }
 
 .pageBody--dev .devActivityRing--outer {
@@ -4375,8 +4953,7 @@ body.hasVoyageMapDialog {
 
 .pageBody--dev .devActivityRing--inner {
     inset: 22%;
-    animation-duration: 4.8s;
-    animation-direction: reverse;
+    opacity: 0.42;
 }
 
 .pageBody--dev .devCompassNeedle {
@@ -4387,7 +4964,8 @@ body.hasVoyageMapDialog {
     border-radius: 999px;
     background: linear-gradient(180deg, rgba(250, 204, 21, 0.98), rgba(248, 113, 113, 0.86));
     transform-origin: center 100%;
-    animation: devNeedle 3.4s ease-in-out infinite;
+    transform: rotate(-10deg);
+    animation: none;
     box-shadow: 0 0 14px rgba(250, 204, 21, 0.28);
 }
 
@@ -4398,15 +4976,15 @@ body.hasVoyageMapDialog {
     bottom: 10%;
     border-radius: 50%;
     border: 1px solid rgba(103, 232, 249, 0.18);
-    animation: devWave 4.6s ease-in-out infinite;
+    animation: none;
+    opacity: 0.4;
 }
 
 .pageBody--dev .devActivityWave--two {
     left: 18%;
     right: 18%;
     bottom: 18%;
-    animation-delay: 0.6s;
-    opacity: 0.8;
+    opacity: 0.32;
 }
 
 .pageBody--dev .devActivityHero--sleeping .devActivityCore {
@@ -4415,7 +4993,6 @@ body.hasVoyageMapDialog {
 }
 
 .pageBody--dev .devActivityHero--sleeping .devCompassNeedle {
-    animation-duration: 6s;
     opacity: 0.72;
 }
 
@@ -4426,7 +5003,7 @@ body.hasVoyageMapDialog {
 
 .pageBody--dev .devActivityHero--storm .devCompassNeedle {
     background: linear-gradient(180deg, rgba(248, 113, 113, 0.98), rgba(250, 204, 21, 0.88));
-    animation-duration: 1.3s;
+    transform: rotate(6deg);
 }
 
 .pageBody--dev .devActivityHero--crew .devActivityCore {
@@ -4434,7 +5011,7 @@ body.hasVoyageMapDialog {
 }
 
 .pageBody--dev .devActivityHero--crew .devActivityWave {
-    animation-duration: 2.4s;
+    opacity: 0.45;
 }
 
 .pageBody--dev .devStateGrid {
@@ -5582,13 +6159,66 @@ textarea:focus,
         word-break: break-word;
     }
     .pageBody--dev .devStatusStrip {
-        gap: 0.28rem;
+        gap: 0.14rem;
+        margin: 0.12rem 0;
     }
     .pageBody--dev .devStatusStripItem {
         min-width: 0;
+        padding: 0.18rem 0.32rem;
+    }
+    .pageBody--dev .devStatusStripLabel {
+        font-size: 0.52rem;
+    }
+    .pageBody--dev .devStatusStripValue {
+        font-size: 0.68rem;
     }
     .pageBody--dev .devMiniHeader {
         flex-wrap: wrap;
+        padding: 0.08rem 0 0.1rem;
+    }
+    .pageBody--dev .devConsoleShell {
+        padding: 0.45rem 0.55rem;
+    }
+    .pageBody--dev .devInlineLinks--top {
+        margin-bottom: 0.2rem;
+        padding-bottom: 0.15rem;
+    }
+    .pageBody--dev .devCurrentStatusWrap {
+        margin: 0.15rem 0 0.1rem;
+        padding: 0.2rem 0.28rem;
+    }
+    .pageBody--dev .devCurrentStatusLine {
+        font-size: 0.76rem;
+    }
+    .pageBody--dev .devCaptainSummary {
+        margin: 0.28rem 0;
+        padding: 0.28rem 0.4rem;
+    }
+    .pageBody--dev .devCaptainSummaryItem {
+        font-size: 0.76rem;
+    }
+    .pageBody--dev .devAchievementStrip {
+        margin: 0 0 0.28rem;
+        padding: 0.1rem 0;
+        font-size: 0.64rem;
+    }
+    .pageBody--dev .devNeedsAttentionBlock {
+        margin: 0 0 0.4rem;
+        padding-top: 0.25rem;
+    }
+    .pageBody--dev .devNeedsAttentionTitle {
+        font-size: 0.76rem;
+    }
+    .pageBody--dev .devGovernedReviewHint {
+        margin: 0 0 0.2rem;
+    }
+    .pageBody--dev .devWorkerLastRunWrap {
+        margin: 0.12rem 0;
+        padding: 0.2rem 0.35rem;
+    }
+    .pageBody--dev .devWorkerLastRunWrap .devStatusStripLabel,
+    .pageBody--dev .devWorkerLastRunWrap .devStatusStripValue {
+        font-size: 0.68rem;
     }
     .pageBody--dev .devMiniHeaderMeta .devUpdatedAt {
         max-width: 12ch;
@@ -6271,4 +6901,589 @@ textarea:focus,
     margin: 0;
     font-size: 0.9rem;
     color: var(--text-faint);
+}
+
+.pageBody--dev .devControlLayer {
+    margin: 0.55rem 0 0;
+}
+
+.pageBody--dev .devControlLayerGrid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.pageBody--dev .devControlLayerCard {
+    min-height: 100%;
+}
+
+.pageBody--dev .devJudgmentCard {
+    grid-column: 1 / -1;
+}
+
+.pageBody--dev .devJudgmentGrid {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.95fr);
+    margin-top: 0.35rem;
+}
+
+.pageBody--dev .devJudgmentLead,
+.pageBody--dev .devJudgmentRecommendation {
+    padding: 0.78rem 0.82rem;
+    border-radius: 12px;
+    border: 1px solid rgba(224, 207, 255, 0.08);
+    background: rgba(12, 11, 21, 0.76);
+}
+
+.pageBody--dev .devJudgmentLead .devMetricLabel,
+.pageBody--dev .devJudgmentRecommendation .devMetricLabel {
+    display: block;
+    margin: 0 0 0.2rem;
+}
+
+.pageBody--dev .devJudgmentLead .devLeadSummary,
+.pageBody--dev .devJudgmentLead .devProgressDetail {
+    margin: 0 0 0.55rem;
+}
+
+.pageBody--dev .devJudgmentLead .devProgressDetail:last-child {
+    margin-bottom: 0;
+}
+
+.pageBody--dev .devJudgmentChipRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 0.55rem;
+}
+
+.pageBody--dev .devJudgmentChip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.22rem 0.52rem;
+    border-radius: 999px;
+    border: 1px solid rgba(224, 207, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-soft);
+    font-size: 0.74rem;
+    font-weight: 700;
+}
+
+.pageBody--dev .devJudgmentChip--warn {
+    border-color: rgba(255, 166, 96, 0.25);
+    background: rgba(255, 166, 96, 0.12);
+    color: #ffd4ad;
+}
+
+.pageBody--dev .devJudgmentChip--neutral {
+    border-color: rgba(126, 174, 255, 0.18);
+    background: rgba(126, 174, 255, 0.1);
+    color: #d9e7ff;
+}
+
+.pageBody--dev .devJudgmentChip--good {
+    border-color: rgba(98, 220, 169, 0.22);
+    background: rgba(98, 220, 169, 0.12);
+    color: #c8ffe8;
+}
+
+.pageBody--dev .devJudgmentRoute {
+    margin-top: 0.65rem;
+}
+
+.pageBody--dev .devJudgmentActions {
+    margin-top: 0.65rem;
+}
+
+.pageBody--dev .devJudgmentSignals {
+    display: grid;
+    gap: 0.55rem;
+    margin-top: 0.8rem;
+}
+
+.pageBody--dev .devJudgmentSignal {
+    padding: 0.7rem 0.76rem;
+    border-radius: 10px;
+    border: 1px solid rgba(224, 207, 255, 0.08);
+    background: rgba(12, 11, 21, 0.74);
+}
+
+.pageBody--dev .devJudgmentSignalHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+}
+
+.pageBody--dev .devJudgmentSignal p {
+    margin: 0.45rem 0 0;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.pageBody--dev .devJudgmentSignal--warn {
+    border-color: rgba(255, 166, 96, 0.18);
+}
+
+.pageBody--dev .devControlHealthList {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.pageBody--dev .devControlHealthItem {
+    padding: 0.72rem 0.76rem;
+    border-radius: 10px;
+    border: 1px solid rgba(224, 207, 255, 0.08);
+    background: rgba(12, 11, 21, 0.76);
+}
+
+.pageBody--dev .devControlHealthItem p {
+    margin: 0.38rem 0 0;
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
+
+.pageBody--dev .devControlHealthHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+}
+
+.pageBody--dev .devControlRouterForm {
+    display: grid;
+    gap: 0.6rem;
+    margin: 0.6rem 0 0.8rem;
+}
+
+.pageBody--dev .devControlRouterInput {
+    min-height: 108px;
+    resize: vertical;
+}
+
+.pageBody--dev .devControlRouterActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+}
+
+.pageBody--dev .devControlRouterPrompt {
+    min-height: 188px;
+    resize: vertical;
+    white-space: pre-wrap;
+}
+
+.pageBody--dev .devControlSourceDetails {
+    margin-top: 0.7rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid rgba(224, 207, 255, 0.08);
+}
+
+.pageBody--dev .devControlSourceDetails summary {
+    cursor: pointer;
+    list-style: none;
+    color: var(--text-faint);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.pageBody--dev .devControlSourceDetails summary::-webkit-details-marker {
+    display: none;
+}
+
+.pageBody--dev .devControlSourceDetails p {
+    margin: 0.45rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-soft);
+}
+
+@media (max-width: 720px) {
+    .pageBody--dev .devJudgmentGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Dev cockpit (compact /dev landing) --- */
+.pageBody--dev .devCockpit {
+    padding: 0.85rem 1rem 1rem;
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.pageBody--dev .devCockpitHeader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.65rem;
+    margin-bottom: 0.5rem;
+}
+
+.pageBody--dev .devCockpitTitle {
+    margin: 0.15rem 0 0.25rem;
+    font-size: 1.15rem;
+}
+
+.pageBody--dev .devCockpitSub {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-soft);
+    line-height: 1.4;
+}
+
+.pageBody--dev .devCockpitFullLink {
+    color: var(--accent, #c9b6ff);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pageBody--dev .devCockpitCheckedLine {
+    margin: 0 0 0.65rem;
+    font-size: 0.78rem;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devCockpitGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    margin-bottom: 0.75rem;
+}
+
+@media (min-width: 560px) {
+    .pageBody--dev .devCockpitGrid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.pageBody--dev .devCockpitCard {
+    border: 1px solid rgba(224, 207, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.65rem 0.7rem;
+    background: rgba(12, 11, 21, 0.55);
+}
+
+.pageBody--dev .devCockpitCardTop {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+}
+
+.pageBody--dev .devCockpitCardTitle {
+    margin: 0;
+    font-size: 0.92rem;
+}
+
+.pageBody--dev .devCockpitCardPort {
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    font-weight: 700;
+}
+
+.pageBody--dev .devCockpitCardStatus {
+    margin: 0 0 0.35rem;
+}
+
+.pageBody--dev .devCockpitCardHint {
+    margin: 0 0 0.5rem;
+    font-size: 0.72rem;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devCockpitCardActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.pageBody--dev .devCockpitCardActions .devBtn {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.78rem;
+    padding: 0.38rem 0.5rem;
+}
+
+.pageBody--dev .devCockpitQuick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 0.65rem;
+}
+
+.pageBody--dev .devCockpitQuickBtn {
+    font-size: 0.78rem;
+    padding: 0.42rem 0.55rem;
+}
+
+.pageBody--dev .devCockpitSafety {
+    border-top: 1px solid rgba(224, 207, 255, 0.08);
+    padding-top: 0.65rem;
+    margin-top: 0.25rem;
+}
+
+.pageBody--dev .devCockpitSafetyTitle {
+    margin: 0 0 0.4rem;
+    font-size: 0.85rem;
+}
+
+.pageBody--dev .devCockpitSafetyList {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.76rem;
+    line-height: 1.45;
+    color: var(--text-soft);
+}
+
+.pageBody--dev .devCockpitSafetyList code {
+    font-size: 0.72rem;
+}
+
+.pageBody--dev .devCockpitCardChecked {
+    margin: 0 0 0.45rem;
+    font-size: 0.68rem;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devCockpitGuardState {
+    margin: 0 0 0.55rem;
+    font-size: 0.78rem;
+    line-height: 1.4;
+    color: var(--text-soft);
+}
+
+/* Compact catalog intelligence card (Dev cockpit /dev) */
+.pageBody--dev .devIntelCard {
+    margin: 0 0 1rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(224, 207, 255, 0.14);
+    background: linear-gradient(145deg, rgba(48, 32, 72, 0.55), rgba(24, 18, 40, 0.45));
+}
+
+.pageBody--dev .devIntelCardTop {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+}
+
+.pageBody--dev .devIntelCardKicker {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devIntelCardCovPill {
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    background: rgba(120, 200, 255, 0.12);
+    color: var(--text-bright, #e8e4ff);
+}
+
+.pageBody--dev .devIntelCardCounts,
+.pageBody--dev .devIntelCardFocus,
+.pageBody--dev .devIntelCardNext {
+    margin: 0 0 0.35rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--text-soft);
+}
+
+.pageBody--dev .devIntelCardLink {
+    margin: 0.25rem 0 0;
+    font-size: 0.76rem;
+}
+
+.pageBody--dev .devIntelCardLink a {
+    color: var(--accent, #b8a0ff);
+    font-weight: 600;
+}
+
+/* Full intelligence breakdown (/dev/monitor) */
+.pageBody--dev .devIntelFold {
+    margin-bottom: 0.85rem;
+}
+
+.pageBody--dev .devIntelDetailBody {
+    padding: 0.35rem 0 0.5rem;
+}
+
+.pageBody--dev .devIntelDetailMeta {
+    margin: 0 0 0.75rem;
+    font-size: 0.74rem;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devIntelDetailH3 {
+    margin: 0.65rem 0 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-soft);
+}
+
+.pageBody--dev .devIntelDetailList {
+    margin: 0 0 0.5rem;
+    padding-left: 1.15rem;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--text-soft);
+}
+
+.pageBody--dev .devIntelTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.76rem;
+    margin-bottom: 0.5rem;
+}
+
+.pageBody--dev .devIntelTable th,
+.pageBody--dev .devIntelTable td {
+    text-align: left;
+    padding: 0.35rem 0.45rem;
+    border-bottom: 1px solid rgba(224, 207, 255, 0.08);
+}
+
+.pageBody--dev .devIntelTable th {
+    color: var(--text-faint);
+    font-weight: 600;
+}
+
+.pageBody--dev .devIntelMuted {
+    color: var(--text-faint);
+    font-weight: 400;
+}
+
+.pageBody--dev .devIntelCode {
+    font-size: 0.72rem;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devIntelAlertBox {
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 196, 120, 0.2);
+    background: rgba(80, 48, 20, 0.25);
+    font-size: 0.76rem;
+}
+
+.pageBody--dev .devIntelAlertList {
+    margin: 0.35rem 0 0;
+    padding-left: 1.1rem;
+    line-height: 1.45;
+    color: var(--text-soft);
+}
+
+.pageBody--dev .devCockpitSectionTitle {
+    margin: 0.85rem 0 0.45rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devCockpitSectionTitle:first-of-type {
+    margin-top: 0.15rem;
+}
+
+.pageBody--dev .devCockpitMuted {
+    margin: 0 0 0.5rem;
+    font-size: 0.78rem;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devCockpitSafetyList--compact {
+    font-size: 0.74rem;
+    line-height: 1.45;
+}
+
+.pageBody--dev .devHandoffCard {
+    margin: 0 0 0.5rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid rgba(160, 220, 255, 0.14);
+    background: rgba(20, 36, 48, 0.35);
+}
+
+.pageBody--dev .devHandoffTop {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    margin-bottom: 0.45rem;
+}
+
+.pageBody--dev .devHandoffKicker {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devHandoffDl {
+    margin: 0 0 0.5rem;
+    display: grid;
+    gap: 0.35rem;
+}
+
+.pageBody--dev .devHandoffDl dt {
+    margin: 0;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.pageBody--dev .devHandoffDl dd {
+    margin: 0.1rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--text-soft);
+}
+
+.pageBody--dev .devHandoffLabel {
+    display: block;
+    margin: 0.35rem 0 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devHandoffTextarea {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 0.45rem;
+    padding: 0.5rem 0.55rem;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text-soft);
+    background: rgba(8, 10, 18, 0.55);
+    border: 1px solid rgba(224, 207, 255, 0.1);
+    border-radius: 8px;
+    resize: vertical;
+    min-height: 6rem;
+}
+
+.pageBody--dev .devHandoffActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
 }

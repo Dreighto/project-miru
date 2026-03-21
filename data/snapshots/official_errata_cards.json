@@ -1,0 +1,99 @@
+{
+  "source": {
+    "source_id": "official-errata-cards",
+    "snapshot_taken_at": "2026-03-20 12:00:00",
+    "base_url": "https://en.onepiece-cardgame.com/rules/errata_card/",
+    "payload_origin": "manual_normalization_official_errata_page_en",
+    "record_count": 8
+  },
+  "rulings": [
+    {
+      "ruling_id": "opcg-errata-op07-097-2025-05-16",
+      "card_code": "OP07-097",
+      "source_type": "errata",
+      "source_title": "Errata Cards — OP07-097 Vegapunk",
+      "source_url": "https://en.onepiece-cardgame.com/rules/errata_card/",
+      "source_reference": "May 16, 2025 errata entry",
+      "published_at": "2025-05-16",
+      "effective_at": "2025-05-16",
+      "updated_text": "This Leader cannot attack.[Activate: Main] [Once Per Turn] You may rest 1 of your DON!! cards: Select up to 1 {Egghead} type card with a cost of 5 or less from your hand and play it or add it to the top of your Life cards face-up."
+    },
+    {
+      "ruling_id": "opcg-errata-op09-058-2024-12-13",
+      "card_code": "OP09-058",
+      "source_type": "errata",
+      "source_title": "Errata Cards — OP09-058 Special Muggy Ball",
+      "source_url": "https://en.onepiece-cardgame.com/rules/errata_card/",
+      "source_reference": "December 13, 2024 errata entry",
+      "published_at": "2024-12-13",
+      "effective_at": "2024-12-13",
+      "updated_text": "[Main] Your opponent chooses 1 of their Character with a cost of 6 or less and return to the owner's hand."
+    },
+    {
+      "ruling_id": "opcg-errata-op06-034-2024-12-06",
+      "card_code": "OP06-034",
+      "source_type": "errata",
+      "source_title": "Errata Cards — OP06-034 Hyouzou",
+      "source_url": "https://en.onepiece-cardgame.com/rules/errata_card/",
+      "source_reference": "December 6, 2024 errata entry",
+      "published_at": "2024-12-06",
+      "effective_at": "2024-12-06",
+      "updated_text": "Trait line corrected from Fish-Man to Merfolk per official errata list."
+    },
+    {
+      "ruling_id": "opcg-errata-st14-014-2024-08-16",
+      "card_code": "ST14-014",
+      "source_type": "errata",
+      "source_title": "Errata Cards — ST14-014 Gum-Gum Giant Rifle",
+      "source_url": "https://en.onepiece-cardgame.com/rules/errata_card/",
+      "source_reference": "August 16, 2024 errata entry",
+      "published_at": "2024-08-16",
+      "effective_at": "2024-08-16",
+      "updated_text": "[Counter] If there is a Character with a cost of 8 or more, up to 1 of your Leader or Character cards gains +3000 power during this battle.[Trigger] Add up to 1 of your Character cards with a cost of 2 or less from your trash to your hand."
+    },
+    {
+      "ruling_id": "opcg-errata-op05-032-2023-12-08",
+      "card_code": "OP05-032",
+      "source_type": "errata",
+      "source_title": "Errata Cards — OP05-032 Pica",
+      "source_url": "https://en.onepiece-cardgame.com/rules/errata_card/",
+      "source_reference": "December 8, 2023 errata entry",
+      "published_at": "2023-12-08",
+      "effective_at": "2023-12-08",
+      "updated_text": "[End of Your Turn] ①: Set this Character as active.[Once Per Turn] If this Character would be K.O.'d, you may rest 1 of your Characters with a cost of 3 or more other than [Pica] instead."
+    },
+    {
+      "ruling_id": "opcg-errata-op03-054-2023-07-14",
+      "card_code": "OP03-054",
+      "source_type": "errata",
+      "source_title": "Errata Cards — OP03-054 Usopp's Rubber Band of Doom!!!",
+      "source_url": "https://en.onepiece-cardgame.com/rules/errata_card/",
+      "source_reference": "July 14, 2023 errata entry",
+      "published_at": "2023-07-14",
+      "effective_at": "2023-07-14",
+      "updated_text": "[Counter] Up to 1 of your Leader or Character cards gains +2000 power during this battle. Then, you may trash 1 card from the top of your deck. [Trigger] Draw 1 card and you may trash 1 card from the top of your deck."
+    },
+    {
+      "ruling_id": "opcg-errata-op03-047-2023-07-14",
+      "card_code": "OP03-047",
+      "source_type": "errata",
+      "source_title": "Errata Cards — OP03-047 Zeff",
+      "source_url": "https://en.onepiece-cardgame.com/rules/errata_card/",
+      "source_reference": "July 14, 2023 errata entry",
+      "published_at": "2023-07-14",
+      "effective_at": "2023-07-14",
+      "updated_text": "[DON!! x1] When this Character's attack deals damage to your opponent's Life, you may trash 7 cards from the top of your deck. [On Play] Return up to 1 Character with a cost of 3 or less to the owner's hand, and you may trash 2 cards from the top of your deck."
+    },
+    {
+      "ruling_id": "opcg-errata-op02-071-2023-04-21",
+      "card_code": "OP02-071",
+      "source_type": "errata",
+      "source_title": "Errata Cards — OP02-071 Magellan",
+      "source_url": "https://en.onepiece-cardgame.com/rules/errata_card/",
+      "source_reference": "April 21, 2023 errata entry",
+      "published_at": "2023-04-21",
+      "effective_at": "2023-04-21",
+      "updated_text": "[Your Turn] [Once Per Turn] When a DON!! card on the field is returned to your DON!! deck, this Leader gains +1000 power during this turn."
+    }
+  ]
+}

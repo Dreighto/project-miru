@@ -8,7 +8,9 @@ import time
 import html as html_lib
 from pathlib import Path
 from flask import Flask, Response, redirect, render_template, request, send_from_directory
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 try:
     from PIL import Image, ImageFilter, ImageOps
@@ -39,7 +41,11 @@ CATALOG_DB_CACHE_PATH = "/tmp/project_miru_card_catalog.db"
 IMAGES_ROOT = "/images"
 THUMB_CACHE_ROOT = "/tmp/project_miru_thumbs"
 THUMB_DEFAULT_WIDTH = 420
-LIBRARY_PAGE_SIZE = 24
+# Grid/watch surfaces are small on-screen; narrower thumbs decode faster than THUMB_DEFAULT_WIDTH. Modal/detail still use detail_src full URLs.
+LIBRARY_BROWSE_THUMB_WIDTH = 240
+WATCHLIST_BROWSE_THUMB_WIDTH = 180
+# Phase 2 perf: fewer cards per page = lighter first fragment and less DOM (tradeoff: more pagination).
+LIBRARY_PAGE_SIZE = 18
 HOMEPAGE_INITIAL_WATCHLIST_COUNT = 8
 # Primary insight type order: meta > price > synergy > lore (best first).
 MIRU_PRIMARY_INSIGHT_TYPE_ORDER = ("meta", "price", "strength", "synergy", "lore")
@@ -83,7 +89,88 @@ SORT_OPTIONS = (
 SET_PREFIX_ORDER = {"OP": 0, "ST": 1, "EB": 2, "PRB": 3, "P": 4}
 
 app = Flask(__name__)
+# Deck Builder and other Jinja templates must reflect disk edits without a manual restart
+# (worktree dashboard is often run without Flask debug mode).
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 _TTL_CACHE = {}
+
+# Serve Project Miru logo assets from worktree tools/static/icons (intended source of truth)
+_TOOLS_ICONS_DIR = _PROJECT_ROOT / "tools" / "static" / "icons"
+
+
+@app.get("/static/icons/<path:filename>")
+def serve_tools_icons(filename):
+    """Serve icon assets from tools/static/icons so the dashboard uses the intended Project Miru logo files."""
+    return send_cached_directory_file(
+        str(_TOOLS_ICONS_DIR), filename, max_age=86400, stale_while_revalidate=604800
+    )
+
+
+# Primary nav icons (SVG test pass) live under dashboard/static/icons (not tools/* — avoids clashing with /static/icons/ above).
+_DASHBOARD_NAV_ICONS_DIR = _DASHBOARD_DIR / "static" / "icons"
+DASHBOARD_NAV_ICONS_URL = "/static/miru-icons"
+_NAV_ICON_FILES = {
+    "home": "home.svg",
+    "cards": "cards.svg",
+    "leaders": "leaders.svg",
+    "deck": "deck.svg",
+    "profile": "room.svg",
+}
+
+_NAV_ICON_IMG_CLASSES = {
+    "home": "navIcon navIcon--home",
+    "cards": "navIcon navIcon--cards",
+    "leaders": "navIcon navIcon--leaders",
+    "deck": "navIcon navIcon--deck",
+    "profile": "navIcon navIcon--profile",
+}
+
+
+@app.get("/static/miru-icons/<path:filename>")
+def serve_dashboard_nav_icons(filename):
+    return send_cached_directory_file(
+        str(_DASHBOARD_NAV_ICONS_DIR),
+        filename,
+        max_age=86400,
+        stale_while_revalidate=604800,
+    )
+
+
+def nav_icon_url(nav_key: str) -> str:
+    fn = _NAV_ICON_FILES.get(nav_key)
+    if not fn:
+        return ""
+    # Query busts long-lived Cache-Control on /static/miru-icons/* after icon asset updates.
+    v = "svg_nav_v1"
+    return f"{DASHBOARD_NAV_ICONS_URL}/{fn}?v={v}"
+
+
+def build_primary_bottom_nav_html(*, active: str) -> str:
+    """Primary dock: Home, Cards, Leaders, Deck Builder, Profile. active: home|cards|leaders|deck|profile."""
+    esc = html_lib.escape
+    parts = []
+    for label, href, key in (
+        ("Home", "/", "home"),
+        ("Cards", "/cards", "cards"),
+        ("Leaders", "/leaders", "leaders"),
+        ("Deck Builder", "/deck-builder", "deck"),
+        ("Profile", "/profile", "profile"),
+    ):
+        current = active == key
+        cur_cls = " bottomNavItem--current" if current else ""
+        active_cls = " active" if current else ""
+        aria = ' aria-current="page"' if current else ""
+        src = nav_icon_url(key)
+        img_cls = _NAV_ICON_IMG_CLASSES.get(key, "navIcon")
+        parts.append(
+            f'<a class="bottomNavItem navButton{cur_cls}{active_cls}" href="{esc(href)}"{aria}>'
+            f'<span class="bottomNavIcon navIconWrap" aria-hidden="true">'
+            f'<img class="{esc(img_cls)}" src="{esc(src)}" width="22" height="22" alt="" decoding="async" fetchpriority="low">'
+            f"</span>"
+            f'<span class="bottomNavLabel">{esc(label)}</span></a>'
+        )
+    return "".join(parts)
+
 
 ALT_MARKERS = (
     "alternate art", "alt art", "alt-art", "alternate-art",
@@ -256,6 +343,200 @@ def open_catalog_db():
         return sqlite3.connect(CATALOG_DB_CACHE_PATH)
 
 
+def format_miru_voice(insight_text: str, insight_type: str = "", confidence: float = 0.0) -> str:
+    """
+    Miru Voice Layer v1.1 (OPTCG-native): transform approved insight text for display so it
+    sounds like a knowledgeable locals player—calm, modest, human. Uses OPTCG player language
+    (build, trend, tap don, bottom deck, X-costs or less, etc.). Runs after governance/approval,
+    before UI. Does not add or remove facts; only rephrases. Tone adapts to confidence.
+    """
+    text = (insight_text or "").strip()
+    if not text:
+        return ""
+    type_lower = (insight_type or "").strip().lower()
+    conf = max(0.0, min(1.0, float(confidence)))
+    high_conf = conf >= 0.65
+    low_conf = conf < 0.4
+
+    # --- Remove belittling / overconfident phrasing ---
+    bad_phrases = [
+        (r"\bObviously[,.]?\s*", " "),
+        (r"\bClearly[,.]?\s*", "From what I've tracked, "),
+        (r"\bYou should know\s+that\s+", " "),
+        (r"\bAny good player would\s+", "I'd "),
+        (r"\bFor newer players[,.]?\s*", " "),
+        (r"\bEven beginners can see\b", " "),
+        (r"\bThis is simple[,.]?\s*", " "),
+        (r"\bYou probably don't understand\b", " "),
+    ]
+    for pat, repl in bad_phrases:
+        text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+    text = text.strip()
+
+    # --- Smooth blunt fragments before other rewrites (e.g. "this is a staple in the current meta") ---
+    t_lower = text.lower()
+    if t_lower.startswith("this is ") or t_lower.startswith("it is "):
+        text = re.sub(r"(?i)^(this|it) is\s+", "", text, count=1)
+        if text and not (text.startswith("I'd ") or text.startswith("From what")):
+            text = "From what I've tracked, this still looks like " + text[0:1].lower() + text[1:]
+    text = text.strip()
+
+    # --- Reduce absolute language (softer unless confidence very high) ---
+    if not high_conf:
+        absolutes = [
+            (r"\bis a staple\b", "looks like a staple right now"),
+            (r"\bis the best\b", "looks strongest right now"),
+            (r"\bis required\b", "is usually needed in that build"),  # "build" = OPTCG-native
+            (r"\b(is|are) always\b", r"\1 consistently"),
+            (r"\balways\s+", "consistently "),
+        ]
+        for pat, repl in absolutes:
+            text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+
+    # --- Interpret facts with modest voice (pattern-based rewrites) ---
+    # Core/usage: "Core in N leader(s) across M tracked..." -> smooth voice
+    core_leader_match = re.match(
+        r"(?i)\s*core\s+in\s+(\d+)\s+leader(s?)\s+(?:across|in)\s+(\d+)\s+tracked",
+        text,
+    )
+    if core_leader_match:
+        n, m = core_leader_match.group(1), core_leader_match.group(3)
+        if int(n) == 1:
+            text = (
+                f"I'd treat this as a core piece in that build. It isn't across multiple leaders "
+                f"yet, but where it does show up ({m} tracked slots), it looks very stable."
+            )
+        else:
+            text = (
+                f"From what I've tracked, this looks like a core piece across {n} leaders "
+                f"({m} deck slots). I'd treat it as a stable choice in those builds."
+            )
+    else:
+        # "Seen in N deck(s)" -> natural interpretation (what it means for a player)
+        seen_deck_match = re.match(r"(?i)^\s*Seen in\s+(\d+)\s+deck(s?)\b", text)
+        if seen_deck_match:
+            num = int(seen_deck_match.group(1))
+            rest = text[seen_deck_match.end() :].strip()
+            if num <= 3:
+                text = (
+                    "I've only seen this in a couple of decks so far, so I'd treat that as an early trend."
+                )
+                if rest and not re.match(r"^[.;,]|\b(low|small|narrow)\b", rest, re.IGNORECASE):
+                    text += " " + rest
+            else:
+                text = f"From what I've tracked, it shows up in {num} deck{'s' if num != 1 else ''}."
+                if rest:
+                    text += " " + rest
+        else:
+            replacements = [
+                (r"(?i)^\s*Core\s+in\b", "I'd treat this as a core piece in"),
+                (r"(?i)\bHigh\s+usage\b", "steady usage"),
+                (r"(?i)\bLow\s+usage\b", "niche usage"),
+                (r"(?i)^\s*Staple\s+in\b", "I'd treat this as a staple in"),
+                (r"(?i)^\s*Must-play\b", "I'd treat this as a must-play"),
+                (r"(?i)^\s*Auto-include\b", "I'd treat this as an auto-include"),
+            ]
+            for pat, repl in replacements:
+                text = re.sub(pat, repl, text)
+
+    # Fix accidental "a a" from "looks like a" + "a staple"
+    text = re.sub(r"\ba\s+a\s+", "a ", text)
+
+    # --- OPTCG-native vocabulary (locals-level fluency) ---
+    analyst_to_native = [
+        (r"\bshells\b", "builds"),
+        (r"\bshell\b", "build"),
+        (r"\bsignal\b", "trend"),
+        (r"\bappears in\b", "shows up in"),
+        (r"\bconsistent usage\b", "you usually see it"),
+        (r"\boptimal\b", "best fit"),
+        (r"\bbroadly spread\b", "across multiple leaders"),
+    ]
+    for pat, repl in analyst_to_native:
+        text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+    # --- Effect shorthand (player language) ---
+    text = re.sub(r"\brest\s+(\d+)\s+DON!*\s*", r"tap \1 don ", text, flags=re.IGNORECASE)
+    text = re.sub(
+        r"\bplace\s+(\d+)\s+characters?\s+with\s+cost\s+(\d+)\s+or\s+less\s+at\s+the\s+bottom\s+of\s+(?:your\s+)?opponent'?s?\s+deck\b",
+        r"bottom deck \1 \2-costs or less",
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(r"\bat\s+the\s+bottom\s+of\s+(?:your\s+)?opponent'?s?\s+deck\b", "bottom deck", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bcharacters?\s+with\s+cost\s+(\d+)\s+or\s+less\b", r"\1-costs or less", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bis used to remove characters efficiently\b", "helps you clear board", text, flags=re.IGNORECASE)
+    text = re.sub(r"\blimits?\s+opponent\s+resource\s+development\b", "helps starve them a bit", text, flags=re.IGNORECASE)
+
+    # --- Legality/rules sensitivity: add careful tone ---
+    legality_keywords = r"\b(banned|restricted|legal|legality|rules?)\b"
+    if re.search(legality_keywords, text, re.IGNORECASE):
+        if not re.match(r"(?i)^I'd\s+(be\s+careful|double-check)", text):
+            text = "I'd double-check that before building around it. " + text
+
+    # --- Confidence-aware lead-in ---
+    lead_in = ""
+    if type_lower == "price" or "price" in type_lower:
+        if low_conf:
+            lead_in = "I'd treat this as a light market trend, not a strong one yet. "
+        else:
+            lead_in = "From what I've tracked on price, "
+    elif low_conf and not (text.startswith("I'd ") or text.startswith("From what") or text.startswith("I've only")):
+        lead_in = "I wouldn't overstate it yet—what I'm seeing is still pretty narrow. "
+    elif high_conf and type_lower == "meta":
+        t_lower = text.lower()
+        if t_lower.startswith("this is ") or t_lower.startswith("this ") or t_lower.startswith("it is ") or t_lower.startswith("it "):
+            pass
+        elif not (text.startswith("I'd ") or text.startswith("From what") or text.startswith("Right now")):
+            lead_in = "Right now, this seems to "
+            if len(text) > 0 and text[0].isupper():
+                text = text[0:1].lower() + text[1:]
+
+    if lead_in and not (
+        text.startswith("I'd ") or text.startswith("From what") or text.startswith("Right now") or text.startswith("I've only")
+    ):
+        text = lead_in + text
+
+    # --- Improve flow: merge very short choppy sentences ---
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    if len(sentences) >= 2:
+        merged = []
+        i = 0
+        while i < len(sentences):
+            s = sentences[i].strip()
+            if not s:
+                i += 1
+                continue
+            if i + 1 < len(sentences) and s.endswith("."):
+                next_s = sentences[i + 1].strip()
+                next_lower = next_s.lower()
+                if (next_s.startswith("It ") or next_s.startswith("It's ")) and len(next_s.split()) <= 8:
+                    s = s[:-1] + ", and " + next_s[0:1].lower() + next_s[1:]
+                    i += 1
+                elif len(next_s.split()) <= 3 and (
+                    next_lower.endswith(" played.") or next_lower.endswith(" needed.") or next_lower.endswith(" used.")
+                ):
+                    s = s[:-1] + ", and it's " + next_s[0:1].lower() + next_s[1:].rstrip(".") + "."
+                    i += 1
+            merged.append(s)
+            i += 1
+        text = " ".join(merged)
+
+    # --- Cap length: 2–5 sentences ---
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    if len(sentences) > 5:
+        text = " ".join(sentences[:5]).strip()
+
+    # --- Clean up: capitalize first letter of each sentence ---
+    text = text.strip()
+    if text and text[0].islower():
+        text = text[0:1].upper() + text[1:]
+    parts = re.split(r"(?<=[.!?])\s+", text)
+    parts = [p.strip()[0:1].upper() + p.strip()[1:] if len(p.strip()) > 1 and p.strip()[0].islower() else p.strip() for p in parts if p.strip()]
+    text = " ".join(parts)
+
+    return text.strip()
+
+
 def load_miru_insight_status():
     signature = path_signature(CATALOG_DB_PATH)
 
@@ -329,15 +610,16 @@ def load_miru_card_insight(card_id: str):
             return None
         if not rows:
             return None
+        # sqlite3.Row supports __getitem__ but not .get(); keep parity with plural route (subscription).
         items = [
             {
-                "insight_text": str(r.get("insight_text") or "").strip(),
-                "insight_type": str(r.get("insight_type") or "").strip(),
-                "confidence": round(float(r.get("confidence") or 0.0), 2),
-                "updated_at": str(r.get("updated_at") or ""),
+                "insight_text": str(r["insight_text"] or "").strip(),
+                "insight_type": str(r["insight_type"] or "").strip(),
+                "confidence": round(float(r["confidence"] or 0.0), 2),
+                "updated_at": str(r["updated_at"] or ""),
             }
             for r in rows
-            if str(r.get("insight_text") or "").strip()
+            if str(r["insight_text"] or "").strip()
         ]
         if not items:
             return None
@@ -863,6 +1145,50 @@ def miru_thumb(filename):
     )
 
 
+# Allowlist for image proxy: external catalog URLs only (same-origin proxy to avoid broken images on phone).
+_PROXY_IMAGE_ALLOWED_HOSTS = ("en.onepiece-cardgame.com",)
+
+
+def _proxy_image_allowed(url: str) -> bool:
+    if not url or not isinstance(url, str):
+        return False
+    url = url.strip()
+    if not url.startswith(("http://", "https://")):
+        return False
+    try:
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower()
+        return host in _PROXY_IMAGE_ALLOWED_HOSTS
+    except Exception:
+        return False
+
+
+@app.get("/proxy-img")
+def proxy_img():
+    """Proxy external catalog image URLs so the browser loads from same origin (fixes broken images on phone)."""
+    raw = request.args.get("url", "").strip()
+    if not raw or not _proxy_image_allowed(raw):
+        return Response("Bad request", status=400)
+    try:
+        req = Request(raw, headers={"User-Agent": "ProjectMiru/1 (image proxy)"})
+        with urlopen(req, timeout=15) as resp:
+            body = resp.read()
+            content_type = resp.headers.get("Content-Type") or "image/png"
+            if ";" in content_type:
+                content_type = content_type.split(";", 1)[0].strip()
+            response = Response(body, mimetype=content_type)
+            return apply_cache_headers(response, max_age=86400, stale_while_revalidate=604800)
+    except (HTTPError, URLError, OSError, ValueError) as e:
+        return Response(str(e), status=502)
+
+
+def _proxy_image_url(external_url: str) -> str:
+    """Return same-origin proxy URL for an allowed external image URL."""
+    if not external_url or not _proxy_image_allowed(external_url):
+        return external_url
+    return f"/proxy-img?url={quote(external_url, safe='')}"
+
+
 def choose_image_path(name: str, code: str):
     """
     Selection order:
@@ -952,6 +1278,16 @@ def resolve_card_image_sources(name: str, code: str, catalog_entry: dict, width:
             "detail_src": catalog_src,
             "detail_label": "",
             "source_kind": "catalog-local",
+        }
+
+    # External catalog URL: serve via same-origin proxy so images load on phone (avoids referrer/CORS issues).
+    if catalog_src and catalog_src.startswith(("http://", "https://")):
+        proxied = _proxy_image_url(catalog_src)
+        return {
+            "thumb_src": proxied,
+            "detail_src": proxied,
+            "detail_label": "",
+            "source_kind": "catalog-remote",
         }
 
     return {
@@ -1406,6 +1742,21 @@ def api_miru_insight(card_id: str):
             status=404,
             mimetype="application/json",
         )
+    # Miru Voice Layer: format approved insight for display (after governance, before UI).
+    t = payload.get("type") or ""
+    c = float(payload.get("confidence") or 0.0)
+    payload = copy.deepcopy(payload)
+    payload["insight"] = format_miru_voice(payload.get("insight") or "", t, c)
+    if payload.get("primary"):
+        payload["primary"] = dict(payload["primary"])
+        payload["primary"]["insight"] = format_miru_voice(
+            payload["primary"].get("insight") or "", payload["primary"].get("type") or "", payload["primary"].get("confidence") or 0.0
+        )
+    for i, add in enumerate(payload.get("additional") or []):
+        payload["additional"][i] = dict(add)
+        payload["additional"][i]["insight"] = format_miru_voice(
+            add.get("insight") or "", add.get("type") or "", add.get("confidence") or 0.0
+        )
     return Response(json.dumps(payload), mimetype="application/json")
 
 
@@ -1443,19 +1794,17 @@ def api_miru_insights(card_id: str):
             return None
         if not rows:
             return None
-        return {
-            "card_id": canonical,
-            "insights": [
-                {
-                    "insight": str(row["insight_text"] or ""),
-                    "type": str(row["insight_type"] or ""),
-                    "confidence": round(float(row["confidence"] or 0.0), 2),
-                    "updated_at": str(row["updated_at"] or ""),
-                }
-                for row in rows
-                if str(row["insight_text"] or "").strip()
-            ],
-        }
+        items = [
+            {
+                "insight": str(row["insight_text"] or ""),
+                "type": str(row["insight_type"] or ""),
+                "confidence": round(float(row["confidence"] or 0.0), 2),
+                "updated_at": str(row["updated_at"] or ""),
+            }
+            for row in rows
+            if str(row["insight_text"] or "").strip()
+        ]
+        return {"card_id": canonical, "insights": items}
 
     result = get_ttl_cached_value(f"miru_insights_all:{canonical}", 5.0, builder, signature=signature)
     if result is None or not (result.get("insights") or []):
@@ -1468,7 +1817,69 @@ def api_miru_insights(card_id: str):
             status=404,
             mimetype="application/json",
         )
-    return Response(json.dumps(result), mimetype="application/json")
+    # Miru Voice Layer: format each approved insight for display.
+    out_insights = [
+        {
+            **item,
+            "insight": format_miru_voice(
+                item.get("insight") or "", item.get("type") or "", item.get("confidence") or 0.0
+            ),
+        }
+        for item in result["insights"]
+    ]
+    return Response(
+        json.dumps({"card_id": result["card_id"], "insights": out_insights}),
+        mimetype="application/json",
+    )
+
+
+# Min length/confidence for listing cards that qualify for the primary Insights button (must match frontend SURFACE_*).
+_MIRU_INSIGHT_MIN_LENGTH = 40
+_MIRU_INSIGHT_MIN_CONFIDENCE = 0.5
+
+
+def _load_card_codes_with_verified_insight():
+    """Return list of card_id that have at least one insight passing relevance (for testing the Insights button)."""
+    signature = path_signature(CATALOG_DB_PATH)
+
+    def builder():
+        try:
+            conn = open_catalog_db()
+            conn.row_factory = sqlite3.Row
+            try:
+                rows = conn.execute(
+                    """
+                    SELECT DISTINCT card_id
+                    FROM miru_card_insights
+                    WHERE LENGTH(TRIM(COALESCE(insight_text, ''))) >= ?
+                      AND (confidence IS NULL OR confidence >= ?)
+                    ORDER BY card_id
+                    LIMIT 50
+                    """,
+                    (_MIRU_INSIGHT_MIN_LENGTH, _MIRU_INSIGHT_MIN_CONFIDENCE),
+                ).fetchall()
+            finally:
+                conn.close()
+            return [str(r["card_id"] or "").strip() for r in rows if str(r["card_id"] or "").strip()]
+        except Exception:
+            return []
+
+    return get_ttl_cached_value("miru_insight_cards_list", 30.0, builder, signature=signature)
+
+
+@app.get("/api/miru/insight-cards")
+def api_miru_insight_cards():
+    """Return card codes that have verified insight (for testing the Miru Insights button). Truthful, read-only."""
+    codes = _load_card_codes_with_verified_insight()
+    return Response(
+        json.dumps({
+            "card_codes": codes,
+            "count": len(codes),
+            "source": "miru_card_insights",
+            "note": "Open any of these cards in Library to verify the Miru Insights button.",
+        }),
+        mimetype="application/json",
+    )
 
 
 @app.get("/api/miru/legality/<card_id>")
@@ -1703,7 +2114,7 @@ def api_watchlist_add():
 
 
 def build_library_card_index(catalog_cards):
-    signature = (path_signature(CATALOG_DB_PATH), len(RUNTIME_BEST_IMAGE_INDEX))
+    signature = (path_signature(CATALOG_DB_PATH), len(RUNTIME_BEST_IMAGE_INDEX), LIBRARY_BROWSE_THUMB_WIDTH)
 
     def builder():
         library_cards = []
@@ -1711,8 +2122,12 @@ def build_library_card_index(catalog_cards):
             title_name = clean_display_name(str(catalog_entry.get("card_name") or ""), code) or code
             set_name = str(catalog_entry.get("set_name") or "").strip()
             code_parts = parse_library_code_parts(code)
-            image_sources = resolve_card_image_sources(title_name, code, catalog_entry)
-            all_sources = get_all_card_image_sources(title_name, code, catalog_entry)
+            image_sources = resolve_card_image_sources(
+                title_name, code, catalog_entry, width=LIBRARY_BROWSE_THUMB_WIDTH
+            )
+            all_sources = get_all_card_image_sources(
+                title_name, code, catalog_entry, width=LIBRARY_BROWSE_THUMB_WIDTH
+            )
             thumb_src = str(image_sources.get("thumb_src") or "")
             library_cards.append(
                 {
@@ -1756,8 +2171,10 @@ def build_library_card_index(catalog_cards):
             if code in catalog_cards:
                 continue
             code_parts = parse_library_code_parts(code)
-            image_sources = resolve_card_image_sources(code, code, {})
-            all_sources = get_all_card_image_sources(code, code, {})
+            image_sources = resolve_card_image_sources(
+                code, code, {}, width=LIBRARY_BROWSE_THUMB_WIDTH
+            )
+            all_sources = get_all_card_image_sources(code, code, {}, width=LIBRARY_BROWSE_THUMB_WIDTH)
             thumb_src = str(image_sources.get("thumb_src") or "")
             detail_label = str(image_sources.get("detail_label") or "").strip()
             library_cards.append(
@@ -1848,12 +2265,15 @@ def build_library_fragment_html(
     title_class = "libraryCardTitle libraryCardTitle--browse" if browse_mode else "libraryCardTitle"
     subtitle_class = "libraryCardSubtitle libraryCardSubtitle--browse" if browse_mode else "libraryCardSubtitle"
     library_html = []
-    for entry in library_page_items:
+    for idx, entry in enumerate(library_page_items):
         price_entry = (price_index or {}).get(entry["code"], {})
         entry_with_watch = {**entry, "watch_data": price_entry}
         detail_payload_attr = build_library_detail_payload_attr(entry_with_watch, catalog_cards.get(entry["code"], {}))
+        # First row: eager load + high fetch priority; rest lazy for smoother scroll.
+        fetch_prio = "high" if idx < 6 else "low"
+        load_mode = "eager" if idx < 6 else "lazy"
         media_html = (
-            f'<img class="{thumb_class}" src="{entry["thumb_src"]}" loading="lazy" decoding="async" fetchpriority="low" alt="">'
+            f'<img class="{thumb_class}" src="{entry["thumb_src"]}" width="63" height="88" loading="{load_mode}" decoding="async" fetchpriority="{fetch_prio}" alt="">'
             if entry["thumb_src"]
             else f'<div class="{thumb_class} libraryThumb--empty">No image</div>'
         )
@@ -1984,13 +2404,15 @@ def build_watchlist_entries(items, catalog_cards):
 
 def build_watchlist_cards_html(entries, catalog_cards):
     cards_html = []
-    for entry in entries or []:
+    for widx, entry in enumerate(entries or []):
         item = entry["it"]
         code = entry["code"]
         title_name = entry["title_name"]
         subtitle = entry["subtitle"]
         catalog_entry = catalog_cards.get(code, {})
-        image_sources = resolve_card_image_sources(entry["name"], code, catalog_entry)
+        image_sources = resolve_card_image_sources(
+            entry["name"], code, catalog_entry, width=WATCHLIST_BROWSE_THUMB_WIDTH
+        )
         detail_payload = {
             "code": code,
             "name": title_name or entry["display_name"] or code,
@@ -2015,8 +2437,9 @@ def build_watchlist_cards_html(entries, catalog_cards):
         secondary_line = subtitle or "Watchlist"
         rail_detail = entry["pct_label"] or (f'Target {entry["target_txt"]}' if entry["target_txt"] else "Watching")
         thumb_src = str(image_sources.get("thumb_src") or "")
+        _wload = "eager" if widx < 4 else "lazy"
         img_tag = (
-            f'<img class="watchTileImage" src="{thumb_src}" loading="lazy" decoding="async" fetchpriority="low" alt="">'
+            f'<img class="watchTileImage" src="{thumb_src}" width="63" height="88" loading="{_wload}" decoding="async" fetchpriority="low" alt="">'
             if thumb_src
             else '<div class="watchTileImage watchTileImage--empty">No image</div>'
         )
@@ -2460,6 +2883,7 @@ def warm_start_caches():
 warm_start_caches()
 
 
+@app.get("/cards")
 @app.get("/library")
 @app.get("/")
 def index():
@@ -2467,7 +2891,8 @@ def index():
     # Do NOT restore from .codex_catalog_snapshot.html or the old "OP Miru Catalog" state.
     items = load_prices()
     catalog_cards = load_catalog_card_index()
-    is_library_page = request.path.rstrip("/") == "/library"
+    is_library_page = request.path.rstrip("/") in ("/library", "/cards")
+    library_view_path = (request.path.rstrip("/") or "/library") if is_library_page else "/library"
     try:
         library_page = max(int(request.args.get("library_page", "1") or 1), 1)
     except Exception:
@@ -2524,19 +2949,52 @@ def index():
         else "Card intelligence for the One Piece TCG."
     )
     hero_eyebrow = "Leader hub" if is_leader_library_view else ("Browse Cards" if is_library_page else "Home")
-    brand_hero_class = "brandHero brandHero--slim" if is_library_page else "brandHero"
+    # Home = full hero; Library = shared compact header with logo so brand is present across pages
+    brand_hero_class = "brandHero brandHero--shared" if is_library_page else "brandHero"
     hero_stats_html = ""
-    hero_nav_html = (
-        '<a class="heroNavLink heroNavLink--current" href="/" aria-current="page">Home</a>'
-        '<a class="heroNavLink" href="/library">Library</a>'
-        '<a class="heroNavLink" href="/leaders">Leaders</a>'
-        '<a class="heroNavLink" href="/library?sort=newest_set">Sets</a>'
-        if is_library_page
-        else '<a class="heroNavLink heroNavLink--current" href="#watchlist" aria-current="page">Watchlist</a>'
-             '<a class="heroNavLink" href="/library">Library</a>'
-             '<a class="heroNavLink" href="/leaders">Leaders</a>'
-             '<a class="heroNavLink" href="/library?sort=newest_set">Sets</a>'
+    # Primary nav: Home, Cards, Leaders, Deck Builder, Profile (no Sets tab; /sets redirect unchanged)
+    _path = request.path.rstrip("/") or "/"
+    _is_home = _path == "/"
+    _is_cards_nav = is_library_page
+    _is_leaders = _path == "/leaders"
+    _is_deck_builder = _path == "/deck-builder"
+    _is_profile = _path == "/profile"
+    _nav = lambda label, href, current: (
+        f'<a class="heroNavLink{" heroNavLink--current" if current else ""}" href="{html_lib.escape(href)}"'
+        f'{" aria-current=\"page\"" if current else ""}>{html_lib.escape(label)}</a>'
     )
+    hero_nav_html = (
+        _nav("Home", "/", _is_home)
+        + _nav("Cards", "/cards", _is_cards_nav)
+        + _nav("Leaders", "/leaders", _is_leaders)
+        + _nav("Deck Builder", "/deck-builder", _is_deck_builder)
+        + _nav("Profile", "/profile", _is_profile)
+    )
+    app_bar_visible_from_start = True  # shell logo present on entry for all pages; single identity
+    # Shell page label (left side of top bar): matches current page for app-like feel
+    app_bar_page_label = (
+        "Leaders"
+        if _is_leaders
+        else (
+            "Profile"
+            if _is_profile
+            else ("Deck Builder" if _is_deck_builder else ("Cards" if is_library_page else "Home"))
+        )
+    )
+    # Bottom nav: primary SVGs from /static/miru-icons/* (see _NAV_ICON_FILES)
+    if _is_home:
+        _nav_active = "home"
+    elif _is_cards_nav:
+        _nav_active = "cards"
+    elif _is_leaders:
+        _nav_active = "leaders"
+    elif _is_deck_builder:
+        _nav_active = "deck"
+    elif _is_profile:
+        _nav_active = "profile"
+    else:
+        _nav_active = "home"
+    bottom_nav_html = build_primary_bottom_nav_html(active=_nav_active)
     hero_utility_html = ""
     miru_preview_html = ""
     homepage_library_entry_html = """
@@ -2601,6 +3059,23 @@ def index():
             f'<option value="{html_lib.escape(option["value"], quote=True)}"{" selected" if library_filters["sort"] == option["value"] else ""}>{html_lib.escape(option["label"])}</option>'
             for option in library_filter_options["sort"]
         )
+    insight_test_html = ""
+    if is_library_page and request.args.get("insight_test") == "1":
+        codes = _load_card_codes_with_verified_insight()
+        if codes:
+            sample = ", ".join(html_lib.escape(c) for c in codes[:8])
+            if len(codes) > 8:
+                sample += f" … (+{len(codes) - 8} more)"
+            insight_test_html = (
+                f'<p class="libraryInsightTestHint" aria-hidden="true">Verification: open a card with insight '
+                f'(e.g. {sample}) to test the Miru Insights button. '
+                f'<a href="/api/miru/insight-cards" target="_blank" rel="noopener">List all</a></p>'
+            )
+        else:
+            insight_test_html = (
+                '<p class="libraryInsightTestHint" aria-hidden="true">'
+                "Verification: no cards with verified insight in this environment.</p>"
+            )
     library_page_html = ""
     if is_library_page and library_filters is not None:
         is_sets_library_view = bool(
@@ -2616,8 +3091,17 @@ def index():
         browse_context_label, active_filter_count = get_library_browse_context(library_filters, library_filter_options)
         browse_context_escaped = html_lib.escape(browse_context_label)
         filter_toggle_label = f"Filters ({active_filter_count})" if active_filter_count else "Filters"
+        # Internal Cards scope: Sets lives under Cards (/sets still redirects to /library?sort=newest_set).
+        _sub_all_cur = "" if is_sets_library_view else " libraryCardsSubNavLink--current"
+        _sub_sets_cur = " libraryCardsSubNavLink--current" if is_sets_library_view else ""
+        _sub_all_aria = "" if is_sets_library_view else ' aria-current="page"'
+        _sub_sets_aria = ' aria-current="page"' if is_sets_library_view else ""
         library_page_html = f"""
-            <form class="libraryControls libraryControlBand" id="libraryControls" action="/library" method="get">
+            <nav class="libraryCardsSubNav" aria-label="Cards">
+              <a class="libraryCardsSubNavLink{_sub_all_cur}" href="/cards"{_sub_all_aria}>All Cards</a>
+              <a class="libraryCardsSubNavLink{_sub_sets_cur}" href="/sets"{_sub_sets_aria}>Sets</a>
+            </nav>
+            <form class="libraryControls libraryControlBand" id="libraryControls" action="{html_lib.escape(library_view_path)}" method="get">
               <div class="libraryControlsRow">
                 <div class="librarySearchWrap">
                   <input
@@ -2713,6 +3197,7 @@ def index():
               </button>
             </div>
             <p class="libraryVariantHint" id="libraryVariantHint">Tip: Double-tap a card to flip between art variants.</p>
+            {insight_test_html}
 
             <section class="libraryShell libraryShell--browse" id="card-library" data-library-fragment-url="{library_fragment_url}">
               <div id="libraryDeferredContent" class="libraryDeferredContent">
@@ -2754,11 +3239,34 @@ def index():
     )
 
     body_class = "pageBody pageBody--library" if is_library_page else "pageBody pageBody--dashboard"
+    hero_section_html = (
+        ""
+        if is_library_page
+        else f"""
+        <section class="brandHero">
+          <div class="logoStage" aria-hidden="true"></div>
+          <div class="brandRow">
+            <div class="brandCopy">
+              <div class="brandEyebrow">{hero_eyebrow}</div>
+              <h1 class="brandTitle">Project Miru</h1>
+              <p class="brandBody">{brand_body}</p>
+            </div>
+          </div>
+          {hero_utility_html}
+          {hero_stats_html}
+        </section>
+"""
+    )
+    library_fragment_preload = (
+        f'<link rel="preload" href="{html_lib.escape(library_fragment_url)}" as="fetch">'
+        if library_fragment_url else ""
+    )
     page_html = f"""
     <html data-ui-version="worktree-home-v2">
     <head>
-      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
       <title>{page_title}</title>
+      {library_fragment_preload}
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
       <link href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -2799,13 +3307,14 @@ def index():
         }}
 
         body {{
+          overscroll-behavior-y: contain;
           background: radial-gradient(1200px 800px at 50% -10%, rgba(165,118,255,0.18), transparent 55%),
                       radial-gradient(900px 700px at 100% 0%, rgba(244,208,120,0.08), transparent 48%),
                       radial-gradient(900px 700px at 0% 20%, rgba(114,82,189,0.10), transparent 50%),
                       var(--bg);
           color: white;
           font-family: var(--font-ui);
-          padding: 14px;
+          padding: 14px 14px 0;
           margin: 0;
           font-size: 13px;
           overflow-x: clip;
@@ -2817,6 +3326,260 @@ def index():
           max-width: 100%;
           margin: 0 auto;
           overflow-x: hidden;
+        }}
+
+        /* App bar: solid app surface; stable alignment */
+        .appBar {{
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          z-index: 50;
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          align-items: center;
+          min-height: 64px;
+          padding: 6px 12px;
+          padding-top: max(6px, env(safe-area-inset-top, 0px));
+          background: #0c0a14;
+          border-bottom: 1px solid rgba(196, 173, 255, 0.06);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.15s ease;
+          contain: layout style;
+          transform: translateZ(0);
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+        }}
+
+        .appBar[data-visible-from-start="true"] {{
+          opacity: 1;
+          pointer-events: auto;
+        }}
+
+        .appBarLeft {{
+          display: flex;
+          align-items: center;
+          min-width: 0;
+          justify-self: start;
+        }}
+
+        .appBarPageLabel {{
+          font-size: 13px;
+          font-weight: 500;
+          letter-spacing: 0.02em;
+          color: rgba(255, 255, 255, 0.58);
+          margin: 0;
+        }}
+
+        .appBarRight {{
+          min-width: 0;
+          justify-self: end;
+        }}
+
+        .appBarLogoWrap {{
+          grid-column: 2;
+          justify-self: center;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 64px;
+          height: 64px;
+          flex-shrink: 0;
+          text-decoration: none;
+          color: inherit;
+        }}
+
+        .appBarLogo {{
+          position: relative;
+          width: 64px;
+          height: 64px;
+          flex-shrink: 0;
+          transform-origin: center center;
+          transition: transform 0.26s ease;
+        }}
+
+        .appBar.appBar--compact .appBarLogoWrap .appBarLogo {{
+          transform: scale(0.75);
+        }}
+
+        .appBarLogo .brandLogoCompass {{
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          opacity: 0.94;
+          animation: miruCompassWheel 48s linear infinite;
+        }}
+
+        .appBarLogo .brandLogoFruitWrap {{
+          position: absolute;
+          width: 50%;
+          left: 49.27%;
+          top: 50.08%;
+          transform: translate(-50%, -50%);
+          z-index: 2;
+          animation: miruFruitPulse 1.4s ease-out infinite;
+        }}
+
+        .appBarLogo .brandLogoFruit {{
+          width: 100%;
+          height: auto;
+          display: block;
+          object-fit: contain;
+        }}
+
+        .appBarSpacer {{
+          height: calc(76px + max(0px, env(safe-area-inset-top, 0px) - 6px));
+          flex-shrink: 0;
+          margin-bottom: 6px;
+        }}
+
+        /* Bottom nav: fixed dock; single height variable for consistency across all pages */
+        :root {{
+          --bottom-nav-height: 56px;
+        }}
+
+        .bottomNav {{
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          z-index: 45;
+          min-height: var(--bottom-nav-height);
+          padding-bottom: env(safe-area-inset-bottom, 0);
+          background: rgba(10, 9, 18, 0.97);
+          border-top: 1px solid rgba(196, 173, 255, 0.06);
+          box-shadow: 0 -1px 0 rgba(0,0,0,0.2);
+          contain: layout style;
+          transform: translateZ(0);
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+        }}
+
+        .bottomNavDock {{
+          display: flex;
+          align-items: stretch;
+          justify-content: space-around;
+          min-height: var(--bottom-nav-height);
+          width: 100%;
+        }}
+
+        .bottomNavItem {{
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
+          padding: 7px 2px 9px;
+          text-decoration: none;
+          color: rgba(255, 255, 255, 0.5);
+          transition: color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+          border-radius: 10px;
+          margin: 3px 1px;
+          min-width: 0;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }}
+
+        .bottomNavItem:hover,
+        .bottomNavItem:focus-visible {{
+          color: rgba(255, 255, 255, 0.85);
+          background: rgba(255, 255, 255, 0.04);
+          outline: none;
+        }}
+
+        .bottomNavItem--current {{
+          color: rgba(244, 208, 120, 0.98);
+          background: rgba(244, 208, 120, 0.11);
+          box-shadow: inset 0 0 0 1px rgba(244, 208, 120, 0.16);
+          font-weight: 600;
+        }}
+
+        .bottomNavItem--current .bottomNavLabel {{
+          font-weight: 600;
+        }}
+
+        .bottomNavIcon.navIconWrap {{
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          flex-shrink: 0;
+        }}
+
+        /* External SVG <img>: tint via filter (color: has no effect on rasterized src) */
+        .bottomNavIcon .navIcon {{
+          width: 24px;
+          height: 24px;
+          object-fit: contain;
+          object-position: center;
+          display: block;
+          flex-shrink: 0;
+          opacity: 1;
+          filter: brightness(0) invert(1);
+          transition: opacity 0.2s ease, transform 0.2s ease, filter 0.22s ease;
+        }}
+
+        .bottomNavIcon .navIcon--home,
+        .bottomNavIcon .navIcon--leaders {{
+          width: 27px;
+          height: 27px;
+        }}
+
+        .bottomNavItem:not(.bottomNavItem--current) .bottomNavIcon .navIcon {{
+          opacity: 0.56;
+          filter: brightness(0) invert(1);
+        }}
+
+        .bottomNavItem:hover:not(.bottomNavItem--current) .bottomNavIcon .navIcon {{
+          opacity: 0.8;
+        }}
+
+        .navButton.active .bottomNavIcon .navIcon,
+        .bottomNavItem--current .bottomNavIcon .navIcon {{
+          opacity: 1;
+          transform: scale(1.05);
+          filter: brightness(0) saturate(100%) invert(90%) sepia(22%) saturate(420%) hue-rotate(356deg) brightness(1.07) contrast(1.02)
+            drop-shadow(0 0 7px rgba(244, 208, 120, 0.34));
+        }}
+
+        .bottomNavIcon svg {{
+          width: 24px;
+          height: 24px;
+          object-fit: contain;
+          object-position: center;
+        }}
+
+        @media (prefers-reduced-motion: reduce) {{
+          .bottomNavIcon .navIcon {{
+            transition: opacity 0.12s ease, filter 0.12s ease;
+          }}
+          .navButton.active .bottomNavIcon .navIcon,
+          .bottomNavItem--current .bottomNavIcon .navIcon {{
+            transform: none;
+          }}
+        }}
+
+        .bottomNavLabel {{
+          font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.02em;
+          font-family: var(--font-ui);
+          text-align: center;
+          line-height: 1.15;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }}
+
+        /* Page content must not sit under bottom nav; use same variable as nav */
+        .appFrame {{
+          padding-bottom: calc(var(--bottom-nav-height, 56px) + env(safe-area-inset-bottom, 0px));
         }}
 
         .brandHero {{
@@ -2852,8 +3615,8 @@ def index():
           left: 50%;
           top: 26px;
           transform: translateX(-50%);
-          width: min(150px, 34vw);
-          height: min(86px, 20vw);
+          width: min(232px, 50vw);
+          height: min(132px, 30vw);
           border-radius: 999px;
           background: radial-gradient(circle, rgba(166,107,255,0.20) 0%, rgba(244,201,93,0.08) 38%, rgba(166,107,255,0) 74%);
           filter: blur(16px);
@@ -2865,7 +3628,7 @@ def index():
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           margin-bottom: 10px;
           text-align: center;
         }}
@@ -2897,16 +3660,14 @@ def index():
 
         .brandMark {{
           position: relative;
-          width: clamp(96px, 18vw, 132px);
-          height: clamp(96px, 18vw, 132px);
+          width: clamp(144px, 29vw, 200px);
+          height: clamp(144px, 29vw, 200px);
           display: block;
-          animation: miruLogoFloat 8s ease-in-out infinite;
-          will-change: transform;
         }}
 
-        .pageBody--library .brandHero--library .brandMark {{
-          width: clamp(80px, 14vw, 100px);
-          height: clamp(80px, 14vw, 100px);
+        .pageBody--library .brandHero--shared .brandMark {{
+          width: clamp(72px, 16vw, 96px);
+          height: clamp(72px, 16vw, 96px);
         }}
 
         .brandLogoCompass {{
@@ -2917,23 +3678,20 @@ def index():
           object-fit: contain;
           display: block;
           opacity: 0.94;
-          transform: scale(1.08);
           transform-origin: center center;
           filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.24));
-          animation: miruCompassWheel 32s linear infinite;
-          will-change: transform, opacity;
+          animation: miruCompassWheel 48s linear infinite;
         }}
 
         .brandLogoFruitWrap {{
           position: absolute;
-          width: 45.5%;
-          left: 50%;
-          top: 50.1%;
-          transform: translate3d(-50%, -50%, 0);
+          width: 52%;
+          left: 49.27%;
+          top: 50.08%;
+          transform: translate(-50%, -50%);
           display: block;
           z-index: 2;
-          animation: miruFruitPulse 8s ease-in-out infinite;
-          will-change: transform, opacity;
+          animation: miruFruitPulse 1.4s ease-out infinite;
         }}
 
         .brandLogoFruitWrap::after {{
@@ -2955,6 +3713,28 @@ def index():
           pointer-events: none;
         }}
 
+        @media (prefers-reduced-motion: reduce) {{
+          .brandLogoCompass {{
+            animation: none;
+          }}
+          .brandLogoFruitWrap {{
+            animation: none;
+          }}
+          .brandLogoFruitWrap::after {{
+            animation: none;
+            opacity: 0;
+          }}
+          .appBarLogo .brandLogoCompass {{
+            animation: none;
+          }}
+          .appBarLogo .brandLogoFruitWrap {{
+            animation: none;
+          }}
+          .appBarLogo {{
+            transition: none;
+          }}
+        }}
+
         .brandLogoFruit {{
           width: 100%;
           height: auto;
@@ -2973,19 +3753,19 @@ def index():
         .brandEyebrow {{
           color: rgba(244,208,120,0.9);
           font-size: 11px;
-          font-weight: 860;
-          letter-spacing: 1.7px;
+          font-weight: 700;
+          letter-spacing: 1.4px;
           text-transform: uppercase;
-          margin-bottom: 2px;
+          margin-bottom: 3px;
           text-shadow: 0 0 18px rgba(244,208,120,0.16);
         }}
 
         .brandTitle {{
           margin: 0;
-          font-size: clamp(37px, 7.5vw, 49px);
-          line-height: 1;
+          font-size: clamp(38px, 7.8vw, 50px);
+          line-height: 1.05;
           font-weight: 700;
-          letter-spacing: -0.8px;
+          letter-spacing: -0.5px;
           font-family: var(--font-display);
           color: rgba(255, 250, 255, 0.98);
           background: linear-gradient(140deg,
@@ -3129,6 +3909,7 @@ def index():
             inset 0 1px 0 rgba(255,255,255,0.10),
             inset 0 -1px 0 rgba(0,0,0,0.18);
           -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
           transition: border-color 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease, transform 0.10s ease;
         }}
 
@@ -3285,8 +4066,8 @@ def index():
           margin: 0;
           font-size: 22px;
           font-weight: 700;
-          line-height: 1.12;
-          letter-spacing: -0.2px;
+          line-height: 1.18;
+          letter-spacing: -0.02em;
           font-family: var(--font-display);
           color: rgba(255, 250, 255, 0.98);
           text-shadow: 0 1px 0 rgba(255,255,255,0.06), 0 2px 12px rgba(165,118,255,0.16);
@@ -3309,10 +4090,10 @@ def index():
         }}
 
         .libraryTitle {{
-          margin: 0;
-          font-size: 20px;
-          line-height: 1.1;
-          letter-spacing: -0.2px;
+          margin: 0 0 0.25em;
+          font-size: 21px;
+          line-height: 1.22;
+          letter-spacing: 0.03em;
           font-family: var(--font-display);
           font-weight: 700;
           text-shadow: 0 1px 0 rgba(255,255,255,0.06), 0 2px 12px rgba(165,118,255,0.16);
@@ -3320,6 +4101,7 @@ def index():
 
         .libraryTitle--premium {{
           color: rgba(255, 250, 255, 0.98);
+          letter-spacing: 0.02em;
           text-shadow: 0 1px 0 rgba(255,255,255,0.02);
         }}
 
@@ -3676,14 +4458,16 @@ def index():
           width: 100%;
           max-width: min(860px, 100%);
           margin: 12px auto 0;
-          padding: 7px;
-          border-radius: 24px;
-          border: 1px solid rgba(212, 188, 255, 0.1);
+          padding: 8px 10px;
+          max-height: 120px;
+          border-radius: 20px;
+          border: 1px solid rgba(196, 173, 255, 0.08);
           background:
-            linear-gradient(180deg, rgba(255,255,255,0.032), rgba(255,255,255,0.01)),
-            linear-gradient(180deg, rgba(18, 12, 31, 0.76), rgba(10, 11, 19, 0.62));
-          box-shadow: 0 12px 28px rgba(0,0,0,0.18);
-          backdrop-filter: blur(12px);
+            linear-gradient(180deg, rgba(255,255,255,0.028), rgba(255,255,255,0.006)),
+            linear-gradient(180deg, rgba(16, 12, 28, 0.88), rgba(8, 8, 18, 0.92));
+          box-shadow: 0 8px 24px rgba(0,0,0,0.14), 0 1px 0 rgba(255,255,255,0.04) inset;
+          backdrop-filter: blur(14px);
+          transition: max-height 0.28s ease, opacity 0.28s ease, margin 0.28s ease, padding 0.28s ease;
         }}
 
         .heroNavLink {{
@@ -3692,23 +4476,20 @@ def index():
           justify-content: center;
           flex: 1 1 100px;
           min-width: 0;
-          min-height: 30px;
-          padding: 0 10px;
-          border-radius: 10px;
-          border: 1px solid rgba(212, 188, 255, 0.20);
+          min-height: 32px;
+          padding: 0 12px;
+          border-radius: 12px;
+          border: 1px solid rgba(200, 178, 255, 0.12);
           background:
-            linear-gradient(180deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 55%),
-            linear-gradient(180deg, rgba(24, 20, 42, 0.96), rgba(12, 11, 22, 0.99));
-          color: rgba(246, 248, 255, 0.96);
-          font-size: 11px;
-          font-weight: 850;
-          letter-spacing: 0.45px;
+            linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 50%),
+            linear-gradient(180deg, rgba(22, 18, 38, 0.94), rgba(12, 10, 24, 0.98));
+          color: rgba(248, 246, 255, 0.94);
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
           text-decoration: none;
-          box-shadow:
-            0 2px 6px rgba(0,0,0,0.32),
-            inset 0 1px 0 rgba(255,255,255,0.12),
-            inset 0 -1px 0 rgba(0,0,0,0.22);
-          transition: border-color 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease, transform 0.10s ease;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.06) inset;
+          transition: border-color 0.16s ease, box-shadow 0.16s ease, color 0.16s ease, transform 0.12s ease;
         }}
 
         .heroNavLink--accent {{
@@ -3724,17 +4505,16 @@ def index():
         }}
 
         .heroNavLink--current {{
-          border-color: rgba(165,118,255,0.44);
+          border-color: rgba(148,100,255,0.28);
           background:
-            linear-gradient(180deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0) 100%),
-            linear-gradient(180deg, rgba(14, 11, 26, 0.99), rgba(8, 6, 17, 1.0));
-          color: rgba(210, 196, 255, 0.96);
+            linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(0,0,0,0.08) 100%),
+            linear-gradient(180deg, rgba(14, 10, 26, 1), rgba(8, 6, 18, 1));
+          color: rgba(228, 218, 255, 0.98);
           box-shadow:
-            0 1px 1px rgba(0,0,0,0.24),
-            inset 0 2px 8px rgba(0,0,0,0.48),
-            inset 0 1px 3px rgba(0,0,0,0.36),
-            inset 0 -1px 0 rgba(255,255,255,0.05),
-            inset 0 0 0 1px rgba(148,100,255,0.10);
+            0 1px 0 rgba(0,0,0,0.35),
+            inset 0 2px 6px rgba(0,0,0,0.5),
+            inset 0 1px 0 rgba(0,0,0,0.25),
+            inset 0 0 0 1px rgba(100,70,180,0.15);
           transform: translateY(1px);
         }}
 
@@ -3912,6 +4692,48 @@ def index():
           min-width: 0;
         }}
 
+        .pageBody--library .libraryCardsSubNav {{
+          display: flex;
+          align-items: stretch;
+          gap: 6px;
+          margin: 0 0 8px;
+          padding: 0 2px;
+          max-width: 100%;
+          min-width: 0;
+        }}
+
+        .pageBody--library .libraryCardsSubNavLink {{
+          flex: 1 1 0;
+          min-width: 0;
+          text-align: center;
+          padding: 7px 8px;
+          border-radius: 8px;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: rgba(255,255,255,0.04);
+          color: rgba(248,250,255,0.72);
+          font-size: 11px;
+          font-weight: 600;
+          text-decoration: none;
+          letter-spacing: 0.02em;
+          transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+          touch-action: manipulation;
+          -webkit-tap-highlight-color: transparent;
+        }}
+
+        .pageBody--library .libraryCardsSubNavLink:hover,
+        .pageBody--library .libraryCardsSubNavLink:focus-visible {{
+          background: rgba(255,255,255,0.07);
+          border-color: rgba(255,255,255,0.12);
+          color: rgba(255,255,255,0.9);
+          outline: none;
+        }}
+
+        .pageBody--library .libraryCardsSubNavLink--current {{
+          color: rgba(244, 208, 120, 0.95);
+          border-color: rgba(244, 208, 120, 0.22);
+          background: rgba(244, 208, 120, 0.08);
+        }}
+
         .pageBody--library .libraryControlsRow {{
           display: flex;
           align-items: center;
@@ -4006,6 +4828,17 @@ def index():
           font-size: 10px;
           color: rgba(255,255,255,0.38);
           line-height: 1.35;
+        }}
+
+        .libraryInsightTestHint {{
+          margin: 0 0 10px 0;
+          font-size: 10px;
+          color: rgba(255,255,255,0.45);
+          line-height: 1.35;
+        }}
+
+        .libraryInsightTestHint a {{
+          color: rgba(244,208,120,0.75);
         }}
 
         .pageBody--library .libraryControl {{
@@ -4140,7 +4973,8 @@ def index():
 
         .pageBody--library .libraryGrid--browse {{
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 9px;
+          gap: 8px;
+          row-gap: 10px;
         }}
 
         .pageBody--library .libraryCard {{
@@ -4173,7 +5007,7 @@ def index():
 
         .pageBody--library .libraryCard[data-card] {{
           cursor: pointer;
-          transition: transform 0.18s ease, box-shadow 0.18s ease;
+          transition: transform 0.12s ease, box-shadow 0.12s ease;
         }}
 
         .pageBody--library .libraryCard[data-card]:hover,
@@ -4193,6 +5027,8 @@ def index():
 
         .pageBody--library .libraryCard--browse .libraryThumbWrap {{
           border-radius: 8px 8px 0 0;
+          aspect-ratio: 63/88;
+          background: rgba(12, 10, 18, 0.6);
         }}
 
         .pageBody--library .libraryThumbFlip {{
@@ -4340,8 +5176,15 @@ def index():
           display: flex;
           align-items: center;
           justify-content: center;
-          color: rgba(255,255,255,0.55);
-          font-size: 13px;
+          width: 100%;
+          height: 100%;
+          min-height: 60px;
+          color: rgba(255,255,255,0.35);
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          background: rgba(14, 12, 22, 0.5);
         }}
 
         .pageBody--library .libraryCardBody {{
@@ -4351,18 +5194,19 @@ def index():
         }}
 
         .pageBody--library .libraryCardBody--browse {{
-          gap: 2px;
-          padding: 6px 8px 8px;
+          gap: 3px;
+          padding: 5px 6px 6px;
           flex: 1 1 auto;
+          min-width: 0;
         }}
 
         .pageBody--library .libraryCardCodeLine {{
           margin: 0;
           font-size: 10px;
           font-weight: 600;
-          letter-spacing: 0.04em;
-          color: rgba(255,255,255,0.55);
-          line-height: 1.25;
+          letter-spacing: 0.035em;
+          color: rgba(255,255,255,0.52);
+          line-height: 1.2;
         }}
 
         .pageBody--library .libraryCodeRow {{
@@ -4394,12 +5238,13 @@ def index():
         .pageBody--library .libraryCardTitle--browse {{
           font-size: 12px;
           font-weight: 700;
-          line-height: 1.2;
+          line-height: 1.18;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
           color: rgba(255,255,255,0.95);
+          margin-bottom: 1px;
         }}
 
         .pageBody--library .libraryCardSubtitle {{
@@ -4412,7 +5257,7 @@ def index():
         .pageBody--library .libraryCardSubtitle--browse {{
           font-size: 10px;
           min-height: 0;
-          line-height: 1.25;
+          line-height: 1.22;
           display: -webkit-box;
           -webkit-line-clamp: 1;
           -webkit-box-orient: vertical;
@@ -4672,22 +5517,15 @@ def index():
           filter: drop-shadow(0 8px 16px rgba(0,0,0,0.24));
         }}
 
-        @keyframes miruLogoFloat {{
-          0%, 100% {{ transform: translateY(0); }}
-          35% {{ transform: translateY(-5px); }}
-          65% {{ transform: translateY(-2px); }}
-        }}
-
         @keyframes miruCompassWheel {{
-          0% {{ transform: scale(1.08) rotate(0deg); opacity: 0.92; }}
-          50% {{ transform: scale(1.09) rotate(180deg); opacity: 0.95; }}
-          100% {{ transform: scale(1.08) rotate(360deg); opacity: 0.92; }}
+          0% {{ transform: scale(1.08) rotate(0deg); }}
+          100% {{ transform: scale(1.08) rotate(360deg); }}
         }}
 
+        /* Fruit: subtle heartbeat — one beat per cycle, no wobble/float/bounce */
         @keyframes miruFruitPulse {{
-          0%, 100% {{ transform: translate(-50%, -50%) scale(1); opacity: 1; }}
-          45% {{ transform: translate(-50%, -51.2%) scale(1.015); opacity: 0.985; }}
-          72% {{ transform: translate(-50%, -49.6%) scale(1.006); opacity: 1; }}
+          0%, 100% {{ transform: translate(-50%, -50%) scale(1); opacity: 1; filter: brightness(1); }}
+          22% {{ transform: translate(-50%, -50%) scale(1.026); opacity: 0.98; filter: brightness(1.04); }}
         }}
 
         @keyframes miruFruitShimmer {{
@@ -4954,6 +5792,7 @@ def index():
         }}
 
         .modalTop {{
+          position: relative;
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
@@ -4961,11 +5800,54 @@ def index():
           flex-shrink: 0;
           margin: -14px -14px 12px;
           padding: 13px 14px 11px;
+          padding-top: max(13px, env(safe-area-inset-top, 0px));
+          padding-right: max(14px, env(safe-area-inset-right, 0px));
           z-index: 3;
           background:
             linear-gradient(180deg, rgba(17, 15, 29, 0.96), rgba(11, 12, 21, 0.90));
           backdrop-filter: blur(12px);
           border-bottom: 1px solid rgba(255,255,255,0.08);
+        }}
+
+        .modalTopHead {{
+          flex: 1 1 auto;
+          min-width: 0;
+          padding-right: 52px;
+        }}
+
+        .modalCloseX {{
+          position: absolute;
+          top: max(12px, env(safe-area-inset-top, 0px));
+          right: max(12px, env(safe-area-inset-right, 0px));
+          width: 44px;
+          height: 44px;
+          min-width: 44px;
+          min-height: 44px;
+          padding: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          border: 1px solid rgba(255,255,255,0.14);
+          background: rgba(255,255,255,0.08);
+          color: rgba(255,255,255,0.92);
+          border-radius: 50%;
+          font-size: 20px;
+          line-height: 1;
+          font-weight: 400;
+          cursor: pointer;
+          z-index: 4;
+          box-shadow: none;
+          transition: background 0.12s ease, border-color 0.12s ease;
+        }}
+
+        .modalCloseX:hover {{
+          background: rgba(255,255,255,0.14);
+          border-color: rgba(255,255,255,0.22);
+        }}
+
+        .modalCloseX:active {{
+          background: rgba(255,255,255,0.06);
         }}
 
         .modalKicker {{
@@ -5040,6 +5922,22 @@ def index():
             linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01)),
             linear-gradient(180deg, rgba(22, 18, 36, 0.92), rgba(12, 11, 20, 0.96));
           box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+        }}
+
+        .detailMediaWrap {{
+          flex-shrink: 0;
+          display: flex;
+          flex-direction: row;
+          align-items: flex-start;
+          gap: 10px;
+        }}
+
+        .detailMediaAside {{
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 8px;
+          min-width: 0;
         }}
 
         .detailMedia {{
@@ -5556,14 +6454,17 @@ def index():
           }}
 
           .modalShell {{
-            padding: 10px;
-            align-items: flex-end;
+            padding: 20px 10px;
+            padding-top: max(20px, env(safe-area-inset-top, 0px));
+            padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
+            align-items: center;
+            justify-content: center;
           }}
 
           .modalCard {{
-            max-height: 94vh;
-            border-bottom-left-radius: 0;
-            border-bottom-right-radius: 0;
+            max-height: 88vh;
+            margin-top: 0;
+            border-radius: 20px;
           }}
 
           .modalInner {{
@@ -5739,9 +6640,9 @@ def index():
         }}
 
         .brandLogoFruitWrap {{
-          width: 39%;
-          top: 50%;
-          left: 50%;
+          width: 38%;
+          top: 50.08%;
+          left: 49.27%;
         }}
 
         .brandTitle {{
@@ -5809,9 +6710,8 @@ def index():
           padding-right: 2px;
         }}
 
-        .pageBody--library .libraryPageHeadTitle,
-        .libraryTitle {{
-          letter-spacing: -0.04em;
+        .pageBody--library .libraryPageHeadTitle {{
+          letter-spacing: -0.02em;
         }}
 
         .pageBody--library .libraryControlBand {{
@@ -5892,10 +6792,13 @@ def index():
         .pageBody--dashboard .watchTileImage--empty {{
           display: grid;
           place-items: center;
-          color: rgba(255,255,255,0.5);
+          color: rgba(255,255,255,0.32);
           font-size: 10px;
+          font-weight: 500;
+          letter-spacing: 0.03em;
           text-align: center;
           padding: 8px;
+          background: rgba(14, 12, 22, 0.5);
         }}
 
         .pageBody--dashboard .watchTileTopRow {{
@@ -6113,6 +7016,9 @@ def index():
           border-radius: 8px;
           min-height: 0;
           overflow: hidden;
+          contain: layout style;
+          content-visibility: auto;
+          contain-intrinsic-block-size: auto 200px;
         }}
 
         .pageBody--library .libraryThumbWrap {{
@@ -6172,7 +7078,7 @@ def index():
         }}
 
         .pageBody--library .libraryThumb--browse {{
-          transition: opacity 0.18s ease, transform 0.18s ease;
+          transition: opacity 0.12s ease, transform 0.12s ease;
         }}
         .pageBody--library .libraryThumb--browse.libraryThumb--switching {{
           opacity: 0.6;
@@ -6311,6 +7217,92 @@ def index():
 
         .detailTextBlock--effect {{
           margin-top: 0;
+        }}
+
+        .miruInsightRevealBtn {{
+          display: none;
+          align-items: center;
+          justify-content: center;
+          align-self: center;
+          min-height: 34px;
+          padding: 8px 14px;
+          border: 1px solid rgba(255,255,255,0.14);
+          border-radius: 8px;
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)),
+            rgba(22, 18, 36, 0.9);
+          color: rgba(248,250,255,0.94);
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          cursor: pointer;
+          -webkit-tap-highlight-color: transparent;
+          opacity: 0;
+          transition: opacity 0.28s ease-out, box-shadow 0.25s ease, background 0.2s ease;
+        }}
+
+        .miruInsightRevealBtn.has-insight {{
+          display: inline-flex;
+        }}
+
+        .miruInsightRevealBtn.has-insight.is-visible {{
+          opacity: 1;
+        }}
+
+        .miruInsightRevealBtn:hover {{
+          background:
+            linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.05)),
+            rgba(22, 18, 36, 0.95);
+        }}
+
+        .miruInsightRevealBtn[data-category="meta"] {{
+          box-shadow: 0 0 16px rgba(100, 160, 255, 0.28), 0 0 6px rgba(100, 160, 255, 0.12), 0 2px 8px rgba(0,0,0,0.1);
+        }}
+
+        .miruInsightRevealBtn[data-category="lore"] {{
+          box-shadow: 0 0 16px rgba(244, 208, 120, 0.28), 0 0 6px rgba(244, 208, 120, 0.12), 0 2px 8px rgba(0,0,0,0.1);
+        }}
+
+        .miruInsightRevealBtn[data-category="market"],
+        .miruInsightRevealBtn[data-category="price"] {{
+          box-shadow: 0 0 16px rgba(140, 220, 160, 0.28), 0 0 6px rgba(140, 220, 160, 0.12), 0 2px 8px rgba(0,0,0,0.1);
+        }}
+
+        .miruInsightRevealBtn[data-category="strategy"],
+        .miruInsightRevealBtn[data-category="synergy"] {{
+          box-shadow: 0 0 16px rgba(180, 140, 255, 0.28), 0 0 6px rgba(180, 140, 255, 0.12), 0 2px 8px rgba(0,0,0,0.1);
+        }}
+
+        .miruInsightRevealBtn[data-category="usage"] {{
+          box-shadow: 0 0 16px rgba(120, 200, 240, 0.28), 0 0 6px rgba(120, 200, 240, 0.12), 0 2px 8px rgba(0,0,0,0.1);
+        }}
+
+        .miruInsightRevealBtn:not([data-category]) {{
+          box-shadow: 0 0 14px rgba(244, 208, 120, 0.22), 0 0 5px rgba(244, 208, 120, 0.1), 0 2px 8px rgba(0,0,0,0.08);
+        }}
+
+        .detailInsightReveal {{
+          max-width: 200px;
+          padding: 10px 12px;
+          border-radius: 10px;
+          border: 1px solid rgba(255,255,255,0.08);
+          background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01)), rgba(18, 16, 28, 0.92);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }}
+
+        .detailInsightReveal[hidden] {{
+          display: none !important;
+        }}
+
+        .detailInsightRevealText {{
+          margin: 0;
+          font-size: 12px;
+          line-height: 1.45;
+          color: rgba(232,228,248,0.9);
+        }}
+
+        .detailInsightStrip--hidden {{
+          display: none !important;
         }}
 
         .detailInsightStrip {{
@@ -6730,28 +7722,30 @@ def index():
       </style>
     </head>
     <body class="{body_class}">
+      <header class="appBar" id="appBar" aria-label="App bar" data-visible-from-start="{str(app_bar_visible_from_start).lower()}">
+        <div class="appBarLeft">
+          <span class="appBarPageLabel" aria-hidden="true">{html_lib.escape(app_bar_page_label)}</span>
+        </div>
+        <a href="/" class="appBarLogoWrap" aria-label="Project Miru home">
+          <div class="appBarLogo" aria-hidden="true">
+            <img class="brandLogoCompass" src="/static/icons/project_miru_compass.png" alt="" width="64" height="64" decoding="async" fetchpriority="high">
+            <span class="brandLogoFruitWrap">
+              <img class="brandLogoFruit" src="/static/icons/project_miru_fruit.png" alt="Miru" width="64" height="64" decoding="async">
+            </span>
+          </div>
+        </a>
+        <div class="appBarRight" aria-hidden="true"></div>
+      </header>
+      <div class="appBarSpacer" aria-hidden="true"></div>
+
+      <nav class="bottomNav" id="bottomNav" aria-label="Main navigation">
+        <div class="bottomNavDock">
+        {bottom_nav_html}
+        </div>
+      </nav>
+
       <div class="appFrame">
-        <section class="{brand_hero_class}">
-          <div class="logoStage" aria-hidden="true"></div>
-          <div class="brandRow">
-            <div class="brandMark">
-              <img class="brandLogoCompass" src="/static/icons/project_miru_compass.png" alt="" aria-hidden="true">
-              <span class="brandLogoFruitWrap">
-                <img class="brandLogoFruit" src="/static/icons/project_miru_fruit.png" alt="Miru heart logo">
-              </span>
-            </div>
-            <div class="brandCopy">
-              <div class="brandEyebrow">{hero_eyebrow}</div>
-              <h1 class="brandTitle">Project Miru</h1>
-              <p class="brandBody">{brand_body}</p>
-            </div>
-          </div>
-          {hero_utility_html}
-          {hero_stats_html}
-          <div class="heroNav" aria-label="Project Miru quick navigation">
-            {hero_nav_html}
-          </div>
-        </section>
+        {hero_section_html}
 
         {page_content_html}
       </div>
@@ -6760,26 +7754,38 @@ def index():
         <div id="cardDetailDialog" class="modalCard" role="dialog" aria-modal="true" aria-labelledby="cardDetailTitle">
           <div class="modalInner">
             <div class="modalTop">
-              <div>
+              <div class="modalTopHead">
                 <div id="cardDetailKicker" class="modalKicker">Card details</div>
                 <h3 id="cardDetailTitle" class="modalTitle">Card Details</h3>
                 <div id="cardDetailSubtitle" class="modalSubtitle"></div>
               </div>
-              <button id="cardDetailClose" class="closeBtn" type="button" aria-label="Close card details">Close</button>
+              <button id="cardDetailClose" class="closeBtn modalCloseX" type="button" aria-label="Close card details">×</button>
             </div>
 
             <div class="detailLayout">
               <div class="detailIdentity">
-                <div id="cardDetailMedia" class="detailMedia"></div>
+                <div class="detailMediaWrap">
+                  <div id="cardDetailMedia" class="detailMedia"></div>
+                  <div class="detailMediaAside">
+                    <button type="button" id="cardDetailMiruInsightBtn" class="miruInsightRevealBtn" aria-label="View card insights">Insights</button>
+                    <div id="cardDetailInsightReveal" class="detailInsightReveal" hidden aria-live="polite">
+                      <p id="cardDetailInsightRevealText" class="detailInsightRevealText"></p>
+                    </div>
+                  </div>
+                </div>
                 <div id="cardDetailStats" class="detailStats"></div>
                 <div id="cardDetailLegalityStats" class="detailStats detailStats--legality"></div>
               </div>
               <div class="detailInfo">
+                <div class="detailTextBlock detailTextBlock--set">
+                  <div class="detailTextLabel">Set</div>
+                  <div id="cardDetailSet" class="detailTextValue"></div>
+                </div>
                 <div class="detailTextBlock detailTextBlock--effect">
                   <div class="detailTextLabel">Effect</div>
                   <div id="cardDetailEffect" class="detailTextValue"></div>
                 </div>
-                <div id="cardDetailInsightBlock" class="detailInsightStrip miruInsightPanel" data-state="idle" data-category="" aria-label="Miru Insight">
+                <div id="cardDetailInsightBlock" class="detailInsightStrip miruInsightPanel detailInsightStrip--hidden" data-state="idle" data-category="" aria-hidden="true">
                   <button type="button" class="miruInsightStripToggle" id="cardDetailInsightToggle" aria-expanded="false" aria-controls="cardDetailInsightContent">
                     <span class="miruInsightStripLabel">Miru</span>
                     <span id="cardDetailInsightTeaser" class="miruInsightStripTeaser"></span>
@@ -6819,48 +7825,7 @@ def index():
                   <div class="detailTextLabel">Trigger</div>
                   <div id="cardDetailTrigger" class="detailTextValue"></div>
                 </div>
-                <section id="cardDetailLeaderHub" class="detailLeaderHub" hidden>
-                  <div class="detailTextLabel">Leader guide</div>
-                  <div class="detailLeaderGrid">
-                    <article class="detailLeaderCard">
-                      <div class="detailTextLabel">Summary</div>
-                      <div id="cardDetailLeaderOverview" class="detailTextValue"></div>
-                    </article>
-                    <article class="detailLeaderCard">
-                      <div class="detailTextLabel">Playstyle</div>
-                      <div id="cardDetailLeaderPlaystyle" class="detailTextValue"></div>
-                    </article>
-                    <article class="detailLeaderCard">
-                      <div class="detailTextLabel">Core cards</div>
-                      <div id="cardDetailLeaderStrengths" class="detailTextValue"></div>
-                    </article>
-                    <article class="detailLeaderCard">
-                      <div class="detailTextLabel">Budget path</div>
-                      <div id="cardDetailLeaderWeaknesses" class="detailTextValue"></div>
-                    </article>
-                    <article class="detailLeaderCard">
-                      <div class="detailTextLabel">Variant lanes</div>
-                      <div id="cardDetailLeaderCore" class="detailTextValue"></div>
-                    </article>
-                    <article class="detailLeaderCard">
-                      <div class="detailTextLabel">Engine</div>
-                      <div id="cardDetailLeaderFlex" class="detailTextValue"></div>
-                    </article>
-                    <article class="detailLeaderCard">
-                      <div class="detailTextLabel">Flex slots</div>
-                      <div id="cardDetailLeaderVariants" class="detailTextValue"></div>
-                    </article>
-                    <article class="detailLeaderCard">
-                      <div class="detailTextLabel">Current status</div>
-                      <div id="cardDetailLeaderMeta" class="detailTextValue"></div>
-                    </article>
-                  </div>
-                  <div id="leaderPageLinkWrap" class="leaderPageLinkWrap" hidden>
-                    <a id="leaderPageLink" class="leaderPageBtn" href="#">Open Leader Page</a>
-                  </div>
-                </section>
                 <div class="modalActions">
-                  <button id="cardDetailPreviewButton" class="buybtn detailPreviewBtn" type="button">Preview in Miru</button>
                   <a id="cardDetailMarketLink" class="buybtn" href="#" target="_blank" rel="noopener">Open on TCGplayer</a>
                 </div>
               </div>
@@ -6909,6 +7874,9 @@ def index():
         const insightTeaserNode = document.getElementById("cardDetailInsightTeaser");
         const insightToggleBtn = document.getElementById("cardDetailInsightToggle");
         const insightContentNode = document.getElementById("cardDetailInsightContent");
+        const miruInsightRevealBtn = document.getElementById("cardDetailMiruInsightBtn");
+        const insightRevealPanel = document.getElementById("cardDetailInsightReveal");
+        const insightRevealText = document.getElementById("cardDetailInsightRevealText");
         const watchlistSectionNode = document.getElementById("cardDetailWatchlistSection");
         const watchlistToggleBtn = document.getElementById("cardDetailWatchlistToggle");
         const watchlistContentNode = document.getElementById("cardDetailWatchlistContent");
@@ -6924,7 +7892,6 @@ def index():
         const leaderPageLinkWrap = document.getElementById("leaderPageLinkWrap");
         const leaderPageLink = document.getElementById("leaderPageLink");
         const marketLink = document.getElementById("cardDetailMarketLink");
-        const previewButton = document.getElementById("cardDetailPreviewButton");
         const cardImageFullscreen = document.getElementById("cardImageFullscreen");
         const cardImageFullscreenImg = document.getElementById("cardImageFullscreenImg");
         const cardImageFullscreenClose = document.querySelector(".cardImageFullscreenClose");
@@ -6962,7 +7929,7 @@ def index():
         const libraryDeferredContent = document.getElementById("libraryDeferredContent");
         const watchlistGrid = document.getElementById("watchlistGrid");
         const watchlistDeferred = document.getElementById("watchlistDeferred");
-        const libraryPagePath = "/library";
+        const libraryPagePath = {json.dumps(library_view_path)};
         const miruPreviewToneKey = "project-miru:preview-tone";
         const miruPreviewStoryKey = "project-miru:preview-story";
         let lastTrigger = null;
@@ -6979,6 +7946,31 @@ def index():
         let modalTapTimer = null;
         let modalTapTime = 0;
         let watchlistLoadPromise = null;
+        let miruInsightRevealTimer = null;
+
+        (function appBarScroll() {{
+          const appBar = document.getElementById("appBar");
+          if (!appBar) return;
+          const COMPACT_THRESHOLD = 100;
+          let ticking = false;
+          let lastCompact = null;
+          function applyCompact() {{
+            ticking = false;
+            const compact = (window.scrollY || 0) > COMPACT_THRESHOLD;
+            if (compact === lastCompact) return;
+            lastCompact = compact;
+            if (compact) appBar.classList.add("appBar--compact");
+            else appBar.classList.remove("appBar--compact");
+          }}
+          function onScroll() {{
+            if (!ticking) {{
+              ticking = true;
+              requestAnimationFrame(applyCompact);
+            }}
+          }}
+          window.addEventListener("scroll", onScroll, {{ passive: true }});
+          applyCompact();
+        }})();
 
         function buildLibrarySessionKey(fragmentUrl = "") {{
           const target = fragmentUrl
@@ -7029,6 +8021,7 @@ def index():
             }}
             libraryDeferredContent.innerHTML = html;
             libraryLoaded = true;
+            if (typeof ensureMiruInsightCardsCache === "function") setTimeout(() => void ensureMiruInsightCardsCache(), 350);
             return true;
           }} catch (_error) {{
             return false;
@@ -7321,6 +8314,8 @@ def index():
           "gameplay": "Usage Insight",
           "deck": "Usage Insight",
           "strategy": "Strategy Insight",
+          "strength": "Strategy Insight",
+          "synergy": "Strategy Insight",
           "standout": "Strategy Insight",
           "relevance": "Strategy Insight",
           "market": "Market Insight",
@@ -7330,12 +8325,54 @@ def index():
         }};
         const MIRU_INSIGHT_SECTION_ORDER = ["Meta Role", "Usage Insight", "Strategy Insight", "Market Insight", "Optional Lore"];
 
+        const MIRU_INSIGHT_CARDS_CACHE_KEY = "miru_insight_cards";
+        const MIRU_INSIGHT_CARDS_TS_KEY = "miru_insight_cards_ts";
+        const MIRU_INSIGHT_CARDS_TTL_MS = 5 * 60 * 1000;
+        async function ensureMiruInsightCardsCache() {{
+          if (window.__miruInsightCardCodes && (Date.now() - (window.__miruInsightCardsTs || 0)) < MIRU_INSIGHT_CARDS_TTL_MS) return;
+          try {{
+            const raw = sessionStorage.getItem(MIRU_INSIGHT_CARDS_TS_KEY);
+            const ts = raw ? parseInt(raw, 10) : 0;
+            if (Number.isFinite(ts) && (Date.now() - ts) < MIRU_INSIGHT_CARDS_TTL_MS) {{
+              const json = sessionStorage.getItem(MIRU_INSIGHT_CARDS_CACHE_KEY);
+              const arr = json ? JSON.parse(json) : [];
+              window.__miruInsightCardCodes = new Set(Array.isArray(arr) ? arr : []);
+              window.__miruInsightCardsTs = ts;
+              return;
+            }}
+          }} catch (_) {{}}
+          try {{
+            const r = await fetch("/api/miru/insight-cards", {{ credentials: "same-origin" }});
+            if (!r.ok) return;
+            const data = await r.json().catch(() => ({{}}));
+            const codes = Array.isArray(data.card_codes) ? data.card_codes : [];
+            window.__miruInsightCardCodes = new Set(codes.map(c => String(c || "").trim().toUpperCase()).filter(Boolean));
+            window.__miruInsightCardsTs = Date.now();
+            try {{
+              sessionStorage.setItem(MIRU_INSIGHT_CARDS_CACHE_KEY, JSON.stringify(codes));
+              sessionStorage.setItem(MIRU_INSIGHT_CARDS_TS_KEY, String(window.__miruInsightCardsTs));
+            }} catch (_) {{}}
+          }} catch (_) {{}}
+        }}
+
         async function loadCardInsight(cardCode, {{ announce = false }} = {{}}) {{
           const normalizedCode = String(cardCode || "").trim().toUpperCase();
           if (!normalizedCode) {{
             if (insightBlockNode) insightBlockNode.dataset.state = "empty";
+            if (miruInsightRevealBtn) miruInsightRevealBtn.classList.remove("has-insight", "is-visible");
             return null;
           }}
+          if (window.__miruInsightCardCodes && !window.__miruInsightCardCodes.has(normalizedCode)) {{
+            if (insightBlockNode) insightBlockNode.dataset.state = "empty";
+            if (miruInsightRevealBtn) miruInsightRevealBtn.classList.remove("has-insight", "is-visible");
+            if (insightMetaNode) insightMetaNode.textContent = "";
+            return null;
+          }}
+          if (miruInsightRevealTimer) {{
+            clearTimeout(miruInsightRevealTimer);
+            miruInsightRevealTimer = null;
+          }}
+          if (miruInsightRevealBtn) miruInsightRevealBtn.classList.remove("has-insight", "is-visible");
           if (insightBlockNode) insightBlockNode.dataset.state = "loading";
           if (insightTeaserNode) insightTeaserNode.textContent = "Loading…";
           try {{
@@ -7372,6 +8409,21 @@ def index():
             const sectionLabels = orderedSections.length ? orderedSections.concat(extraLabels) : [];
             if (!sectionLabels.length) {{
               throw new Error("No sufficiently relevant Miru insight for this card.");
+            }}
+            const SURFACE_MIN_LENGTH = 40;
+            const SURFACE_MIN_CONFIDENCE = 0.5;
+            const firstLabel = sectionLabels[0] || "";
+            const firstItem = (bySection[firstLabel] || [])[0];
+            const primaryText = firstItem ? String(firstItem.insight || "").trim() : "";
+            const primaryConf = firstItem && Number.isFinite(Number(firstItem.confidence)) ? Number(firstItem.confidence) : 0;
+            if (primaryText.length < SURFACE_MIN_LENGTH || primaryConf < SURFACE_MIN_CONFIDENCE) {{
+              throw new Error("Insight does not meet minimum quality for primary surface.");
+            }}
+            if (insightRevealText) {{
+              insightRevealText.textContent = primaryText;
+            }}
+            if (insightRevealPanel) {{
+              insightRevealPanel.hidden = true;
             }}
             if (insightSectionsNode) {{
               insightSectionsNode.innerHTML = "";
@@ -7411,18 +8463,29 @@ def index():
               }} catch (_) {{}}
               return "";
             }})() : "";
+            const confNum = Number(latest.confidence);
+            const confidenceBand = Number.isFinite(confNum) ? (confNum >= 0.65 ? "High confidence" : confNum >= 0.35 ? "Medium confidence" : "Low confidence") : "";
+            const typeLabel = String(latest.type || "").trim() ? (latest.type.charAt(0).toUpperCase() + latest.type.slice(1).toLowerCase()) : "";
+            const metaParts = [typeLabel, confidenceBand, updatedLabel].filter(Boolean);
             if (insightMetaNode) {{
-              insightMetaNode.textContent = updatedLabel;
+              insightMetaNode.textContent = metaParts.join(" · ");
             }}
-            const firstLabel = sectionLabels[0] || "";
             const categoryMap = {{ "Meta Role": "meta", "Usage Insight": "usage", "Strategy Insight": "strategy", "Market Insight": "market", "Optional Lore": "lore" }};
             const category = categoryMap[firstLabel] || (firstLabel ? firstLabel.toLowerCase().replace(/\\s+/g, "_") : "");
             if (insightBlockNode) {{
               insightBlockNode.dataset.state = "ready";
               insightBlockNode.dataset.category = category;
             }}
-            const firstText = (bySection[firstLabel] || [])[0];
-            const teaserText = firstText ? String(firstText.insight || "").trim().slice(0, 78) : "";
+            if (miruInsightRevealBtn) {{
+              miruInsightRevealBtn.dataset.category = category || "";
+              miruInsightRevealBtn.classList.add("has-insight");
+              miruInsightRevealBtn.classList.remove("is-visible");
+              miruInsightRevealTimer = setTimeout(() => {{
+                miruInsightRevealBtn.classList.add("is-visible");
+                miruInsightRevealTimer = null;
+              }}, 160);
+            }}
+            const teaserText = firstItem ? String(firstItem.insight || "").trim().slice(0, 78) : "";
             if (insightTeaserNode) insightTeaserNode.textContent = teaserText + (teaserText.length >= 78 ? "…" : "");
             if (insightContentNode) insightContentNode.hidden = true;
             if (insightToggleBtn) insightToggleBtn.setAttribute("aria-expanded", "false");
@@ -7430,6 +8493,7 @@ def index():
             return payload;
           }} catch (_error) {{
             if (insightBlockNode) {{ insightBlockNode.dataset.state = "empty"; insightBlockNode.dataset.category = ""; }}
+            if (miruInsightRevealBtn) miruInsightRevealBtn.classList.remove("has-insight", "is-visible");
             if (insightSectionsNode) insightSectionsNode.innerHTML = "";
             if (insightMetaNode) insightMetaNode.textContent = "";
             if (insightTeaserNode) insightTeaserNode.textContent = "";
@@ -7599,13 +8663,13 @@ def index():
           syncWatchActionUi(payload || {{}});
           const isLeader = String(payload.card_type || "").trim().toLowerCase() === "leader";
           if (modalKicker) {{
-            modalKicker.textContent = isLeader ? "Leader hub" : "Card details";
+            modalKicker.textContent = "Card details";
           }}
           if (modalDialog) {{
             modalDialog.classList.toggle("is-leader", isLeader);
           }}
           titleNode.textContent = payload.name || payload.code || "Card Details";
-          subtitleNode.textContent = [payload.code, payload.set_name].filter(Boolean).join(" • ");
+          subtitleNode.textContent = payload.code || "";
           mediaNode.innerHTML = "";
           const mediaStack = document.createElement("div");
           mediaStack.className = "detailMediaStack";
@@ -7674,7 +8738,6 @@ def index():
           statsNode.innerHTML = "";
           [
             ["Code", payload.code],
-            ["Set", payload.set_name],
             ["Type", payload.card_type],
             ["Color", payload.color],
             ["Rarity", payload.rarity],
@@ -7683,8 +8746,25 @@ def index():
             ["Counter", payload.counter]
           ].forEach(([label, value]) => statsNode.appendChild(renderStat(label, value)));
 
+          const setNode = document.getElementById("cardDetailSet");
+          if (setNode) setNode.textContent = (payload.set_name || "").trim() || "—";
+
           renderDetailText(effectNode, payload.effect_text, "No effect text recorded yet.");
           renderDetailText(triggerNode, payload.trigger_text, "No trigger text recorded.");
+          if (miruInsightRevealTimer) {{
+            clearTimeout(miruInsightRevealTimer);
+            miruInsightRevealTimer = null;
+          }}
+          if (miruInsightRevealBtn) {{
+            miruInsightRevealBtn.classList.remove("has-insight", "is-visible");
+            miruInsightRevealBtn.removeAttribute("data-category");
+          }}
+          if (insightRevealPanel) {{
+            insightRevealPanel.hidden = true;
+          }}
+          if (insightRevealText) {{
+            insightRevealText.textContent = "";
+          }}
           if (insightBlockNode) {{
             insightBlockNode.dataset.state = "idle";
             insightBlockNode.dataset.category = "";
@@ -7707,10 +8787,6 @@ def index():
             marketLink.removeAttribute("href");
             marketLink.style.display = "none";
           }}
-          if (previewButton) {{
-            previewButton.hidden = !Boolean((payload.code || payload.name || "").trim());
-          }}
-
           modal.classList.add("open");
           modal.setAttribute("aria-hidden", "false");
           modalScrollRestore = window.scrollY || window.pageYOffset || 0;
@@ -8025,6 +9101,7 @@ def index():
               defer(() => {{
                 syncLibraryHistory(url);
                 persistLibraryFragment(url, html);
+                setTimeout(() => void ensureMiruInsightCardsCache(), 350);
               }});
             }})
             .catch(() => {{
@@ -8298,19 +9375,20 @@ def index():
           }});
         }}
 
+        if (miruInsightRevealBtn && insightRevealPanel) {{
+          miruInsightRevealBtn.addEventListener("click", () => {{
+            insightRevealPanel.hidden = !insightRevealPanel.hidden;
+            if (!insightRevealPanel.hidden && insightRevealPanel.scrollIntoView) {{
+              insightRevealPanel.scrollIntoView({{ behavior: "smooth", block: "nearest" }});
+            }}
+          }});
+        }}
+
         if (watchlistToggleBtn && watchlistSectionNode && watchlistContentNode) {{
           watchlistToggleBtn.addEventListener("click", () => {{
             const collapsed = watchlistSectionNode.classList.contains("detailWatchlistSection--collapsed");
             watchlistSectionNode.classList.toggle("detailWatchlistSection--collapsed", !collapsed);
             watchlistToggleBtn.setAttribute("aria-expanded", collapsed ? "true" : "false");
-          }});
-        }}
-
-        if (previewButton) {{
-          previewButton.addEventListener("click", () => {{
-            const payload = currentCardPayload || {{}};
-            const query = [payload.code, payload.name].filter(Boolean).join(" ").trim();
-            focusMiruPreview(query || String(payload.code || payload.name || "").trim(), true);
           }});
         }}
 
@@ -8380,7 +9458,7 @@ def leaders():
             continue
         name = (card.get("card_name") or code).strip()
         set_name = (card.get("set_name") or "").strip()
-        thumb_src = choose_thumbnail_src(name, code, card, width=200)
+        thumb_src = choose_thumbnail_src(name, code, card, width=320)
         leader_list.append({
             "code": code,
             "name": name,
@@ -8390,7 +9468,45 @@ def leaders():
             "sort_reason": f"From {set_name}" if set_name else "In catalog",
         })
     leader_list.sort(key=lambda x: (x["set_name"], x["code"]))
-    return render_template("leaders_index.html", leader_list=leader_list)
+    bottom_nav_html = build_primary_bottom_nav_html(active="leaders")
+    return render_template(
+        "leaders_index.html",
+        leader_list=leader_list,
+        bottom_nav_html=bottom_nav_html,
+    )
+
+
+@app.get("/deck-builder")
+def deck_builder():
+    deck_leader_code = None
+    deck_leader_name = None
+    deck_leader_thumb = None
+    raw_leader = str(request.args.get("leader") or "").strip().upper()
+    if raw_leader:
+        catalog = load_catalog_card_index()
+        card = (catalog or {}).get(raw_leader)
+        if card and str(card.get("card_type") or "").strip().lower() == "leader":
+            deck_leader_code = raw_leader
+            raw_name = (card.get("card_name") or raw_leader).strip()
+            deck_leader_name = clean_display_name(raw_name, raw_leader)
+            deck_leader_thumb = choose_thumbnail_src(deck_leader_name, raw_leader, card, width=320)
+    return render_template(
+        "deck_builder.html",
+        app_bar_page_label="Deck Builder",
+        bottom_nav_html=build_primary_bottom_nav_html(active="deck"),
+        deck_leader_code=deck_leader_code,
+        deck_leader_name=deck_leader_name,
+        deck_leader_thumb=deck_leader_thumb,
+    )
+
+
+@app.get("/profile")
+def profile_page():
+    return render_template(
+        "profile.html",
+        app_bar_page_label="Profile",
+        bottom_nav_html=build_primary_bottom_nav_html(active="profile"),
+    )
 
 
 @app.get("/leader/<leader_code>")
@@ -8401,17 +9517,26 @@ def leader_page(leader_code: str):
         return redirect("/leaders", code=302)
     catalog = load_catalog_card_index()  # TTL-cached; no new DB overhead
     card = catalog.get(code)
+    color_raw = (card.get("color") or "").strip() if card else ""
+    color_tags = [t.strip() for t in color_raw.split("/") if t.strip()] if color_raw else []
+    traits_raw = (card.get("traits") or "").strip() if card else ""
+    trait_pills = []
+    if traits_raw:
+        for part in traits_raw.replace("|", "/").split("/"):
+            t = part.strip()
+            if t:
+                trait_pills.append(t)
     return render_template(
         "leader.html",
         leader_code=code,
         name=(card.get("card_name") or code) if card else code,
         set_name=(card.get("set_name") or "") if card else "",
-        color=(card.get("color") or "") if card else "",
+        color_tags=color_tags,
         power=(card.get("power") or "") if card else "",
         attribute=(card.get("attribute") or "") if card else "",
+        trait_pills=trait_pills,
         effect_text=(card.get("effect_text") or "") if card else "",
         trigger_text=(card.get("trigger_text") or "") if card else "",
-        image_src=(card.get("catalog_image_src") or "") if card else "",
         not_found=card is None,
     )
 
@@ -8474,4 +9599,12 @@ def watchlist_fragment():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", os.environ.get("PROJECT_MIRU_DASHBOARD_PORT", "8080")))
-    app.run(host="0.0.0.0", port=port)
+    # Worktree dashboard (18080): reload on template/static changes so refresh-from-phone shows edits.
+    # When started by the Windows restart script, disable reloader to avoid WinError 10038 (socket fd) on Windows.
+    use_reloader = port == 18080 and not os.environ.get("MIRU_DASHBOARD_NO_RELOAD")
+    if not use_reloader:
+        # Defensive Windows launch guard: ignore stale Werkzeug reloader state leaked
+        # from a parent process so app.run() creates a fresh socket normally.
+        os.environ.pop("WERKZEUG_SERVER_FD", None)
+        os.environ.pop("WERKZEUG_RUN_MAIN", None)
+    app.run(host="0.0.0.0", port=port, use_reloader=use_reloader)

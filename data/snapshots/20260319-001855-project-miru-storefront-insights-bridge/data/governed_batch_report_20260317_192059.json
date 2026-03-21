@@ -1,0 +1,47 @@
+{
+  "batch_run_ts": "20260317_192059",
+  "csv_path": "data\\staging\\op_format_banlist_intake.csv",
+  "source_id": "official",
+  "dry_run": false,
+  "total_analyzed": 3,
+  "total_auto_applied": 3,
+  "total_queued_for_review": 0,
+  "total_rejected_held": 0,
+  "total_skipped": 0,
+  "reason_counts": {
+    "safe_low_risk": 2,
+    "trusted_official_high_impact": 1
+  },
+  "auto_applied": [
+    {
+      "item_identifier": "OP01-001",
+      "format_name": "standard",
+      "proposed_state": "legal",
+      "decision_reason": "safe_low_risk",
+      "decision_note": "Approved source, complete provenance, low impact; auto-apply."
+    },
+    {
+      "item_identifier": "OP01-002",
+      "format_name": "standard",
+      "proposed_state": "banned",
+      "decision_reason": "trusted_official_high_impact",
+      "decision_note": "Official source, complete provenance, no conflict; high-impact change auto-applied."
+    },
+    {
+      "item_identifier": "OP02-010",
+      "format_name": "standard",
+      "proposed_state": "legal",
+      "decision_reason": "safe_low_risk",
+      "decision_note": "Approved source, complete provenance, low impact; auto-apply."
+    }
+  ],
+  "review_queue": [],
+  "rejected_held": [],
+  "skipped": [],
+  "variant_classification_available": true,
+  "report_path": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\governed_batch_report_20260317_192059.json",
+  "plain_english_summary": "Governed ingestion run summary\n\n1. What I added automatically\n   - OP01-001: set to legal. I added this because the source was approved and nothing important conflicted with it.\n   - OP01-002: set to banned. I added this because the source was approved and nothing important conflicted with it.\n   - OP02-010: set to legal. I added this because the source was approved and nothing important conflicted with it.\n\n2. What I held for your review\n   Nothing.\n\n3. What I skipped (and what I rejected)\n   Nothing.\n\n4. What I'm not fully sure about\n   Nothing that I need to flag. This run was straightforward.\n\n5. Why this run was or was not successful\n   Status: success.\n   I used real approved-source data, routed everything correctly, and either applied safe updates or put meaningful items in your review queue. All writes stayed in the worktree.\n",
+  "graduation_status": "success",
+  "graduation_reason": "I used real approved-source data, routed everything correctly, and either applied safe updates or put meaningful items in your review queue. All writes stayed in the worktree.",
+  "summary_path": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\governed_batch_summary_20260317_192059.txt"
+}

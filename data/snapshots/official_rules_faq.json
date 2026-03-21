@@ -1,0 +1,83 @@
+{
+  "source": {
+    "source_id": "official-rules-faq",
+    "snapshot_taken_at": "2026-03-20 12:00:00",
+    "base_url": "https://en.onepiece-cardgame.com/topics/",
+    "payload_origin": "manual_normalization_official_topic_errata_notices_en",
+    "record_count": 4
+  },
+  "rulings": [
+    {
+      "ruling_id": "opcg-topic-op13-077-errata-2025-10-24",
+      "card_code": "OP13-077",
+      "topic_key": "official_card_text_revision",
+      "question_text": "What is the corrected text for OP13-077 Go All the Way to the Top!! per the official OP-13 apology notice?",
+      "ruling_text": "Per Bandai official topic notice (October 24, 2025): the revision shall be treated as correct — Before: gains +3000 power during this turn. After: gains +3000 power during this battle. Corrected cards may be distributed at official or authorized events as described on the notice.",
+      "normalized_summary": "OP13-077 errata: +3000 power applies during this battle, not this turn.",
+      "source_id": "official",
+      "source_type": "faq",
+      "source_title": "Apology for errata — BOOSTER PACK [OP-13]",
+      "source_url": "https://en.onepiece-cardgame.com/topics/notice_op13.php",
+      "source_reference": "October 24, 2025 official topic",
+      "published_at": "2025-10-24",
+      "effective_at": "2025-10-24",
+      "status": "current",
+      "tags": "errata,op13,battle_timing",
+      "effect_text": "gains +3000 power during this battle."
+    },
+    {
+      "ruling_id": "opcg-topic-op15-023-errata-2026-03-13",
+      "card_code": "OP15-023",
+      "topic_key": "official_card_text_revision",
+      "question_text": "What is the corrected text for OP15-023 Arlong per the official OP15-EB04 apology notice?",
+      "ruling_text": "Per Bandai official topic notice (March 13, 2026): Before: Give up to 1 rested DON!! card from its owner's cost area to its owner's Leader or 1 of their Characters. After: Give up to 1 DON!! card from its owner's cost area to its owner’s Leader or 1 of their Characters. Note: the same also applies to alt-art cards.",
+      "normalized_summary": "OP15-023 errata: DON!! given may be active or rested; wording corrected on official notice.",
+      "source_id": "official",
+      "source_type": "faq",
+      "source_title": "Apology for errata — BOOSTER PACK [OP15-EB04]",
+      "source_url": "https://en.onepiece-cardgame.com/topics/notice_op15-023.php",
+      "source_reference": "March 13, 2026 official topic",
+      "published_at": "2026-03-13",
+      "effective_at": "2026-03-13",
+      "status": "current",
+      "tags": "errata,op15,don_timing",
+      "effect_text": "Give up to 1 DON!! card from its owner's cost area to its owner’s Leader or 1 of their Characters."
+    },
+    {
+      "ruling_id": "opcg-errata-op07-097-faq-bridge-2025-05-16",
+      "card_code": "OP07-097",
+      "topic_key": "leader_activate_main_timing",
+      "question_text": "What is the official corrected Leader effect text for OP07-097 Vegapunk on the Errata Cards page?",
+      "ruling_text": "Official English Errata Cards page (May 16, 2025): corrected [Activate: Main] punctuation and wording — After text applies: rest 1 DON!! then select up to 1 {Egghead} type card with cost 5 or less from hand to play or add face-up to Life.",
+      "normalized_summary": "OP07-097: official errata clarifies Activate: Main cost punctuation and Egghead selection text.",
+      "source_id": "official",
+      "source_type": "faq",
+      "source_title": "Errata Cards — OP07-097",
+      "source_url": "https://en.onepiece-cardgame.com/rules/errata_card/",
+      "source_reference": "May 16, 2025 — Errata Cards",
+      "published_at": "2025-05-16",
+      "effective_at": "2025-05-16",
+      "status": "current",
+      "tags": "errata,leader,egghead",
+      "effect_text": "This Leader cannot attack.[Activate: Main] [Once Per Turn] You may rest 1 of your DON!! cards: Select up to 1 {Egghead} type card with a cost of 5 or less from your hand and play it or add it to the top of your Life cards face-up."
+    },
+    {
+      "ruling_id": "opcg-errata-op09-058-faq-bridge-2024-12-13",
+      "card_code": "OP09-058",
+      "topic_key": "event_main_targeting",
+      "question_text": "What is the official corrected [Main] effect for OP09-058 Special Muggy Ball?",
+      "ruling_text": "Official English Errata Cards page (December 13, 2024): opponent chooses 1 of their Characters with cost 6 or less and returns it to the owner's hand (replaces prior return wording).",
+      "normalized_summary": "OP09-058: [Main] now opponent chooses target Character to return to hand.",
+      "source_id": "official",
+      "source_type": "faq",
+      "source_title": "Errata Cards — OP09-058",
+      "source_url": "https://en.onepiece-cardgame.com/rules/errata_card/",
+      "source_reference": "December 13, 2024 — Errata Cards",
+      "published_at": "2024-12-13",
+      "effective_at": "2024-12-13",
+      "status": "current",
+      "tags": "errata,event,op09",
+      "effect_text": "[Main] Your opponent chooses 1 of their Character with a cost of 6 or less and return to the owner's hand."
+    }
+  ]
+}

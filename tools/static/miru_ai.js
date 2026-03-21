@@ -248,6 +248,7 @@ if (typeof window !== "undefined") {
     let navigationInitialized = false;
     let devMonitorIntervalId = 0;
     let latestDevVoyage = null;
+    let latestRuntimeStatus = null;
     let voyageMapResizeBound = false;
     const DEV_SECTION_REFRESH_MS = 45000;
     const devDeferredSections = {
@@ -343,6 +344,10 @@ if (typeof window !== "undefined") {
 
         const destination = new URL(link.href, window.location.origin);
         if (destination.origin !== window.location.origin) {
+            return false;
+        }
+        const currentUrl = new URL(window.location.href);
+        if (destination.pathname === currentUrl.pathname && destination.search === currentUrl.search && destination.hash !== "") {
             return false;
         }
 
@@ -847,7 +852,7 @@ if (typeof window !== "undefined") {
 
     function summarizeStageDetail(items, fallback) {
         if (Array.isArray(items) && items.length > 1) {
-            return items.slice(1, 3).map((item) => String(item)).join(" • ");
+            return items.slice(1, 3).map((item) => String(item)).join(" â€¢ ");
         }
         return fallback;
     }
@@ -1139,7 +1144,7 @@ if (typeof window !== "undefined") {
                 summary: "Latest verified cards are the clearest sign of new learning right now.",
                 html: recentValidated.slice(0, 4).map((item) => `
                     <button class="devLearningEvent" type="button" data-card-code="${escapeHtml(item.card_code || "")}">
-                        <strong>${escapeHtml(item.card_code || "")} · ${escapeHtml(item.card_name || "Unknown card")}</strong>
+                        <strong>${escapeHtml(item.card_code || "")} Â· ${escapeHtml(item.card_name || "Unknown card")}</strong>
                         <span>${escapeHtml(item.verified_at || "Recently verified")}</span>
                     </button>
                 `).join(""),
@@ -1312,6 +1317,388 @@ if (typeof window !== "undefined") {
         `;
     }
 
+    function buildControlHealthMarkup(item) {
+        const tone = escapeHtml(item && item.tone ? item.tone : "neutral");
+        return `
+            <article class="devControlHealthItem" data-health-key="${escapeHtml(item && item.key ? item.key : "")}">
+                <div class="devControlHealthHead">
+                    <span class="devMetricLabel">${escapeHtml(item && item.label ? item.label : "System")}</span>
+                    <span class="statusPill statusPill--${tone}">${escapeHtml(item && item.status ? item.status : "INCONCLUSIVE")}</span>
+                </div>
+                <p>${escapeHtml(item && item.detail ? item.detail : "Waiting for live status.")}</p>
+            </article>
+        `;
+    }
+
+    function buildControlIssueMarkup(item) {
+        const tone = escapeHtml(item && item.tone ? item.tone : "neutral");
+        return `
+            <article class="devMonitorListItem devMonitorListItem--${tone}">
+                <span class="devMetricLabel">${escapeHtml(item && item.title ? item.title : "Issue")}</span>
+                <strong>${escapeHtml(item && item.detail ? item.detail : "")}</strong>
+                <p>${escapeHtml(item && item.source ? item.source : "")}</p>
+            </article>
+        `;
+    }
+
+    function buildControlActivityMarkup(item) {
+        const tone = escapeHtml(item && item.tone ? item.tone : "neutral");
+        const ts = item && item.timestamp ? formatTimeLA(item.timestamp) : "";
+        const footer = ts || (item && item.source ? item.source : "");
+        return `
+            <div class="devActivityFeedItem devActivityFeedItem--${tone}">
+                <span class="devActivityFeedTitleText">${escapeHtml(item && item.title ? item.title : "Event")}</span>
+                <span class="devActivityFeedDetail">${escapeHtml(item && item.detail ? item.detail : "")}</span>
+                <span class="devActivityFeedTime">${escapeHtml(footer)}</span>
+            </div>
+        `;
+    }
+
+    function resolveControlHealthItems(payload) {
+        const control = payload && payload.control_layer ? payload.control_layer : {};
+        const items = Array.isArray(control.system_health)
+            ? control.system_health.map((item) => ({ ...item }))
+            : [];
+        const runtime = latestRuntimeStatus || {};
+        const checkedAt = runtime.checked_at ? formatTimeLA(runtime.checked_at) : "";
+        const applyRuntimeObservation = (key, portLabel) => {
+            const runtimeValue = runtime[portLabel];
+            if (!runtimeValue) {
+                return;
+            }
+            const index = items.findIndex((item) => item.key === key);
+            const confirmed = runtimeValue === "ok";
+            const detail = confirmed
+                ? `${portLabel} answered the live runtime probe${checkedAt ? ` at ${checkedAt}` : ""}.`
+                : `${portLabel} failed the live runtime probe${checkedAt ? ` at ${checkedAt}` : ""}.`;
+            const nextValue = {
+                key,
+                label: key === "miru_ai" ? "18765 Dev surface" : "18080 Project Miru",
+                status: confirmed ? "CONFIRMED WORKING" : "FAILED",
+                tone: confirmed ? "good" : "warn",
+                detail,
+                source: "Observed from /api/runtime/status.",
+            };
+            if (index >= 0) {
+                items[index] = { ...items[index], ...nextValue };
+            } else {
+                items.push(nextValue);
+            }
+        };
+        applyRuntimeObservation("miru_ai", "18765");
+        applyRuntimeObservation("project_miru", "18080");
+        return items;
+    }
+
+    function summarizeControlHeadline(items) {
+        const rows = Array.isArray(items) ? items : [];
+        if (rows.some((item) => item.status === "FAILED")) {
+            return { label: "FAILED", tone: "warn" };
+        }
+        if (rows.some((item) => item.status === "INCONCLUSIVE")) {
+            return { label: "INCONCLUSIVE", tone: "neutral" };
+        }
+        return { label: "CONFIRMED WORKING", tone: "good" };
+    }
+
+    function buildControlSummaryText(payload, items, issues) {
+        const control = payload && payload.control_layer ? payload.control_layer : {};
+        if (control.summary) {
+            return control.summary;
+        }
+        const issueHeadline = issues && issues.headline ? issues.headline : "No active issue surfaced";
+        const itemStatus = (Array.isArray(items) ? items : []).map((item) => `${item.label}: ${item.status}`).join(". ");
+        return `${itemStatus}. Latest concern: ${issueHeadline}.`;
+    }
+
+    function buildJudgmentSignalMarkup(item) {
+        const recommendation = item && item.recommendation ? item.recommendation : {};
+        const tone = item && item.tone ? item.tone : "neutral";
+        return `
+            <article class="devJudgmentSignal devJudgmentSignal--${escapeHtml(tone)}">
+                <div class="devJudgmentSignalHead">
+                    <span class="devMetricLabel">${escapeHtml(item && item.title ? item.title : "Signal")}</span>
+                    <span class="statusPill statusPill--${escapeHtml(tone)}">${escapeHtml(item && item.category_label ? item.category_label : "Info")}</span>
+                </div>
+                <div class="devJudgmentChipRow">
+                    <span class="devJudgmentChip">${escapeHtml(item && item.issue_type_label ? item.issue_type_label : "Environment")}</span>
+                    <span class="devJudgmentChip">${escapeHtml(recommendation.label || "Observe only")}</span>
+                    <span class="devJudgmentChip">${escapeHtml(recommendation.guardrail_label || "Read-only")}</span>
+                </div>
+                <p>${escapeHtml(item && item.summary ? item.summary : "")}</p>
+            </article>
+        `;
+    }
+
+    function renderJudgmentLayer(payload) {
+        const control = payload && payload.control_layer ? payload.control_layer : {};
+        const judgment = control.judgment || {};
+        const primary = judgment.primary || {};
+        const recommendation = primary.recommendation || {};
+        const items = Array.isArray(judgment.items) ? judgment.items : [];
+        const copyBtn = document.getElementById("devJudgmentCopyPromptBtn");
+        const actionClass = String(recommendation.action_class || "").trim().toLowerCase();
+        const routeTask = String(recommendation.route_task || "").trim();
+        const route = routeTask && actionClass !== "user_review_required"
+            ? inferWorkerRoute(routeTask, payload)
+            : null;
+
+        const statusPill = document.getElementById("devJudgmentStatusPill");
+        if (statusPill) {
+            statusPill.textContent = judgment.status_label || "Info";
+            statusPill.className = `statusPill statusPill--${judgment.tone || "neutral"}`;
+        }
+        setText("devJudgmentWhat", judgment.what_i_think || "Miru will summarize the current state after the first live refresh.");
+        setText("devJudgmentWhy", judgment.what_matters_most || "No dominant concern surfaced yet.");
+        setText("devJudgmentNext", judgment.what_i_recommend_next || "Observe the current state.");
+        setText("devJudgmentGuardrail", recommendation.guardrail_label || judgment.guardrail_label || "Read-only");
+        setText("devJudgmentAction", recommendation.label || "Observe only");
+        setText("devJudgmentConfidence", `Confidence ${recommendation.confidence || "medium"}`);
+        setText("devJudgmentRisk", `Risk ${recommendation.risk || "low"}`);
+        setText("devJudgmentRetry", judgment.retry_guidance || recommendation.retry_guidance || "Observe the current state before retrying.");
+        setText("devJudgmentSource", (control.status_sources && control.status_sources.judgment) || judgment.source || "Judgment source detail unavailable.");
+
+        const guardrailNode = document.getElementById("devJudgmentGuardrail");
+        if (guardrailNode) {
+            const guardrailTone = recommendation.guardrail_label === "Review required"
+                ? "warn"
+                : (recommendation.guardrail_label === "Safe action" ? "neutral" : "good");
+            guardrailNode.className = `devJudgmentChip devJudgmentChip--${guardrailTone}`;
+        }
+
+        const signalsWrap = document.getElementById("devJudgmentSignals");
+        if (signalsWrap) {
+            signalsWrap.innerHTML = items.length
+                ? items.map((item) => buildJudgmentSignalMarkup(item)).join("")
+                : '<p class="devValidationEmpty">Judgment signals will appear after the first live refresh.</p>';
+        }
+
+        if (recommendation.guardrail_label === "Review required") {
+            setText("devJudgmentWorker", "User review only");
+            setText("devJudgmentWorkerReason", "Human review comes before any worker handoff for this item.");
+            setText("devJudgmentTarget", "User review");
+            setText("devJudgmentVerify", recommendation.retry_guidance || "Do not retry until the review decision is made.");
+            if (copyBtn) {
+                copyBtn.disabled = true;
+                copyBtn.dataset.prompt = "";
+            }
+            return;
+        }
+
+        if (route) {
+            setText("devJudgmentWorker", route.worker || "Codex");
+            setText("devJudgmentWorkerReason", route.why || "The worker router will explain why this recommendation fits.");
+            setText("devJudgmentTarget", route.environment || "Worktree repo on 18765");
+            setText("devJudgmentVerify", route.verification || "Verify on the live Dev page and status endpoints.");
+            if (copyBtn) {
+                copyBtn.disabled = false;
+                copyBtn.dataset.prompt = route.prompt || "";
+            }
+            return;
+        }
+
+        setText("devJudgmentWorker", "Observe locally");
+        setText("devJudgmentWorkerReason", recommendation.rationale || "This recommendation does not need a worker handoff.");
+        setText("devJudgmentTarget", "Worktree repo on 18765");
+        setText("devJudgmentVerify", recommendation.retry_guidance || "Observe the current state before retrying.");
+        if (copyBtn) {
+            copyBtn.disabled = true;
+            copyBtn.dataset.prompt = "";
+        }
+    }
+
+    function renderControlLayer(payload) {
+        const control = payload && payload.control_layer ? payload.control_layer : {};
+        const items = resolveControlHealthItems(payload);
+        const issues = control.recent_issues || {};
+        const activityItems = Array.isArray(control.recent_activity) ? control.recent_activity : [];
+        const sources = control.status_sources || {};
+        const headline = summarizeControlHeadline(items);
+
+        renderJudgmentLayer(payload);
+
+        const summaryNode = document.getElementById("devControlLayerSummary");
+        const healthHeadline = document.getElementById("devControlHealthHeadline");
+        const healthList = document.getElementById("devControlHealthList");
+        const issuesHeadline = document.getElementById("devControlIssuesHeadline");
+        const issuesSummary = document.getElementById("devControlIssuesSummary");
+        const issuesList = document.getElementById("devControlIssuesList");
+        const activityHeadline = document.getElementById("devControlActivityHeadline");
+        const activityList = document.getElementById("devControlActivityList");
+
+        if (summaryNode) {
+            summaryNode.textContent = buildControlSummaryText(payload, items, issues);
+        }
+        if (healthHeadline) {
+            healthHeadline.textContent = headline.label;
+            healthHeadline.className = `statusPill statusPill--${headline.tone}`;
+        }
+        if (healthList) {
+            healthList.innerHTML = items.length
+                ? items.map((item) => buildControlHealthMarkup(item)).join("")
+                : '<p class="devValidationEmpty">Health status will appear after the first live refresh.</p>';
+        }
+        if (issuesHeadline) {
+            issuesHeadline.textContent = issues.status || "INCONCLUSIVE";
+            issuesHeadline.className = `statusPill statusPill--${issues.tone || "neutral"}`;
+        }
+        if (issuesSummary) {
+            issuesSummary.textContent = issues.summary || "No recent issue summary yet.";
+        }
+        if (issuesList) {
+            const rows = Array.isArray(issues.items) && issues.items.length
+                ? issues.items
+                : [{
+                    title: issues.headline || "All clear",
+                    detail: issues.summary || "No active issue surfaced.",
+                    source: issues.source || "",
+                    tone: issues.tone || "neutral",
+                }];
+            issuesList.innerHTML = rows.map((item) => buildControlIssueMarkup(item)).join("");
+        }
+        if (activityHeadline) {
+            activityHeadline.textContent = activityItems.length ? "Live" : "INCONCLUSIVE";
+            activityHeadline.className = `statusPill statusPill--${activityItems.length ? "good" : "neutral"}`;
+        }
+        if (activityList) {
+            activityList.innerHTML = activityItems.length
+                ? activityItems.map((item) => buildControlActivityMarkup(item)).join("")
+                : '<p class="devActivityFeedEmpty">No recent control-layer activity yet.</p>';
+        }
+        setText("devControlHealthSource", sources.health || "Health source detail unavailable.");
+        setText("devControlIssuesSource", sources.recent_issues || "Issue source detail unavailable.");
+        setText("devControlActivitySource", sources.recent_activity || "Activity source detail unavailable.");
+        setText("devWorkerRouterSource", `Worker routing uses Miru-specific rules plus the current system summary. ${sources.truth || ""}`.trim());
+    }
+
+    function flashButtonState(button, text) {
+        if (!button) {
+            return;
+        }
+        const original = button.dataset.originalLabel || button.textContent || "";
+        if (!button.dataset.originalLabel) {
+            button.dataset.originalLabel = original;
+        }
+        button.textContent = text;
+        window.clearTimeout(button._resetLabelTimer);
+        button._resetLabelTimer = window.setTimeout(() => {
+            button.textContent = button.dataset.originalLabel || original;
+        }, 1800);
+    }
+
+    function buildLiveControlSummary(payload) {
+        const control = payload && payload.control_layer ? payload.control_layer : {};
+        return String(control.copy_summary || control.summary || "").trim();
+    }
+
+    function inferWorkerRoute(taskText, payload) {
+        const text = String(taskText || "").trim();
+        const normalized = text.toLowerCase();
+        const mentionsMain = /(main repo|main runtime|\b8765\b|\b8080\b|intelligence pipeline|visual intelligence|image pipeline|dossier|source adapters|main site)/.test(normalized);
+        const mentionsProjectMiru = /(project miru|\b18080\b|dashboard|leader page|leaders|catalog|set page|user-facing)/.test(normalized);
+        const mentionsDev = /(\b18765\b|dev page|dev surface|control layer|runtime status|operator|govern|autopilot|approval|heartbeat|learner|worker|api|endpoint|restart|script|powershell|windows launch|process|socket|health|status)/.test(normalized);
+        const mentionsUi = /(ui|ux|layout|css|html|template|render|mobile|responsive|copy button|button|panel|visual|styling|spacing)/.test(normalized);
+        const mentionsAudit = /(audit|review|reconcile|compare|drift|authority|docs|doc|plan|risk|map|report|summary)/.test(normalized);
+
+        let worker = "Codex";
+        let why = "Best fit for runtime debugging, repo-aware edits, and verification-heavy Miru work.";
+        let environment = "Worktree repo on 18765";
+        let verification = "Verify on http://127.0.0.1:18765/dev plus /api/dev-status and any touched runtime endpoint.";
+
+        if (mentionsUi && !mentionsDev && !mentionsMain) {
+            worker = "Cursor";
+            why = "Best fit for tight front-end iteration and targeted UI polish when the task is mostly page-level behavior or styling.";
+            environment = mentionsProjectMiru ? "Worktree repo on 18080" : "Worktree repo on 18765";
+            verification = mentionsProjectMiru
+                ? "Verify the visual change directly on http://127.0.0.1:18080/ and confirm no behavior regressions."
+                : "Verify the visual change directly on http://127.0.0.1:18765/dev and confirm the rest of the Dev page still behaves normally.";
+        } else if (mentionsAudit && !mentionsDev && !mentionsUi) {
+            worker = "Claude Code";
+            why = "Best fit for careful synthesis, audit writing, and high-context reconciliation where preserving nuance matters more than fast patching.";
+            environment = mentionsMain ? "Main repo on 8080/8765, with worktree cross-checks if needed" : "Worktree repo documentation and authority surfaces";
+            verification = "Verify the report against the cited files, routes, startup paths, and live endpoints named in the task.";
+        }
+
+        if (mentionsMain) {
+            environment = "Main repo on 8080/8765";
+            verification = "Verify against the main runtime path or its cited entry points, and avoid assuming worktree authority.";
+            if (!mentionsAudit && !mentionsUi) {
+                worker = "Codex";
+                why = "Best fit for deeper intelligence-pipeline changes and exact runtime verification in the main repo.";
+            }
+        } else if (mentionsDev) {
+            environment = "Worktree repo on 18765";
+            verification = "Verify on http://127.0.0.1:18765/dev and /api/dev-status, and confirm 18080 is unaffected.";
+        } else if (mentionsProjectMiru) {
+            environment = "Worktree repo on 18080";
+            if (!mentionsUi) {
+                verification = "Verify on http://127.0.0.1:18080/ and confirm Project Miru behavior stays intact.";
+            }
+        } else if (!text) {
+            environment = "Worktree repo on 18765";
+            verification = "Verify on http://127.0.0.1:18765/dev and /api/dev-status, and confirm 18080 is unaffected.";
+        }
+
+        const reportFormat = [
+            "CONFIRMED WORKING",
+            "INCONCLUSIVE",
+            "FAILED",
+        ].join(" / ");
+        const liveSummary = buildLiveControlSummary(payload);
+        const prompt = [
+            `Recommended worker: ${worker}`,
+            "Recommended model: strongest reliable coding model available",
+            "Reasoning level: High",
+            "",
+            `Environment target: ${environment}`,
+            "Assume the repo state has already been inspected. Do not rescan the entire project unless necessary.",
+            "",
+            "Task:",
+            text || "Investigate the current Miru issue carefully and finish the bug completely.",
+            "",
+            "Current observed state:",
+            liveSummary || "Use the live Miru Dev status as the source of truth.",
+            "",
+            "Requirements:",
+            "- Reuse existing mechanisms before creating anything new.",
+            "- Keep changes scoped and surgical.",
+            "- Validate against the live target before claiming success.",
+            "",
+            `Required verification target: ${verification}`,
+            `Required report format: ${reportFormat}`,
+        ].join("\n");
+
+        return {
+            worker,
+            why,
+            environment,
+            verification,
+            reportFormat,
+            prompt,
+        };
+    }
+
+    function renderWorkerRouteRecommendation(result) {
+        if (!result) {
+            return;
+        }
+        setText("devWorkerRouterWorker", result.worker || "Enter a task first");
+        setText("devWorkerRouterWhy", result.why || "The router will explain why the recommendation fits.");
+        setText("devWorkerRouterTarget", result.environment || "Worktree / 18765 by default");
+        setText("devWorkerRouterVerify", result.verification || "Verification target will appear with the recommendation.");
+        setText("devWorkerRouterMeta", `Required report format: ${result.reportFormat || "CONFIRMED WORKING / INCONCLUSIVE / FAILED"}`);
+        const promptNode = document.getElementById("devWorkerRouterPrompt");
+        if (promptNode) {
+            promptNode.value = result.prompt || "";
+        }
+        const pill = document.getElementById("devWorkerRouterWorkerPill");
+        if (pill) {
+            const tone = result.worker === "Codex" ? "good" : "neutral";
+            pill.textContent = result.worker || "Waiting";
+            pill.className = `statusPill statusPill--${tone}`;
+        }
+    }
+
     function renderMonitorDeck(payload) {
         const monitor = payload && payload.monitor ? payload.monitor : {};
         const state = monitor.state || {};
@@ -1466,6 +1853,11 @@ if (typeof window !== "undefined") {
             tasks.push(fetchDeferredDevSection("validationAudit", { force }));
         } else if (tab === "system") {
             tasks.push(fetchDeferredDevSection("resourceMetrics", { force }));
+        } else if (tab === "overview") {
+            const r = document.getElementById("devMonitor");
+            if (r && typeof r.loadPendingApprovals === "function") {
+                tasks.push(Promise.resolve(r.loadPendingApprovals()));
+            }
         }
         if (!tasks.length) {
             return [];
@@ -1651,8 +2043,112 @@ if (typeof window !== "undefined") {
         setText("devVoyageExpandedMapBadgeCopy", `${frame.currentRoadmapDetail}. ${frame.nextRoadmapLabel} is next.`);
     }
 
+    function isDevCockpitMinimalSurface() {
+        const main = document.getElementById("miruMainContent");
+        return Boolean(main && main.getAttribute("data-page-key") === "dev");
+    }
+
+    function renderOperatorHandoff(payload) {
+        const handoff = payload && payload.operator_handoff;
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = value == null || value === "" ? "—" : String(value);
+            }
+        };
+        const ta = document.getElementById("devHandoffPromptText");
+        const pill = document.getElementById("devHandoffStatePill");
+        const resolveBtn = document.getElementById("devHandoffResolveBtn");
+        const clearAckBtn = document.getElementById("devHandoffClearAckBtn");
+        const resHint = document.getElementById("devHandoffResolutionHint");
+        function hideHandoffResolutionUi() {
+            if (resolveBtn) {
+                resolveBtn.hidden = true;
+            }
+            if (clearAckBtn) {
+                clearAckBtn.hidden = true;
+            }
+            if (resHint) {
+                resHint.hidden = true;
+                resHint.textContent = "";
+            }
+        }
+        function updateHandoffResolutionUi(h) {
+            if (!resolveBtn && !clearAckBtn && !resHint) {
+                return;
+            }
+            const res = h && h.resolution;
+            const showResolve = Boolean(h && h.has_active_handoff === true);
+            const showClearAck = Boolean(
+                res && res.operator_acknowledged_for_signature && res.underlying_need_still_present
+            );
+            if (resolveBtn) {
+                resolveBtn.hidden = !showResolve;
+            }
+            if (clearAckBtn) {
+                clearAckBtn.hidden = !showClearAck;
+            }
+            if (resHint) {
+                if (showClearAck && res.resolved_at) {
+                    resHint.hidden = false;
+                    resHint.textContent =
+                        "Handoff acknowledged at " +
+                        res.resolved_at +
+                        ". Self-report may still show a catalog gap until metrics change.";
+                } else {
+                    resHint.hidden = true;
+                    resHint.textContent = "";
+                }
+            }
+        }
+        if (!handoff || typeof handoff !== "object") {
+            setText("devHandoffWhat", "—");
+            setText("devHandoffWhy", "—");
+            setText("devHandoffWorker", "—");
+            setText("devHandoffTarget", "—");
+            if (ta) {
+                ta.value = "";
+            }
+            if (pill) {
+                pill.textContent = "No data";
+                pill.className = "statusPill statusPill--neutral";
+            }
+            hideHandoffResolutionUi();
+            return;
+        }
+        setText("devHandoffWhat", handoff.what_miru_needs);
+        setText("devHandoffWhy", handoff.why);
+        setText("devHandoffWorker", handoff.recommended_worker);
+        setText("devHandoffTarget", handoff.target_environment);
+        if (ta) {
+            ta.value = handoff.prompt_text != null ? String(handoff.prompt_text) : "";
+        }
+        if (pill) {
+            let active = false;
+            if (typeof handoff.has_active_handoff === "boolean") {
+                active = handoff.has_active_handoff;
+            } else {
+                active = handoff.state !== "clear";
+            }
+            pill.textContent = active ? "Active handoff" : "No active handoff";
+            pill.className = "statusPill statusPill--" + (active ? "warn" : "good");
+        }
+        updateHandoffResolutionUi(handoff);
+    }
+
     function renderDevStatus(payload) {
         if (!payload) {
+            return;
+        }
+        if (isDevCockpitMinimalSurface()) {
+            const updatedAt = document.getElementById("devUpdatedAt");
+            if (updatedAt) {
+                updatedAt.textContent = payload.updated_at_display || payload.updated_at || "—";
+            }
+            const devEnv = payload.dev_environment || {};
+            setText("devStripEnvironment", devEnv.environment || "—");
+            setText("devStripRuntimeTarget", devEnv.runtime_target || "—");
+            renderOperatorHandoff(payload);
             return;
         }
         const activity = payload.activity || {};
@@ -1711,21 +2207,21 @@ if (typeof window !== "undefined") {
         const stripHeartbeatFreshness = document.getElementById("devStripHeartbeatFreshness");
         const stripQueue = document.getElementById("devStripQueue");
         if (stripEnvironment) {
-            stripEnvironment.textContent = devEnv.environment || "—";
+            stripEnvironment.textContent = devEnv.environment || "â€”";
         }
         if (stripRuntimeTarget) {
-            stripRuntimeTarget.textContent = devEnv.runtime_target || "—";
+            stripRuntimeTarget.textContent = devEnv.runtime_target || "â€”";
         }
         const learnerStateDisplay = learningEngine.learner_state_display;
-        const learnerStateRaw = learningEngine.learner_state || "—";
+        const learnerStateRaw = learningEngine.learner_state || "â€”";
         const queueLen = Number(learningEngine.queue_length || 0);
         const hasPid = learningEngine.learner_pid != null && String(learningEngine.learner_pid).trim() !== "";
-        let simpleStatus = learnerStateDisplay || "—";
-        if (simpleStatus === "—") {
+        let simpleStatus = learnerStateDisplay || "â€”";
+        if (simpleStatus === "â€”") {
             if (learnerStateRaw === "Running" || learnerStateRaw === "Starting") simpleStatus = "Learning";
             else if (learnerStateRaw === "Running (waiting)" || (learnerStateRaw === "Idle" && hasPid)) simpleStatus = "Waiting for work";
-            else if (learnerStateRaw === "Idle") simpleStatus = queueLen === 0 ? "Stopped" : "Stopped, tasks waiting";
-            else if (learnerStateRaw !== "—") simpleStatus = learnerStateRaw;
+            else if (learnerStateRaw === "Idle") simpleStatus = queueLen === 0 ? "Idle" : "Idle, tasks waiting";
+            else if (learnerStateRaw !== "â€”") simpleStatus = learnerStateRaw;
         }
         const currentStatusLine = document.getElementById("devCurrentStatusLine");
         if (currentStatusLine) {
@@ -1746,52 +2242,81 @@ if (typeof window !== "undefined") {
             }
         }
         if (stripMiruStatus) {
-            stripMiruStatus.textContent = simpleStatus !== "—" ? simpleStatus : (activity.title || "Sleeping");
+            stripMiruStatus.textContent = simpleStatus !== "â€”" ? simpleStatus : (activity.title || "Sleeping");
         }
-        const workerLastRun = payload.worker_last_run || {};
         if (stripWorkerStatus) {
             const wAction = workerLastRun.action;
             const wDisplay = workerLastRun.action_display;
             const wTime = workerLastRun.timestamp_display || (workerLastRun.timestamp ? formatTimeLA(workerLastRun.timestamp) : "");
             if (wAction && wAction !== "no_run_recorded") {
-                stripWorkerStatus.textContent = (wDisplay || wAction) + (wTime ? " · " + wTime : "");
+                stripWorkerStatus.textContent = (wDisplay || wAction) + (wTime ? " Â· " + wTime : "");
             } else {
-                stripWorkerStatus.textContent = "—";
+                stripWorkerStatus.textContent = "â€”";
             }
         }
         if (stripMode) {
             stripMode.textContent = currentMode;
         }
         if (stripHeartbeat) {
-            stripHeartbeat.textContent = formatTimeLA(learningEngine.last_heartbeat || "—");
+            stripHeartbeat.textContent = formatTimeLA(learningEngine.last_heartbeat || "â€”");
         }
         if (stripHeartbeatFreshness) {
-            const freshness = learningEngine.heartbeat_freshness || "—";
-            stripHeartbeatFreshness.textContent = freshness !== "—" ? `(${freshness})` : "";
+            const freshness = learningEngine.heartbeat_freshness || "â€”";
+            stripHeartbeatFreshness.textContent = freshness !== "â€”" ? `(${freshness})` : "";
         }
         if (stripQueue) {
-            stripQueue.textContent = `${Number(learningEngine.queue_length || 0)} waiting · ${Number(learningEngine.running_count || 0)} running`;
+            stripQueue.textContent = `${Number(learningEngine.queue_length || 0)} waiting Â· ${Number(learningEngine.running_count || 0)} running`;
+        }
+        const snapIn = payload.snapshot_inputs || learningEngine.snapshot_inputs || {};
+        const snapStrip = document.getElementById("devSnapshotStrip");
+        const snapPill = document.getElementById("devSnapshotStripPill");
+        const snapSummary = document.getElementById("devSnapshotStripSummary");
+        if (snapStrip && snapPill && snapSummary) {
+            const worst = String(snapIn.worst_status || "fresh").toLowerCase();
+            const items = Array.isArray(snapIn.items) ? snapIn.items : [];
+            if (!items.length) {
+                snapStrip.classList.add("isHidden");
+            } else {
+                snapStrip.classList.remove("isHidden");
+                snapStrip.classList.remove("devSnapshotStrip--good", "devSnapshotStrip--warn", "devSnapshotStrip--bad");
+                let tone = "good";
+                let pillLabel = "Fresh";
+                if (worst === "missing") {
+                    tone = "bad";
+                    pillLabel = "Missing";
+                } else if (worst === "stale") {
+                    tone = "warn";
+                    pillLabel = "Stale";
+                } else if (worst === "aging") {
+                    tone = "warn";
+                    pillLabel = "Aging";
+                }
+                snapStrip.classList.add(`devSnapshotStrip--${tone}`);
+                snapPill.textContent = pillLabel;
+                snapPill.className = `statusPill statusPill--${tone === "good" ? "good" : "warn"}`;
+                snapSummary.textContent = snapIn.summary || "";
+            }
         }
         const stripDossiers = document.getElementById("devStripDossiers");
         if (stripDossiers) {
-            stripDossiers.textContent = `${Number(learningEngine.dossier_verified_count || 0)} verified · ${Number(learningEngine.dossier_source_backed_count || 0)} source-backed`;
+            stripDossiers.textContent = `${Number(learningEngine.dossier_verified_count || 0)} verified Â· ${Number(learningEngine.dossier_source_backed_count || 0)} source-backed`;
         }
         const workerLastRunWrap = document.getElementById("devWorkerLastRunWrap");
         const workerLastRunAction = document.getElementById("devWorkerLastRunAction");
         const workerLastRunTime = document.getElementById("devWorkerLastRunTime");
         const workerLastRunDetail = document.getElementById("devWorkerLastRunDetail");
         if (workerLastRunWrap) {
-            const action = workerLastRun.action || "—";
+            const action = workerLastRun.action || "â€”";
             workerLastRunWrap.style.display = action === "no_run_recorded" ? "none" : "";
             if (workerLastRunAction) workerLastRunAction.textContent = workerLastRun.action_display || action;
-            if (workerLastRunTime) workerLastRunTime.textContent = workerLastRun.timestamp_display || (workerLastRun.timestamp ? formatTimeLA(workerLastRun.timestamp) : "—");
+            if (workerLastRunTime) workerLastRunTime.textContent = workerLastRun.timestamp_display || (workerLastRun.timestamp ? formatTimeLA(workerLastRun.timestamp) : "â€”");
             if (workerLastRunDetail) {
                 const parts = [];
                 if (workerLastRun.blocker) parts.push(workerLastRun.blocker);
                 if (workerLastRun.no_new_work_reason) parts.push(workerLastRun.no_new_work_reason);
                 if (workerLastRun.overlap_count != null) parts.push("overlap " + workerLastRun.overlap_count);
                 if (workerLastRun.insight_count_after != null) parts.push(workerLastRun.insight_count_after + " insights");
-                workerLastRunDetail.textContent = parts.join(" · ") || "—";
+                workerLastRunDetail.textContent = parts.join(" Â· ") || "â€”";
             }
         }
         const startLearnerBtn = document.getElementById("devStartLearnerBtn");
@@ -1821,9 +2346,9 @@ if (typeof window !== "undefined") {
             if (sync.at) {
                 const trigger = sync.trigger === "manual" ? " (manual)" : (sync.trigger === "after_stop" ? " (after stop)" : "");
                 const atLA = formatTimeLA(sync.at);
-                lastSyncHint.textContent = "Sync complete: " + Number(sync.synced_cards || 0) + " cards, " + Number(sync.inserted_insights || 0) + " inserted, " + Number(sync.replaced_insights || 0) + " replaced · " + atLA + trigger;
+                lastSyncHint.textContent = "Sync complete: " + Number(sync.synced_cards || 0) + " cards, " + Number(sync.inserted_insights || 0) + " inserted, " + Number(sync.replaced_insights || 0) + " replaced Â· " + atLA + trigger;
             } else {
-                lastSyncHint.textContent = "Last insight sync: — (runs after Stop Learner; or use Sync Insights)";
+                lastSyncHint.textContent = "Last insight sync: â€” (runs after Stop Learner; or use Sync Insights)";
             }
         }
         const worktreeBlock = document.getElementById("devWorktreeUpdateBlock");
@@ -1839,7 +2364,7 @@ if (typeof window !== "undefined") {
                 if (msgEl) msgEl.textContent = worktreeSummary.message || "No verified updates on worktree site yet.";
                 if (titleEl) titleEl.textContent = worktreeSummary.awaiting_review ? "Awaiting review" : (worktreeSummary.status === "updated" ? "Updated" : "Update status");
                 if (pillEl) {
-                    pillEl.textContent = worktreeSummary.awaiting_review ? "Review" : (worktreeSummary.status === "updated" ? "Updated" : "—");
+                    pillEl.textContent = worktreeSummary.awaiting_review ? "Review" : (worktreeSummary.status === "updated" ? "Updated" : "â€”");
                     pillEl.className = "statusPill statusPill--" + (worktreeSummary.awaiting_review ? "warn" : (worktreeSummary.status === "updated" ? "good" : "neutral"));
                 }
                 if (countsEl) {
@@ -1857,7 +2382,7 @@ if (typeof window !== "undefined") {
                         const code = escapeHtml(String(item.card_code || ""));
                         const name = escapeHtml(String(item.card_name || "Unknown card"));
                         const ts = escapeHtml(formatTimeLA(item.verified_at || ""));
-                        return `<li class="devWorktreeUpdateListItem">${code} · ${name} <span class="devWorktreeUpdateTime">${ts}</span></li>`;
+                        return `<li class="devWorktreeUpdateListItem">${code} Â· ${name} <span class="devWorktreeUpdateTime">${ts}</span></li>`;
                     }).join("");
                 }
             } else {
@@ -1878,10 +2403,10 @@ if (typeof window !== "undefined") {
         const liveActivityDetail = document.getElementById("devLiveActivityDetail");
         const overviewStatePill = document.getElementById("devOverviewStatePill");
         if (liveActivityTitle) {
-            liveActivityTitle.textContent = simpleStatus !== "—" ? simpleStatus : (activity.title || "Sleeping");
+            liveActivityTitle.textContent = simpleStatus !== "â€”" ? simpleStatus : (activity.title || "Sleeping");
         }
         if (overviewStatePill) {
-            overviewStatePill.textContent = simpleStatus !== "—" ? simpleStatus : (activity.title || "Sleeping");
+            overviewStatePill.textContent = simpleStatus !== "â€”" ? simpleStatus : (activity.title || "Sleeping");
         }
         if (liveActivityDetail) {
             liveActivityDetail.textContent = activity.detail || activity.description || "Miru is waiting for the next question.";
@@ -1924,6 +2449,8 @@ if (typeof window !== "undefined") {
         renderDevIssueCard("project_miru", payload.issues && payload.issues.project_miru);
         renderPushoverStatus(payload.pushover || {});
         renderIntelligenceStatus(payload.intelligence_status || {});
+        renderOperatorHandoff(payload);
+        renderControlLayer(payload);
         renderDevVoyage(
             payload.voyage || (payload.training && payload.training.voyage),
             payload.intelligence_progress || (payload.training && payload.training.intelligence_progress) || null,
@@ -2203,9 +2730,9 @@ if (typeof window !== "undefined") {
             }
             const pct = entry.remaining_percent ?? 100;
             const remaining = `<p class="devLimitsRemaining" data-field="remaining"><strong>${Number(pct).toFixed(0)}%</strong> remaining</p>`;
-            const reset = `<p class="devLimitsReset" data-field="reset">Reset: ${escapeHtml(entry.reset_at || "—")}</p>`;
+            const reset = `<p class="devLimitsReset" data-field="reset">Reset: ${escapeHtml(entry.reset_at || "â€”")}</p>`;
             const notes = entry.notes ? `<p class="devLimitsNotes" data-field="notes">${escapeHtml(entry.notes)}</p>` : "";
-            const metaText = `Updated ${escapeHtml(entry.updated_at || "—")}${entry.source ? " · " + escapeHtml(entry.source) : ""}`;
+            const metaText = `Updated ${escapeHtml(entry.updated_at || "â€”")}${entry.source ? " Â· " + escapeHtml(entry.source) : ""}`;
             body.innerHTML = remaining + reset + notes + `<p class="devLimitsMeta" data-field="meta">${metaText}</p>`;
             node.classList.toggle("devLimitsCard--warn", pct < 20);
         });
@@ -2216,7 +2743,7 @@ if (typeof window !== "undefined") {
     function buildValidationItemMarkup(item, metaText) {
         return `
             <button class="devValidationItem" type="button" data-card-code="${escapeHtml(item.card_code || "")}">
-                <strong>${escapeHtml(item.card_code || "")} · ${escapeHtml(item.card_name || "Unknown card")}</strong>
+                <strong>${escapeHtml(item.card_code || "")} Â· ${escapeHtml(item.card_name || "Unknown card")}</strong>
                 <span>${escapeHtml(metaText || "")}</span>
             </button>
         `;
@@ -2310,7 +2837,7 @@ if (typeof window !== "undefined") {
                 <span class="devValidationSourceBadge">${escapeHtml(trustLabel)}</span>
                 <strong>${escapeHtml(sourceName)}</strong>
                 <p>${escapeHtml(source.source_id || "")}</p>
-                ${summary.length ? `<p>${escapeHtml(summary.join(" · "))}</p>` : ""}
+                ${summary.length ? `<p>${escapeHtml(summary.join(" Â· "))}</p>` : ""}
             </article>
         `;
     }
@@ -2337,7 +2864,7 @@ if (typeof window !== "undefined") {
         }
         const canonical = audit.canonical_values || {};
         const conflictSummary = audit.conflict_summary || {};
-        title.textContent = `${audit.card_code || ""} · ${canonical.card_name || "Unknown card"}`;
+        title.textContent = `${audit.card_code || ""} Â· ${canonical.card_name || "Unknown card"}`;
         confidence.textContent = `${Number(audit.confidence || 0).toFixed(2)} confidence`;
         confidence.className = `statusPill statusPill--${confidenceTone(audit.confidence)}`;
         summary.textContent = audit.confidence_reason || conflictSummary.summary || "No confidence reasoning recorded.";
@@ -2356,7 +2883,7 @@ if (typeof window !== "undefined") {
         canonicalGrid.innerHTML = canonicalFields.map(([label, value]) => `
             <div class="devValidationCanonicalCell">
                 <strong>${escapeHtml(label)}</strong>
-                <span>${escapeHtml(value || "—")}</span>
+                <span>${escapeHtml(value || "â€”")}</span>
             </div>
         `).join("");
         winningSource.innerHTML = renderValidationSourceCard(
@@ -2382,7 +2909,7 @@ if (typeof window !== "undefined") {
         const title = document.getElementById("devValidationDetailTitle");
         const summary = document.getElementById("devValidationDetailSummary");
         if (title) {
-            title.textContent = `Loading ${normalizedCode}…`;
+            title.textContent = `Loading ${normalizedCode}â€¦`;
         }
         if (summary) {
             summary.textContent = "Fetching validation evidence trail.";
@@ -2546,10 +3073,20 @@ if (typeof window !== "undefined") {
         }
         initializeDevConsoleTabs();
         initializeVoyageMapShell();
-        const refreshButton = document.getElementById("devRefreshButton");
+        const devRefreshButtons = (function collectDevRefreshButtons() {
+            const list = Array.from(root.querySelectorAll('[data-dev-refresh="status"]'));
+            const legacy = document.getElementById("devRefreshButton");
+            if (!list.length && legacy && root.contains(legacy)) {
+                list.push(legacy);
+            }
+            return list;
+        })();
         const apiUrl = (root.dataset.devStatusUrl || config.devStatusUrl || "/api/dev-status").trim() || "/api/dev-status";
+        const mainContentEl = document.getElementById("miruMainContent");
+        const pageKeyForDev = (mainContentEl && mainContentEl.getAttribute("data-page-key")) || "";
+        const isDevCockpitPage = pageKeyForDev === "dev";
         const summaryUrl = apiUrl
-            ? `${apiUrl}${apiUrl.includes("?") ? "&" : "?"}view=summary`
+            ? `${apiUrl}${apiUrl.includes("?") ? "&" : "?"}view=summary${isDevCockpitPage ? "&surface=cockpit" : ""}`
             : "";
         const operatorConsoleUrl = "/api/dev/operator-console";
         const operatorActionUrl = "/api/dev/operator-console/action";
@@ -2565,12 +3102,20 @@ if (typeof window !== "undefined") {
         const operatorQueryAnswer = document.getElementById("devOperatorQueryAnswer");
         const operatorQueryMeta = document.getElementById("devOperatorQueryMeta");
         const operatorSuggestionRow = document.getElementById("devOperatorQuerySuggestions");
+        const copySystemSummaryBtn = document.getElementById("devCopySystemSummaryBtn");
+        const workerRouterForm = document.getElementById("devWorkerRouterForm");
+        const workerRouterInput = document.getElementById("devWorkerRouterInput");
+        const workerRouterPrompt = document.getElementById("devWorkerRouterPrompt");
+        const copyWorkerPromptBtn = document.getElementById("devCopyWorkerPromptBtn");
+        const judgmentCopyPromptBtn = document.getElementById("devJudgmentCopyPromptBtn");
         const devControlFeedback = document.getElementById("devControlFeedback");
         const leanRefresh = Boolean(
             (window.matchMedia && window.matchMedia("(max-width: 820px)").matches)
             || (navigator.connection && navigator.connection.saveData)
         );
-        const monitorRefreshMs = leanRefresh ? 30000 : 20000;
+        const monitorRefreshMs = isDevCockpitPage
+            ? (leanRefresh ? 60000 : 45000)
+            : (leanRefresh ? 30000 : 20000);
         if (!apiUrl) {
             return;
         }
@@ -2578,7 +3123,7 @@ if (typeof window !== "undefined") {
         let lastDevStatusPayload = null;
 
         function formatTimeLA(str) {
-            if (!str || String(str).trim() === "" || String(str).trim() === "—") return str;
+            if (!str || String(str).trim() === "" || String(str).trim() === "â€”") return str;
             const s = String(str).trim();
             let iso = s;
             if (/^\d{4}-\d{2}-\d{2}\s+\d/.test(s)) {
@@ -2633,9 +3178,9 @@ if (typeof window !== "undefined") {
         const LOOP_MAX_WAIT_PER_CYCLE_MS = 2 * 60 * 1000;
 
         async function runLearningLoop(btn) {
-            setDevControlFeedback("Run Learning Loop: starting (up to " + MAX_LEARNING_LOOP_CYCLES + " cycles)…", false);
+            setDevControlFeedback("Run Learning Loop: starting (up to " + MAX_LEARNING_LOOP_CYCLES + " cycles)â€¦", false);
             for (let cycle = 1; cycle <= MAX_LEARNING_LOOP_CYCLES; cycle++) {
-                setDevControlFeedback("Run Learning Loop: cycle " + cycle + "/" + MAX_LEARNING_LOOP_CYCLES + "…", false);
+                setDevControlFeedback("Run Learning Loop: cycle " + cycle + "/" + MAX_LEARNING_LOOP_CYCLES + "â€¦", false);
                 try {
                     const startRes = await fetch("/api/dev/start-learner", {
                         method: "POST",
@@ -2645,10 +3190,10 @@ if (typeof window !== "undefined") {
                     });
                     const startData = await startRes.json().catch(function () { return {}; });
                     if (startData.already_running) {
-                        setDevControlFeedback("Run Learning Loop: learner already running, waiting for idle (cycle " + cycle + "/" + MAX_LEARNING_LOOP_CYCLES + ")…", false);
+                        setDevControlFeedback("Run Learning Loop: learner already running, waiting for idle (cycle " + cycle + "/" + MAX_LEARNING_LOOP_CYCLES + ")â€¦", false);
                     }
                 } catch (e) {
-                    setDevControlFeedback("Run Learning Loop: start failed – " + (e && e.message ? e.message : "request failed"), true);
+                    setDevControlFeedback("Run Learning Loop: start failed â€“ " + (e && e.message ? e.message : "request failed"), true);
                     return;
                 }
                 const cycleStart = Date.now();
@@ -2666,7 +3211,7 @@ if (typeof window !== "undefined") {
                     await new Promise(function (r) { setTimeout(r, LOOP_POLL_INTERVAL_MS); });
                 }
                 if (cycle < MAX_LEARNING_LOOP_CYCLES) {
-                    setDevControlFeedback("Run Learning Loop: cycle " + cycle + " done. Pausing " + (LOOP_PAUSE_BETWEEN_CYCLES_MS / 1000) + "s before next…", false);
+                    setDevControlFeedback("Run Learning Loop: cycle " + cycle + " done. Pausing " + (LOOP_PAUSE_BETWEEN_CYCLES_MS / 1000) + "s before nextâ€¦", false);
                     await new Promise(function (r) { setTimeout(r, LOOP_PAUSE_BETWEEN_CYCLES_MS); });
                 }
             }
@@ -2723,8 +3268,8 @@ if (typeof window !== "undefined") {
                 }
                 setDevControlFeedback(
                     action === "set-mode" && mode
-                        ? `Tapped ${mode}. Sending request…`
-                        : "Tap detected. Sending request…",
+                        ? `Tapped ${mode}. Sending requestâ€¦`
+                        : "Tap detected. Sending requestâ€¦",
                     false,
                 );
                 const url = action === "set-mode" ? "/api/dev/set-learner-mode" : `/api/dev/${action}`;
@@ -2749,9 +3294,9 @@ if (typeof window !== "undefined") {
                     let message = data.message || data.error || (response.ok ? "Done." : `Request failed (${response.status}).`);
                     if (action === "set-mode" && isSuccess && mode) {
                         const confirmMsg = {
-                            DRY_RUN: "Dry Run enabled – Miru will simulate learning without publishing.",
-                            SANDBOX: "Sandbox mode enabled – Miru can verify data but will not publish.",
-                            REVIEW_REQUIRED: "Review mode enabled – Miru will queue items for approval.",
+                            DRY_RUN: "Dry Run enabled â€“ Miru will simulate learning without publishing.",
+                            SANDBOX: "Sandbox mode enabled â€“ Miru can verify data but will not publish.",
+                            REVIEW_REQUIRED: "Review mode enabled â€“ Miru will queue items for approval.",
                         }[mode] || message;
                         message = confirmMsg;
                     }
@@ -2842,6 +3387,9 @@ if (typeof window !== "undefined") {
         }
 
         function scheduleNonCriticalDevLoads() {
+            if (isDevCockpitPage) {
+                return;
+            }
             const run = () => {
                 if (!shouldRefreshDevMonitor()) {
                     return;
@@ -2858,8 +3406,11 @@ if (typeof window !== "undefined") {
         }
 
         async function loadDevStatus({ manual = false, lightweight = false } = {}) {
-            if (refreshButton && manual) {
-                refreshButton.disabled = true;
+            if (manual) {
+                devRefreshButtons.forEach((btn) => {
+                    btn.disabled = true;
+                    btn.classList.add("is-loading");
+                });
             }
             try {
                 const response = await fetch(lightweight ? summaryUrl : apiUrl, {
@@ -2881,9 +3432,10 @@ if (typeof window !== "undefined") {
                     updatedAt.textContent = "Live data unavailable";
                 }
             } finally {
-                if (refreshButton) {
-                    refreshButton.disabled = false;
-                }
+                devRefreshButtons.forEach((btn) => {
+                    btn.disabled = false;
+                    btn.classList.remove("is-loading");
+                });
             }
         }
 
@@ -2939,20 +3491,20 @@ if (typeof window !== "undefined") {
                 head.className = "devPendingApprovalHead";
                 const card = document.createElement("span");
                 card.className = "devPendingApprovalCard";
-                card.textContent = item.card_code || "—";
+                card.textContent = item.card_code || "â€”";
                 const source = document.createElement("span");
                 source.className = "devPendingApprovalSource";
-                source.textContent = item.source_id || "—";
+                source.textContent = item.source_id || "â€”";
                 head.appendChild(card);
                 head.appendChild(source);
                 const meta = document.createElement("div");
                 meta.className = "devPendingApprovalMeta";
                 const reason = document.createElement("span");
                 reason.className = "devPendingApprovalReason";
-                reason.textContent = item.reason || "—";
+                reason.textContent = item.reason || "â€”";
                 const confidence = document.createElement("span");
                 confidence.className = "devPendingApprovalConfidence";
-                confidence.textContent = typeof item.confidence === "number" ? (item.confidence * 100).toFixed(0) + "%" : "—";
+                confidence.textContent = typeof item.confidence === "number" ? (item.confidence * 100).toFixed(0) + "%" : "â€”";
                 meta.appendChild(reason);
                 meta.appendChild(confidence);
                 const extra = document.createElement("div");
@@ -3002,25 +3554,40 @@ if (typeof window !== "undefined") {
                 return;
             }
             if (pendingApprovalsEmpty) {
-                pendingApprovalsEmpty.textContent = "Loading…";
+                pendingApprovalsEmpty.textContent = "Loadingâ€¦";
                 pendingApprovalsEmpty.classList.remove("isHidden");
             }
+            const timeoutMs = 12000;
+            const ac = typeof AbortController !== "undefined" ? new AbortController() : null;
+            const timeoutId = ac ? window.setTimeout(() => ac.abort(), timeoutMs) : null;
             try {
                 const response = await fetch("/api/dev/pending-approvals", {
                     headers: { Accept: "application/json", "X-Requested-With": "miru-client-nav" },
                     credentials: "same-origin",
+                    signal: ac ? ac.signal : undefined,
                 });
                 if (!response.ok) {
                     throw new Error("Pending approvals failed " + response.status);
                 }
                 const data = await response.json().catch(() => ({}));
-                renderPendingApprovals(data.items || []);
+                const items = Array.isArray(data && data.items) ? data.items : [];
+                renderPendingApprovals(items);
             } catch (err) {
                 if (pendingApprovalsEmpty) {
-                    pendingApprovalsEmpty.textContent = "Could not load pending approvals.";
+                    pendingApprovalsEmpty.textContent = err && err.name === "AbortError"
+                        ? "Request timed out. Tap Refresh to try again."
+                        : "Could not load pending approvals. Tap Refresh to try again.";
                     pendingApprovalsEmpty.classList.remove("isHidden");
                 }
-                pendingApprovalsList.querySelectorAll(".devPendingApprovalRow").forEach((el) => el.remove());
+                if (pendingApprovalsList) {
+                    pendingApprovalsList.querySelectorAll(".devPendingApprovalRow").forEach((el) => el.remove());
+                }
+            } finally {
+                if (timeoutId) window.clearTimeout(timeoutId);
+                if (pendingApprovalsEmpty && pendingApprovalsEmpty.textContent === "Loadingâ€¦") {
+                    pendingApprovalsEmpty.textContent = "No pending approvals.";
+                    pendingApprovalsEmpty.classList.remove("isHidden");
+                }
             }
         }
 
@@ -3096,23 +3663,189 @@ if (typeof window !== "undefined") {
         if (reviewApprovalsBtn && reviewApprovalsBtn.dataset.devBound !== "true") {
             reviewApprovalsBtn.dataset.devBound = "true";
             reviewApprovalsBtn.addEventListener("click", function () {
+                switchDevConsoleTab("overview", { updateHash: true });
                 const section = document.getElementById("devPendingApprovalsSection");
                 if (section) {
-                    section.scrollIntoView({ behavior: "smooth", block: "start" });
+                    requestAnimationFrame(function () {
+                        section.scrollIntoView({ behavior: "smooth", block: "start" });
+                    });
                 }
                 void loadPendingApprovals();
             });
         }
+        root.loadPendingApprovals = loadPendingApprovals;
+        if (pendingApprovalsList) {
+            void loadPendingApprovals();
+        }
 
-        if (refreshButton && refreshButton.dataset.devBound !== "true") {
-            refreshButton.dataset.devBound = "true";
-            refreshButton.addEventListener("click", () => {
-                void loadDevStatus({ manual: true, lightweight: true }).then(() => {
-                    void loadOperatorConsole({ force: true });
-                    return loadDeferredPanelsForTab(getCurrentDevTab(), { force: true });
+        const devMonitorScrollBtn = document.getElementById("devMonitorScrollBtn");
+        if (devMonitorScrollBtn && devMonitorScrollBtn.dataset.devBound !== "true") {
+            devMonitorScrollBtn.dataset.devBound = "true";
+            devMonitorScrollBtn.addEventListener("click", function () {
+                const el = document.getElementById("devMonitor");
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+            });
+        }
+        const devLaunchpadScrollToMonitor = document.getElementById("devLaunchpadScrollToMonitor");
+        if (devLaunchpadScrollToMonitor && devLaunchpadScrollToMonitor.dataset.devBound !== "true") {
+            devLaunchpadScrollToMonitor.dataset.devBound = "true";
+            devLaunchpadScrollToMonitor.addEventListener("click", function () {
+                const el = document.getElementById("devMonitor");
+                if (el) {
+                    el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+            });
+        }
+
+        if (devRefreshButtons.length && root.dataset.devRefreshBound !== "true") {
+            root.dataset.devRefreshBound = "true";
+            devRefreshButtons.forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    void loadDevStatus({ manual: true, lightweight: true }).then(() => {
+                        if (isDevCockpitPage) {
+                            return;
+                        }
+                        void loadOperatorConsole({ force: true });
+                        return loadDeferredPanelsForTab(getCurrentDevTab(), { force: true });
+                    });
                 });
             });
         }
+
+        const devRulingsLookupBtn = document.getElementById("devRulingsLookupBtn");
+        const devRulingsResult = document.getElementById("devRulingsResult");
+        const devRulingsEmpty = document.getElementById("devRulingsEmpty");
+        const devRulingsBest = document.getElementById("devRulingsBest");
+        const devRulingsBestQuestion = document.getElementById("devRulingsBestQuestion");
+        const devRulingsBestAnswer = document.getElementById("devRulingsBestAnswer");
+        const devRulingsBestSummaryWrap = document.getElementById("devRulingsBestSummaryWrap");
+        const devRulingsBestSummary = document.getElementById("devRulingsBestSummary");
+        const devRulingsBestCitation = document.getElementById("devRulingsBestCitation");
+        const devRulingsMoreWrap = document.getElementById("devRulingsMoreWrap");
+        const devRulingsMoreSummary = document.getElementById("devRulingsMoreSummary");
+        const devRulingsMoreList = document.getElementById("devRulingsMoreList");
+        const devRulingsLoading = document.getElementById("devRulingsLoading");
+        if (devRulingsLookupBtn && devRulingsResult && devRulingsLookupBtn.dataset.devBound !== "true") {
+            devRulingsLookupBtn.dataset.devBound = "true";
+            devRulingsLookupBtn.addEventListener("click", async () => {
+                const cardCode = (document.getElementById("devRulingsCardCode") && document.getElementById("devRulingsCardCode").value) || "";
+                const topicKey = (document.getElementById("devRulingsTopicKey") && document.getElementById("devRulingsTopicKey").value) || "";
+                const query = (document.getElementById("devRulingsQuery") && document.getElementById("devRulingsQuery").value) || "";
+                const params = new URLSearchParams();
+                if (cardCode.trim()) params.set("card_code", cardCode.trim());
+                if (topicKey.trim()) params.set("topic_key", topicKey.trim());
+                if (query.trim()) params.set("query", query.trim());
+                if (!params.toString()) {
+                    params.set("card_code", "OP01-001");
+                }
+                devRulingsResult.hidden = true;
+                if (devRulingsLoading) {
+                    devRulingsLoading.classList.remove("isHidden");
+                }
+                devRulingsLookupBtn.disabled = true;
+                try {
+                    const response = await fetch("/api/dev/official-rulings?" + params.toString(), {
+                        headers: { Accept: "application/json", "X-Requested-With": "miru-client-nav" },
+                        credentials: "same-origin",
+                    });
+                    const data = await response.json().catch(() => ({}));
+                    if (devRulingsLoading) devRulingsLoading.classList.add("isHidden");
+                    devRulingsResult.hidden = false;
+                    const hasBest = !!data.best_match;
+                    const more = data.more || [];
+                    const empty = !hasBest && more.length === 0;
+                    if (devRulingsEmpty) {
+                        devRulingsEmpty.classList.toggle("isHidden", !empty);
+                    }
+                    if (devRulingsBest) {
+                        devRulingsBest.classList.toggle("isHidden", !hasBest);
+                    }
+                    if (!hasBest) {
+                        if (devRulingsMoreWrap) devRulingsMoreWrap.classList.toggle("isHidden", more.length === 0);
+                        if (more.length > 0 && devRulingsBest) {
+                            const first = more[0];
+                            if (devRulingsBestQuestion) devRulingsBestQuestion.textContent = first.question_text || "";
+                            if (devRulingsBestAnswer) devRulingsBestAnswer.textContent = first.ruling_text || "";
+                            const hasSummary = first.normalized_summary && first.normalized_summary.trim();
+                            if (devRulingsBestSummaryWrap) devRulingsBestSummaryWrap.classList.toggle("isHidden", !hasSummary);
+                            if (devRulingsBestSummary) devRulingsBestSummary.textContent = hasSummary ? first.normalized_summary.trim() : "";
+                            const cit = first.citation || {};
+                            const parts = [];
+                            if (cit.source_title) parts.push(cit.source_title);
+                            if (cit.source_type) parts.push("(" + cit.source_type + ")");
+                            if (cit.source_reference) parts.push(" â€” " + cit.source_reference);
+                            let linkHtml = "";
+                            if (cit.source_url && cit.source_url.trim()) {
+                                const href = (cit.source_anchor && cit.source_anchor.trim()) ? (cit.source_url.trim() + cit.source_anchor.trim()) : cit.source_url.trim();
+                                linkHtml = ' <a href="' + href.replace(/"/g, "&quot;") + '" target="_blank" rel="noopener noreferrer">View source</a>';
+                            }
+                            if (devRulingsBestCitation) devRulingsBestCitation.innerHTML = (parts.join(" ") || "Official ruling").trim() + linkHtml;
+                            devRulingsBest.classList.remove("isHidden");
+                        }
+                        if (devRulingsMoreWrap) {
+                            devRulingsMoreWrap.classList.toggle("isHidden", more.length <= 1);
+                            if (devRulingsMoreSummary) devRulingsMoreSummary.textContent = "More matches (" + Math.max(0, more.length - 1) + ")";
+                            if (devRulingsMoreList) {
+                                devRulingsMoreList.innerHTML = "";
+                                more.slice(1).forEach((r) => {
+                                    const li = document.createElement("li");
+                                    li.textContent = (r.normalized_summary && r.normalized_summary.trim()) ? r.normalized_summary.trim() : (r.ruling_text || "").slice(0, 120) + (r.ruling_text && r.ruling_text.length > 120 ? "â€¦" : "");
+                                    devRulingsMoreList.appendChild(li);
+                                });
+                            }
+                        }
+                    } else {
+                        const best = data.best_match;
+                        if (devRulingsBestQuestion) devRulingsBestQuestion.textContent = best.question_text || "";
+                        if (devRulingsBestAnswer) devRulingsBestAnswer.textContent = best.ruling_text || "";
+                        const hasSummary = best.normalized_summary && best.normalized_summary.trim();
+                        if (devRulingsBestSummaryWrap) devRulingsBestSummaryWrap.classList.toggle("isHidden", !hasSummary);
+                        if (devRulingsBestSummary) devRulingsBestSummary.textContent = hasSummary ? best.normalized_summary.trim() : "";
+                        const cit = best.citation || {};
+                        const parts = [];
+                        if (cit.source_title) parts.push(cit.source_title);
+                        if (cit.source_type) parts.push("(" + cit.source_type + ")");
+                        if (cit.source_reference) parts.push(" â€” " + cit.source_reference);
+                        let linkHtml = "";
+                        if (cit.source_url && cit.source_url.trim()) {
+                            const href = (cit.source_anchor && cit.source_anchor.trim()) ? (cit.source_url.trim() + cit.source_anchor.trim()) : cit.source_url.trim();
+                            linkHtml = ' <a href="' + href.replace(/"/g, "&quot;") + '" target="_blank" rel="noopener noreferrer">View source</a>';
+                        }
+                        if (devRulingsBestCitation) {
+                            devRulingsBestCitation.innerHTML = (parts.join(" ") || "Official ruling").trim() + linkHtml;
+                        }
+                        const more = data.more || [];
+                        if (devRulingsMoreWrap) {
+                            devRulingsMoreWrap.classList.toggle("isHidden", more.length === 0);
+                        }
+                        if (devRulingsMoreSummary) devRulingsMoreSummary.textContent = "More matches (" + more.length + ")";
+                        if (devRulingsMoreList) {
+                            devRulingsMoreList.innerHTML = "";
+                            more.forEach((r) => {
+                                const li = document.createElement("li");
+                                li.textContent = (r.normalized_summary && r.normalized_summary.trim()) ? r.normalized_summary.trim() : (r.ruling_text || "").slice(0, 120) + (r.ruling_text && r.ruling_text.length > 120 ? "â€¦" : "");
+                                devRulingsMoreList.appendChild(li);
+                            });
+                        }
+                    }
+                } catch (e) {
+                    if (devRulingsLoading) devRulingsLoading.classList.add("isHidden");
+                    devRulingsResult.hidden = false;
+                    if (devRulingsEmpty) {
+                        devRulingsEmpty.classList.remove("isHidden");
+                        const emptyText = devRulingsEmpty.querySelector(".devRulingsTestEmptyText");
+                        if (emptyText) emptyText.textContent = "Lookup failed. Try again or check the console.";
+                    }
+                    if (devRulingsBest) devRulingsBest.classList.add("isHidden");
+                    if (devRulingsMoreWrap) devRulingsMoreWrap.classList.add("isHidden");
+                } finally {
+                    devRulingsLookupBtn.disabled = false;
+                }
+            });
+        }
+
         if (inspectButton && inspectButton.dataset.devBound !== "true") {
             inspectButton.dataset.devBound = "true";
             inspectButton.addEventListener("click", () => {
@@ -3154,7 +3887,7 @@ if (typeof window !== "undefined") {
                 }
                 button.disabled = true;
                 if (operatorActionFeedback) {
-                    operatorActionFeedback.textContent = "Refreshing operator telemetry…";
+                    operatorActionFeedback.textContent = "Refreshing operator telemetryâ€¦";
                 }
                 try {
                     const response = await fetch(operatorActionUrl, {
@@ -3252,6 +3985,417 @@ if (typeof window !== "undefined") {
             });
         }
 
+        if (workerRouterForm && workerRouterForm.dataset.devBound !== "true") {
+            workerRouterForm.dataset.devBound = "true";
+            workerRouterForm.addEventListener("submit", (event) => {
+                event.preventDefault();
+                const result = inferWorkerRoute(workerRouterInput ? workerRouterInput.value : "", lastDevStatusPayload);
+                renderWorkerRouteRecommendation(result);
+            });
+        }
+        if (copyWorkerPromptBtn && copyWorkerPromptBtn.dataset.devBound !== "true") {
+            copyWorkerPromptBtn.dataset.devBound = "true";
+            copyWorkerPromptBtn.addEventListener("click", async () => {
+                const text = workerRouterPrompt ? workerRouterPrompt.value : "";
+                const mode = await copyTextWithFallback({
+                    text,
+                    clipboard: navigator.clipboard,
+                    documentRef: document,
+                    target: workerRouterPrompt,
+                    successText: "Prompt copied.",
+                    fallbackText: "Clipboard copy is blocked here. The generated prompt is selected for manual copy.",
+                    emptyText: "Route a task first so there is a prompt to copy.",
+                });
+                if (mode === "clipboard" || mode === "legacy") {
+                    flashButtonState(copyWorkerPromptBtn, "Copied");
+                } else if (mode === "manual" && workerRouterPrompt) {
+                    workerRouterPrompt.focus();
+                    workerRouterPrompt.select();
+                    flashButtonState(copyWorkerPromptBtn, "Select text");
+                }
+            });
+        }
+        if (copySystemSummaryBtn && copySystemSummaryBtn.dataset.devBound !== "true") {
+            copySystemSummaryBtn.dataset.devBound = "true";
+            copySystemSummaryBtn.addEventListener("click", async () => {
+                const text = buildLiveControlSummary(lastDevStatusPayload);
+                const mode = await copyTextWithFallback({
+                    text,
+                    clipboard: navigator.clipboard,
+                    documentRef: document,
+                    successText: "System summary copied.",
+                    fallbackText: "Clipboard copy is blocked here. Use the visible summary text for manual copy.",
+                    emptyText: "System summary is not available yet.",
+                });
+                if (mode === "clipboard" || mode === "legacy") {
+                    flashButtonState(copySystemSummaryBtn, "Copied");
+                } else if (mode === "manual") {
+                    flashButtonState(copySystemSummaryBtn, "Copy manually");
+                }
+            });
+        }
+        if (judgmentCopyPromptBtn && judgmentCopyPromptBtn.dataset.devBound !== "true") {
+            judgmentCopyPromptBtn.dataset.devBound = "true";
+            judgmentCopyPromptBtn.addEventListener("click", async () => {
+                const text = judgmentCopyPromptBtn.dataset.prompt || "";
+                if (!text) {
+                    flashButtonState(judgmentCopyPromptBtn, "No prompt");
+                    return;
+                }
+                const mode = await copyTextWithFallback({
+                    text,
+                    clipboard: navigator.clipboard,
+                    documentRef: document,
+                    successText: "Recommended prompt copied.",
+                    fallbackText: "Clipboard copy is blocked here. Use the judgment recommendation manually.",
+                    emptyText: "No judgment prompt is available for this recommendation.",
+                });
+                if (mode === "clipboard" || mode === "legacy") {
+                    flashButtonState(judgmentCopyPromptBtn, "Copied");
+                } else if (mode === "manual") {
+                    flashButtonState(judgmentCopyPromptBtn, "Copy manually");
+                }
+            });
+        }
+
+        function loadRuntimeStatus() {
+            const rootEl = document.getElementById("devMonitor");
+            const mainPort = String((rootEl && rootEl.getAttribute("data-main-site-port")) || "8080");
+            const status18765 = document.getElementById("devRuntimeStatus18765");
+            const status18080 = document.getElementById("devRuntimeStatus18080");
+            const status8080 = document.getElementById("devRuntimeStatus8080");
+            const checked18765 = document.getElementById("devChecked18765");
+            const checked18080 = document.getElementById("devChecked18080");
+            const checked8080 = document.getElementById("devChecked8080");
+            const guardStateEl = document.getElementById("devRuntimeGuardState");
+            const feedbackEl = document.getElementById("devRuntimeControlFeedback");
+            const restartHintEl = document.getElementById("devRuntimeRestartHint");
+            const restartBtns = [
+                document.getElementById("devRuntimeRestart18080Btn"),
+                document.getElementById("devRuntimeRestart18765Btn"),
+                document.getElementById("devRuntimeRestart8080Btn"),
+                document.getElementById("devRuntimeRestartWorktreeBtn"),
+            ].filter(Boolean);
+            if (!status18765 && !status18080 && !status8080) return;
+            fetch("/api/runtime/status", {
+                headers: { Accept: "application/json", "X-Requested-With": "miru-client-nav" },
+                credentials: "same-origin",
+            })
+                .then((r) => r.json().catch(() => ({})))
+                .then((data) => {
+                    latestRuntimeStatus = data || {};
+                    const s18765 = data["18765"] === "ok" ? "Healthy" : "Unhealthy";
+                    const s18080 = data["18080"] === "ok" ? "Healthy" : "Unhealthy";
+                    const mainKey = Object.prototype.hasOwnProperty.call(data, mainPort) ? mainPort : "8080";
+                    const mainVal = data[mainKey];
+                    const s8080 =
+                        mainVal === "ok" ? "Healthy" : mainVal === undefined || mainVal === null ? "—" : "Unhealthy";
+                    if (status18765) {
+                        status18765.textContent = s18765;
+                        status18765.className = "statusPill statusPill--" + (data["18765"] === "ok" ? "good" : "warn");
+                    }
+                    if (status18080) {
+                        status18080.textContent = s18080;
+                        status18080.className = "statusPill statusPill--" + (data["18080"] === "ok" ? "good" : "warn");
+                    }
+                    if (status8080) {
+                        status8080.textContent = s8080;
+                        status8080.className =
+                            "statusPill statusPill--" +
+                            (mainVal === "ok" ? "good" : mainVal === undefined || mainVal === null ? "neutral" : "warn");
+                    }
+                    const checkedLine = data.checked_at ? "Last checked " + formatTimeLA(data.checked_at) : "Last checked —";
+                    [checked18765, checked18080, checked8080].forEach((el) => {
+                        if (el) el.textContent = checkedLine;
+                    });
+                    const legacyChecked = document.getElementById("devRuntimeControlChecked");
+                    if (legacyChecked && data.checked_at) {
+                        legacyChecked.textContent = "Checked " + formatTimeLA(data.checked_at);
+                    }
+                    const allowed = data.restart_allowed === true;
+                    if (guardStateEl) {
+                        guardStateEl.textContent = allowed
+                            ? "Guard: restarts authorized from this device (localhost / private / Tailscale per server rules)."
+                            : "Guard: runtime restarts restricted — use this machine or Tailscale, or set MIRU_RUNTIME_RESTART_TOKEN.";
+                    }
+                    restartBtns.forEach((btn) => {
+                        btn.disabled = !allowed;
+                        const act = btn.getAttribute("data-action") || "";
+                        let t = btn.title || "";
+                        if (allowed) {
+                            if (act === "restart-18080") t = "Restart Project Miru dashboard (18080)";
+                            else if (act === "restart-18765") t = "Restart Miru AI Dev (replaces this process)";
+                            else if (act === "restart-worktree") t = "Restart worktree stack (18080 + 18765)";
+                            else if (act === "restart-8080") t = "Start or refresh main site (docker compose when available)";
+                        } else {
+                            t = "Restart allowed only from this machine or Tailscale";
+                        }
+                        btn.title = t;
+                    });
+                    if (restartHintEl) {
+                        restartHintEl.textContent = allowed ? "You can restart services from this device." : "Restart only from this machine or Tailscale.";
+                        restartHintEl.className = "devRuntimeRestartHint devProgressDetail" + (allowed ? " devRuntimeRestartHint--allowed" : " devRuntimeRestartHint--restricted");
+                    }
+                    if (feedbackEl && feedbackEl.textContent && !feedbackEl.dataset.sticky) {
+                        feedbackEl.hidden = true;
+                        feedbackEl.textContent = "";
+                    }
+                    if (lastDevStatusPayload && !isDevCockpitMinimalSurface()) {
+                        renderControlLayer(lastDevStatusPayload);
+                    }
+                })
+                .catch(() => {
+                    latestRuntimeStatus = null;
+                    if (status18765) status18765.textContent = "—";
+                    if (status18080) status18080.textContent = "—";
+                    if (status8080) status8080.textContent = "—";
+                    [checked18765, checked18080, checked8080].forEach((el) => {
+                        if (el) el.textContent = "Last checked —";
+                    });
+                    const legacyChecked = document.getElementById("devRuntimeControlChecked");
+                    if (legacyChecked) legacyChecked.textContent = "";
+                    if (guardStateEl) guardStateEl.textContent = "Guard: status unavailable.";
+                    restartBtns.forEach((btn) => { btn.disabled = false; });
+                    if (restartHintEl) restartHintEl.textContent = "";
+                    if (lastDevStatusPayload && !isDevCockpitMinimalSurface()) {
+                        renderControlLayer(lastDevStatusPayload);
+                    }
+                });
+        }
+
+        function setRuntimeFeedback(text, isError, sticky) {
+            const feedbackEl = document.getElementById("devRuntimeControlFeedback");
+            if (!feedbackEl) return;
+            feedbackEl.textContent = text || "";
+            feedbackEl.hidden = !text;
+            feedbackEl.className = "devRuntimeControlFeedback devProgressDetail" + (isError ? " devRuntimeControlFeedback--error" : "");
+            feedbackEl.dataset.sticky = sticky ? "1" : "";
+            if (text && !sticky) {
+                window.clearTimeout(feedbackEl._clearTimer);
+                feedbackEl._clearTimer = window.setTimeout(() => {
+                    feedbackEl.textContent = "";
+                    feedbackEl.hidden = true;
+                    delete feedbackEl.dataset.sticky;
+                }, 8000);
+            }
+        }
+
+        const devMonitorEl = document.getElementById("devMonitor");
+        const runtimeRestartToken = (devMonitorEl && devMonitorEl.getAttribute("data-runtime-restart-token")) || "";
+        function runtimeRestartHeaders() {
+            const h = { Accept: "application/json", "X-Requested-With": "miru-client-nav", "Content-Type": "application/json" };
+            if (runtimeRestartToken) h["X-Miru-Runtime-Token"] = runtimeRestartToken;
+            return h;
+        }
+        const devRuntimeRefreshBtn = document.getElementById("devRuntimeRefreshBtn");
+        const devRuntimeRestart18080Btn = document.getElementById("devRuntimeRestart18080Btn");
+        const devRuntimeRestart18765Btn = document.getElementById("devRuntimeRestart18765Btn");
+        const devRuntimeRestartWorktreeBtn = document.getElementById("devRuntimeRestartWorktreeBtn");
+        if (devRuntimeRefreshBtn) {
+            devRuntimeRefreshBtn.addEventListener("click", () => {
+                devRuntimeRefreshBtn.disabled = true;
+                loadRuntimeStatus();
+                void loadDevStatus({ lightweight: true });
+                window.setTimeout(() => { devRuntimeRefreshBtn.disabled = false; }, 800);
+            });
+        }
+        const devHandoffCopyBtn = document.getElementById("devHandoffCopyBtn");
+        if (devHandoffCopyBtn && devHandoffCopyBtn.dataset.devBound !== "true") {
+            devHandoffCopyBtn.dataset.devBound = "true";
+            devHandoffCopyBtn.addEventListener("click", async () => {
+                const ta = document.getElementById("devHandoffPromptText");
+                const text = ta && typeof ta.value === "string" ? ta.value : "";
+                if (!text) {
+                    flashButtonState(devHandoffCopyBtn, "Empty");
+                    return;
+                }
+                const mode = await copyTextWithFallback({
+                    text,
+                    clipboard: navigator.clipboard,
+                    documentRef: document,
+                    successText: "Prompt copied.",
+                    fallbackText: "Select the prompt text manually.",
+                    emptyText: "No prompt text.",
+                });
+                if (mode === "clipboard" || mode === "legacy") {
+                    flashButtonState(devHandoffCopyBtn, "Copied");
+                } else if (mode === "manual") {
+                    flashButtonState(devHandoffCopyBtn, "Select text");
+                }
+            });
+        }
+        const devHandoffResolveBtn = document.getElementById("devHandoffResolveBtn");
+        if (devHandoffResolveBtn && devHandoffResolveBtn.dataset.devBound !== "true") {
+            devHandoffResolveBtn.dataset.devBound = "true";
+            devHandoffResolveBtn.addEventListener("click", async () => {
+                devHandoffResolveBtn.disabled = true;
+                try {
+                    const r = await fetch("/api/dev/operator-handoff/resolve", {
+                        method: "POST",
+                        headers: runtimeRestartHeaders(),
+                        credentials: "same-origin",
+                        body: "{}",
+                    });
+                    const data = await r.json().catch(() => ({}));
+                    if (r.ok && data.ok) {
+                        if (data.operator_handoff) {
+                            renderOperatorHandoff({ operator_handoff: data.operator_handoff });
+                        }
+                        void loadDevStatus({ lightweight: true });
+                        flashButtonState(devHandoffResolveBtn, "Saved");
+                    } else {
+                        setRuntimeFeedback(
+                            (data.error || "Handoff resolve failed") + (r.status === 403 ? " (this machine, LAN, Tailscale, or token)" : ""),
+                            true,
+                            false
+                        );
+                    }
+                } catch (e) {
+                    setRuntimeFeedback(e && e.message ? e.message : "Request failed", true, false);
+                } finally {
+                    devHandoffResolveBtn.disabled = false;
+                }
+            });
+        }
+        const devHandoffClearAckBtn = document.getElementById("devHandoffClearAckBtn");
+        if (devHandoffClearAckBtn && devHandoffClearAckBtn.dataset.devBound !== "true") {
+            devHandoffClearAckBtn.dataset.devBound = "true";
+            devHandoffClearAckBtn.addEventListener("click", async () => {
+                devHandoffClearAckBtn.disabled = true;
+                try {
+                    const r = await fetch("/api/dev/operator-handoff/clear-resolution", {
+                        method: "POST",
+                        headers: runtimeRestartHeaders(),
+                        credentials: "same-origin",
+                        body: "{}",
+                    });
+                    const data = await r.json().catch(() => ({}));
+                    if (r.ok && data.ok) {
+                        if (data.operator_handoff) {
+                            renderOperatorHandoff({ operator_handoff: data.operator_handoff });
+                        }
+                        void loadDevStatus({ lightweight: true });
+                        flashButtonState(devHandoffClearAckBtn, "Cleared");
+                    } else {
+                        setRuntimeFeedback(
+                            (data.error || "Clear failed") + (r.status === 403 ? " (this machine, LAN, Tailscale, or token)" : ""),
+                            true,
+                            false
+                        );
+                    }
+                } catch (e) {
+                    setRuntimeFeedback(e && e.message ? e.message : "Request failed", true, false);
+                } finally {
+                    devHandoffClearAckBtn.disabled = false;
+                }
+            });
+        }
+        const devCockpitRestartMiruAiBtn = document.getElementById("devCockpitRestartMiruAiBtn");
+        const devCockpitRestartPmBtn = document.getElementById("devCockpitRestartPmBtn");
+        if (devCockpitRestartMiruAiBtn && devRuntimeRestart18765Btn) {
+            devCockpitRestartMiruAiBtn.addEventListener("click", () => devRuntimeRestart18765Btn.click());
+        }
+        if (devCockpitRestartPmBtn && devRuntimeRestart18080Btn) {
+            devCockpitRestartPmBtn.addEventListener("click", () => devRuntimeRestart18080Btn.click());
+        }
+        if (devRuntimeRestart18080Btn) {
+            devRuntimeRestart18080Btn.addEventListener("click", async () => {
+                devRuntimeRestart18080Btn.disabled = true;
+                setRuntimeFeedback("Restarting Project Miruâ€¦", false, true);
+                try {
+                    const r = await fetch("/api/runtime/restart/18080", {
+                        method: "POST",
+                        headers: runtimeRestartHeaders(),
+                        credentials: "same-origin",
+                    });
+                    const data = await r.json().catch(() => ({}));
+                    if (r.ok && data.ok) {
+                        setRuntimeFeedback(data.message + (data.detail ? ": " + data.detail : ""), false, false);
+                        loadRuntimeStatus();
+                    } else {
+                        setRuntimeFeedback((data.error || data.detail || "Restart failed") + (r.status === 403 ? " (this machine or Tailscale)" : ""), true, false);
+                    }
+                } catch (e) {
+                    setRuntimeFeedback(e && e.message ? e.message : "Request failed", true, false);
+                } finally {
+                    devRuntimeRestart18080Btn.disabled = false;
+                }
+            });
+        }
+        if (devRuntimeRestart18765Btn) {
+            devRuntimeRestart18765Btn.addEventListener("click", async () => {
+                devRuntimeRestart18765Btn.disabled = true;
+                setRuntimeFeedback("Restarting Miru AIâ€¦ This tab will close.", false, true);
+                try {
+                    const r = await fetch("/api/runtime/restart/18765", {
+                        method: "POST",
+                        headers: runtimeRestartHeaders(),
+                        credentials: "same-origin",
+                    });
+                    const data = await r.json().catch(() => ({}));
+                    if (r.status === 202 && data.ok) {
+                        setRuntimeFeedback(data.detail || data.message, false, true);
+                    } else {
+                        setRuntimeFeedback((data.error || data.detail || "Restart failed") + (r.status === 403 ? " (this machine or Tailscale)" : ""), true, false);
+                        devRuntimeRestart18765Btn.disabled = false;
+                    }
+                } catch (e) {
+                    setRuntimeFeedback(e && e.message ? e.message : "Request failed", true, false);
+                    devRuntimeRestart18765Btn.disabled = false;
+                }
+            });
+        }
+        if (devRuntimeRestartWorktreeBtn) {
+            devRuntimeRestartWorktreeBtn.addEventListener("click", async () => {
+                devRuntimeRestartWorktreeBtn.disabled = true;
+                setRuntimeFeedback("Restarting worktree stackâ€¦ Reconnect in a few seconds.", false, true);
+                try {
+                    const r = await fetch("/api/runtime/restart/worktree", {
+                        method: "POST",
+                        headers: runtimeRestartHeaders(),
+                        credentials: "same-origin",
+                    });
+                    const data = await r.json().catch(() => ({}));
+                    if (r.status === 202 && data.ok) {
+                        setRuntimeFeedback(data.detail || data.message, false, true);
+                    } else {
+                        setRuntimeFeedback((data.error || data.detail || "Restart failed") + (r.status === 403 ? " (this machine or Tailscale)" : ""), true, false);
+                        devRuntimeRestartWorktreeBtn.disabled = false;
+                    }
+                } catch (e) {
+                    setRuntimeFeedback(e && e.message ? e.message : "Request failed", true, false);
+                    devRuntimeRestartWorktreeBtn.disabled = false;
+                }
+            });
+        }
+        const devRuntimeRestart8080Btn = document.getElementById("devRuntimeRestart8080Btn");
+        if (devRuntimeRestart8080Btn) {
+            devRuntimeRestart8080Btn.addEventListener("click", async () => {
+                devRuntimeRestart8080Btn.disabled = true;
+                setRuntimeFeedback("Starting or refreshing main siteâ€¦", false, true);
+                try {
+                    const r = await fetch("/api/runtime/restart/main-site", {
+                        method: "POST",
+                        headers: runtimeRestartHeaders(),
+                        credentials: "same-origin",
+                    });
+                    const data = await r.json().catch(() => ({}));
+                    if (r.ok && data.ok) {
+                        setRuntimeFeedback((data.message || "Done") + (data.detail ? ": " + data.detail : ""), false, false);
+                        loadRuntimeStatus();
+                    } else {
+                        setRuntimeFeedback((data.error || data.detail || "Main site script failed") + (r.status === 403 ? " (this machine or Tailscale)" : ""), true, false);
+                    }
+                } catch (e) {
+                    setRuntimeFeedback(e && e.message ? e.message : "Request failed", true, false);
+                } finally {
+                    devRuntimeRestart8080Btn.disabled = false;
+                }
+            });
+        }
+
+        void loadRuntimeStatus();
+
         void loadDevStatus({ lightweight: true }).then(() => {
             scheduleNonCriticalDevLoads();
         });
@@ -3260,6 +4404,9 @@ if (typeof window !== "undefined") {
                 return;
             }
             void loadDevStatus({ lightweight: true }).then(() => {
+                if (isDevCockpitPage) {
+                    return;
+                }
                 const activeTab = getCurrentDevTab();
                 if (!activeTab || activeTab === "overview") {
                     void loadOperatorConsole();
@@ -3643,3 +4790,4 @@ if (typeof window !== "undefined") {
     initializePersistentNavigation();
     initializePageBehaviors();
 })();
+

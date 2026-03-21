@@ -1,0 +1,53 @@
+ * Tip: There are .env files present. Install python-dotenv to use them.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:18766
+Press CTRL+C to quit
+[miru_ai_server] Unhandled error while serving /dev: 'bool' object has no attribute 'strip'
+Traceback (most recent call last):
+  File "C:\Users\andre\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\andre\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\tools\miru_ai_server.py", line 4744, in dev_page
+    return render_page("dev", "dev_page")
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\tools\miru_ai_server.py", line 4647, in render_page
+    dev_status = build_dev_bootstrap_status()
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\tools\miru_ai_server.py", line 2494, in build_dev_bootstrap_status
+    return build_dev_status(
+        training_status,
+        lightweight=True,
+        fetch_truth_source=False,
+    )
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\tools\miru_ai_server.py", line 4218, in build_dev_status
+    **_get_worktree_learner_control_status(),
+      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\tools\miru_ai_server.py", line 2657, in _get_worktree_learner_control_status
+    if not _is_worktree_runtime():
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\tools\miru_ai_server.py", line 2514, in _is_worktree_runtime
+    return not bool(resolve_runtime_monitor_status_url() or "").strip()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'bool' object has no attribute 'strip'
+127.0.0.1 - - [15/Mar/2026 16:33:31] "GET /dev HTTP/1.1" 500 -
+[miru_ai_server] Unhandled error while serving /api/dev-status: 'bool' object has no attribute 'strip'
+Traceback (most recent call last):
+  File "C:\Users\andre\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Users\andre\AppData\Roaming\Python\Python314\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\tools\miru_ai_server.py", line 4773, in dev_status
+    return jsonify(build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy))
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\tools\miru_ai_server.py", line 4218, in build_dev_status
+    **_get_worktree_learner_control_status(),
+      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\tools\miru_ai_server.py", line 2657, in _get_worktree_learner_control_status
+    if not _is_worktree_runtime():
+           ~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\tools\miru_ai_server.py", line 2514, in _is_worktree_runtime
+    return not bool(resolve_runtime_monitor_status_url() or "").strip()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'bool' object has no attribute 'strip'
+127.0.0.1 - - [15/Mar/2026 16:33:31] "GET /api/dev-status?view=summary HTTP/1.1" 500 -

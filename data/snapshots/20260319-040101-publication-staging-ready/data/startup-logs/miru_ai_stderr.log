@@ -1,0 +1,10 @@
+ * Tip: There are .env files present. Install python-dotenv to use them.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8765
+ * Running on http://192.168.50.91:8765
+Press CTRL+C to quit
+127.0.0.1 - - [10/Mar/2026 08:26:50] "GET /api/health HTTP/1.1" 200 -
+172.27.80.1 - - [10/Mar/2026 08:26:50] "GET /api/health HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 08:27:08] "GET /dev HTTP/1.1" 200 -
+127.0.0.1 - - [10/Mar/2026 08:27:09] "GET /api/dev-status HTTP/1.1" 200 -
