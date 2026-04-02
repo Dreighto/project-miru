@@ -1,0 +1,16 @@
+{
+  "pre_check_rows": [],
+  "pre_counts": {
+    "cards_count": 2497,
+    "variants_count": 7844,
+    "tcgplayer_count": 154
+  },
+  "migration_committed": true,
+  "migration_error": null,
+  "post_counts": {
+    "cards_count": 2497,
+    "variants_count": 7844,
+    "tcgplayer_count": 154
+  },
+  "counts_unchanged": true
+}

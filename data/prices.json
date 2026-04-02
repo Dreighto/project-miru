@@ -1,1 +1,47 @@
-{"671740": {"name": "P-093 One Piece Promotion Cards Trafalgar Law Illustration Box Vol6", "url": "https://www.tcgplayer.com/product/671740/one-piece-card-game-one-piece-promotion-cards-trafalgar-law-illustration-box-vol6?page=1&Language=English", "product_id": 671740, "price": 3.92, "target": 5.0, "code": "P-093", "last_checked_ts": 1773685621}, "656226": {"name": "P-088 P-088 Trafalgar Law (Pirate Foil)", "url": "https://www.tcgplayer.com/product/656226/one-piece-card-game-premium-booster-the-best-vol-2-trafalgar-law-p-088-pirate-foil?page=1&Language=English", "product_id": 656226, "price": 16.02, "target": 6.0, "code": "P-088", "last_checked_ts": 1773685620}, "672818": {"name": "EB03-062 Extra Booster One Piece Heroines Edition Trafalgar Law", "url": "https://www.tcgplayer.com/product/672818/one-piece-card-game-extra-booster-one-piece-heroines-edition-trafalgar-law?page=1&Language=English", "product_id": 672818, "price": 22.52, "target": 20.0, "code": "EB03-062", "last_checked_ts": 1773685619}, "670252": {"name": "OP14-031 The Azure Seas Seven Nami", "url": "https://www.tcgplayer.com/product/670252/one-piece-card-game-the-azure-seas-seven-nami?page=1&Language=English", "product_id": 670252, "price": 3.71, "target": 1.0, "code": "OP14-031", "last_checked_ts": 1773685620}, "672804": {"name": "EB03-053 Extra Booster One Piece Heroines Edition Nami 053", "url": "https://www.tcgplayer.com/product/672804/one-piece-card-game-extra-booster-one-piece-heroines-edition-nami-053?page=1&Language=English", "product_id": 672804, "price": 39.47, "target": 10.0, "code": "EB03-053", "last_checked_ts": 1773685620}}
+{
+  "671740": {
+    "name": "P-093 One Piece Promotion Cards Trafalgar Law Illustration Box Vol6",
+    "url": "https://www.tcgplayer.com/product/671740/one-piece-card-game-one-piece-promotion-cards-trafalgar-law-illustration-box-vol6?page=1&Language=English",
+    "product_id": 671740,
+    "price": 3.92,
+    "target": 5.0,
+    "code": "P-093",
+    "last_checked_ts": 1773685621
+  },
+  "656226": {
+    "name": "P-088 P-088 Trafalgar Law (Pirate Foil)",
+    "url": "https://www.tcgplayer.com/product/656226/one-piece-card-game-premium-booster-the-best-vol-2-trafalgar-law-p-088-pirate-foil?page=1&Language=English",
+    "product_id": 656226,
+    "price": 16.02,
+    "target": 6.0,
+    "code": "P-088",
+    "last_checked_ts": 1773685620
+  },
+  "672818": {
+    "name": "EB03-062 Extra Booster One Piece Heroines Edition Trafalgar Law",
+    "url": "https://www.tcgplayer.com/product/672818/one-piece-card-game-extra-booster-one-piece-heroines-edition-trafalgar-law?page=1&Language=English",
+    "product_id": 672818,
+    "price": 22.52,
+    "target": 20.0,
+    "code": "EB03-062",
+    "last_checked_ts": 1773685619
+  },
+  "670252": {
+    "name": "OP14-031 The Azure Seas Seven Nami",
+    "url": "https://www.tcgplayer.com/product/670252/one-piece-card-game-the-azure-seas-seven-nami?page=1&Language=English",
+    "product_id": 670252,
+    "price": 3.71,
+    "target": 1.0,
+    "code": "OP14-031",
+    "last_checked_ts": 1773685620
+  },
+  "672804": {
+    "name": "EB03-053 Extra Booster One Piece Heroines Edition Nami 053",
+    "url": "https://www.tcgplayer.com/product/672804/one-piece-card-game-extra-booster-one-piece-heroines-edition-nami-053?page=1&Language=English",
+    "product_id": 672804,
+    "price": 39.47,
+    "target": 10.0,
+    "code": "EB03-053",
+    "last_checked_ts": 1773685620
+  }
+}

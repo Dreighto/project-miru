@@ -1,0 +1,274 @@
+{% extends "miru_nav_shell.html" %}
+{% block data_page %}home{% endblock %}
+{% block title %}Project Miru{% endblock %}
+{% block meta_description %}Project Miru — Card intelligence for the One Piece TCG.{% endblock %}
+
+{% block page_body %}
+<div id="pageBody" class="miruShellPageBody homeShell">
+
+  {# ── SECTION 1: HERO CARD ── #}
+  <section class="homeHeroCard" aria-label="Project Miru">
+    <span class="homeHeroEyebrow">HOME</span>
+    <h1 class="homeHeroWordmark">Project <span class="homeHeroGold">Miru</span></h1>
+    <p class="homeHeroTagline">Card intelligence for the One Piece TCG.</p>
+  </section>
+
+  {# ── SECTION 2: PRICE WATCH / BUY RADAR ── #}
+  <section class="homePriceWatch" aria-label="Price Watch">
+    <header class="homePwHeader">
+      <h2 class="homePwHeading">PRICE WATCH</h2>
+      <p class="homePwSub">Buy Radar</p>
+      <p class="homePwDesc">Sorted by closeness to target — best buys first.</p>
+    </header>
+
+    {% if watchlist_rows %}
+    <div class="homePwList">
+      {% for row in watchlist_rows %}
+      <article class="pwRow{% if row.tier %} pwRow--{{ row.tier }}{% endif %}" tabindex="0">
+        <div class="pwThumbWrap">
+          {% if row.thumb_src %}
+          <img class="pwThumb" src="{{ row.thumb_src }}" width="48" height="64" data-card-code="{{ row.code }}"
+            loading="{{ 'eager' if loop.index <= 3 else 'lazy' }}" decoding="async" alt="">
+          {% else %}
+          <div class="pwThumb pwThumb--empty">No img</div>
+          {% endif %}
+        </div>
+        <div class="pwBody">
+          <div class="pwTopRow">
+            <span class="pwCode">{{ row.code or "WATCH" }}</span>
+            {% if row.delta_pct is not none and row.delta_direction %}
+            <span class="pwDelta pwDelta--{{ row.delta_direction }}">
+              {%- if row.delta_direction == "under" -%}
+              &#9660; {{ "%.0f"|format(row.delta_pct|abs) }}% under
+              {%- else -%}
+              &#9650; {{ "%.0f"|format(row.delta_pct|abs) }}% above
+              {%- endif -%}
+            </span>
+            {% endif %}
+          </div>
+          <div class="pwName">{{ row.title_name }}</div>
+          <div class="pwMeter" aria-label="Progress to target">
+            <div class="pwMeterTrack">
+              <div class="pwMeterFill{% if row.hit %} pwMeterFill--hit{% endif %}"
+                style="width:{{ row.progress_width }}%"></div>
+            </div>
+          </div>
+          <div class="pwPrices">
+            <div class="pwPriceBlock">
+              <span class="pwPriceLabel">NOW</span>
+              <strong class="pwPriceValue">{{ row.current_price }}</strong>
+            </div>
+            <div class="pwPriceBlock">
+              <span class="pwPriceLabel">TARGET</span>
+              <strong class="pwPriceValue">{{ row.target_price }}</strong>
+            </div>
+            {% if row.market_url %}
+            <a class="pwBuyLink" href="{{ row.market_url }}" target="_blank" rel="noopener noreferrer"
+              onclick="event.stopPropagation()">TCGplayer &#8599;</a>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="homePwEmpty">
+      <p>Your watchlist is empty. Add cards from the library to track prices and get alerts when they hit your target.
+      </p>
+    </div>
+    {% endif %}
+  </section>
+
+  {# ── META PULSE (Phase 2) ── #}
+  <section class="homeSection homeMetaPulse" aria-labelledby="home-meta-heading">
+    <header class="homePwHeader">
+      <h2 class="homePwHeading" id="home-meta-heading">META</h2>
+      <p class="homePwSub">Leader Standings</p>
+    </header>
+    <div class="homeMetaSlots" role="presentation">
+      <div class="homeMetaSlot">
+        <span class="homeMetaRank" aria-hidden="true">1</span>
+        <span class="homeMetaCrown" aria-hidden="true">&#9812;</span>
+      </div>
+      <div class="homeMetaSlot">
+        <span class="homeMetaRank" aria-hidden="true">2</span>
+        <span class="homeMetaCrown" aria-hidden="true">&#9812;</span>
+      </div>
+      <div class="homeMetaSlot">
+        <span class="homeMetaRank" aria-hidden="true">3</span>
+        <span class="homeMetaCrown" aria-hidden="true">&#9812;</span>
+      </div>
+    </div>
+    <div class="homeSectionFoot">
+      <a class="homeSectionLink" href="/leaders">View all leaders →</a>
+    </div>
+  </section>
+
+  {# ── MIRU INTELLIGENCE (Phase 2) ── #}
+  <section class="homeSection homeMiruInsight" aria-labelledby="home-insight-heading">
+    <header class="homePwHeader">
+      <h2 class="homePwHeading" id="home-insight-heading">MIRU</h2>
+    </header>
+    <div class="miruInsightCard"></div>
+  </section>
+
+  {# ── FORGE / DECK BUILDER ── #}
+  <section class="homeSection homeForge" aria-labelledby="home-forge-heading">
+    <header class="homePwHeader">
+      <h2 class="homePwHeading" id="home-forge-heading">FORGE</h2>
+      <p class="homePwSub">Deck Builder</p>
+    </header>
+    <div class="homeForgeRow">
+      <a class="homeForgeBtn homeForgeBtn--primary" href="/deck-builder">＋ New Deck</a>
+      <div class="homeForgeBtn homeForgeBtn--disabled" role="group" aria-label="Continue — no recent deck">
+        <span class="homeForgeBtnLabel">Continue</span>
+        <span class="homeForgeBtnSub">No recent deck</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+
+<script>
+  // Mobile double-tap variant switcher
+  class CardVariantSwitcher {
+    constructor() {
+      this.variantCache = new Map();
+      this.lastTapTime = new Map();
+      this.init();
+    }
+
+    init() {
+      const setupImages = () => {
+        const cardImages = document.querySelectorAll('img[data-card-code]');
+        cardImages.forEach(img => this.setupImage(img));
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupImages);
+      } else {
+        setupImages();
+      }
+
+      setTimeout(setupImages, 500);
+    }
+
+    setupImage(img) {
+      const cardCode = img.getAttribute('data-card-code');
+      if (!cardCode) return;
+
+      // Load variants for this card
+      this.loadVariants(cardCode).then(variants => {
+        if (variants && variants.length >= 2) {
+          img.dataset.variantIndex = '0';
+          img.dataset.variants = JSON.stringify(variants);
+          this.addDoubleTapListener(img);
+        }
+      });
+    }
+
+    async loadVariants(cardCode) {
+      if (this.variantCache.has(cardCode)) {
+        return this.variantCache.get(cardCode);
+      }
+
+      try {
+        const response = await fetch(`/api/card-variants/${cardCode}`);
+        const data = await response.json();
+        const variants = data.variants || [];
+        this.variantCache.set(cardCode, variants);
+        return variants;
+      } catch (error) {
+        console.error('Failed to load card variants:', error);
+        return [];
+      }
+    }
+
+    addDoubleTapListener(img) {
+      img.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        const now = Date.now();
+        const lastTap = this.lastTapTime.get(img) || 0;
+
+        if (now - lastTap < 300) {
+          // Double tap detected
+          this.switchVariant(img);
+        }
+
+        this.lastTapTime.set(img, now);
+      });
+    }
+
+    switchVariant(img) {
+      try {
+        const variants = JSON.parse(img.dataset.variants || '[]');
+        let currentIndex = parseInt(img.dataset.variantIndex || '0');
+
+        // Cycle to next variant
+        currentIndex = (currentIndex + 1) % variants.length;
+        const nextVariant = variants[currentIndex];
+
+        // Update image
+        img.src = nextVariant.image_path;
+        img.dataset.variantIndex = currentIndex.toString();
+
+        // Show variant label
+        this.showVariantLabel(img, nextVariant.display_label);
+      } catch (error) {
+        console.error('Error switching variant:', error);
+      }
+    }
+
+    showVariantLabel(img, label) {
+      // Remove existing label if any
+      const existingLabel = img.parentNode.querySelector('.variant-label');
+      if (existingLabel) {
+        existingLabel.remove();
+      }
+
+      // Create label overlay
+      const labelEl = document.createElement('div');
+      labelEl.className = 'variant-label';
+      labelEl.textContent = label;
+      labelEl.style.cssText = `
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(13, 13, 15, 0.85);
+      color: #c9a84c;
+      font-size: 12px;
+      text-align: center;
+      padding: 4px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    `;
+
+      // Position relative container for the label
+      const container = img.parentNode;
+      container.style.position = 'relative';
+
+      container.appendChild(labelEl);
+
+      // Fade in
+      setTimeout(() => {
+        labelEl.style.opacity = '1';
+      }, 10);
+
+      // Fade out and remove after 0.8s
+      setTimeout(() => {
+        labelEl.style.opacity = '0';
+        setTimeout(() => {
+          if (labelEl.parentNode) {
+            labelEl.parentNode.removeChild(labelEl);
+          }
+        }, 200);
+      }, 800);
+    }
+  }
+
+  // Initialize the variant switcher
+  new CardVariantSwitcher();
+</script>

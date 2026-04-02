@@ -12,6 +12,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
+from tools.miru_ethics_gates import can_auto_fetch
 from tools.miru_source_registry import MiruSourceEntry
 
 
@@ -359,6 +360,14 @@ class OfficialCardListSourceAdapter:
         )
         if cached is not None:
             return cached
+        ok, ethics_reason = can_auto_fetch(
+            str(getattr(source_entry, "fetch_mode", "") or ""),
+            str(getattr(source_entry, "allowed_access", "") or ""),
+            source_id=str(getattr(source_entry, "source_id", "") or ""),
+            interaction="live",
+        )
+        if not ok:
+            raise SourceAdapterError(ethics_reason or "Automated fetch blocked by ethics gate (can_auto_fetch).")
         payload = self.from_url(url)
         self.cache.store_json(
             source_entry=source_entry,
@@ -1515,6 +1524,14 @@ class CommunityStructuredSourceAdapter:
             if "payload" in cached:
                 return cached.get("payload")
             return cached
+        ok, ethics_reason = can_auto_fetch(
+            str(getattr(source_entry, "fetch_mode", "") or ""),
+            str(getattr(source_entry, "allowed_access", "") or ""),
+            source_id=str(getattr(source_entry, "source_id", "") or ""),
+            interaction="live",
+        )
+        if not ok:
+            raise SourceAdapterError(ethics_reason or "Automated fetch blocked by ethics gate (can_auto_fetch).")
         payload = self.from_url(url)
         cache_payload = payload if isinstance(payload, dict) else {"payload": payload}
         self.cache.store_json(

@@ -1,4 +1,4 @@
-# Canonical startup for the Project Miru worktree: dashboard on 18080, Miru AI on 18765.
+﻿# Canonical startup for the Project Miru worktree: dashboard on 18080, Miru AI on 18765.
 # -Native: run dashboard and Miru AI as local Python processes (no Docker). Processes survive closing PowerShell.
 # Without -Native: run dashboard via Docker compose and Miru AI as local process. Miru AI binds to 0.0.0.0 for Tailscale.
 # PID and logs: data/startup-logs/
@@ -219,8 +219,37 @@ Write-OpMiruWorktreeLine $pushoverStatus.Summary
 if ($Native) {
     $listeningDashboard = Get-OpMiruListeningEntry -Port $DashboardPort
     if ($listeningDashboard) {
-        Write-OpMiruWorktreeLine "Port $DashboardPort is already in use (PID $($listeningDashboard.Pid)). Stop it first or use a different port." "Yellow"
-        throw "Dashboard port $DashboardPort is already in use."
+        # Check if the existing process is already serving dashboard/app.py
+        $existingDashboardCmd = ""
+        try {
+            $existingDashboardCmd = [string](Get-CimInstance Win32_Process -Filter "ProcessId = $($listeningDashboard.Pid)" -ErrorAction Stop).CommandLine
+        } catch { }
+
+        $existingProcessName = ""
+        try {
+            $existingProcessName = (Get-Process -Id $listeningDashboard.Pid -ErrorAction Stop).ProcessName
+        } catch { }
+
+        $isDashboardProcess = (
+            $existingDashboardCmd -match "dashboard[/\\]app\.py" -or
+            ($existingDashboardCmd -eq "" -and $existingProcessName -match "^python")
+        )
+
+        if ($isDashboardProcess) {
+            Write-OpMiruWorktreeLine "Port $DashboardPort already served by PID $($listeningDashboard.Pid) (adopted - skipping launch)." "Yellow"
+            # Write a PID record so the stop script can find it
+            [pscustomobject]@{
+                pid        = $listeningDashboard.Pid
+                port       = $DashboardPort
+                started_at = (Get-Date).ToString("s")
+                repo_root  = $repoRoot
+                adopted    = $true
+            } | ConvertTo-Json | Set-Content -Path $dashboardPidFilePath -Encoding UTF8
+            $dashboardProcess = Get-Process -Id $listeningDashboard.Pid -ErrorAction SilentlyContinue
+        } else {
+            Write-OpMiruWorktreeLine "Port $DashboardPort is in use by an unrecognized process (PID $($listeningDashboard.Pid)). Stop it first." "Yellow"
+            throw "Dashboard port $DashboardPort is already in use by an unrecognized process."
+        }
     }
     $listeningMiru = Get-OpMiruListeningEntry -Port $MiruAiPort
     if ($listeningMiru) {
@@ -240,12 +269,15 @@ if ($Native) {
     $env:MIRU_RUNTIME_DOSSIER_DB_PATH = Join-Path $repoRoot "data\miru_learning_dossiers.db"
     $env:MIRU_RUNTIME_IMAGES_ROOT = Join-Path $repoRoot "data\miru_images"
 
-    $dashboardProcess = Start-OpMiruWorktreeDashboardNative `
-        -RepoRoot $repoRoot `
-        -DashboardPort $DashboardPort `
-        -StdoutLog $dashboardStdoutLog `
-        -StderrLog $dashboardStderrLog `
-        -PidFilePath $dashboardPidFilePath
+    # Only launch a new dashboard process if one was not adopted above
+    if (-not $dashboardProcess) {
+        $dashboardProcess = Start-OpMiruWorktreeDashboardNative `
+            -RepoRoot $repoRoot `
+            -DashboardPort $DashboardPort `
+            -StdoutLog $dashboardStdoutLog `
+            -StderrLog $dashboardStderrLog `
+            -PidFilePath $dashboardPidFilePath
+    }
 
     Start-Sleep -Seconds 2
 
@@ -514,3 +546,4 @@ return [pscustomobject]@{
     DockerProject = "op-miru-worktree"
     ComposeFiles = @($composeFile)
 }
+

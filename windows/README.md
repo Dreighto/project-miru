@@ -8,22 +8,24 @@
 >
 > Keep this file for compatibility and historical startup context only.
 
+# Legacy watchdog path removed. start_op_miru.ps1 is retired. Do not invoke.
+
 Brief documentation for the automatic startup flow that runs at Windows boot.
 
 ## Overview
 
-The startup flow brings up:
+The startup flow described below was the **historical** `8080` / `8765` stack. The scheduled task should invoke `op_miru_bootstrap.cmd` with **no arguments** (Miru AI Dev on `18765` only) or `worktree` for the full worktree stack—not `start_op_miru.ps1 -Watchdog` (removed).
 
-1. **Dashboard** – Docker-backed OP Miru services on port 8080  
-2. **Miru AI** – Flask app (Dev Monitor, Ask, etc.) on port 8765  
+1. **Dashboard** – Docker-backed OP Miru services on port 8080 *(legacy stack; retired path)*  
+2. **Miru AI** – Flask app (Dev Monitor, Ask, etc.) on port 8765 *(legacy stack; retired path)*  
 
-A **watchdog** monitors the Miru AI process and restarts it if it exits unexpectedly.
+~~A **watchdog** via `start_op_miru.ps1 -Watchdog` monitored the Miru AI process.~~ **Removed—do not use.**
 
 ## How it works
 
 1. A Windows Scheduled Task runs at startup.
-2. The task executes `op_miru_bootstrap.cmd`, which invokes `start_op_miru.ps1 -Watchdog`.
-3. `start_op_miru.ps1` ensures the dashboard (Docker) and Miru AI are up, then enters a watchdog loop that restarts Miru AI when it exits.
+2. The task executes `op_miru_bootstrap.cmd` (no arg → `start_miru_ai_dev.ps1`; `worktree` → `start_op_miru_worktree.ps1`).
+3. ~~`start_op_miru.ps1 -Watchdog`~~ **Retired.** Do not invoke.
 
 ## Install
 
@@ -38,19 +40,9 @@ The default task name is `OP Miru Startup`. Use `-TaskName "Custom Name"` to ove
 
 ## Test
 
-Run the startup logic manually (without the scheduled task):
+~~`.\windows\start_op_miru.ps1`~~ and ~~`.\windows\start_op_miru.ps1 -Watchdog`~~ **Retired—do not invoke.**
 
-```powershell
-.\windows\start_op_miru.ps1
-```
-
-With the watchdog (blocks until you stop it):
-
-```powershell
-.\windows\start_op_miru.ps1 -Watchdog
-```
-
-Validate that both dashboard and Miru AI are reachable:
+Validate that both dashboard and Miru AI are reachable (legacy test script, if still applicable):
 
 ```powershell
 .\windows\test_op_miru_startup.ps1
@@ -73,7 +65,7 @@ This removes the scheduled task only. It does not stop running processes.
 | `install_op_miru_startup.ps1` | Registers the scheduled task |
 | `uninstall_op_miru_startup.ps1` | Removes the scheduled task |
 | `op_miru_bootstrap.cmd` | Wrapper invoked by the task |
-| `start_op_miru.ps1` | Startup and watchdog logic |
+| `start_op_miru.ps1` | ~~Startup and watchdog logic~~ **RETIRED—do not invoke** |
 | `op_miru_common.ps1` | Paths and helpers |
 | `test_op_miru_startup.ps1` | Health checks |
 

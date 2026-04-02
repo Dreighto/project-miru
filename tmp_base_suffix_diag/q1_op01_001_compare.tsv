@@ -1,0 +1,3 @@
+id	print_id	variant_key	variant_label	is_base	image_path	image_url	source	has_variant_evidence	official_provenance	distribution_product_key	updated_at
+704	OP01-001	base	Base	1		https://en.onepiece-cardgame.com/images/cardlist/card/OP01-001.png?260305	official-cardlist	1			
+705	OP01-001::base	base	Base	1	thumbs/OP01-001.webp		local-catalog	1			

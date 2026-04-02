@@ -1,0 +1,70 @@
+﻿=== overlap_growth preflight ===
+{
+  "snapshot": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\snapshots\\limitless.json",
+  "sources": [
+    "onepiece-cardgame-dev",
+    "official-cardlist"
+  ],
+  "insight_stats_before": {
+    "catalog_cards_total": 2527,
+    "distinct_cards_with_insights": 121,
+    "insight_rows_total": 121,
+    "insight_coverage_pct": 4.7883
+  }
+}
+{
+  "meta_bearing_count": 2527,
+  "snapshot_card_count": 60,
+  "overlap_count": 60,
+  "overlap_codes": [
+    "OP01-001",
+    "OP01-002",
+    "OP01-060",
+    "OP02-049",
+    "OP04-019",
+    "OP04-058",
+    "OP05-001",
+    "OP05-002",
+    "OP05-041",
+    "OP05-060",
+    "OP05-098",
+    "OP06-021",
+    "OP06-022",
+    "OP06-042",
+    "OP06-080",
+    "OP07-019",
+    "OP07-038",
+    "OP07-059",
+    "OP07-079",
+    "OP07-097"
+  ],
+  "snapshot_path": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\snapshots\\limitless.json",
+  "cards_attempted": 60,
+  "tasks_attempted": 120,
+  "tasks_ok": 120,
+  "tasks_failed": 0,
+  "dossiers_created_refreshed": 120,
+  "overlap_cards_with_two_source": 28,
+  "two_source_count": 28,
+  "insight_sync_mode": "overlap_allowlist_incremental",
+  "insight_count_after": 121,
+  "by_type": {},
+  "meta_insights": 0,
+  "insight_stats_before": {
+    "catalog_cards_total": 2527,
+    "distinct_cards_with_insights": 121,
+    "insight_rows_total": 121,
+    "insight_coverage_pct": 4.7883
+  },
+  "insight_stats_after": {
+    "catalog_cards_total": 2527,
+    "distinct_cards_with_insights": 121,
+    "insight_rows_total": 121,
+    "insight_coverage_pct": 4.7883
+  },
+  "source_ids_used": [
+    "onepiece-cardgame-dev",
+    "official-cardlist"
+  ],
+  "meta_insight_examples": []
+}

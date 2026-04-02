@@ -1,0 +1,345 @@
+Miru Provenance Recon — Bandai EN cardlist (_p1 / _r1 modals only)
+Total unique provenance strings: 92
+Total series pages checked: 51
+Total _p1 modals found: 830
+Total _r1 modals found: 331
+
+UNIQUE PROVENANCE STRINGS FOUND
+================================
+[232] -ONE PIECE CARD THE BEST vol.2- [PRB-02]
+[99] -ONE PIECE CARD THE BEST- [PRB-01]
+[40] -ADVENTURE ON KAMI'S ISLAND- [OP15-EB04]
+[38] -THE AZURE SEA’S SEVEN- [OP14-EB04]
+[33] -CARRYING ON HIS WILL- [OP-13]
+[32] -PARAMOUNT WAR- [OP02]
+[32] -ROMANCE DAWN- [OP01]
+[31] -A FIST OF DIVINE SPEED- [OP-11]
+[29] -PILLARS OF STRENGTH- [OP03]
+[28] -ROYAL BLOOD- [OP-10]
+[27] -LEGACY OF THE MASTER- [OP-12]
+[26] -TWO LEGENDS- [OP-08]
+[25] -500 YEARS IN THE FUTURE- [OP-07]
+[25] -EMPERORS IN THE NEW WORLD- [OP-09]
+[25] -WINGS OF THE CAPTAIN-[OP06]
+[24] -AWAKENING OF THE NEW ERA-[OP05]
+[24] -KINGDOMS OF INTRIGUE- [OP04]
+[18] -Memorial Collection- [EB-01]
+[18] -ONE PIECE HEROINES EDITION- [EB-03]
+[17] -Anime 25th Collection- [EB-02]
+[16] -The Three Brothers-[ST13]
+[15] -GEAR5- [ST-21]
+[14] -Ace & Newgate- [ST-22]
+[14] -Egghead- [ST-29]
+[11] Premium Card Collection -Best Selection Vol.5-
+[11] Premium Card Collection -FILM RED Edition-
+[9] -BLACK Marshall.D.Teach- [ST-27]
+[9] -Black Smoker- [ST-19]
+[9] -Blue Donquixote Doflamingo- [ST-17]
+[9] -Purple Monkey.D.Luffy- [ST-18]
+[9] -RED Shanks- [ST-23]
+[9] -Red Edward.Newgate- [ST-15]
+[9] -Yellow Charlotte Katakuri- [ST-20]
+[9] Premium Card Collection -Best Selection Vol.4-
+[8] -BLUE Buggy- [ST-25]
+[8] -GREEN Jewelry Bonney- [ST-24]
+[8] -Uta-[ST-11]
+[8] Premium Card Collection -Best Selection Vol.3-
+[7] -GREEN/YELLOW Yamato- [ST-28]
+[7] -Green Uta- [ST-16]
+[7] Premium Card Collection -Live Action Edition-
+[6] -PURPLE/BLACK Monkey.D.Luffy- [ST-26]
+[6] CS 25-26 Event Pack
+[6] Included in Online Regional Participation Pack Vol.1
+[5] CS 25-26 Top Player Pack
+[5] Premium Card Collection -Best Selection-
+[4] CS 25-26 Celebration Pack
+[4] Offline Regional Participation Pack 2024 Vol. 1
+[4] Offline Regional Participation Pack 2024 Vol. 3
+[4] Premium Card Collection -25th Edition-
+[4] Tournament Pack 2025 Vol. 3
+[4] Tournament Pack 2025 Vol. 4
+[4] Tournament Pack Vol.6
+[4] Tournament Pack Vol.7
+[3] CS 25-26 Top Player Pack 2
+[3] GIFT COLLECTION 2023 [GC-01]
+[3] Heroines Battle Winner Pack
+[3] Included in Event Pack Vol.2
+[3] Offline Regional Participation Pack 2025 Vol.1
+[3] Regional 2024 wave1
+[3] ST-11 Uta Deck Battle Participation Pack
+[3] ST15-20 Release Event
+[3] Seven Warlords of the Sea Binder Set
+[3] Tournament Kit 2025 Vol.2
+[3] Tournament Pack 2024 Oct.-Dec.
+[3] Tournament Pack Vol.3
+[3] Tournament Pack Vol.4
+[2] English Version 1st Anniversary Set
+[2] Japanese 1st Anniversary Set
+[2] Japanese 3rd ANNIVERSARY SET
+[2] Offline Regional Finalist Card Set 2025 Vol.2
+[2] Offline Regional Participation Pack 2024 Vol. 2
+[2] Tournament Pack Vol.2
+[2] Tournament Pack Vol.5
+[1] BANDAI CARD GAMES Fest 25-26
+[1] Championship 25-26 Offline Regionals Season 2
+[1] Event Pack Vol.3
+[1] Japanese 2nd Anniversary Set
+[1] ONE PIECE DAY Dallas -Card Game Celebration-
+[1] OP-11 Release Event
+[1] OP-12 Release Event
+[1] OP14-EB04 Release Event
+[1] OP15-EB04 Release Event
+[1] Offline Regional Finalist Card Set 2024 Vol. 3
+[1] Offline Regional Finalist Card Set 25-26 Season 1
+[1] Pre-Release OP03
+[1] Regional 25-26 Season1
+[1] Regionals Wave 3
+[1] Store 2-on-2 Battle
+[1] Super Pre-Release
+[1] Treasure Cup August – September
+[1] Treasure Cup February 2025
+
+UNMAPPED EXAMPLES
+=================
+'-500 YEARS IN THE FUTURE- [OP-07]'
+  example: OP07-001_p1 (_p1)
+'-A FIST OF DIVINE SPEED- [OP-11]'
+  example: OP09-015_p1 (_p1)
+"-ADVENTURE ON KAMI'S ISLAND- [OP15-EB04]"
+  example: EB04-001_p1 (_p1)
+'-AWAKENING OF THE NEW ERA-[OP05]'
+  example: OP05-001_p1 (_p1)
+'-Ace & Newgate- [ST-22]'
+  example: ST22-001_p1 (_p1)
+'-Anime 25th Collection- [EB-02]'
+  example: EB02-003_p1 (_p1)
+'-BLACK Marshall.D.Teach- [ST-27]'
+  example: OP09-083_r1 (_r1)
+'-BLUE Buggy- [ST-25]'
+  example: OP09-043_r1 (_r1)
+'-Black Smoker- [ST-19]'
+  example: OP02-098_r1 (_r1)
+'-Blue Donquixote Doflamingo- [ST-17]'
+  example: OP01-073_r1 (_r1)
+'-CARRYING ON HIS WILL- [OP-13]'
+  example: OP11-058_p1 (_p1)
+'-EMPERORS IN THE NEW WORLD- [OP-09]'
+  example: OP09-001_p1 (_p1)
+'-Egghead- [ST-29]'
+  example: ST29-001_p1 (_p1)
+'-GEAR5- [ST-21]'
+  example: ST21-001_p1 (_p1)
+'-GREEN Jewelry Bonney- [ST-24]'
+  example: OP07-021_r1 (_r1)
+'-GREEN/YELLOW Yamato- [ST-28]'
+  example: OP06-103_r1 (_r1)
+'-Green Uta- [ST-16]'
+  example: P-029_r1 (_r1)
+'-KINGDOMS OF INTRIGUE- [OP04]'
+  example: OP04-001_p1 (_p1)
+'-LEGACY OF THE MASTER- [OP-12]'
+  example: OP10-063_p1 (_p1)
+'-Memorial Collection- [EB-01]'
+  example: EB01-001_p1 (_p1)
+'-ONE PIECE CARD THE BEST vol.2- [PRB-02]'
+  example: EB01-009_p1 (_p1)
+'-ONE PIECE CARD THE BEST- [PRB-01]'
+  example: EB01-006_r1 (_r1)
+'-ONE PIECE HEROINES EDITION- [EB-03]'
+  example: EB03-001_p1 (_p1)
+'-PARAMOUNT WAR- [OP02]'
+  example: OP02-001_p1 (_p1)
+'-PILLARS OF STRENGTH- [OP03]'
+  example: OP03-001_p1 (_p1)
+'-PURPLE/BLACK Monkey.D.Luffy- [ST-26]'
+  example: OP05-065_r1 (_r1)
+'-Purple Monkey.D.Luffy- [ST-18]'
+  example: OP05-061_r1 (_r1)
+'-RED Shanks- [ST-23]'
+  example: OP09-006_r1 (_r1)
+'-ROMANCE DAWN- [OP01]'
+  example: OP01-001_p1 (_p1)
+'-ROYAL BLOOD- [OP-10]'
+  example: OP10-001_p1 (_p1)
+'-Red Edward.Newgate- [ST-15]'
+  example: OP02-008_r1 (_r1)
+'-THE AZURE SEA’S SEVEN- [OP14-EB04]'
+  example: EB04-012_p1 (_p1)
+'-TWO LEGENDS- [OP-08]'
+  example: OP08-001_p1 (_p1)
+'-The Three Brothers-[ST13]'
+  example: ST13-001_p1 (_p1)
+'-Uta-[ST-11]'
+  example: OP02-028_p1 (_p1)
+'-WINGS OF THE CAPTAIN-[OP06]'
+  example: OP06-001_p1 (_p1)
+'-Yellow Charlotte Katakuri- [ST-20]'
+  example: OP03-106_r1 (_r1)
+'BANDAI CARD GAMES Fest 25-26'
+  example: OP07-073_p1 (_p1)
+'CS 25-26 Celebration Pack'
+  example: EB01-014_p1 (_p1)
+'CS 25-26 Event Pack'
+  example: P-065_p1 (_p1)
+'CS 25-26 Top Player Pack'
+  example: OP07-066_p1 (_p1)
+'CS 25-26 Top Player Pack 2'
+  example: OP09-043_p1 (_p1)
+'Championship 25-26 Offline Regionals Season 2'
+  example: OP09-013_p1 (_p1)
+'English Version 1st Anniversary Set'
+  example: OP01-004_p1 (_p1)
+'Event Pack Vol.3'
+  example: OP05-036_p1 (_p1)
+'GIFT COLLECTION 2023 [GC-01]'
+  example: P-028_p1 (_p1)
+'Heroines Battle Winner Pack'
+  example: P-111_p1 (_p1)
+'Included in Event Pack Vol.2'
+  example: OP01-052_p1 (_p1)
+'Included in Online Regional Participation Pack Vol.1'
+  example: OP02-035_p1 (_p1)
+'Japanese 1st Anniversary Set'
+  example: OP01-006_p1 (_p1)
+'Japanese 2nd Anniversary Set'
+  example: OP01-030_p1 (_p1)
+'Japanese 3rd ANNIVERSARY SET'
+  example: OP12-039_p1 (_p1)
+'ONE PIECE DAY Dallas -Card Game Celebration-'
+  example: OP07-113_p1 (_p1)
+'OP-11 Release Event'
+  example: P-081_p1 (_p1)
+'OP-12 Release Event'
+  example: P-092_p1 (_p1)
+'OP14-EB04 Release Event'
+  example: P-096_p1 (_p1)
+'OP15-EB04 Release Event'
+  example: P-115_p1 (_p1)
+'Offline Regional Finalist Card Set 2024 Vol. 3'
+  example: OP07-091_p1 (_p1)
+'Offline Regional Finalist Card Set 2025 Vol.2'
+  example: P-085_p1 (_p1)
+'Offline Regional Finalist Card Set 25-26 Season 1'
+  example: P-078_p1 (_p1)
+'Offline Regional Participation Pack 2024 Vol. 1'
+  example: OP03-089_p1 (_p1)
+'Offline Regional Participation Pack 2024 Vol. 2'
+  example: P-003_p1 (_p1)
+'Offline Regional Participation Pack 2024 Vol. 3'
+  example: OP01-015_p1 (_p1)
+'Offline Regional Participation Pack 2025 Vol.1'
+  example: EB01-043_p1 (_p1)
+'Pre-Release OP03'
+  example: ST01-009_p1 (_p1)
+'Premium Card Collection -25th Edition-'
+  example: OP01-022_p1 (_p1)
+'Premium Card Collection -Best Selection Vol.3-'
+  example: OP06-016_p1 (_p1)
+'Premium Card Collection -Best Selection Vol.4-'
+  example: EB01-007_p1 (_p1)
+'Premium Card Collection -Best Selection Vol.5-'
+  example: EB02-041_p1 (_p1)
+'Premium Card Collection -Best Selection-'
+  example: OP01-057_p1 (_p1)
+'Premium Card Collection -FILM RED Edition-'
+  example: OP01-005_p1 (_p1)
+'Premium Card Collection -Live Action Edition-'
+  example: P-047_p1 (_p1)
+'Regional 2024 wave1'
+  example: ST10-006_p1 (_p1)
+'Regional 25-26 Season1'
+  example: OP09-076_p1 (_p1)
+'Regionals Wave 3'
+  example: OP05-086_p1 (_p1)
+'ST-11 Uta Deck Battle Participation Pack'
+  example: ST11-003_p1 (_p1)
+'ST15-20 Release Event'
+  example: OP02-022_p1 (_p1)
+'Seven Warlords of the Sea Binder Set'
+  example: OP05-011_p1 (_p1)
+'Store 2-on-2 Battle'
+  example: P-082_p1 (_p1)
+'Super Pre-Release'
+  example: P-001_p1 (_p1)
+'Tournament Kit 2025 Vol.2'
+  example: EB01-015_p1 (_p1)
+'Tournament Pack 2024 Oct.-Dec.'
+  example: OP04-010_p1 (_p1)
+'Tournament Pack 2025 Vol. 3'
+  example: EB02-019_p1 (_p1)
+'Tournament Pack 2025 Vol. 4'
+  example: OP05-037_p1 (_p1)
+'Tournament Pack Vol.2'
+  example: OP01-033_p1 (_p1)
+'Tournament Pack Vol.3'
+  example: ST02-007_p1 (_p1)
+'Tournament Pack Vol.4'
+  example: OP01-035_p1 (_p1)
+'Tournament Pack Vol.5'
+  example: ST02-013_p1 (_p1)
+'Tournament Pack Vol.6'
+  example: OP03-033_p1 (_p1)
+'Tournament Pack Vol.7'
+  example: OP01-041_p1 (_p1)
+'Treasure Cup August – September'
+  example: ST12-008_p1 (_p1)
+'Treasure Cup February 2025'
+  example: ST18-003_p1 (_p1)
+
+SERIES PAGES CHECKED
+====================
+series_id=569001  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569002  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569003  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569004  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569005  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569006  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569007  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569008  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569009  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569010  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569011  _p1_modals=8  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569012  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569013  _p1_modals=16  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569014  _p1_modals=0  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569015  _p1_modals=0  _r1_modals=9  _p1_or_r1_with_empty_CardSet=0
+series_id=569016  _p1_modals=5  _r1_modals=2  _p1_or_r1_with_empty_CardSet=0
+series_id=569017  _p1_modals=0  _r1_modals=9  _p1_or_r1_with_empty_CardSet=0
+series_id=569018  _p1_modals=1  _r1_modals=8  _p1_or_r1_with_empty_CardSet=0
+series_id=569019  _p1_modals=0  _r1_modals=9  _p1_or_r1_with_empty_CardSet=0
+series_id=569020  _p1_modals=0  _r1_modals=9  _p1_or_r1_with_empty_CardSet=0
+series_id=569021  _p1_modals=15  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569022  _p1_modals=14  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569023  _p1_modals=0  _r1_modals=9  _p1_or_r1_with_empty_CardSet=0
+series_id=569024  _p1_modals=1  _r1_modals=7  _p1_or_r1_with_empty_CardSet=0
+series_id=569025  _p1_modals=0  _r1_modals=8  _p1_or_r1_with_empty_CardSet=0
+series_id=569026  _p1_modals=1  _r1_modals=6  _p1_or_r1_with_empty_CardSet=1
+series_id=569027  _p1_modals=0  _r1_modals=9  _p1_or_r1_with_empty_CardSet=0
+series_id=569028  _p1_modals=1  _r1_modals=6  _p1_or_r1_with_empty_CardSet=0
+series_id=569029  _p1_modals=14  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569101  _p1_modals=32  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569102  _p1_modals=32  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569103  _p1_modals=29  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569104  _p1_modals=24  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569105  _p1_modals=24  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569106  _p1_modals=25  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569107  _p1_modals=25  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569108  _p1_modals=26  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569109  _p1_modals=25  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569110  _p1_modals=28  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569111  _p1_modals=31  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569112  _p1_modals=27  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569113  _p1_modals=33  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569114  _p1_modals=38  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569115  _p1_modals=40  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569201  _p1_modals=18  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569202  _p1_modals=17  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569203  _p1_modals=18  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569301  _p1_modals=1  _r1_modals=98  _p1_or_r1_with_empty_CardSet=0
+series_id=569302  _p1_modals=90  _r1_modals=142  _p1_or_r1_with_empty_CardSet=0
+series_id=569801  _p1_modals=69  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+series_id=569901  _p1_modals=102  _r1_modals=0  _p1_or_r1_with_empty_CardSet=0
+
+ERRORS / SKIPPED
+================
+(none)

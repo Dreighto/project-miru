@@ -77,7 +77,8 @@ def _ensure_rules_db(path: Path) -> None:
 
 def ensure_official_rules_schema(conn: sqlite3.Connection) -> None:
     """Create all official rules tables if missing. Idempotent."""
-    conn.executescript("""
+    conn.executescript(
+        """
         CREATE TABLE IF NOT EXISTS official_rule_notices (
             notice_id TEXT PRIMARY KEY,
             title TEXT NOT NULL DEFAULT '',
@@ -152,13 +153,17 @@ def ensure_official_rules_schema(conn: sqlite3.Connection) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_official_card_rulings_card
             ON official_card_rulings(card_code) WHERE card_code IS NOT NULL;
-    """)
+    """
+    )
     _migrate_card_rulings_columns(conn)
 
 
 def _migrate_card_rulings_columns(conn: sqlite3.Connection) -> None:
     """Add extended columns to official_card_rulings if missing (idempotent)."""
-    existing = {row[1] for row in conn.execute("PRAGMA table_info(official_card_rulings)").fetchall()}
+    existing = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(official_card_rulings)").fetchall()
+    }
     new_columns = [
         ("ruling_id", "TEXT"),
         ("question_text", "TEXT NOT NULL DEFAULT ''"),
@@ -172,7 +177,9 @@ def _migrate_card_rulings_columns(conn: sqlite3.Connection) -> None:
     for name, spec in new_columns:
         if name not in existing:
             try:
-                conn.execute(f"ALTER TABLE official_card_rulings ADD COLUMN {name} {spec}")
+                conn.execute(
+                    f"ALTER TABLE official_card_rulings ADD COLUMN {name} {spec}"
+                )
             except sqlite3.OperationalError:
                 pass
     # Index for ruling_id lookups and topic
@@ -336,7 +343,9 @@ def block_rotation_active_for(
     format_name: str = "standard",
 ) -> bool:
     """True if block rotation is marked active for (region, format)."""
-    ctx = get_current_format_context(rules_db_path, region=region, format_name=format_name)
+    ctx = get_current_format_context(
+        rules_db_path, region=region, format_name=format_name
+    )
     if not ctx:
         return False
     return bool(ctx.get("block_rotation_active"))
@@ -406,6 +415,66 @@ def insert_legality_history(
         return True
     except Exception:
         return False
+
+
+def ingest_april_2026_unban_rows(
+    rules_db_path: Path = DEFAULT_RULES_DB_PATH,
+    *,
+    notice_id: str = "bandai-opcg-restriction-active-banned-2026-03-16",
+    effective_start: str = "2026-04-01",
+    card_codes: tuple[str, ...] = (
+        "ST06-015",
+        "OP07-045",
+        "EB01-059",
+        "OP02-024",
+        "OP03-098",
+        "OP02-117",
+    ),
+) -> dict[str, Any]:
+    path = Path(rules_db_path)
+    _ensure_rules_db(path)
+    nid = (notice_id or "").strip()
+    eff = (effective_start or "").strip()
+    if not nid or not eff:
+        return {
+            "written": 0,
+            "skipped": len(card_codes),
+            "error": "missing_notice_or_effective",
+        }
+
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    written = 0
+    skipped = 0
+    try:
+        with closing(_conn(path)) as conn:
+            for raw_code in card_codes:
+                code = (raw_code or "").strip().upper()
+                if not code:
+                    skipped += 1
+                    continue
+                cur = conn.execute(
+                    """INSERT INTO official_legality_history
+                       (card_code, format_name, region, legality_state, effective_start,
+                        notice_id, is_current, is_upcoming, notes, updated_at)
+                       VALUES (?, 'standard', '', 'legal', ?, ?, 0, 1, 'unbanned', ?)
+                       ON CONFLICT(card_code, format_name, region, effective_start) DO UPDATE SET
+                        legality_state = excluded.legality_state,
+                        notice_id = excluded.notice_id,
+                        is_current = excluded.is_current,
+                        is_upcoming = excluded.is_upcoming,
+                        notes = excluded.notes,
+                        updated_at = excluded.updated_at""",
+                    (code, eff, nid, now),
+                )
+                if int(cur.rowcount or 0) > 0:
+                    written += 1
+                else:
+                    skipped += 1
+            conn.commit()
+    except Exception as e:
+        return {"written": written, "skipped": skipped, "error": str(e)}
+
+    return {"written": written, "skipped": skipped, "error": None}
 
 
 def insert_rule_notice(
@@ -480,7 +549,11 @@ def get_official_rules_summary(rules_db_path: Path) -> dict[str, Any]:
     """Lightweight summary for Dev/operator: counts of current/upcoming notices and upcoming legality rows."""
     path = Path(rules_db_path)
     if not path.is_file():
-        return {"current_notices": 0, "upcoming_notices": 0, "upcoming_legality_count": 0}
+        return {
+            "current_notices": 0,
+            "upcoming_notices": 0,
+            "upcoming_legality_count": 0,
+        }
     try:
         current = len(list_notices(path, status=STATUS_CURRENT))
         upcoming = len(list_notices(path, status=STATUS_UPCOMING))
@@ -495,7 +568,11 @@ def get_official_rules_summary(rules_db_path: Path) -> dict[str, Any]:
             "upcoming_legality_count": upcoming_legality,
         }
     except Exception:
-        return {"current_notices": 0, "upcoming_notices": 0, "upcoming_legality_count": 0}
+        return {
+            "current_notices": 0,
+            "upcoming_notices": 0,
+            "upcoming_legality_count": 0,
+        }
 
 
 def insert_format_context(
@@ -568,7 +645,9 @@ def list_notices(
                     (format_name.strip().lower(),),
                 ).fetchall()
             else:
-                rows = conn.execute("SELECT * FROM official_rule_notices ORDER BY effective_at DESC").fetchall()
+                rows = conn.execute(
+                    "SELECT * FROM official_rule_notices ORDER BY effective_at DESC"
+                ).fetchall()
             return [dict(r) for r in rows]
     except Exception:
         return []
@@ -577,6 +656,7 @@ def list_notices(
 # ---------------------------------------------------------------------------
 # Official rulings / Q&A (card-specific and general)
 # ---------------------------------------------------------------------------
+
 
 def insert_card_ruling(
     rules_db_path: Path,
@@ -790,7 +870,8 @@ def search_official_rulings(
         q = (query or "").strip().lower()
         if q:
             result = [
-                r for r in result
+                r
+                for r in result
                 if q in (r.get("question_text") or "").lower()
                 or q in (r.get("ruling_text") or "").lower()
                 or q in (r.get("normalized_summary") or "").lower()
@@ -833,8 +914,10 @@ def get_best_official_ruling_match(
 def format_source_citation(ruling_row: dict[str, Any]) -> dict[str, Any]:
     """Build a source-backed citation dict for UI/insight display. Safe for missing keys."""
     return {
-        "source_title": (ruling_row.get("source_title") or "").strip() or "Official ruling",
-        "source_type": (ruling_row.get("source_type") or "").strip() or RULING_SOURCE_OTHER_OFFICIAL,
+        "source_title": (ruling_row.get("source_title") or "").strip()
+        or "Official ruling",
+        "source_type": (ruling_row.get("source_type") or "").strip()
+        or RULING_SOURCE_OTHER_OFFICIAL,
         "source_reference": (ruling_row.get("source_reference") or "").strip(),
         "source_url": (ruling_row.get("source_url") or "").strip(),
         "source_anchor": (ruling_row.get("source_anchor") or "").strip(),
@@ -861,6 +944,7 @@ def get_rulings_for_card_with_citations(
 # Staged ingestion (official-source payloads only; no scraping)
 # ---------------------------------------------------------------------------
 
+
 def ingest_notice_json(
     rules_db_path: Path,
     payload: dict[str, Any],
@@ -883,12 +967,18 @@ def ingest_notice_json(
         source_reference=str(payload.get("source_reference") or ""),
         region=str(payload.get("region") or ""),
         format_name=str(payload.get("format_name") or "standard").strip().lower(),
-        notice_type=str(payload.get("notice_type") or NOTICE_TYPE_OTHER).strip().lower(),
+        notice_type=str(payload.get("notice_type") or NOTICE_TYPE_OTHER)
+        .strip()
+        .lower(),
         published_at=str(payload.get("published_at") or ""),
         effective_at=str(payload.get("effective_at") or ""),
         status=str(payload.get("status") or STATUS_CURRENT).strip().lower(),
         summary=str(payload.get("summary") or ""),
-        payload_json=json.dumps(payload.get("payload") or payload) if isinstance(payload.get("payload"), dict) else (str(payload.get("payload_json") or "{}")),
+        payload_json=(
+            json.dumps(payload.get("payload") or payload)
+            if isinstance(payload.get("payload"), dict)
+            else (str(payload.get("payload_json") or "{}"))
+        ),
     )
 
 

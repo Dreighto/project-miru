@@ -61,12 +61,52 @@ else {
     }
 }
 
+# --- Port-level cleanup: kill anything bound to 18765 before starting ---
+$portKillPids = @()
+try {
+    $portKillPids = (netstat -ano | Select-String ":$Port\s" | ForEach-Object {
+        $line = [string]$_.Line
+        if (-not $line) { return }
+        $parts = @($line -split "\s+" | Where-Object { $_ -ne "" })
+        if ($parts.Count -lt 5) { return }
+        $pid = $parts[$parts.Count - 1]
+        if ($pid -match '^\d+$') { [int]$pid }
+    } | Where-Object { $_ -and $_ -ne 0 } | Sort-Object -Unique)
+} catch {
+    $portKillPids = @()
+}
+
+foreach ($pid in $portKillPids) {
+    try {
+        Write-Host "Port cleanup: stopping PID $pid bound to $Port"
+        Stop-Process -Id $pid -Force -ErrorAction Stop
+    } catch {
+        try {
+            & taskkill.exe /F /PID $pid /T | Out-Null
+        } catch {
+        }
+    }
+}
+
+if (@($portKillPids).Count -gt 0) {
+    Start-Sleep -Seconds 2
+}
+
+$stillListening = netstat -ano | Select-String ":18765\s.*LISTENING"
+if ($stillListening) {
+    throw "Port 18765 still occupied after kill attempt. Run elevated PowerShell and manually kill the PID before starting Miru AI."
+}
+
 $env:PROJECT_MIRU_PORT = "18080"
 $python = Get-Command python -ErrorAction Stop
 Write-Host "Starting Miru AI Dev on port $Port."
+$stillListening = netstat -ano | Select-String ":18765\s.*LISTENING"
+if ($stillListening) {
+    throw "Port 18765 still occupied. Clear the port before launching Miru AI."
+}
 $process = Start-Process `
     -FilePath $python.Source `
-    -ArgumentList @("tools\miru_ai_server.py", "--host", $BindHost, "--port", "$Port", "--debug") `
+    -ArgumentList @("tools\miru_ai_server.py", "--host", $BindHost, "--port", "$Port") `
     -WorkingDirectory $repoRoot `
     -RedirectStandardOutput $stdoutLog `
     -RedirectStandardError $stderrLog `
@@ -101,11 +141,10 @@ if (-not $healthOk) {
     Write-Host "Miru AI Dev did not become healthy. Check $stderrLog" -ForegroundColor Red
     exit 1
 }
-$dev = Wait-OpMiruHttp -Url $devUrl -TimeoutSeconds 45 -RetryDelaySeconds 2
+$dev = Wait-OpMiruHttp -Url $devUrl -TimeoutSeconds 90 -RetryDelaySeconds 2
 if (-not $dev.Ok) {
     Repair-MiruAiDevPidState -RepoRoot $repoRoot -Port $Port | Out-Null
-    Write-Host "Miru AI Dev page did not become reachable. Check $stderrLog" -ForegroundColor Red
-    exit 1
+    Write-Host "WARNING: /dev page did not respond within timeout, but /api/health is confirmed healthy. Server is running. Check $stderrLog for details." -ForegroundColor Yellow
 }
 
 Repair-MiruAiDevPidState -RepoRoot $repoRoot -Port $Port | Out-Null

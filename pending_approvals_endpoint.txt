@@ -1,0 +1,31 @@
+﻿
+          events = load_monitor_engine_events(
+              status_db_path=LEARNING_STATUS_DB_PATH, limit=limit
+          )
+          return jsonify({"activity": events["recent_activity"]})
+  
+>     @app.get("/api/dev/pending-approvals")
+      def dev_pending_approvals():
+          """Publication review queue (publish_requires_review) plus legacy learner queue."""
+          publication = load_publication_review_queue(
+              project_db_path=FALLBACK_CATALOG_DB_PATH
+          )
+          learner = load_pending_approvals(status_db_path=LEARNING_STATUS_DB_PATH)
+          for row in learner:
+              row["queue_kind"] = "learner"
+          return jsonify({"items": publication + learner})
+  
+      @app.post("/api/dev/publish-ready-insight-sync")
+      def dev_publish_ready_insight_sync():
+          """Bounded sync: miru_card_insights for card_intelligence.publish_ready (18765 
+only)."""
+          if int(CURRENT_SERVER_PORT or 0) != 18765:
+              return (
+                  jsonify(
+                      {
+                          "ok": False,
+                          "error": "publish-ready-insight-sync is only available on port 
+18765.",
+                      }
+
+

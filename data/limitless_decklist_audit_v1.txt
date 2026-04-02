@@ -1,0 +1,56 @@
+{
+  "audit_version": 1,
+  "snapshot_path": "data/snapshots/limitless.json",
+  "schema_version_observed": 1,
+  "source_id_observed": "limitless",
+  "fetched_at_observed": "2026-03-22T04:57:17Z",
+  "decklist_data_present": false,
+  "decklist_data_summary": "No per-deck card lists (no card_code + quantity arrays, no deck objects with main/side, no decklist URLs) appear anywhere in this snapshot. Repository-wide text search for typical decklist keys (deck, quantity, main_deck, decklist, card_code as a list field) returned no matches in limitless.json.",
+  "top_level_structure": {
+    "keys": [
+      "schema_version",
+      "source_id",
+      "fetched_at",
+      "api_note",
+      "tournaments"
+    ],
+    "api_note_text": "Tournament details use GET /tournaments/{id}/details; placings use GET /tournaments/{id}/standings (public API)."
+  },
+  "tournament_object_fields": [
+    "tournament_id",
+    "name",
+    "date",
+    "players",
+    "format",
+    "results"
+  ],
+  "result_row_fields": [
+    "placing",
+    "player",
+    "leader_code",
+    "record"
+  ],
+  "record_object_fields": [
+    "wins",
+    "losses"
+  ],
+  "approximate_counts_from_grep": {
+    "tournament_id_occurrences": 212,
+    "result_placing_occurrences": 4503,
+    "leader_code_with_op_prefix_occurrences": 2705,
+    "notes": "Counts are from ripgrep on limitless.json; placing count approximates one row per standings/placing entry. Many leader_code values are empty strings in early samples; populated values look like OPxx-xxx card codes."
+  },
+  "proxy_fields_for_card_level_signals_without_decklists": [
+    "leader_code on each result row (when non-empty) — leader identity for that player's deck in the event",
+    "placing — finish position in the tournament",
+    "record.wins / record.losses — Swiss or bracket record",
+    "player — display name (not a stable deck identifier)",
+    "tournament name, date, players, format — event context (format often empty in sample)"
+  ],
+  "ingestion_feasibility_without_api_key": {
+    "full_decklist_ingestion_from_this_snapshot": false,
+    "rationale": "Snapshot contains standings-style results only. There is no structured decklist payload to derive card inclusion counts or non-leader card usage.",
+    "card_level_signals_feasible_today": "Aggregate tournament statistics per card code (e.g. appearances in standings, top-8, wins) when those codes appear in result rows or in separately computed leader_usage summaries — consistent with existing enrichment that uses appearances/top8/wins style aggregates, not full decklists.",
+    "likely_path_for_decklists": "Additional Limitless API data (e.g. tournament details endpoint mentioned in api_note, or authenticated endpoints) would be required to obtain decklists; this snapshot alone is insufficient."
+  }
+}

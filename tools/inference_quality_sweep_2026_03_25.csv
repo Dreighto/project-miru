@@ -1,0 +1,112 @@
+CHECK 1 ? High-Confidence False Positive Audit
+card_id,leader_id,confidence,notes,card_name,traits,flag,flag_reason
+ST02-017,OP10-099,high,"trait match: supernovas, leader requires Supernovas type, card has that trait, low-cost card fits aggressive leader curve, trigger card fits life-based leader mechanic",Straw Sword,Supernovas / Hawkins Pirates,TRUE,off-color incompatibility
+ST24-002,OP10-099,high,"trait match: kid pirates, leader requires Supernovas type, card has that trait, low-cost card fits aggressive leader curve",Kid & Killer,Supernovas/Kid Pirates,TRUE,off-color incompatibility
+OP01-025,OP10-099,high,"trait match: supernovas, leader requires Supernovas type, card has that trait, trigger card fits life-based leader mechanic",Roronoa Zoro,Supernovas / Straw Hat Crew,TRUE,off-color incompatibility
+OP07-056,OP07-038,high,"trait match: kuja pirates, color match: green, both leader and card have draw effects",Slave Arrow,The Seven Warlords of the Sea / Kuja Pirates,FALSE,leader-specific trait or effect note present
+OP01-088,OP07-038,high,"trait match: the seven warlords of the sea, color match: green, both leader and card have draw effects",Desert Spada,The Seven Warlords of the Sea / Baroque Works,FALSE,leader-specific trait or effect note present
+ST03-005,OP07-038,high,"trait match: the seven warlords of the sea, color match: green, both leader and card have draw effects",Dracule Mihawk,The Seven Warlords of the Sea,FALSE,leader-specific trait or effect note present
+OP08-093,OP02-093,high,"trait match: navy, color match: black, leader has DON!! condition, card interacts with DON!!",X.Drake,Navy / Drake Pirates / Animal Kingdom Pirates,FALSE,leader-specific trait or effect note present
+ST19-004,OP02-093,high,"trait match: navy, color match: black, leader has DON!! condition, card interacts with DON!!",Hina,Navy,FALSE,leader-specific trait or effect note present
+P-032,OP02-093,high,"trait match: navy, color match: black, leader has DON!! condition, card interacts with DON!!",Sengoku,Navy,FALSE,leader-specific trait or effect note present
+OP07-031,ST02-001,high,"trait match: supernovas, color match: blue, both leader and card interact with trash",Bartolomeo,Supernovas / Barto Club,FALSE,leader-specific trait or effect note present
+OP02-070,OP02-049,high,"trait match: impel down, color match: green, both leader and card have draw effects",New Kama Land,Impel Down,FALSE,leader-specific trait or effect note present
+EB01-022,OP02-049,high,"trait match: impel down, color match: green, both leader and card have draw effects",Inazuma,Impel Down / Revolutionary Army,FALSE,leader-specific trait or effect note present
+OP02-059,OP02-049,high,"trait match: impel down, color match: green, both leader and card have draw effects",Boa Hancock,Impel Down / The Seven Warlords of the Sea / Kuja,FALSE,leader-specific trait or effect note present
+OP13-025,OP04-020,high,"trait match: navy, color match: green, leader has DON!! condition, card interacts with DON!!",Koby,FILM/Navy,FALSE,leader-specific trait or effect note present
+OP12-031,OP04-020,high,"trait match: navy, color match: green, leader has DON!! condition, card interacts with DON!!",Tashigi,East Blue/Navy,FALSE,leader-specific trait or effect note present
+ST24-005,OP04-020,high,"trait match: navy, color match: green, leader has DON!! condition, card interacts with DON!!",X.Drake,Supernovas/Navy/Drake Pirates,FALSE,leader-specific trait or effect note present
+PRB02-002,OP14-001,high,"trait match: heart pirates, color match: red, leader requires Heart Pirates type, card has that trait",Trafalgar Law,Punk Hazard/The Seven Warlords of the Sea/Heart Pirates,FALSE,leader-specific trait or effect note present
+OP09-003,OP14-001,high,"trait match: heart pirates, color match: red, leader requires Heart Pirates type, card has that trait",Shachi & Penguin,Heart Pirates,FALSE,leader-specific trait or effect note present
+OP14-012,OP14-001,high,"trait match: heart pirates, color match: red, leader requires Heart Pirates type, card has that trait",Bepo,Minks/Heart Pirates,FALSE,leader-specific trait or effect note present
+P-033,P-047,high,"trait match: straw hat crew, color match: green, both leader and card have draw effects",Monkey.D.Luffy,Straw Hat Crew,FALSE,leader-specific trait or effect note present
+OP13-027,P-047,high,"trait match: straw hat crew, color match: green, leader has DON!! condition, card interacts with DON!!",Sanji,FILM/Straw Hat Crew,FALSE,leader-specific trait or effect note present
+OP12-037,P-047,high,"trait match: straw hat crew, color match: green, leader has DON!! condition, card interacts with DON!!",Demon Aura Nine Sword Style Asura Blades Drawn Dead Man's Game,Straw Hat Crew,FALSE,leader-specific trait or effect note present
+OP09-115,OP05-041,high,"trait match: navy, color match: yellow, both leader and card have draw effects",Ice Block Partisan,Navy,FALSE,leader-specific trait or effect note present
+OP12-115,OP05-041,high,"trait match: navy, color match: yellow, both leader and card interact with trash",I Love You!!,Navy/Donquixote Pirates,FALSE,leader-specific trait or effect note present
+OP06-033,OP14-040,high,"trait match: fish-man, color match: blue, both leader and card interact with trash",Vander Decken IX,Fish-Man / Flying Pirates,FALSE,leader-specific trait or effect note present
+OP14-043,OP14-040,high,"trait match: the sun pirates, color match: blue, leader requires Merfolk type, card has that trait",Aladine,Merfolk/The Sun Pirates,FALSE,leader-specific trait or effect note present
+EB04-027,OP14-040,high,"trait match: the seven warlords of the sea, color match: blue, both leader and card interact with trash",Boa Hancock,The Seven Warlords of the Sea/Kuja Pirates,FALSE,leader-specific trait or effect note present
+OP07-045,OP14-041,high,"trait match: the seven warlords of the sea, color match: blue, leader requires 5000+ power, card meets threshold",Jinbe,Fish-Man/The Seven Warlords of the Sea/The Sun Pirates,FALSE,leader-specific trait or effect note present
+OP10-045,OP13-002,high,"color match: blue, leader requires 6000+ power, card meets threshold, both leader and card have draw effects, both leader and card interact with trash",Cavendish,Dressrosa/Beautiful Pirates,TRUE,generic color/mechanic overlap without shared trait or leader-specific note
+EB02-048,OP15-022,high,"trait match: straw hat crew, color match: black, both leader and card interact with trash",Brook,Straw Hat Crew,FALSE,leader-specific trait or effect note present
+
+CHECK 2 ? Generic Signal Inflation Audit
+card_id,card_name,traits,total_links,high_links,medium_links,low_links,generic_flag
+OP07-109,Monkey.D.Luffy,The Four Emperors / Egghead / Straw Hat Crew,75,10,31,34,FALSE
+OP01-029,Radical Beam!!,Straw Hat Crew,74,3,17,54,TRUE
+OP10-020,Gum-Gum UFO,Punk Hazard/Straw Hat Crew,74,5,20,49,FALSE
+ST29-017,Iai Death Lion Song,Egghead/Straw Hat Crew,72,9,28,35,FALSE
+EB02-030,And That's When Somebody Makes Fun of Their Friend's Dream!!!!,Alabasta/Straw Hat Crew,71,6,19,46,FALSE
+OP09-077,Gum-Gum Lightning,The Four Emperors/Straw Hat Crew,71,8,17,46,FALSE
+OP09-079,Gum-Gum Jump Rope,The Four Emperors/Straw Hat Crew,71,9,15,47,FALSE
+OP13-117,Gum-Gum Dawn Stamp,Egghead/The Four Emperors/Straw Hat Crew,69,6,30,33,FALSE
+P-106,Monkey.D.Luffy,Egghead/The Four Emperors/Straw Hat Crew,69,6,31,32,FALSE
+EB04-041,Stealth Black,Straw Hat Crew,68,10,13,45,FALSE
+OP10-113,Roronoa Zoro,Supernovas/Straw Hat Crew,68,7,24,37,FALSE
+OP03-054,Usopp's Rubber Band of Doom!!!,East Blue/Straw Hat Crew,67,8,16,43,FALSE
+ST13-018,Gum-Gum Jet Spear,Punk Hazard / Straw Hat Crew,67,5,29,33,FALSE
+ST29-007,Tony Tony.Chopper,Animal/Egghead/Straw Hat Crew,67,6,28,33,FALSE
+EB02-055,Jinbe,Fish-Man/Straw Hat Crew,66,4,26,36,FALSE
+OP06-096,...Nothing...at All!!!,Straw Hat Crew,66,2,17,47,TRUE
+OP09-078,Gum-Gum Giant,The Four Emperors/Straw Hat Crew,66,9,14,43,FALSE
+OP15-115,Impact Dial,Sky Island/Straw Hat Crew,66,6,27,33,FALSE
+ST08-014,Gum-Gum Bell,Straw Hat Crew,66,6,15,45,FALSE
+OP08-106,Nami,Egghead / Straw Hat Crew,65,6,20,39,FALSE
+
+CHECK 3 ? Low-Confidence Noise Floor Sample
+card_id,leader_id,notes,card_name,card_traits,card_color,leader_name,plausible,reason
+OP15-076,ST05-001,color match: purple,Lightning Beast Kiten,Sky Island,Purple,Shanks,TRUE,color-compatible
+OP06-069,OP05-060,color match: purple,Vinsmoke Reiju,The Vinsmoke Family / GERMA 66,Purple,Monkey.D.Luffy,TRUE,color-compatible
+OP01-113,OP13-003,color match: purple,Holedem,Animal Kingdom Pirates / SMILE,Purple,Gol.D.Roger,TRUE,color-compatible
+OP05-082,OP15-022,"color match: black, both leader and card interact with trash",Shirahoshi,Merfolk,Black,Brook,TRUE,color-compatible
+OP15-072,OP01-061,"color match: purple, leader has DON!! condition, card interacts with DON!!",Hotori,Sky Island,Purple,Kaido,TRUE,color-compatible; notes share visible mechanic keyword with card/leader text
+ST23-003,OP14-080,"both leader and card interact with trash, both leader and card reference K.O.",Benn.Beckman,Red-Haired Pirates,Red,Gecko Moria,FALSE,"different color, no shared trait, and no visible leader/keyword signal in notes"
+OP09-100,OP08-002,color match: yellow,Karasu,Revolutionary Army,Yellow,Marco,TRUE,color-compatible
+OP09-088,P-117,"leader has DON!! condition, card interacts with DON!!, both leader and card interact with trash",Shiryu,Blackbeard Pirates,Black,Nami,TRUE,notes share visible mechanic keyword with card/leader text
+OP11-006,OP05-002,color match: red,Zephyr,FILM/Neo Navy,Red,Belo Betty,TRUE,color-compatible
+OP06-107,OP01-031,"leader requires Land of Wano type, card has that trait",Kouzuki Momonosuke,Land of Wano / Kouzuki Clan,Yellow,Kouzuki Oden,TRUE,notes mention leader/trait signal
+PRB02-015,OP12-081,color match: black,Shiryu,Blackbeard Pirates,Black,Koala,TRUE,color-compatible
+OP14-058,ST22-001,"color match: blue, both leader and card have draw effects",Ocean Current Shoulder Throw,Fish-Man/The Seven Warlords of the Sea/The Sun Pirates,Blue,Ace & Newgate,TRUE,color-compatible
+OP10-102,OP05-001,trait match: revolutionary army,Emporio.Ivankov,Revolutionary Army,Yellow,Sabo,TRUE,shared traits: revolutionary army; notes mention leader/trait signal; card effect references leader trait
+P-102,OP04-020,"color match: green, leader has DON!! condition, card interacts with DON!!",Nami,Egghead/Straw Hat Crew,Green,Issho,TRUE,color-compatible; notes share visible mechanic keyword with card/leader text
+OP10-031,OP06-021,color match: green,Sengoku,Dressrosa/Navy,Green,Perona,TRUE,color-compatible
+OP04-075,OP11-062,color match: purple,Nez-Palm Cannon,Baroque Works,Purple,Charlotte Katakuri,TRUE,color-compatible
+OP09-008,OP01-002,"color match: red, low-cost card fits aggressive leader curve",Building Snake,Red-Haired Pirates,Red,Roronoa Zoro,TRUE,color-compatible
+OP04-074,OP01-061,"color match: purple, leader has DON!! condition, card interacts with DON!!",Colors Trap,Baroque Works,Purple,Kaido,TRUE,color-compatible; notes share visible mechanic keyword with card/leader text
+OP04-018,OP10-003,color match: red,Enchanting Vertigo Dance,Alabasta,Red,Sugar,TRUE,color-compatible
+OP05-025,OP03-021,color match: blue,Gladius,Donquixote Pirates,Blue,Kuro,TRUE,color-compatible; notes mention leader/trait signal
+OP10-052,OP07-019,color match: blue,Bartolomeo,Dressrosa/Barto Club,Blue,Jewelry Bonney,TRUE,color-compatible
+OP01-013,P-011,color match: red,Sanji,Straw Hat Crew,Red,Uta,TRUE,color-compatible
+ST22-015,OP14-041,"color match: blue, both leader and card interact with Life cards",I Am Whitebeard!!,The Four Emperors/Whitebeard Pirates,Blue,Boa Hancock,TRUE,color-compatible
+OP06-031,OP06-022,"color match: blue, trigger card fits life-based leader mechanic",Hatchan,Fish-Man / Former Arlong Pirates,Blue,Yamato,TRUE,color-compatible
+OP07-060,OP03-058,color match: purple,Itomimizu,Foxy Pirates,Purple,Iceburg,TRUE,color-compatible
+OP11-064,EB01-040,color match: purple,Saldeath,Impel Down,Purple,Kyros,TRUE,color-compatible
+OP12-070,OP14-060,color match: purple,Sanji,Alabasta/Straw Hat Crew,Purple,Donquixote Doflamingo,TRUE,color-compatible
+OP12-047,OP03-022,color match: blue,Sengoku,Navy,Blue,Arlong,TRUE,color-compatible; notes mention leader/trait signal
+OP02-121,ST06-001,"color match: black, both leader and card reference K.O.",Kuzan,Former Navy,Black,Sakazuki,TRUE,color-compatible
+OP10-081,EB03-001,"both leader and card interact with trash, both leader and card reference K.O.",Usopp,Dressrosa/Straw Hat Crew,Black,Nefeltari Vivi,FALSE,"different color, no shared trait, and no visible leader/keyword signal in notes"
+OP01-093,OP07-059,color match: purple,Ulti,Animal Kingdom Pirates,Purple,Foxy,TRUE,color-compatible
+ST05-014,P-011,trait match: film,Buena Festa,FILM / Pirate Fest,Purple,Uta,TRUE,shared traits: film; notes mention leader/trait signal; card effect references leader trait
+OP14-049,OP11-022,trait match: fish-man,Jinbe,Fish-Man/The Seven Warlords of the Sea/The Sun Pirates,Blue,Shirahoshi,TRUE,notes mention leader/trait signal
+OP09-065,OP12-061,color match: purple,Sanji,Straw Hat Crew,Purple,Donquixote Rosinante,TRUE,color-compatible
+OP02-030,OP12-040,color match: blue,Kouzuki Oden,Wano Country / Kozuki Family,Blue,Kuzan,TRUE,color-compatible
+OP01-020,OP13-004,color match: red,Hyogoro,Wano Country,Red,Sabo,TRUE,color-compatible
+P-032,OP14-079,color match: black,Sengoku,Navy,Black,Crocodile,TRUE,color-compatible
+OP13-062,ST04-001,color match: purple,Crocus,Roger Pirates,Purple,Kaido,TRUE,color-compatible
+ST05-006,OP11-062,color match: purple,Gild Tesoro,FILM / Gran Tesoro,Purple,Charlotte Katakuri,TRUE,color-compatible
+OP05-116,ST13-003,"both leader and card interact with Life cards, trigger card fits life-based leader mechanic",Hino Bird Zap,Sky Island,Yellow,Monkey.D.Luffy,FALSE,"different color, no shared trait, and no visible leader/keyword signal in notes"
+OP02-118,OP10-022,"low-cost card fits aggressive leader curve, trigger card fits life-based leader mechanic",Yasakani Sacred Jewel,Navy,Black,Trafalgar Law,FALSE,"different color, no shared trait, and no visible leader/keyword signal in notes"
+EB03-048,OP05-001,color match: black,Rebecca,Dressrosa,Black,Sabo,TRUE,color-compatible
+OP03-085,ST06-001,color match: black,Jabra,CP9,Black,Sakazuki,TRUE,color-compatible
+OP14-065,OP09-022,color match: purple,Senor Pink,Donquixote Pirates,Purple,Lim,TRUE,color-compatible
+OP01-100,EB01-040,"color match: purple, low-cost card fits aggressive leader curve",Kurozumi Higurashi,Wano Country / Kurozumi Family,Purple,Kyros,TRUE,color-compatible
+OP08-020,OP05-001,color match: red,Drum Kingdom,Drum Kingdom,Red,Sabo,TRUE,color-compatible
+OP05-063,ST10-002,trait match: straw hat crew,O-Robi,Straw Hat Crew,Purple,Monkey.D.Luffy,TRUE,shared traits: straw hat crew; notes mention leader/trait signal
+EB02-054,ST04-001,"both leader and card interact with Life cards, both leader and card interact with trash",Sanji,East Blue/Straw Hat Crew,Yellow,Kaido,FALSE,"different color, no shared trait, and no visible leader/keyword signal in notes"
+ST18-001,OP10-003,color match: purple,Uso-Hachi,Straw Hat Crew,Purple,Sugar,TRUE,color-compatible
+OP08-053,OP12-020,color match: green,Thank You...for Loving Me!!,Whitebeard Pirates,Green,Roronoa Zoro,TRUE,color-compatible
+
+CHECK 4 ? Operator Seed Row Integrity
+total_count,any_deviations,deviation_detail
+60,FALSE,

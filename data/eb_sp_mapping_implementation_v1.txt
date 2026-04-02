@@ -1,0 +1,69 @@
+{
+  "mappings_appended": 14,
+  "unresolved_cleared": 14,
+  "total_mappings_in_file": 51,
+  "unresolved_remaining": 0,
+  "cards_updated": 14,
+  "card_variants_updated": 82,
+  "distribution_source_populated": [
+    {
+      "code": "EB01-003",
+      "distribution_source": "OP14"
+    },
+    {
+      "code": "EB01-023",
+      "distribution_source": "EB01"
+    },
+    {
+      "code": "EB01-057",
+      "distribution_source": "EB01"
+    },
+    {
+      "code": "EB02-028",
+      "distribution_source": "OP13"
+    },
+    {
+      "code": "EB03-003",
+      "distribution_source": "EB03"
+    },
+    {
+      "code": "EB03-018",
+      "distribution_source": "EB03"
+    },
+    {
+      "code": "EB03-024",
+      "distribution_source": "EB03"
+    },
+    {
+      "code": "EB03-026",
+      "distribution_source": "EB03"
+    },
+    {
+      "code": "EB03-031",
+      "distribution_source": "EB03"
+    },
+    {
+      "code": "EB03-042",
+      "distribution_source": "EB03"
+    },
+    {
+      "code": "EB03-045",
+      "distribution_source": "EB03"
+    },
+    {
+      "code": "EB03-053",
+      "distribution_source": "EB03"
+    },
+    {
+      "code": "EB03-055",
+      "distribution_source": "EB03"
+    },
+    {
+      "code": "EB04-003",
+      "distribution_source": "OP15"
+    }
+  ],
+  "orphaned_variants": 0,
+  "sp_total_confirmed": 45,
+  "sp_count_contract_note": "Prompt expected 44 (30 OP/ST + 14 EB this run). Catalog has 45 because EB04-039 also has variant_subtype='sp' from the prior cross_set mapping to OP14-014; non-EB SP rows count as 30 in this DB (OP/ST + PRB02)."
+}

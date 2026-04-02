@@ -342,6 +342,25 @@ def ensure_catalog_sync_schema(db_path: str | Path) -> None:
         )
         conn.execute(
             """
+            CREATE TABLE IF NOT EXISTS image_variant_analysis (
+                canonical_code TEXT NOT NULL PRIMARY KEY,
+                image_path TEXT NOT NULL,
+                sp_marker_detected INTEGER,
+                parallel_marker_detected INTEGER,
+                analysis_confidence TEXT NOT NULL DEFAULT 'high',
+                raw_vision_response TEXT NOT NULL DEFAULT '',
+                analysis_timestamp TEXT NOT NULL,
+                review_status TEXT NOT NULL DEFAULT 'REVIEW_REQUIRED',
+                operator_decision TEXT DEFAULT NULL
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_image_variant_analysis_review "
+            "ON image_variant_analysis(review_status, sp_marker_detected)"
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS miru_publication_stage (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 item_key TEXT NOT NULL UNIQUE,

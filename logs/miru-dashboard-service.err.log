@@ -1,0 +1,869 @@
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 10, in <module>
+    from flask import (
+    ...<6 lines>...
+    )
+ModuleNotFoundError: No module named 'flask'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 10, in <module>
+    from flask import (
+    ...<6 lines>...
+    )
+ModuleNotFoundError: No module named 'flask'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 10, in <module>
+    from flask import (
+    ...<6 lines>...
+    )
+ModuleNotFoundError: No module named 'flask'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 10, in <module>
+    from flask import (
+    ...<6 lines>...
+    )
+ModuleNotFoundError: No module named 'flask'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 10, in <module>
+    from flask import (
+    ...<6 lines>...
+    )
+ModuleNotFoundError: No module named 'flask'
+ * Tip: There are .env files present. Install python-dotenv to use them.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:18080
+ * Running on http://192.168.50.91:18080
+Press CTRL+C to quit
+ * Tip: There are .env files present. Install python-dotenv to use them.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:18080
+ * Running on http://192.168.50.91:18080
+Press CTRL+C to quit
+100.88.228.28 - - [26/Mar/2026 07:00:01] "GET / HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:00:20] "GET / HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:00:20] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [26/Mar/2026 07:01:23] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:31] "GET /deck-builder HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:31] "GET /static/css/miru-base.css HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:33] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-008.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:33] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-005.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:33] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-009.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:33] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-004.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:33] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-006.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:34] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-011.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:34] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-013.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:34] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-012.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:34] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-014.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:34] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-007.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:35] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-016.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:35] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-010.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:35] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-020.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:36] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-015.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:36] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-017.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:36] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-019.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:36] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-022.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:36] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-018.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:37] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-021.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:37] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-023.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:37] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-032.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:38] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-025.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:38] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-033.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:38] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-024.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:39] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-036.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:39] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-035.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:39] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-038.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:39] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-034.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:40] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-039.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:40] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-037.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:40] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-040.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:40] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-041.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:40] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-043.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:41] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-042.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:41] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-045.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:41] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-046.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:42] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-044.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:42] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-047.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:42] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-048.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:42] "GET /leaders HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:42] "GET /static/leaders_hub.css HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:42] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+127.0.0.1 - - [26/Mar/2026 07:01:43] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-050.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:43] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-049.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:43] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-051.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:44] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-052.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:44] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-019.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:44] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-038.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:44] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-059.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:44] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-001.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:44] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-079.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:44] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/ST14-001.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:45] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-001.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:45] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-097.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:46] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-022.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:46] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-021.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:46] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-040.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:47] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-041.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:47] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-062.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:01:48] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/ST06-001.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:05] "GET /profile HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:05] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+127.0.0.1 - - [26/Mar/2026 07:02:12] "GET /leaders HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:12] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+127.0.0.1 - - [26/Mar/2026 07:02:12] "GET /static/leaders_hub.css HTTP/1.1" 304 -
+127.0.0.1 - - [26/Mar/2026 07:02:13] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-021.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:14] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-040.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:14] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/ST06-001.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:14] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-041.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:14] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-062.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:14] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-022.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:15] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/ST22-001.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:41] "GET /deck-builder HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:43] "GET /profile HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:43] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+127.0.0.1 - - [26/Mar/2026 07:02:48] "GET /deck-builder HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:50] "GET /deck-builder HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:50] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+127.0.0.1 - - [26/Mar/2026 07:02:51] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-052.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:52] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-051.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:52] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-050.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:52] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-048.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:52] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-049.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:52] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-047.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:53] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-053.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:53] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-060.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:53] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-054.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:54] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-063.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:54] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-065.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:54] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-064.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:02:55] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-066.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:03:30] "GET /cards HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:03:32] "GET /deck-builder HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:03:33] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+100.88.228.28 - - [26/Mar/2026 07:03:58] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-037.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:03:58] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-038.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:03:58] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-040.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:03:59] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-039.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:03:59] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-041.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:03:59] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-042.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:00] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-043.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:00] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-045.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:01] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-044.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:01] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-046.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:01] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-047.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:02] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-048.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:02] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-050.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:03] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-052.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:03] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-049.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:03] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-053.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:03] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-054.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:04] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-063.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:04] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-064.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:06] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-066.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:06] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-068.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:06] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-065.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:06] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-067.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:07] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-069.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:07] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-070.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:08] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-073.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:08] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-072.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:08] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-074.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:08] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-071.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:09] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-075.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:09] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-076.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:10] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-078.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:10] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-077.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:10] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-080.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:10] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-079.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:11] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-081.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:11] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-082.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:12] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-092.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:12] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-085.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:12] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-083.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:12] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-084.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:13] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-095.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:13] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-093.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:13] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-094.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:14] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-096.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:14] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-098.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:15] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-100.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:15] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-097.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:15] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-099.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:16] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-101.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:16] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-102.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:16] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-104.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:16] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-103.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:17] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-105.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:17] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-106.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:18] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-108.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:18] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-107.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:18] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-109.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:19] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-110.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:19] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-111.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:19] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-112.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:20] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-113.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:20] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-114.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:20] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-120.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:21] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-121.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:21] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-026.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:04:22] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP01-027.png?260305 HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:04:43] "GET /cards HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:05:14] "GET /cards HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:05:36] "GET /cards HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:05:45] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 07:05:50] "GET / HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:07:33] "GET / HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:07:38] "GET /cards HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:07:55] "GET /cards HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:07:57] "GET /cards HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 07:08:06] "GET /cards HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:05] "GET /favicon.ico HTTP/1.1" 404 -
+100.88.228.28 - - [26/Mar/2026 08:00:23] "GET /deck-builder HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:23] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+100.88.228.28 - - [26/Mar/2026 08:00:31] "GET /leaders HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:31] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+100.88.228.28 - - [26/Mar/2026 08:00:31] "GET /static/leaders_hub.css HTTP/1.1" 304 -
+100.88.228.28 - - [26/Mar/2026 08:00:32] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-097.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:32] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-059.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:32] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-019.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:32] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-079.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:32] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-038.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:33] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-001.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:33] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/ST14-001.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:34] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-021.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:34] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-001.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:49] "GET /leaders HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:49] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+100.88.228.28 - - [26/Mar/2026 08:00:49] "GET /static/leaders_hub.css HTTP/1.1" 304 -
+100.88.228.28 - - [26/Mar/2026 08:00:51] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-038.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:51] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP07-001.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:51] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-021.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:51] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/OP11-001.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:00:52] "GET /proxy-img?url=https://en.onepiece-cardgame.com/images/cardlist/card/ST14-001.png?260305 HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:02:01] "GET / HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:03:04] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:03:07] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:03:15] "GET / HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:03:39] "GET /cards HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:03:48] "GET /cards HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:03:51] "GET / HTTP/1.1" 200 -
+ * Tip: There are .env files present. Install python-dotenv to use them.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:18080
+ * Running on http://192.168.50.91:18080
+Press CTRL+C to quit
+100.88.228.28 - - [26/Mar/2026 08:06:06] "GET / HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:11:45] "GET /cards HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:12:44] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:12:45] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:15:57] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:16:00] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:16:26] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:16:29] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:16:35] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:16:36] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+ * Tip: There are .env files present. Install python-dotenv to use them.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:18080
+ * Running on http://192.168.50.91:18080
+Press CTRL+C to quit
+100.88.228.28 - - [26/Mar/2026 08:40:23] "GET / HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:40:56] "GET /cards HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:41:58] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:41:59] "GET /library-fragment?library_page=1&mode=browse HTTP/1.1" 200 -
+ * Tip: There are .env files present. Install python-dotenv to use them.
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:18080
+ * Running on http://192.168.50.91:18080
+Press CTRL+C to quit
+100.88.228.28 - - [26/Mar/2026 08:45:42] "GET / HTTP/1.1" 200 -
+100.88.228.28 - - [26/Mar/2026 08:46:15] "GET /cards HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 08:47:06] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 08:47:34] "GET /leaders HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 08:47:34] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+127.0.0.1 - - [26/Mar/2026 08:47:34] "GET /static/leaders_hub.css HTTP/1.1" 304 -
+127.0.0.1 - - [26/Mar/2026 08:47:38] "GET /deck-builder HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 08:47:38] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+127.0.0.1 - - [26/Mar/2026 08:47:41] "GET /profile HTTP/1.1" 200 -
+127.0.0.1 - - [26/Mar/2026 08:47:41] "GET /static/css/miru-base.css HTTP/1.1" 304 -
+127.0.0.1 - - [26/Mar/2026 08:47:42] "GET /cards HTTP/1.1" 200 -
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 1
+WARNING:waitress.queue:Task queue depth is 2
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 8, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 22, in <module>
+    from waitress import serve
+ModuleNotFoundError: No module named 'waitress'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 22, in <module>
+    from waitress import serve
+ModuleNotFoundError: No module named 'waitress'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 22, in <module>
+    from waitress import serve
+ModuleNotFoundError: No module named 'waitress'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 22, in <module>
+    from waitress import serve
+ModuleNotFoundError: No module named 'waitress'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 22, in <module>
+    from waitress import serve
+ModuleNotFoundError: No module named 'waitress'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 22, in <module>
+    from waitress import serve
+ModuleNotFoundError: No module named 'waitress'
+Traceback (most recent call last):
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 22, in <module>
+    from waitress import serve
+ModuleNotFoundError: No module named 'waitress'
+ERROR:app:Exception on /dev/image-review [GET]
+Traceback (most recent call last):
+  File "C:\Python314\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "C:\Python314\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "C:\Python314\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "C:\Python314\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "C:\Users\andre\.codex\worktrees\0814\tcg-watcher\dashboard\app.py", line 213, in dev_image_review
+    try:
+    
+  File "C:\Python314\Lib\site-packages\flask\templating.py", line 150, in render_template
+    template = app.jinja_env.get_or_select_template(template_name_or_list)
+  File "C:\Python314\Lib\site-packages\jinja2\environment.py", line 1087, in get_or_select_template
+    return self.get_template(template_name_or_list, parent, globals)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\jinja2\environment.py", line 1016, in get_template
+    return self._load_template(name, globals)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\jinja2\environment.py", line 975, in _load_template
+    template = self.loader.load(self, name, self.make_globals(globals))
+  File "C:\Python314\Lib\site-packages\jinja2\loaders.py", line 126, in load
+    source, filename, uptodate = self.get_source(environment, name)
+                                 ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\flask\templating.py", line 66, in get_source
+    return self._get_source_fast(environment, template)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\site-packages\flask\templating.py", line 100, in _get_source_fast
+    raise TemplateNotFound(template)
+jinja2.exceptions.TemplateNotFound: image_review.html

@@ -1,0 +1,31 @@
+EB SP resolver — HTML reconnaissance (Task 1)
+Target URL (prompt): https://en.onepiece-cardgame.com/cardlist/?search=true&card_code=EB02-028
+
+1) Is "Card Set(s)" present? Element / label?
+   YES when the card’s modal block is present in the HTML. Structure observed:
+   - Outer card block: <dl class="modalCol" id="<CANONICAL_CODE>"> ... </dl>
+   - Card name (in <dt>): <div class="cardName">...</div>
+   - Card Set(s) (in <dd>, with other stats): <div class="getInfo"><h3>Card Set(s)</h3> ... </div>
+   The visible label text is the <h3> heading "Card Set(s)" inside div.getInfo.
+
+2) Set name, set code, or both?
+   Both can appear in the inner HTML/text after the <h3>, e.g.:
+   "-Anime 25th Collection- [EB-02]" (set name + bracketed code)
+   "-ADVENTURE ON KAMI'S ISLAND- [OP15-EB04]" (set name + compound bracket code)
+
+3) Link to base card or only set reference?
+   Observed content is plain text inside getInfo (no <a href> to another card). There is no direct
+   "base card" link in the modal; only the set line and the usual card image / TEXT VIEW controls.
+
+4) Is the base card’s canonical code anywhere in the page HTML?
+   Not as a rule. For EB02-028 the modal id and spans use the SP code (EB02-028). The Card Set(s)
+   line may reference only the EB product code (e.g. [EB-02]), not an OP/ST print code—so the OP/ST
+   base canonical is not necessarily present in the HTML.
+
+5) Fetch note (critical for automation)
+   For EB02-028, ?search=true&card_code=EB02-028 did NOT include id="EB02-028" in the raw HTML
+   (large listing; card not in server-rendered chunk). Using ?freewords=EB02-028 returned a short
+   HTML payload that DID include <dl class="modalCol" id="EB02-028">.
+   Resolver implementation: try card_code= first, then fall back to freewords=<code> with ≥1s delay.
+
+Recon date: 2026-03-22

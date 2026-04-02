@@ -1,0 +1,149 @@
+{
+  "audit_version": 1,
+  "method_note": "Read-only inspection of snapshot JSON. Sample card OP01-001 (first occurrence). Searched object keys for substrings: set, home, origin, belongs, reprint, source_set, card_set, release, product, expansion, booster, promo (case-insensitive).",
+  "snapshots": {
+    "onepiece_cardgame_dev.json": {
+      "path": "data/snapshots/onepiece_cardgame_dev.json",
+      "sample_card_code_used": "OP01-001",
+      "sample_card_fields": [
+        "card_code",
+        "card_name",
+        "set_code",
+        "color",
+        "card_type",
+        "cost",
+        "power",
+        "counter",
+        "life",
+        "rarity",
+        "traits",
+        "effect_text",
+        "trigger_text"
+      ],
+      "keys_matching_home_set_pattern_on_sample": [
+        "set_code"
+      ],
+      "has_home_set_field": false,
+      "home_set_field_name": null,
+      "home_set_field_note": "Only set_code names the product line; no separate Bandai-style 'Card Set(s)' / home_booster field. For OP01-001, set_code matches card_code prefix.",
+      "eb02_028_present": false,
+      "eb02_028_fields": null,
+      "op11_058_present": false,
+      "op11_058_fields": null,
+      "target_cards_note": "Grep across full file found no card_code EB02-028 or OP11-058."
+    },
+    "community_cardlist.json": {
+      "path": "data/snapshots/community_cardlist.json",
+      "sample_card_code_used": "OP01-001",
+      "sample_card_fields": [
+        "card_code",
+        "card_name",
+        "set_code",
+        "color",
+        "card_type",
+        "cost",
+        "power",
+        "counter",
+        "life",
+        "rarity",
+        "traits",
+        "effect_text",
+        "trigger_text"
+      ],
+      "keys_matching_home_set_pattern_on_sample": [
+        "set_code"
+      ],
+      "has_home_set_field": false,
+      "home_set_field_name": null,
+      "home_set_field_note": "Same shape as onepiece_cardgame_dev.json; no dedicated home-set list field.",
+      "eb02_028_present": false,
+      "eb02_028_fields": null,
+      "op11_058_present": false,
+      "op11_058_fields": null,
+      "target_cards_note": "Grep across full file found no card_code EB02-028 or OP11-058."
+    },
+    "optcgapi.json": {
+      "path": "data/snapshots/optcgapi.json",
+      "sample_card_code_used": "OP01-001",
+      "sample_card_fields": [
+        "card_code",
+        "card_name",
+        "set_code",
+        "set_name",
+        "color",
+        "card_type",
+        "cost",
+        "power",
+        "counter",
+        "life",
+        "rarity",
+        "attribute",
+        "traits",
+        "effect_text",
+        "trigger_text"
+      ],
+      "keys_matching_home_set_pattern_on_sample": [
+        "set_code",
+        "set_name"
+      ],
+      "has_home_set_field": false,
+      "home_set_field_name": null,
+      "home_set_field_note": "No key named card_sets/home_set/source_set. However, for SP/TR reprint rows, set_code and set_name often identify the home booster (see EB02-028 / OP11-058), which can differ from the card_code prefix — behavior similar in practice to Bandai 'Card Set(s)' but not a separate schema field.",
+      "card_sets_equivalent_observation": {
+        "eb02_028": {
+          "card_code": "EB02-028",
+          "set_code": "OP13",
+          "set_name": "Carrying On His Will",
+          "interpretation": "Home product is OP13 while print code remains EB02-028 — home set is carried in set_code/set_name, not an extra field."
+        },
+        "op11_058": {
+          "card_code": "OP11-058",
+          "set_code": "OP13",
+          "set_name": "Carrying On His Will",
+          "rarity": "TR",
+          "interpretation": "TR print lists OP13 as set_code/set_name (home) vs OP11 in card_code — same pattern."
+        }
+      },
+      "eb02_028_present": true,
+      "eb02_028_fields": {
+        "card_code": "EB02-028",
+        "card_name": "Portgas.D.Ace - EB02-028 (SP)",
+        "set_code": "OP13",
+        "set_name": "Carrying On His Will",
+        "color": "Blue",
+        "card_type": "Character",
+        "cost": "5",
+        "power": "5000",
+        "counter": "1000",
+        "life": "",
+        "rarity": "R",
+        "attribute": "Special",
+        "traits": "Alabasta Whitebeard Pirates",
+        "effect_text": "[On Play] If your Leader's type includes \"Whitebeard Pirates\", look at 5 cards from the top of your deck; reveal up to 1 Character card with a cost of 2 and add it to your hand. Then, place the rest at the bottom of your deck in any order and play up to 1 Character card with a cost of 2 from your hand rested.",
+        "trigger_text": ""
+      },
+      "op11_058_present": true,
+      "op11_058_fields": {
+        "card_code": "OP11-058",
+        "card_name": "Monkey.D.Luffy - OP11-058 (TR)",
+        "set_code": "OP13",
+        "set_name": "Carrying On His Will",
+        "color": "Blue",
+        "card_type": "Character",
+        "cost": "5",
+        "power": "7000",
+        "counter": "1000",
+        "life": "",
+        "rarity": "TR",
+        "attribute": "Strike",
+        "traits": "Straw Hat Crew",
+        "effect_text": "If you have 5 or more cards in your hand, this Character cannot attack.[Blocker] (After your opponent declares an attack, you may rest this card to make it the new target of the attack.)",
+        "trigger_text": ""
+      },
+      "op11_058_row_count_in_snapshot": 2,
+      "op11_058_note": "Two JSON objects share card_code OP11-058 (base + parallel-style); fields above are from the TR row with rarity TR."
+    }
+  },
+  "conclusion": "partial_coverage_in_snapshot",
+  "conclusion_rationale": "No snapshot defines a dedicated Bandai 'Card Set(s)' key. onepiece_cardgame_dev and community_cardlist lack EB02-028/OP11-058 entries entirely. optcgapi encodes the home booster for those prints via set_code/set_name (e.g. OP13) while card_code retains the SP/TR catalog code — usable for base_card_id linking without a new field, but coverage is incomplete across snapshots and semantics are implicit in set_* not a separate home-set column."
+}

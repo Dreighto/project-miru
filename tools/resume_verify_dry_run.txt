@@ -1,0 +1,2199 @@
+=== START 2026-03-31T04:17:43Z limit=None dry_run=False ===
+[SERIES] 569011 modals_parsed=15
+[SERIES] 569013 modals_parsed=35
+[SERIES] 569015 modals_parsed=15
+[SERIES] 569016 modals_parsed=15
+[SERIES] 569017 modals_parsed=15
+[SERIES] 569018 modals_parsed=15
+[SERIES] 569019 modals_parsed=15
+[SERIES] 569020 modals_parsed=15
+[SERIES] 569021 modals_parsed=32
+[SERIES] 569022 modals_parsed=31
+[SERIES] 569023 modals_parsed=15
+[SERIES] 569024 modals_parsed=15
+[SERIES] 569025 modals_parsed=15
+[SERIES] 569026 modals_parsed=14
+[SERIES] 569027 modals_parsed=15
+[SERIES] 569028 modals_parsed=15
+[SERIES] 569029 modals_parsed=31
+[SERIES] 569101 modals_parsed=154
+[SERIES] 569102 modals_parsed=154
+[SERIES] 569103 modals_parsed=154
+[SERIES] 569104 modals_parsed=149
+[SERIES] 569105 modals_parsed=154
+[SERIES] 569106 modals_parsed=151
+[SERIES] 569107 modals_parsed=151
+[SERIES] 569108 modals_parsed=151
+[SERIES] 569109 modals_parsed=159
+[SERIES] 569110 modals_parsed=151
+[SERIES] 569111 modals_parsed=156
+[SERIES] 569112 modals_parsed=155
+[SERIES] 569113 modals_parsed=175
+[SERIES] 569114 modals_parsed=199
+[SERIES] 569115 modals_parsed=196
+[SERIES] 569201 modals_parsed=80
+[SERIES] 569202 modals_parsed=105
+[SERIES] 569203 modals_parsed=90
+[SERIES] 569301 modals_parsed=319
+[SERIES] 569302 modals_parsed=316
+[SERIES] 569801 modals_parsed=159
+[SERIES] 569901 modals_parsed=343
+[INFO] canonical_codes_to_process=2527
+[SKIP] EB01-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB01-001 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB01-003 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB01-003 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB01-003 | _p3 | resume_existing_asset path_ok variant_key='parallel 3'
+[SKIP] EB01-003 | _p4 | resume_existing_asset path_ok variant_key='parallel 4'
+[SKIP] EB01-003 | _p5 | resume_existing_asset path_ok variant_key='parallel 5'
+[SKIP] EB01-006 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB01-006 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB01-006 | _p3 | resume_existing_asset path_ok variant_key='parallel 3'
+[SKIP] EB01-006 | _r1 | resume_existing_asset path_ok variant_key='r1'
+[SKIP] EB01-007 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB01-009 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB01-009 | _r1 | resume_existing_asset path_ok variant_key='r1'
+[SKIP] EB01-012 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB01-012 | _r1 | PRB02 | PRB02/reprint/EB01-012_r1.png
+[ERROR] EB01-012 | loop | OperationalError('database is locked')
+[SKIP] EB01-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB01-014 | _p1 | CS2526CP | CS2526CP/parallel/EB01-014_p1.png
+[ERROR] EB01-014 | loop | OperationalError('database is locked')
+[FETCHED] EB01-015 | _p1 | TK2025V2 | TK2025V2/parallel/EB01-015_p1.png
+[ERROR] EB01-015 | loop | OperationalError('database is locked')
+[FETCHED] EB01-018 | _p1 | PRB02 | PRB02/parallel/EB01-018_p1.png
+[ERROR] EB01-018 | loop | OperationalError('database is locked')
+[SKIP] EB01-021 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB01-021 | _p2 | EB02 | EB02/parallel/EB01-021_p2.png
+[ERROR] EB01-021 | loop | OperationalError('database is locked')
+[SKIP] EB01-022 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB01-023 | _p1 | OP14 | OP14/parallel/EB01-023_p1.png
+[ERROR] EB01-023 | loop | OperationalError('database is locked')
+[SKIP] EB01-027 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB01-031 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB01-034 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB01-038 | _p1 | PRB02 | PRB02/parallel/EB01-038_p1.png
+[ERROR] EB01-038 | loop | OperationalError('database is locked')
+[SKIP] EB01-040 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB01-040 | _p2 | EB02 | EB02/parallel/EB01-040_p2.png
+[ERROR] EB01-040 | loop | OperationalError('database is locked')
+[FETCHED] EB01-043 | _p1 | ORP2025V1 | ORP2025V1/parallel/EB01-043_p1.png
+[ERROR] EB01-043 | loop | OperationalError('database is locked')
+[SKIP] EB01-046 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB01-046 | _r1 | PRB02 | PRB02/reprint/EB01-046_r1.png
+[ERROR] EB01-046 | loop | OperationalError('database is locked')
+[SKIP] EB01-048 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] EB01-048 | _p2 | 'Treasure Cup May 2025~'
+[FETCHED] EB01-048 | _p2 | _unclassified | _unclassified/parallel/EB01-048_p2.png
+[ERROR] EB01-048 | loop | OperationalError('database is locked')
+[SKIP] EB01-049 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB01-051 | _p1 | PRB02 | PRB02/parallel/EB01-051_p1.png
+[ERROR] EB01-051 | loop | OperationalError('database is locked')
+[SKIP] EB01-052 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB01-056 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB01-056 | _p2 | OP10 | OP10/parallel/EB01-056_p2.png
+[ERROR] EB01-056 | loop | OperationalError('database is locked')
+[SKIP] EB01-057 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB01-057 | _p2 | OP11 | OP11/parallel/EB01-057_p2.png
+[ERROR] EB01-057 | loop | OperationalError('database is locked')
+[FETCHED] EB01-060 | _p1 | PRB02 | PRB02/parallel/EB01-060_p1.png
+[ERROR] EB01-060 | loop | OperationalError('database is locked')
+[SKIP] EB01-061 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB01-061 | _r1 | PRB02 | PRB02/reprint/EB01-061_r1.png
+[ERROR] EB01-061 | loop | OperationalError('database is locked')
+[SKIP] EB02-003 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB02-006 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] EB02-006 | _p2 | 'Extra Grand Battle for Stores 2026 May'
+[FETCHED] EB02-006 | _p2 | _unclassified | _unclassified/parallel/EB02-006_p2.png
+[SKIP] EB02-006 | _p2 | no_variant_row variant_key='parallel 2'
+[SKIP] EB02-010 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] EB02-010 | _p2 | 'DODGERS ONE PIECE NIGHT'
+[FETCHED] EB02-010 | _p2 | _unclassified | _unclassified/parallel/EB02-010_p2.png
+[ERROR] EB02-010 | loop | OperationalError('database is locked')
+[SKIP] EB02-011 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB02-015 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB02-017 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB02-019 | _p1 | TP2025V3 | TP2025V3/parallel/EB02-019_p1.png
+[ERROR] EB02-019 | loop | OperationalError('database is locked')
+[SKIP] EB02-022 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB02-026 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] EB02-026 | _p2 | 'ONE PIECE HEROINES CAMPAIGN Dash Pack'
+[FETCHED] EB02-026 | _p2 | _unclassified | _unclassified/parallel/EB02-026_p2.png
+[ERROR] EB02-026 | loop | OperationalError('database is locked')
+[FETCHED] EB02-028 | _p1 | OP13 | OP13/parallel/EB02-028_p1.png
+[ERROR] EB02-028 | loop | OperationalError('database is locked')
+[SKIP] EB02-035 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB02-036 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB02-041 | _p1 | BCV5 | BCV5/parallel/EB02-041_p1.png
+[ERROR] EB02-041 | loop | OperationalError('database is locked')
+[SKIP] EB02-044 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB02-045 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB02-048 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB02-052 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB02-052 | _p2 | OP15 | OP15/parallel/EB02-052_p2.png
+[SKIP] EB02-052 | _p2 | no_variant_row variant_key='parallel 2'
+[SKIP] EB02-054 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB02-055 | _p1 | TP2025V3 | TP2025V3/parallel/EB02-055_p1.png
+[ERROR] EB02-055 | loop | OperationalError('database is locked')
+[SKIP] EB02-056 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB02-061 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB02-061 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[FETCHED] EB02-061 | _p3 | PRB02 | PRB02/parallel/EB02-061_p3.png
+[ERROR] EB02-061 | loop | OperationalError('database is locked')
+[SKIP] EB03-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-003 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-003 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB03-008 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-018 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-018 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB03-024 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-024 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB03-025 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-026 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-026 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB03-031 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-031 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB03-034 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-041 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-042 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-042 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB03-045 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-045 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB03-053 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-053 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB03-055 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-055 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB03-057 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-061 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB03-061 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[SKIP] EB03-062 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB04-001 | _p1 | OP15 | OP15/parallel/EB04-001_p1.png
+[SKIP] EB04-001 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] EB04-002 | _p1 | OP15 | OP15/parallel/EB04-002_p1.png
+[SKIP] EB04-002 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] EB04-003 | _p1 | OP15 | OP15/parallel/EB04-003_p1.png
+[SKIP] EB04-003 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] EB04-007 | _p1 | OP15 | OP15/parallel/EB04-007_p1.png
+[SKIP] EB04-007 | _p1 | no_variant_row variant_key='parallel 1'
+[SKIP] EB04-012 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB04-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB04-018 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB04-022 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB04-025 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB04-031 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB04-036 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB04-038 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] EB04-039 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] EB04-043 | _p1 | OP15 | OP15/parallel/EB04-043_p1.png
+[SKIP] EB04-043 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] EB04-044 | _p1 | OP15 | OP15/parallel/EB04-044_p1.png
+[SKIP] EB04-044 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] EB04-044 | _p2 | OP15 | OP15/parallel/EB04-044_p2.png
+[SKIP] EB04-044 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] EB04-048 | _p1 | OP15 | OP15/parallel/EB04-048_p1.png
+[SKIP] EB04-048 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] EB04-052 | _p1 | OP15 | OP15/parallel/EB04-052_p1.png
+[SKIP] EB04-052 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] EB04-058 | _p1 | OP15 | OP15/parallel/EB04-058_p1.png
+[SKIP] EB04-058 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] EB04-061 | _p1 | OP15 | OP15/parallel/EB04-061_p1.png
+[SKIP] EB04-061 | _p1 | no_variant_row variant_key='parallel 1'
+[SKIP] OP01-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-001 | _p2 | PCC25 | PCC25/parallel/OP01-001_p2.png
+[ERROR] OP01-001 | loop | OperationalError('database is locked')
+[SKIP] OP01-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-003 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-004 | _p1 | ANN1EN | ANN1EN/parallel/OP01-004_p1.png
+[ERROR] OP01-004 | loop | OperationalError('database is locked')
+[FETCHED] OP01-005 | _p1 | PCCFR | PCCFR/parallel/OP01-005_p1.png
+[ERROR] OP01-005 | loop | OperationalError('database is locked')
+[FETCHED] OP01-006 | _p1 | ANN1JP | ANN1JP/parallel/OP01-006_p1.png
+[ERROR] OP01-006 | loop | OperationalError('database is locked')
+[SKIP] OP01-008 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-013 | _p2 | PCC25 | PCC25/parallel/OP01-013_p2.png
+[ERROR] OP01-013 | loop | OperationalError('database is locked')
+[FETCHED] OP01-014 | _p1 | PCCFR | PCCFR/parallel/OP01-014_p1.png
+[ERROR] OP01-014 | loop | OperationalError('database is locked')
+[FETCHED] OP01-015 | _p1 | ORP2024V3 | ORP2024V3/parallel/OP01-015_p1.png
+[ERROR] OP01-015 | loop | OperationalError('database is locked')
+[SKIP] OP01-016 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-016 | _p2 | PCC25 | PCC25/parallel/OP01-016_p2.png
+[ERROR] OP01-016 | loop | OperationalError('database is locked')
+[FETCHED] OP01-017 | _p1 | PCCFR | PCCFR/parallel/OP01-017_p1.png
+[ERROR] OP01-017 | loop | OperationalError('database is locked')
+[FETCHED] OP01-021 | _p1 | PCCFR | PCCFR/parallel/OP01-021_p1.png
+[ERROR] OP01-021 | loop | OperationalError('database is locked')
+[FETCHED] OP01-022 | _p1 | PCC25 | PCC25/parallel/OP01-022_p1.png
+[ERROR] OP01-022 | loop | OperationalError('database is locked')
+[SKIP] OP01-024 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-024 | _p2 | OP01 | OP01/parallel/OP01-024_p2.png
+[SKIP] OP01-024 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP01-024 | _p3 | PRB01 | PRB01/parallel/OP01-024_p3.png
+[ERROR] OP01-024 | loop | OperationalError('database is locked')
+[SKIP] OP01-025 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-025 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[FETCHED] OP01-025 | _p3 | ANN1EN | ANN1EN/parallel/OP01-025_p3.png
+[ERROR] OP01-025 | loop | OperationalError('database is locked')
+[UNMAPPED] OP01-029 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP01-029 | _p1 | _unclassified | _unclassified/parallel/OP01-029_p1.png
+[SKIP] OP01-029 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP01-029 | _p2 | PRB01 | PRB01/parallel/OP01-029_p2.png
+[ERROR] OP01-029 | loop | OperationalError('database is locked')
+[FETCHED] OP01-030 | _p1 | ANN2JP | ANN2JP/parallel/OP01-030_p1.png
+[ERROR] OP01-030 | loop | OperationalError('database is locked')
+[SKIP] OP01-031 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-033 | _p1 | TP02 | TP02/parallel/OP01-033_p1.png
+[ERROR] OP01-033 | loop | OperationalError('database is locked')
+[SKIP] OP01-034 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-035 | _p1 | TP04 | TP04/parallel/OP01-035_p1.png
+[ERROR] OP01-035 | loop | OperationalError('database is locked')
+[FETCHED] OP01-039 | _p1 | PRB02 | PRB02/parallel/OP01-039_p1.png
+[ERROR] OP01-039 | loop | OperationalError('database is locked')
+[SKIP] OP01-040 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-041 | _p1 | TP07 | TP07/parallel/OP01-041_p1.png
+[ERROR] OP01-041 | loop | OperationalError('database is locked')
+[SKIP] OP01-047 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-047 | _p2 | OP04 | OP04/parallel/OP01-047_p2.png
+[ERROR] OP01-047 | loop | OperationalError('database is locked')
+[SKIP] OP01-048 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-051 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-051 | _p2 | OP03 | OP03/parallel/OP01-051_p2.png
+[ERROR] OP01-051 | loop | OperationalError('database is locked')
+[FETCHED] OP01-052 | _p1 | EP02 | EP02/parallel/OP01-052_p1.png
+[ERROR] OP01-052 | loop | OperationalError('database is locked')
+[FETCHED] OP01-055 | _p1 | PRB02 | PRB02/parallel/OP01-055_p1.png
+[ERROR] OP01-055 | loop | OperationalError('database is locked')
+[FETCHED] OP01-057 | _p1 | BCV1 | BCV1/parallel/OP01-057_p1.png
+[ERROR] OP01-057 | loop | OperationalError('database is locked')
+[SKIP] OP01-060 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-060 | _p2 | ST17 | ST17/parallel/OP01-060_p2.png
+[ERROR] OP01-060 | loop | OperationalError('database is locked')
+[SKIP] OP01-061 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-062 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-064 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-067 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-070 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP01-070 | _p2 | 'Treasure Cup August – September'
+[FETCHED] OP01-070 | _p2 | _unclassified | _unclassified/parallel/OP01-070_p2.png
+[ERROR] OP01-070 | loop | OperationalError('database is locked')
+[SKIP] OP01-073 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-073 | _p2 | OP07 | OP07/parallel/OP01-073_p2.png
+[ERROR] OP01-073 | loop | OperationalError('database is locked')
+[SKIP] OP01-077 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-078 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-078 | _p2 | OP04 | OP04/parallel/OP01-078_p2.png
+[ERROR] OP01-078 | loop | OperationalError('database is locked')
+[UNMAPPED] OP01-086 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP01-086 | _p1 | _unclassified | _unclassified/parallel/OP01-086_p1.png
+[SKIP] OP01-086 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP01-086 | _r1 | ST17 | ST17/reprint/OP01-086_r1.png
+[ERROR] OP01-086 | loop | OperationalError('database is locked')
+[SKIP] OP01-091 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-093 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-094 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-096 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-097 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-101 | _p1 | EP02 | EP02/parallel/OP01-101_p1.png
+[ERROR] OP01-101 | loop | OperationalError('database is locked')
+[SKIP] OP01-102 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-109 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-120 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP01-120 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[FETCHED] OP01-120 | _p3 | OP01 | OP01/parallel/OP01-120_p3.png
+[SKIP] OP01-120 | _p3 | no_variant_row variant_key='parallel 3'
+[FETCHED] OP01-120 | _p4 | OP01 | OP01/parallel/OP01-120_p4.png
+[SKIP] OP01-120 | _p4 | no_variant_row variant_key='parallel 4'
+[FETCHED] OP01-120 | _p5 | PRB01 | PRB01/parallel/OP01-120_p5.png
+[ERROR] OP01-120 | loop | OperationalError('database is locked')
+[SKIP] OP01-121 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP01-121 | _p2 | OP05 | OP05/parallel/OP01-121_p2.png
+[ERROR] OP01-121 | loop | OperationalError('database is locked')
+[SKIP] OP02-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-001 | _p2 | ST15 | ST15/parallel/OP02-001_p2.png
+[ERROR] OP02-001 | loop | OperationalError('database is locked')
+[SKIP] OP02-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP02-004 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-004 | _p2 | OP04 | OP04/parallel/OP02-004_p2.png
+[ERROR] OP02-004 | loop | OperationalError('database is locked')
+[FETCHED] OP02-005 | _p1 | PRB02 | PRB02/parallel/OP02-005_p1.png
+[ERROR] OP02-005 | loop | OperationalError('database is locked')
+[UNMAPPED] OP02-008 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP02-008 | _p1 | _unclassified | _unclassified/parallel/OP02-008_p1.png
+[SKIP] OP02-008 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP02-008 | _r1 | ST15 | ST15/reprint/OP02-008_r1.png
+[ERROR] OP02-008 | loop | OperationalError('database is locked')
+[SKIP] OP02-009 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP02-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP02-013 | _p2 | resume_existing_asset path_ok variant_key='parallel 2'
+[FETCHED] OP02-013 | _p3 | OP08 | OP08/parallel/OP02-013_p3.png
+[ERROR] OP02-013 | loop | OperationalError('database is locked')
+[FETCHED] OP02-015 | _p1 | ANN1JP | ANN1JP/parallel/OP02-015_p1.png
+[ERROR] OP02-015 | loop | OperationalError('database is locked')
+[SKIP] OP02-017 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP02-018 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-018 | _p2 | OP02 | OP02/parallel/OP02-018_p2.png
+[SKIP] OP02-018 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP02-018 | _p3 | OP02 | OP02/parallel/OP02-018_p3.png
+[SKIP] OP02-018 | _p3 | no_variant_row variant_key='parallel 3'
+[FETCHED] OP02-018 | _p4 | PRB01 | PRB01/parallel/OP02-018_p4.png
+[ERROR] OP02-018 | loop | OperationalError('database is locked')
+[UNMAPPED] OP02-019 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP02-019 | _p1 | _unclassified | _unclassified/parallel/OP02-019_p1.png
+[SKIP] OP02-019 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP02-019 | _r1 | ST15 | ST15/reprint/OP02-019_r1.png
+[ERROR] OP02-019 | loop | OperationalError('database is locked')
+[FETCHED] OP02-022 | _p1 | ST1520RE | ST1520RE/parallel/OP02-022_p1.png
+[ERROR] OP02-022 | loop | OperationalError('database is locked')
+[UNMAPPED] OP02-023 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP02-023 | _p1 | _unclassified | _unclassified/parallel/OP02-023_p1.png
+[SKIP] OP02-023 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP02-023 | _r1 | ST15 | ST15/reprint/OP02-023_r1.png
+[ERROR] OP02-023 | loop | OperationalError('database is locked')
+[SKIP] OP02-025 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP02-026 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-028 | _p1 | ST11 | ST11/parallel/OP02-028_p1.png
+[ERROR] OP02-028 | loop | OperationalError('database is locked')
+[SKIP] OP02-030 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP02-031 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-033 | _p1 | ST11 | ST11/parallel/OP02-033_p1.png
+[ERROR] OP02-033 | loop | OperationalError('database is locked')
+[FETCHED] OP02-034 | _p1 | ST11 | ST11/parallel/OP02-034_p1.png
+[ERROR] OP02-034 | loop | OperationalError('database is locked')
+[FETCHED] OP02-035 | _p1 | ORP01 | ORP01/parallel/OP02-035_p1.png
+[ERROR] OP02-035 | loop | OperationalError('database is locked')
+[SKIP] OP02-036 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-036 | _p2 | BCV1 | BCV1/parallel/OP02-036_p2.png
+[ERROR] OP02-036 | loop | OperationalError('database is locked')
+[FETCHED] OP02-037 | _p1 | ST11 | ST11/parallel/OP02-037_p1.png
+[ERROR] OP02-037 | loop | OperationalError('database is locked')
+[FETCHED] OP02-039 | _p1 | ST11 | ST11/parallel/OP02-039_p1.png
+[ERROR] OP02-039 | loop | OperationalError('database is locked')
+[FETCHED] OP02-040 | _p1 | ST11 | ST11/parallel/OP02-040_p1.png
+[ERROR] OP02-040 | loop | OperationalError('database is locked')
+[SKIP] OP02-041 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-041 | _p2 | ST11 | ST11/parallel/OP02-041_p2.png
+[ERROR] OP02-041 | loop | OperationalError('database is locked')
+[FETCHED] OP02-043 | _p1 | ST11 | ST11/parallel/OP02-043_p1.png
+[ERROR] OP02-043 | loop | OperationalError('database is locked')
+[FETCHED] OP02-045 | _p1 | ST11 | ST11/parallel/OP02-045_p1.png
+[ERROR] OP02-045 | loop | OperationalError('database is locked')
+[SKIP] OP02-049 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP02-051 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP02-054 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP02-054 | _p1 | _unclassified | _unclassified/parallel/OP02-054_p1.png
+[SKIP] OP02-054 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP02-054 | _r1 | ST17 | ST17/reprint/OP02-054_r1.png
+[ERROR] OP02-054 | loop | OperationalError('database is locked')
+[UNMAPPED] OP02-057 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP02-057 | _p1 | _unclassified | _unclassified/parallel/OP02-057_p1.png
+[SKIP] OP02-057 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP02-057 | _r1 | ST17 | ST17/reprint/OP02-057_r1.png
+[ERROR] OP02-057 | loop | OperationalError('database is locked')
+[SKIP] OP02-058 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP02-059 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-059 | _p2 | GC01 | GC01/parallel/OP02-059_p2.png
+[ERROR] OP02-059 | loop | OperationalError('database is locked')
+[SKIP] OP02-062 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-063 | _p1 | ORP2024V3 | ORP2024V3/parallel/OP02-063_p1.png
+[ERROR] OP02-063 | loop | OperationalError('database is locked')
+[FETCHED] OP02-068 | _p1 | PRB02 | PRB02/parallel/OP02-068_p1.png
+[ERROR] OP02-068 | loop | OperationalError('database is locked')
+[SKIP] OP02-071 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP02-072 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP02-073 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP02-085 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-085 | _p2 | OP04 | OP04/parallel/OP02-085_p2.png
+[ERROR] OP02-085 | loop | OperationalError('database is locked')
+[SKIP] OP02-086 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP02-089 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP02-089 | _p1 | _unclassified | _unclassified/parallel/OP02-089_p1.png
+[SKIP] OP02-089 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP02-089 | _p2 | PRB01 | PRB01/parallel/OP02-089_p2.png
+[ERROR] OP02-089 | loop | OperationalError('database is locked')
+[SKIP] OP02-093 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-093 | _p2 | ST19 | ST19/parallel/OP02-093_p2.png
+[ERROR] OP02-093 | loop | OperationalError('database is locked')
+[SKIP] OP02-096 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-096 | _p2 | OP02 | OP02/parallel/OP02-096_p2.png
+[SKIP] OP02-096 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP02-096 | _p3 | PRB01 | PRB01/parallel/OP02-096_p3.png
+[ERROR] OP02-096 | loop | OperationalError('database is locked')
+[FETCHED] OP02-098 | _p1 | ORP01 | ORP01/parallel/OP02-098_p1.png
+[ERROR] OP02-098 | loop | OperationalError('database is locked')
+[SKIP] OP02-099 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-099 | _p2 | OP04 | OP04/parallel/OP02-099_p2.png
+[ERROR] OP02-099 | loop | OperationalError('database is locked')
+[SKIP] OP02-105 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-106 | _p1 | EP02 | EP02/parallel/OP02-106_p1.png
+[ERROR] OP02-106 | loop | OperationalError('database is locked')
+[SKIP] OP02-108 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-108 | _p2 | OP02 | OP02/parallel/OP02-108_p2.png
+[SKIP] OP02-108 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP02-108 | _r1 | ST19 | ST19/reprint/OP02-108_r1.png
+[ERROR] OP02-108 | loop | OperationalError('database is locked')
+[UNMAPPED] OP02-109 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP02-109 | _p1 | _unclassified | _unclassified/parallel/OP02-109_p1.png
+[SKIP] OP02-109 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP02-109 | _r1 | ST19 | ST19/reprint/OP02-109_r1.png
+[ERROR] OP02-109 | loop | OperationalError('database is locked')
+[UNMAPPED] OP02-113 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP02-113 | _p1 | _unclassified | _unclassified/parallel/OP02-113_p1.png
+[SKIP] OP02-113 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP02-113 | _r1 | ST19 | ST19/reprint/OP02-113_r1.png
+[ERROR] OP02-113 | loop | OperationalError('database is locked')
+[SKIP] OP02-114 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-114 | _p2 | OP02 | OP02/parallel/OP02-114_p2.png
+[SKIP] OP02-114 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP02-114 | _p3 | PRB01 | PRB01/parallel/OP02-114_p3.png
+[ERROR] OP02-114 | loop | OperationalError('database is locked')
+[SKIP] OP02-115 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP02-116 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP02-116 | _p1 | _unclassified | _unclassified/parallel/OP02-116_p1.png
+[SKIP] OP02-116 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP02-116 | _r1 | ST19 | ST19/reprint/OP02-116_r1.png
+[ERROR] OP02-116 | loop | OperationalError('database is locked')
+[FETCHED] OP02-117 | _r1 | ST19 | ST19/reprint/OP02-117_r1.png
+[ERROR] OP02-117 | loop | OperationalError('database is locked')
+[SKIP] OP02-120 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-120 | _p2 | OP05 | OP05/parallel/OP02-120_p2.png
+[ERROR] OP02-120 | loop | OperationalError('database is locked')
+[SKIP] OP02-121 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP02-121 | _p2 | OP02 | OP02/parallel/OP02-121_p2.png
+[SKIP] OP02-121 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP02-121 | _p3 | PRB01 | PRB01/parallel/OP02-121_p3.png
+[ERROR] OP02-121 | loop | OperationalError('database is locked')
+[SKIP] OP03-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP03-001 | _p2 | 'Special Goods Set -Ace/Sabo/Luffy-'
+[FETCHED] OP03-001 | _p2 | _unclassified | _unclassified/parallel/OP03-001_p2.png
+[ERROR] OP03-001 | loop | OperationalError('database is locked')
+[FETCHED] OP03-003 | _p1 | OP07 | OP07/parallel/OP03-003_p1.png
+[ERROR] OP03-003 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-006 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-006 | _p1 | _unclassified | _unclassified/parallel/OP03-006_p1.png
+[SKIP] OP03-006 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-006 | _r1 | ST15 | ST15/reprint/OP03-006_r1.png
+[ERROR] OP03-006 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-007 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-007 | _p1 | _unclassified | _unclassified/parallel/OP03-007_p1.png
+[SKIP] OP03-007 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-007 | _r1 | ST15 | ST15/reprint/OP03-007_r1.png
+[ERROR] OP03-007 | loop | OperationalError('database is locked')
+[FETCHED] OP03-008 | _p1 | OP06 | OP06/parallel/OP03-008_p1.png
+[ERROR] OP03-008 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-009 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-009 | _p1 | _unclassified | _unclassified/parallel/OP03-009_p1.png
+[SKIP] OP03-009 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-009 | _r1 | ST15 | ST15/reprint/OP03-009_r1.png
+[ERROR] OP03-009 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-010 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-010 | _p1 | _unclassified | _unclassified/parallel/OP03-010_p1.png
+[SKIP] OP03-010 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-010 | _r1 | ST15 | ST15/reprint/OP03-010_r1.png
+[ERROR] OP03-010 | loop | OperationalError('database is locked')
+[SKIP] OP03-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-013 | _p2 | ANN1JP | ANN1JP/parallel/OP03-013_p2.png
+[ERROR] OP03-013 | loop | OperationalError('database is locked')
+[SKIP] OP03-018 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP03-021 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP03-022 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP03-024 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP03-025 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-033 | _p1 | TP06 | TP06/parallel/OP03-033_p1.png
+[ERROR] OP03-033 | loop | OperationalError('database is locked')
+[SKIP] OP03-040 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP03-041 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-044 | _p1 | TP06 | TP06/parallel/OP03-044_p1.png
+[ERROR] OP03-044 | loop | OperationalError('database is locked')
+[SKIP] OP03-047 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-048 | _p1 | PRB02 | PRB02/parallel/OP03-048_p1.png
+[ERROR] OP03-048 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-055 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-055 | _p1 | _unclassified | _unclassified/parallel/OP03-055_p1.png
+[SKIP] OP03-055 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-055 | _p2 | PRB01 | PRB01/parallel/OP03-055_p2.png
+[ERROR] OP03-055 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-056 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-056 | _p1 | _unclassified | _unclassified/parallel/OP03-056_p1.png
+[SKIP] OP03-056 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-056 | _p2 | PRB01 | PRB01/parallel/OP03-056_p2.png
+[ERROR] OP03-056 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-057 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-057 | _p1 | _unclassified | _unclassified/parallel/OP03-057_p1.png
+[SKIP] OP03-057 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-057 | _p2 | PRB01 | PRB01/parallel/OP03-057_p2.png
+[ERROR] OP03-057 | loop | OperationalError('database is locked')
+[SKIP] OP03-058 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP03-060 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-060 | _p1 | _unclassified | _unclassified/parallel/OP03-060_p1.png
+[SKIP] OP03-060 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-060 | _p2 | PRB01 | PRB01/parallel/OP03-060_p2.png
+[ERROR] OP03-060 | loop | OperationalError('database is locked')
+[SKIP] OP03-066 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-072 | _p1 | PRB02 | PRB02/parallel/OP03-072_p1.png
+[ERROR] OP03-072 | loop | OperationalError('database is locked')
+[SKIP] OP03-076 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP03-077 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP03-078 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-078 | _p2 | OP07 | OP07/parallel/OP03-078_p2.png
+[ERROR] OP03-078 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-079 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-079 | _p1 | _unclassified | _unclassified/parallel/OP03-079_p1.png
+[SKIP] OP03-079 | _p1 | no_variant_row variant_key='parallel 1'
+[UNMAPPED] OP03-079 | _p2 | <empty modal Card Set(s)>
+[FETCHED] OP03-079 | _p2 | _unclassified | _unclassified/parallel/OP03-079_p2.png
+[SKIP] OP03-079 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP03-079 | _p3 | PRB01 | PRB01/parallel/OP03-079_p3.png
+[ERROR] OP03-079 | loop | OperationalError('database is locked')
+[SKIP] OP03-080 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP03-081 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP03-086 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-088 | _p1 | TP06 | TP06/parallel/OP03-088_p1.png
+[ERROR] OP03-088 | loop | OperationalError('database is locked')
+[FETCHED] OP03-089 | _p1 | ORP2024V1 | ORP2024V1/parallel/OP03-089_p1.png
+[ERROR] OP03-089 | loop | OperationalError('database is locked')
+[SKIP] OP03-092 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-092 | _p2 | OP05 | OP05/parallel/OP03-092_p2.png
+[ERROR] OP03-092 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-094 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-094 | _p1 | _unclassified | _unclassified/parallel/OP03-094_p1.png
+[SKIP] OP03-094 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-094 | _p2 | PRB01 | PRB01/parallel/OP03-094_p2.png
+[ERROR] OP03-094 | loop | OperationalError('database is locked')
+[FETCHED] OP03-097 | _r1 | PRB02 | PRB02/reprint/OP03-097_r1.png
+[ERROR] OP03-097 | loop | OperationalError('database is locked')
+[SKIP] OP03-099 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-099 | _p2 | ST20 | ST20/parallel/OP03-099_p2.png
+[ERROR] OP03-099 | loop | OperationalError('database is locked')
+[FETCHED] OP03-102 | _p1 | ORP2024V1 | ORP2024V1/parallel/OP03-102_p1.png
+[ERROR] OP03-102 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-106 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-106 | _p1 | _unclassified | _unclassified/parallel/OP03-106_p1.png
+[SKIP] OP03-106 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-106 | _r1 | ST20 | ST20/reprint/OP03-106_r1.png
+[ERROR] OP03-106 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-107 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-107 | _p1 | _unclassified | _unclassified/parallel/OP03-107_p1.png
+[SKIP] OP03-107 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-107 | _r1 | ST20 | ST20/reprint/OP03-107_r1.png
+[ERROR] OP03-107 | loop | OperationalError('database is locked')
+[SKIP] OP03-108 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-108 | _p2 | OP03 | OP03/parallel/OP03-108_p2.png
+[SKIP] OP03-108 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP03-108 | _p3 | PRB01 | PRB01/parallel/OP03-108_p3.png
+[ERROR] OP03-108 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-110 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-110 | _p1 | _unclassified | _unclassified/parallel/OP03-110_p1.png
+[SKIP] OP03-110 | _p1 | no_variant_row variant_key='parallel 1'
+[UNMAPPED] OP03-110 | _p2 | <empty modal Card Set(s)>
+[FETCHED] OP03-110 | _p2 | _unclassified | _unclassified/parallel/OP03-110_p2.png
+[SKIP] OP03-110 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP03-110 | _p3 | PRB01 | PRB01/parallel/OP03-110_p3.png
+[ERROR] OP03-110 | loop | OperationalError('database is locked')
+[SKIP] OP03-112 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP03-112 | _p2 | 'Regional 2024 wave2'
+[FETCHED] OP03-112 | _p2 | _unclassified | _unclassified/parallel/OP03-112_p2.png
+[ERROR] OP03-112 | loop | OperationalError('database is locked')
+[SKIP] OP03-113 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-113 | _p2 | OP03 | OP03/parallel/OP03-113_p2.png
+[SKIP] OP03-113 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP03-113 | _p3 | PRB01 | PRB01/parallel/OP03-113_p3.png
+[ERROR] OP03-113 | loop | OperationalError('database is locked')
+[SKIP] OP03-114 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-114 | _p2 | OP06 | OP06/parallel/OP03-114_p2.png
+[ERROR] OP03-114 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-115 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-115 | _p1 | _unclassified | _unclassified/parallel/OP03-115_p1.png
+[SKIP] OP03-115 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-115 | _r1 | ST20 | ST20/reprint/OP03-115_r1.png
+[ERROR] OP03-115 | loop | OperationalError('database is locked')
+[FETCHED] OP03-116 | _p1 | TP06 | TP06/parallel/OP03-116_p1.png
+[ERROR] OP03-116 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-118 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-118 | _p1 | _unclassified | _unclassified/parallel/OP03-118_p1.png
+[SKIP] OP03-118 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP03-118 | _r1 | ST20 | ST20/reprint/OP03-118_r1.png
+[ERROR] OP03-118 | loop | OperationalError('database is locked')
+[UNMAPPED] OP03-121 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP03-121 | _p1 | _unclassified | _unclassified/parallel/OP03-121_p1.png
+[SKIP] OP03-121 | _p1 | no_variant_row variant_key='parallel 1'
+[UNMAPPED] OP03-121 | _p2 | <empty modal Card Set(s)>
+[FETCHED] OP03-121 | _p2 | _unclassified | _unclassified/parallel/OP03-121_p2.png
+[SKIP] OP03-121 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP03-121 | _p3 | PRB01 | PRB01/parallel/OP03-121_p3.png
+[ERROR] OP03-121 | loop | OperationalError('database is locked')
+[SKIP] OP03-122 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP03-122 | _p2 | OP03 | OP03/parallel/OP03-122_p2.png
+[ERROR] OP03-122 | loop | OperationalError('database is locked')
+[SKIP] OP03-123 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP03-123 | _p2 | 'Regional 2024 wave2'
+[FETCHED] OP03-123 | _p2 | _unclassified | _unclassified/parallel/OP03-123_p2.png
+[ERROR] OP03-123 | loop | OperationalError('database is locked')
+[SKIP] OP04-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-010 | _p1 | TP2024OD | TP2024OD/parallel/OP04-010_p1.png
+[ERROR] OP04-010 | loop | OperationalError('database is locked')
+[SKIP] OP04-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-016 | _p1 | PRB02 | PRB02/parallel/OP04-016_p1.png
+[ERROR] OP04-016 | loop | OperationalError('database is locked')
+[SKIP] OP04-019 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP04-020 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP04-024 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-024 | _p2 | OP06 | OP06/parallel/OP04-024_p2.png
+[ERROR] OP04-024 | loop | OperationalError('database is locked')
+[SKIP] OP04-028 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP04-029 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP04-029 | _p1 | _unclassified | _unclassified/parallel/OP04-029_p1.png
+[SKIP] OP04-029 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP04-029 | _p2 | PRB01 | PRB01/parallel/OP04-029_p2.png
+[ERROR] OP04-029 | loop | OperationalError('database is locked')
+[SKIP] OP04-030 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP04-031 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-031 | _p2 | OP04 | OP04/parallel/OP04-031_p2.png
+[SKIP] OP04-031 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP04-031 | _p3 | PRB01 | PRB01/parallel/OP04-031_p3.png
+[ERROR] OP04-031 | loop | OperationalError('database is locked')
+[UNMAPPED] OP04-032 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP04-032 | _p1 | _unclassified | _unclassified/parallel/OP04-032_p1.png
+[SKIP] OP04-032 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP04-032 | _p2 | PRB01 | PRB01/parallel/OP04-032_p2.png
+[ERROR] OP04-032 | loop | OperationalError('database is locked')
+[UNMAPPED] OP04-036 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP04-036 | _p1 | _unclassified | _unclassified/parallel/OP04-036_p1.png
+[SKIP] OP04-036 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP04-036 | _p2 | PRB01 | PRB01/parallel/OP04-036_p2.png
+[ERROR] OP04-036 | loop | OperationalError('database is locked')
+[SKIP] OP04-039 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP04-040 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP04-044 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-044 | _p2 | OP05 | OP05/parallel/OP04-044_p2.png
+[ERROR] OP04-044 | loop | OperationalError('database is locked')
+[SKIP] OP04-051 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP04-056 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP04-056 | _p1 | _unclassified | _unclassified/parallel/OP04-056_p1.png
+[SKIP] OP04-056 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP04-056 | _p2 | PRB01 | PRB01/parallel/OP04-056_p2.png
+[ERROR] OP04-056 | loop | OperationalError('database is locked')
+[SKIP] OP04-058 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP04-060 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP04-064 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-064 | _p2 | OP06 | OP06/parallel/OP04-064_p2.png
+[ERROR] OP04-064 | loop | OperationalError('database is locked')
+[SKIP] OP04-072 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-077 | _p1 | PRB02 | PRB02/parallel/OP04-077_p1.png
+[ERROR] OP04-077 | loop | OperationalError('database is locked')
+[SKIP] OP04-082 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP04-083 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-083 | _p2 | OP04 | OP04/parallel/OP04-083_p2.png
+[ERROR] OP04-083 | loop | OperationalError('database is locked')
+[UNMAPPED] OP04-089 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP04-089 | _p1 | _unclassified | _unclassified/parallel/OP04-089_p1.png
+[SKIP] OP04-089 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP04-089 | _p2 | PRB01 | PRB01/parallel/OP04-089_p2.png
+[ERROR] OP04-089 | loop | OperationalError('database is locked')
+[SKIP] OP04-090 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-092 | _p1 | TK2025V2 | TK2025V2/parallel/OP04-092_p1.png
+[ERROR] OP04-092 | loop | OperationalError('database is locked')
+[UNMAPPED] OP04-095 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP04-095 | _p1 | _unclassified | _unclassified/parallel/OP04-095_p1.png
+[SKIP] OP04-095 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP04-095 | _p2 | PRB01 | PRB01/parallel/OP04-095_p2.png
+[ERROR] OP04-095 | loop | OperationalError('database is locked')
+[FETCHED] OP04-096 | _p1 | PRB02 | PRB02/parallel/OP04-096_p1.png
+[ERROR] OP04-096 | loop | OperationalError('database is locked')
+[SKIP] OP04-100 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-100 | _p2 | OP04 | OP04/parallel/OP04-100_p2.png
+[SKIP] OP04-100 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP04-100 | _p3 | PRB01 | PRB01/parallel/OP04-100_p3.png
+[ERROR] OP04-100 | loop | OperationalError('database is locked')
+[SKIP] OP04-104 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-104 | _p2 | OP04 | OP04/parallel/OP04-104_p2.png
+[SKIP] OP04-104 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP04-104 | _p3 | PRB01 | PRB01/parallel/OP04-104_p3.png
+[ERROR] OP04-104 | loop | OperationalError('database is locked')
+[FETCHED] OP04-105 | _p1 | BCV1 | BCV1/parallel/OP04-105_p1.png
+[ERROR] OP04-105 | loop | OperationalError('database is locked')
+[SKIP] OP04-112 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-112 | _p2 | OP04 | OP04/parallel/OP04-112_p2.png
+[SKIP] OP04-112 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP04-112 | _p3 | PRB01 | PRB01/parallel/OP04-112_p3.png
+[ERROR] OP04-112 | loop | OperationalError('database is locked')
+[SKIP] OP04-118 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP04-119 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP04-119 | _p2 | OP09 | OP09/parallel/OP04-119_p2.png
+[ERROR] OP04-119 | loop | OperationalError('database is locked')
+[SKIP] OP05-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-001 | _p2 | EB02 | EB02/parallel/OP05-001_p2.png
+[ERROR] OP05-001 | loop | OperationalError('database is locked')
+[SKIP] OP05-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-002 | _p2 | EB02 | EB02/parallel/OP05-002_p2.png
+[ERROR] OP05-002 | loop | OperationalError('database is locked')
+[FETCHED] OP05-004 | _p1 | PRB02 | PRB02/parallel/OP05-004_p1.png
+[ERROR] OP05-004 | loop | OperationalError('database is locked')
+[SKIP] OP05-006 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-006 | _p2 | OP05 | OP05/parallel/OP05-006_p2.png
+[SKIP] OP05-006 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP05-006 | _p3 | PRB01 | PRB01/parallel/OP05-006_p3.png
+[ERROR] OP05-006 | loop | OperationalError('database is locked')
+[SKIP] OP05-007 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-007 | _p2 | OP05 | OP05/parallel/OP05-007_p2.png
+[SKIP] OP05-007 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP05-007 | _p3 | PRB01 | PRB01/parallel/OP05-007_p3.png
+[ERROR] OP05-007 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-010 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-010 | _p1 | _unclassified | _unclassified/parallel/OP05-010_p1.png
+[SKIP] OP05-010 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-010 | _p2 | PRB01 | PRB01/parallel/OP05-010_p2.png
+[ERROR] OP05-010 | loop | OperationalError('database is locked')
+[FETCHED] OP05-011 | _p1 | SWBS01 | SWBS01/parallel/OP05-011_p1.png
+[ERROR] OP05-011 | loop | OperationalError('database is locked')
+[SKIP] OP05-015 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-015 | _p2 | OP05 | OP05/parallel/OP05-015_p2.png
+[SKIP] OP05-015 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP05-015 | _p3 | PRB01 | PRB01/parallel/OP05-015_p3.png
+[ERROR] OP05-015 | loop | OperationalError('database is locked')
+[FETCHED] OP05-021 | _p1 | PRB02 | PRB02/parallel/OP05-021_p1.png
+[ERROR] OP05-021 | loop | OperationalError('database is locked')
+[SKIP] OP05-022 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-022 | _p2 | EB02 | EB02/parallel/OP05-022_p2.png
+[ERROR] OP05-022 | loop | OperationalError('database is locked')
+[FETCHED] OP05-030 | _p1 | PRB02 | PRB02/parallel/OP05-030_p1.png
+[ERROR] OP05-030 | loop | OperationalError('database is locked')
+[SKIP] OP05-032 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP05-034 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-034 | _p2 | OP05 | OP05/parallel/OP05-034_p2.png
+[SKIP] OP05-034 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP05-034 | _p3 | PRB01 | PRB01/parallel/OP05-034_p3.png
+[ERROR] OP05-034 | loop | OperationalError('database is locked')
+[FETCHED] OP05-036 | _p1 | EP03 | EP03/parallel/OP05-036_p1.png
+[ERROR] OP05-036 | loop | OperationalError('database is locked')
+[FETCHED] OP05-037 | _p1 | TP2025V4 | TP2025V4/parallel/OP05-037_p1.png
+[ERROR] OP05-037 | loop | OperationalError('database is locked')
+[SKIP] OP05-041 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP05-043 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-043 | _p2 | OP05 | OP05/parallel/OP05-043_p2.png
+[SKIP] OP05-043 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP05-043 | _p3 | PRB01 | PRB01/parallel/OP05-043_p3.png
+[ERROR] OP05-043 | loop | OperationalError('database is locked')
+[SKIP] OP05-051 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-051 | _p2 | OP06 | OP06/parallel/OP05-051_p2.png
+[ERROR] OP05-051 | loop | OperationalError('database is locked')
+[FETCHED] OP05-052 | _p1 | PRB02 | PRB02/parallel/OP05-052_p1.png
+[ERROR] OP05-052 | loop | OperationalError('database is locked')
+[SKIP] OP05-055 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP05-057 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-057 | _p1 | _unclassified | _unclassified/parallel/OP05-057_p1.png
+[SKIP] OP05-057 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-057 | _p2 | PRB01 | PRB01/parallel/OP05-057_p2.png
+[ERROR] OP05-057 | loop | OperationalError('database is locked')
+[SKIP] OP05-060 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP05-060 | _p2 | 'One Piece Card Game x PSA Exclusive Promo Card'
+[FETCHED] OP05-060 | _p2 | _unclassified | _unclassified/parallel/OP05-060_p2.png
+[ERROR] OP05-060 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-061 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-061 | _p1 | _unclassified | _unclassified/parallel/OP05-061_p1.png
+[SKIP] OP05-061 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-061 | _r1 | ST18 | ST18/reprint/OP05-061_r1.png
+[ERROR] OP05-061 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-063 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-063 | _p1 | _unclassified | _unclassified/parallel/OP05-063_p1.png
+[SKIP] OP05-063 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-063 | _r1 | ST18 | ST18/reprint/OP05-063_r1.png
+[ERROR] OP05-063 | loop | OperationalError('database is locked')
+[FETCHED] OP05-065 | _r1 | ST26 | ST26/reprint/OP05-065_r1.png
+[ERROR] OP05-065 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-066 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-066 | _p1 | _unclassified | _unclassified/parallel/OP05-066_p1.png
+[SKIP] OP05-066 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-066 | _r1 | ST18 | ST18/reprint/OP05-066_r1.png
+[ERROR] OP05-066 | loop | OperationalError('database is locked')
+[SKIP] OP05-067 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP05-067 | _p2 | 'Event Pack Vol.5'
+[FETCHED] OP05-067 | _p2 | _unclassified | _unclassified/parallel/OP05-067_p2.png
+[ERROR] OP05-067 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-068 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-068 | _p1 | _unclassified | _unclassified/parallel/OP05-068_p1.png
+[SKIP] OP05-068 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-068 | _r1 | ST18 | ST18/reprint/OP05-068_r1.png
+[ERROR] OP05-068 | loop | OperationalError('database is locked')
+[SKIP] OP05-069 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-069 | _p2 | OP05 | OP05/parallel/OP05-069_p2.png
+[ERROR] OP05-069 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-070 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-070 | _p1 | _unclassified | _unclassified/parallel/OP05-070_p1.png
+[SKIP] OP05-070 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-070 | _r1 | ST18 | ST18/reprint/OP05-070_r1.png
+[ERROR] OP05-070 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-072 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-072 | _p1 | _unclassified | _unclassified/parallel/OP05-072_p1.png
+[SKIP] OP05-072 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-072 | _r1 | ST18 | ST18/reprint/OP05-072_r1.png
+[ERROR] OP05-072 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-073 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-073 | _p1 | _unclassified | _unclassified/parallel/OP05-073_p1.png
+[SKIP] OP05-073 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-073 | _p2 | PRB01 | PRB01/parallel/OP05-073_p2.png
+[ERROR] OP05-073 | loop | OperationalError('database is locked')
+[SKIP] OP05-074 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-074 | _p2 | OP05 | OP05/parallel/OP05-074_p2.png
+[ERROR] OP05-074 | loop | OperationalError('database is locked')
+[FETCHED] OP05-076 | _p1 | ST18 | ST18/parallel/OP05-076_p1.png
+[ERROR] OP05-076 | loop | OperationalError('database is locked')
+[FETCHED] OP05-077 | _p1 | PRB02 | PRB02/parallel/OP05-077_p1.png
+[ERROR] OP05-077 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-081 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-081 | _p1 | _unclassified | _unclassified/parallel/OP05-081_p1.png
+[SKIP] OP05-081 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-081 | _p2 | PRB01 | PRB01/parallel/OP05-081_p2.png
+[ERROR] OP05-081 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-082 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-082 | _p1 | _unclassified | _unclassified/parallel/OP05-082_p1.png
+[SKIP] OP05-082 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-082 | _p2 | PRB01 | PRB01/parallel/OP05-082_p2.png
+[ERROR] OP05-082 | loop | OperationalError('database is locked')
+[FETCHED] OP05-086 | _p1 | REG2024W3 | REG2024W3/parallel/OP05-086_p1.png
+[ERROR] OP05-086 | loop | OperationalError('database is locked')
+[SKIP] OP05-088 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP05-091 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-091 | _p2 | OP06 | OP06/parallel/OP05-091_p2.png
+[ERROR] OP05-091 | loop | OperationalError('database is locked')
+[SKIP] OP05-093 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-093 | _p2 | OP09 | OP09/parallel/OP05-093_p2.png
+[ERROR] OP05-093 | loop | OperationalError('database is locked')
+[FETCHED] OP05-097 | _p1 | PRB02 | PRB02/parallel/OP05-097_p1.png
+[ERROR] OP05-097 | loop | OperationalError('database is locked')
+[SKIP] OP05-098 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-098 | _p2 | EB02 | EB02/parallel/OP05-098_p2.png
+[ERROR] OP05-098 | loop | OperationalError('database is locked')
+[SKIP] OP05-100 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-100 | _p2 | OP05 | OP05/parallel/OP05-100_p2.png
+[ERROR] OP05-100 | loop | OperationalError('database is locked')
+[SKIP] OP05-102 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-102 | _r1 | PRB02 | PRB02/reprint/OP05-102_r1.png
+[ERROR] OP05-102 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-105 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-105 | _p1 | _unclassified | _unclassified/parallel/OP05-105_p1.png
+[SKIP] OP05-105 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-105 | _p2 | PRB01 | PRB01/parallel/OP05-105_p2.png
+[ERROR] OP05-105 | loop | OperationalError('database is locked')
+[FETCHED] OP05-106 | _p1 | TP07 | TP07/parallel/OP05-106_p1.png
+[ERROR] OP05-106 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-114 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-114 | _p1 | _unclassified | _unclassified/parallel/OP05-114_p1.png
+[SKIP] OP05-114 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-114 | _p2 | PRB01 | PRB01/parallel/OP05-114_p2.png
+[ERROR] OP05-114 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-115 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-115 | _p1 | _unclassified | _unclassified/parallel/OP05-115_p1.png
+[SKIP] OP05-115 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-115 | _p2 | PRB01 | PRB01/parallel/OP05-115_p2.png
+[ERROR] OP05-115 | loop | OperationalError('database is locked')
+[UNMAPPED] OP05-117 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP05-117 | _p1 | _unclassified | _unclassified/parallel/OP05-117_p1.png
+[SKIP] OP05-117 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP05-117 | _p2 | PRB01 | PRB01/parallel/OP05-117_p2.png
+[ERROR] OP05-117 | loop | OperationalError('database is locked')
+[SKIP] OP05-118 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-118 | _p2 | OP05 | OP05/parallel/OP05-118_p2.png
+[SKIP] OP05-118 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP05-118 | _p3 | PRB01 | PRB01/parallel/OP05-118_p3.png
+[ERROR] OP05-118 | loop | OperationalError('database is locked')
+[SKIP] OP05-119 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP05-119 | _p2 | OP05 | OP05/parallel/OP05-119_p2.png
+[ERROR] OP05-119 | loop | OperationalError('database is locked')
+[SKIP] OP06-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-001 | _p2 | EB02 | EB02/parallel/OP06-001_p2.png
+[ERROR] OP06-001 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-003 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-003 | _p1 | _unclassified | _unclassified/parallel/OP06-003_p1.png
+[SKIP] OP06-003 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-003 | _p2 | PRB01 | PRB01/parallel/OP06-003_p2.png
+[ERROR] OP06-003 | loop | OperationalError('database is locked')
+[SKIP] OP06-007 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-007 | _p2 | PRB02 | PRB02/parallel/OP06-007_p2.png
+[ERROR] OP06-007 | loop | OperationalError('database is locked')
+[SKIP] OP06-009 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP06-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-016 | _p1 | BCV3 | BCV3/parallel/OP06-016_p1.png
+[ERROR] OP06-016 | loop | OperationalError('database is locked')
+[SKIP] OP06-020 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-020 | _p2 | EB02 | EB02/parallel/OP06-020_p2.png
+[ERROR] OP06-020 | loop | OperationalError('database is locked')
+[SKIP] OP06-021 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-021 | _p2 | EB02 | EB02/parallel/OP06-021_p2.png
+[ERROR] OP06-021 | loop | OperationalError('database is locked')
+[SKIP] OP06-022 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-022 | _p2 | EB02 | EB02/parallel/OP06-022_p2.png
+[ERROR] OP06-022 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-023 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-023 | _p1 | _unclassified | _unclassified/parallel/OP06-023_p1.png
+[SKIP] OP06-023 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-023 | _p2 | PRB01 | PRB01/parallel/OP06-023_p2.png
+[ERROR] OP06-023 | loop | OperationalError('database is locked')
+[SKIP] OP06-025 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP06-035 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-035 | _p2 | OP06 | OP06/parallel/OP06-035_p2.png
+[SKIP] OP06-035 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP06-035 | _p3 | PRB01 | PRB01/parallel/OP06-035_p3.png
+[ERROR] OP06-035 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-036 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-036 | _p1 | _unclassified | _unclassified/parallel/OP06-036_p1.png
+[SKIP] OP06-036 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-036 | _p2 | PRB01 | PRB01/parallel/OP06-036_p2.png
+[ERROR] OP06-036 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-038 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-038 | _p1 | _unclassified | _unclassified/parallel/OP06-038_p1.png
+[SKIP] OP06-038 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-038 | _p2 | PRB01 | PRB01/parallel/OP06-038_p2.png
+[ERROR] OP06-038 | loop | OperationalError('database is locked')
+[SKIP] OP06-042 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-042 | _p2 | EB02 | EB02/parallel/OP06-042_p2.png
+[ERROR] OP06-042 | loop | OperationalError('database is locked')
+[SKIP] OP06-043 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-044 | _p1 | PRB02 | PRB02/parallel/OP06-044_p1.png
+[ERROR] OP06-044 | loop | OperationalError('database is locked')
+[FETCHED] OP06-047 | _p1 | CS2526CP | CS2526CP/parallel/OP06-047_p1.png
+[ERROR] OP06-047 | loop | OperationalError('database is locked')
+[FETCHED] OP06-049 | _p1 | PRB02 | PRB02/parallel/OP06-049_p1.png
+[ERROR] OP06-049 | loop | OperationalError('database is locked')
+[SKIP] OP06-050 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-050 | _p2 | OP12 | OP12/parallel/OP06-050_p2.png
+[ERROR] OP06-050 | loop | OperationalError('database is locked')
+[FETCHED] OP06-051 | _p1 | TP2025V4 | TP2025V4/parallel/OP06-051_p1.png
+[ERROR] OP06-051 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-056 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-056 | _p1 | _unclassified | _unclassified/parallel/OP06-056_p1.png
+[SKIP] OP06-056 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-056 | _p2 | PRB01 | PRB01/parallel/OP06-056_p2.png
+[ERROR] OP06-056 | loop | OperationalError('database is locked')
+[FETCHED] OP06-058 | _p1 | PRB02 | PRB02/parallel/OP06-058_p1.png
+[ERROR] OP06-058 | loop | OperationalError('database is locked')
+[FETCHED] OP06-059 | _p1 | PRB02 | PRB02/parallel/OP06-059_p1.png
+[ERROR] OP06-059 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-060 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-060 | _p1 | _unclassified | _unclassified/parallel/OP06-060_p1.png
+[SKIP] OP06-060 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-060 | _p2 | PRB01 | PRB01/parallel/OP06-060_p2.png
+[ERROR] OP06-060 | loop | OperationalError('database is locked')
+[SKIP] OP06-061 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP06-062 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-063 | _p1 | PRB02 | PRB02/parallel/OP06-063_p1.png
+[ERROR] OP06-063 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-064 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-064 | _p1 | _unclassified | _unclassified/parallel/OP06-064_p1.png
+[SKIP] OP06-064 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-064 | _p2 | PRB01 | PRB01/parallel/OP06-064_p2.png
+[ERROR] OP06-064 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-065 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-065 | _p1 | _unclassified | _unclassified/parallel/OP06-065_p1.png
+[SKIP] OP06-065 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-065 | _p2 | PRB01 | PRB01/parallel/OP06-065_p2.png
+[ERROR] OP06-065 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-066 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-066 | _p1 | _unclassified | _unclassified/parallel/OP06-066_p1.png
+[SKIP] OP06-066 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-066 | _p2 | PRB01 | PRB01/parallel/OP06-066_p2.png
+[ERROR] OP06-066 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-067 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-067 | _p1 | _unclassified | _unclassified/parallel/OP06-067_p1.png
+[SKIP] OP06-067 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-067 | _p2 | PRB01 | PRB01/parallel/OP06-067_p2.png
+[ERROR] OP06-067 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-068 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-068 | _p1 | _unclassified | _unclassified/parallel/OP06-068_p1.png
+[SKIP] OP06-068 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-068 | _p2 | PRB01 | PRB01/parallel/OP06-068_p2.png
+[ERROR] OP06-068 | loop | OperationalError('database is locked')
+[SKIP] OP06-069 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP06-069 | _p2 | 'Treasure Cup November-December'
+[FETCHED] OP06-069 | _p2 | _unclassified | _unclassified/parallel/OP06-069_p2.png
+[ERROR] OP06-069 | loop | OperationalError('database is locked')
+[FETCHED] OP06-073 | _p1 | PRB02 | PRB02/parallel/OP06-073_p1.png
+[ERROR] OP06-073 | loop | OperationalError('database is locked')
+[FETCHED] OP06-076 | _p1 | CS2526CP | CS2526CP/parallel/OP06-076_p1.png
+[ERROR] OP06-076 | loop | OperationalError('database is locked')
+[FETCHED] OP06-078 | _p1 | PRB02 | PRB02/parallel/OP06-078_p1.png
+[ERROR] OP06-078 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-079 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-079 | _p1 | _unclassified | _unclassified/parallel/OP06-079_p1.png
+[SKIP] OP06-079 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-079 | _p2 | PRB01 | PRB01/parallel/OP06-079_p2.png
+[ERROR] OP06-079 | loop | OperationalError('database is locked')
+[SKIP] OP06-080 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-080 | _p2 | EB02 | EB02/parallel/OP06-080_p2.png
+[ERROR] OP06-080 | loop | OperationalError('database is locked')
+[SKIP] OP06-081 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP06-086 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-086 | _p2 | OP06 | OP06/parallel/OP06-086_p2.png
+[SKIP] OP06-086 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP06-086 | _p3 | PRB01 | PRB01/parallel/OP06-086_p3.png
+[ERROR] OP06-086 | loop | OperationalError('database is locked')
+[FETCHED] OP06-090 | _p1 | BCV3 | BCV3/parallel/OP06-090_p1.png
+[ERROR] OP06-090 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-091 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-091 | _p1 | _unclassified | _unclassified/parallel/OP06-091_p1.png
+[SKIP] OP06-091 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-091 | _p2 | PRB01 | PRB01/parallel/OP06-091_p2.png
+[ERROR] OP06-091 | loop | OperationalError('database is locked')
+[SKIP] OP06-093 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP06-100 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-100 | _p1 | _unclassified | _unclassified/parallel/OP06-100_p1.png
+[SKIP] OP06-100 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-100 | _p2 | PRB01 | PRB01/parallel/OP06-100_p2.png
+[ERROR] OP06-100 | loop | OperationalError('database is locked')
+[SKIP] OP06-101 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-101 | _p2 | OP07 | OP07/parallel/OP06-101_p2.png
+[ERROR] OP06-101 | loop | OperationalError('database is locked')
+[FETCHED] OP06-103 | _r1 | ST28 | ST28/reprint/OP06-103_r1.png
+[ERROR] OP06-103 | loop | OperationalError('database is locked')
+[FETCHED] OP06-104 | _r1 | ST28 | ST28/reprint/OP06-104_r1.png
+[ERROR] OP06-104 | loop | OperationalError('database is locked')
+[SKIP] OP06-106 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-106 | _p2 | OP06 | OP06/parallel/OP06-106_p2.png
+[SKIP] OP06-106 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP06-106 | _p3 | PRB01 | PRB01/parallel/OP06-106_p3.png
+[ERROR] OP06-106 | loop | OperationalError('database is locked')
+[SKIP] OP06-107 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-107 | _r1 | PRB02 | PRB02/reprint/OP06-107_r1.png
+[ERROR] OP06-107 | loop | OperationalError('database is locked')
+[FETCHED] OP06-109 | _r1 | ST28 | ST28/reprint/OP06-109_r1.png
+[ERROR] OP06-109 | loop | OperationalError('database is locked')
+[FETCHED] OP06-110 | _p1 | ORP2024V3 | ORP2024V3/parallel/OP06-110_p1.png
+[ERROR] OP06-110 | loop | OperationalError('database is locked')
+[FETCHED] OP06-112 | _r1 | ST28 | ST28/reprint/OP06-112_r1.png
+[ERROR] OP06-112 | loop | OperationalError('database is locked')
+[UNMAPPED] OP06-114 | _p1 | <empty modal Card Set(s)>
+[FETCHED] OP06-114 | _p1 | _unclassified | _unclassified/parallel/OP06-114_p1.png
+[SKIP] OP06-114 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP06-114 | _p2 | PRB01 | PRB01/parallel/OP06-114_p2.png
+[ERROR] OP06-114 | loop | OperationalError('database is locked')
+[FETCHED] OP06-115 | _p1 | PRB02 | PRB02/parallel/OP06-115_p1.png
+[ERROR] OP06-115 | loop | OperationalError('database is locked')
+[SKIP] OP06-118 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-118 | _p2 | OP06 | OP06/parallel/OP06-118_p2.png
+[ERROR] OP06-118 | loop | OperationalError('database is locked')
+[SKIP] OP06-119 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP06-119 | _p2 | OP11 | OP11/parallel/OP06-119_p2.png
+[ERROR] OP06-119 | loop | OperationalError('database is locked')
+[SKIP] OP07-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-001 | _p2 | EB02 | EB02/parallel/OP07-001_p2.png
+[ERROR] OP07-001 | loop | OperationalError('database is locked')
+[SKIP] OP07-005 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-014 | _p1 | PRB02 | PRB02/parallel/OP07-014_p1.png
+[ERROR] OP07-014 | loop | OperationalError('database is locked')
+[SKIP] OP07-015 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-015 | _p2 | OP09 | OP09/parallel/OP07-015_p2.png
+[ERROR] OP07-015 | loop | OperationalError('database is locked')
+[FETCHED] OP07-017 | _p1 | PRB02 | PRB02/parallel/OP07-017_p1.png
+[ERROR] OP07-017 | loop | OperationalError('database is locked')
+[SKIP] OP07-019 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-019 | _p2 | EB02 | EB02/parallel/OP07-019_p2.png
+[ERROR] OP07-019 | loop | OperationalError('database is locked')
+[FETCHED] OP07-021 | _p1 | ORP2025V1 | ORP2025V1/parallel/OP07-021_p1.png
+[ERROR] OP07-021 | loop | OperationalError('database is locked')
+[SKIP] OP07-022 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-023 | _r1 | ST24 | ST24/reprint/OP07-023_r1.png
+[ERROR] OP07-023 | loop | OperationalError('database is locked')
+[FETCHED] OP07-025 | _r1 | ST24 | ST24/reprint/OP07-025_r1.png
+[ERROR] OP07-025 | loop | OperationalError('database is locked')
+[SKIP] OP07-026 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-026 | _r1 | PRB02 | PRB02/reprint/OP07-026_r1.png
+[ERROR] OP07-026 | loop | OperationalError('database is locked')
+[SKIP] OP07-029 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-029 | _r1 | PRB02 | PRB02/reprint/OP07-029_r1.png
+[ERROR] OP07-029 | loop | OperationalError('database is locked')
+[FETCHED] OP07-031 | _p1 | PRB02 | PRB02/parallel/OP07-031_p1.png
+[ERROR] OP07-031 | loop | OperationalError('database is locked')
+[FETCHED] OP07-033 | _r1 | ST24 | ST24/reprint/OP07-033_r1.png
+[ERROR] OP07-033 | loop | OperationalError('database is locked')
+[FETCHED] OP07-034 | _r1 | ST24 | ST24/reprint/OP07-034_r1.png
+[ERROR] OP07-034 | loop | OperationalError('database is locked')
+[FETCHED] OP07-036 | _p1 | ST24 | ST24/parallel/OP07-036_p1.png
+[ERROR] OP07-036 | loop | OperationalError('database is locked')
+[FETCHED] OP07-037 | _p1 | BCV4 | BCV4/parallel/OP07-037_p1.png
+[ERROR] OP07-037 | loop | OperationalError('database is locked')
+[SKIP] OP07-038 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-038 | _p2 | EB02 | EB02/parallel/OP07-038_p2.png
+[ERROR] OP07-038 | loop | OperationalError('database is locked')
+[FETCHED] OP07-040 | _p1 | ST1520RE | ST1520RE/parallel/OP07-040_p1.png
+[ERROR] OP07-040 | loop | OperationalError('database is locked')
+[FETCHED] OP07-044 | _p1 | SWBS01 | SWBS01/parallel/OP07-044_p1.png
+[ERROR] OP07-044 | loop | OperationalError('database is locked')
+[SKIP] OP07-045 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP07-046 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-046 | _p2 | OP14 | OP14/parallel/OP07-046_p2.png
+[ERROR] OP07-046 | loop | OperationalError('database is locked')
+[SKIP] OP07-047 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP07-047 | _p2 | 'Offline Regional Participation Pack 2025 Vol.2'
+[FETCHED] OP07-047 | _p2 | _unclassified | _unclassified/parallel/OP07-047_p2.png
+[ERROR] OP07-047 | loop | OperationalError('database is locked')
+[FETCHED] OP07-048 | _p1 | SWBS01 | SWBS01/parallel/OP07-048_p1.png
+[ERROR] OP07-048 | loop | OperationalError('database is locked')
+[SKIP] OP07-051 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-051 | _p2 | OP07 | OP07/parallel/OP07-051_p2.png
+[ERROR] OP07-051 | loop | OperationalError('database is locked')
+[FETCHED] OP07-053 | _p1 | TP2024OD | TP2024OD/parallel/OP07-053_p1.png
+[ERROR] OP07-053 | loop | OperationalError('database is locked')
+[FETCHED] OP07-056 | _p1 | PRB02 | PRB02/parallel/OP07-056_p1.png
+[ERROR] OP07-056 | loop | OperationalError('database is locked')
+[FETCHED] OP07-057 | _p1 | BCV4 | BCV4/parallel/OP07-057_p1.png
+[ERROR] OP07-057 | loop | OperationalError('database is locked')
+[SKIP] OP07-059 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-059 | _p2 | EB02 | EB02/parallel/OP07-059_p2.png
+[ERROR] OP07-059 | loop | OperationalError('database is locked')
+[SKIP] OP07-064 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-064 | _p2 | ANN2JP | ANN2JP/parallel/OP07-064_p2.png
+[ERROR] OP07-064 | loop | OperationalError('database is locked')
+[FETCHED] OP07-066 | _p1 | CS2526TP1 | CS2526TP1/parallel/OP07-066_p1.png
+[ERROR] OP07-066 | loop | OperationalError('database is locked')
+[SKIP] OP07-071 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP07-072 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-073 | _p1 | BCGF2526 | BCGF2526/parallel/OP07-073_p1.png
+[ERROR] OP07-073 | loop | OperationalError('database is locked')
+[FETCHED] OP07-076 | _p1 | PRB02 | PRB02/parallel/OP07-076_p1.png
+[ERROR] OP07-076 | loop | OperationalError('database is locked')
+[SKIP] OP07-079 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-079 | _p2 | EB02 | EB02/parallel/OP07-079_p2.png
+[ERROR] OP07-079 | loop | OperationalError('database is locked')
+[FETCHED] OP07-080 | _p1 | CS2526CP | CS2526CP/parallel/OP07-080_p1.png
+[ERROR] OP07-080 | loop | OperationalError('database is locked')
+[SKIP] OP07-085 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-085 | _p2 | OP11 | OP11/parallel/OP07-085_p2.png
+[ERROR] OP07-085 | loop | OperationalError('database is locked')
+[FETCHED] OP07-091 | _p1 | ORP2024V3 | ORP2024V3/parallel/OP07-091_p1.png
+[ERROR] OP07-091 | loop | OperationalError('database is locked')
+[SKIP] OP07-097 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-097 | _p2 | EB02 | EB02/parallel/OP07-097_p2.png
+[ERROR] OP07-097 | loop | OperationalError('database is locked')
+[FETCHED] OP07-100 | _p1 | TP2024OD | TP2024OD/parallel/OP07-100_p1.png
+[ERROR] OP07-100 | loop | OperationalError('database is locked')
+[SKIP] OP07-107 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-107 | _r1 | PRB02 | PRB02/reprint/OP07-107_r1.png
+[ERROR] OP07-107 | loop | OperationalError('database is locked')
+[SKIP] OP07-109 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-109 | _p2 | OP08 | OP08/parallel/OP07-109_p2.png
+[ERROR] OP07-109 | loop | OperationalError('database is locked')
+[SKIP] OP07-111 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-111 | _p2 | OP13 | OP13/parallel/OP07-111_p2.png
+[ERROR] OP07-111 | loop | OperationalError('database is locked')
+[FETCHED] OP07-113 | _p1 | OPDALLAS | OPDALLAS/parallel/OP07-113_p1.png
+[ERROR] OP07-113 | loop | OperationalError('database is locked')
+[FETCHED] OP07-114 | _p1 | PRB02 | PRB02/parallel/OP07-114_p1.png
+[ERROR] OP07-114 | loop | OperationalError('database is locked')
+[FETCHED] OP07-116 | _p1 | ST28 | ST28/parallel/OP07-116_p1.png
+[ERROR] OP07-116 | loop | OperationalError('database is locked')
+[SKIP] OP07-118 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP07-118 | _p2 | OP13 | OP13/parallel/OP07-118_p2.png
+[ERROR] OP07-118 | loop | OperationalError('database is locked')
+[SKIP] OP07-119 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP07-119 | _p2 | 'Regionals Season 1'
+[FETCHED] OP07-119 | _p2 | _unclassified | _unclassified/parallel/OP07-119_p2.png
+[ERROR] OP07-119 | loop | OperationalError('database is locked')
+[SKIP] OP08-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-001 | _p2 | EB02 | EB02/parallel/OP08-001_p2.png
+[ERROR] OP08-001 | loop | OperationalError('database is locked')
+[SKIP] OP08-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-002 | _p2 | EB02 | EB02/parallel/OP08-002_p2.png
+[ERROR] OP08-002 | loop | OperationalError('database is locked')
+[SKIP] OP08-007 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP08-015 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP08-021 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-021 | _p2 | EB02 | EB02/parallel/OP08-021_p2.png
+[ERROR] OP08-021 | loop | OperationalError('database is locked')
+[SKIP] OP08-023 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-023 | _p2 | PRB02 | PRB02/parallel/OP08-023_p2.png
+[ERROR] OP08-023 | loop | OperationalError('database is locked')
+[SKIP] OP08-030 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-036 | _p1 | BCV5 | BCV5/parallel/OP08-036_p1.png
+[ERROR] OP08-036 | loop | OperationalError('database is locked')
+[FETCHED] OP08-040 | _p1 | BCV3 | BCV3/parallel/OP08-040_p1.png
+[ERROR] OP08-040 | loop | OperationalError('database is locked')
+[SKIP] OP08-043 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP08-052 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-052 | _p2 | OP10 | OP10/parallel/OP08-052_p2.png
+[ERROR] OP08-052 | loop | OperationalError('database is locked')
+[SKIP] OP08-057 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-057 | _p2 | EB02 | EB02/parallel/OP08-057_p2.png
+[ERROR] OP08-057 | loop | OperationalError('database is locked')
+[SKIP] OP08-058 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-058 | _p2 | EB02 | EB02/parallel/OP08-058_p2.png
+[ERROR] OP08-058 | loop | OperationalError('database is locked')
+[FETCHED] OP08-062 | _p1 | TP2025V3 | TP2025V3/parallel/OP08-062_p1.png
+[ERROR] OP08-062 | loop | OperationalError('database is locked')
+[SKIP] OP08-067 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP08-067 | _p2 | 'Treasure Cup May 2025~'
+[FETCHED] OP08-067 | _p2 | _unclassified | _unclassified/parallel/OP08-067_p2.png
+[ERROR] OP08-067 | loop | OperationalError('database is locked')
+[SKIP] OP08-069 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-069 | _p2 | ANN2JP | ANN2JP/parallel/OP08-069_p2.png
+[ERROR] OP08-069 | loop | OperationalError('database is locked')
+[SKIP] OP08-074 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-074 | _r1 | PRB02 | PRB02/reprint/OP08-074_r1.png
+[ERROR] OP08-074 | loop | OperationalError('database is locked')
+[FETCHED] OP08-076 | _p1 | PRB02 | PRB02/parallel/OP08-076_p1.png
+[ERROR] OP08-076 | loop | OperationalError('database is locked')
+[SKIP] OP08-079 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP08-080 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP08-084 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-084 | _p2 | TC2025FEB | TC2025FEB/parallel/OP08-084_p2.png
+[ERROR] OP08-084 | loop | OperationalError('database is locked')
+[FETCHED] OP08-087 | _p1 | PRB02 | PRB02/parallel/OP08-087_p1.png
+[ERROR] OP08-087 | loop | OperationalError('database is locked')
+[SKIP] OP08-098 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-098 | _p2 | EB02 | EB02/parallel/OP08-098_p2.png
+[ERROR] OP08-098 | loop | OperationalError('database is locked')
+[FETCHED] OP08-099 | _p1 | PRB02 | PRB02/parallel/OP08-099_p1.png
+[ERROR] OP08-099 | loop | OperationalError('database is locked')
+[SKIP] OP08-105 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP08-106 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-106 | _p2 | OP09 | OP09/parallel/OP08-106_p2.png
+[ERROR] OP08-106 | loop | OperationalError('database is locked')
+[SKIP] OP08-110 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-110 | _p2 | TK2025V2 | TK2025V2/parallel/OP08-110_p2.png
+[ERROR] OP08-110 | loop | OperationalError('database is locked')
+[SKIP] OP08-112 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP08-118 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP08-118 | _p2 | OP08 | OP08/parallel/OP08-118_p2.png
+[ERROR] OP08-118 | loop | OperationalError('database is locked')
+[SKIP] OP08-119 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP09-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-001 | _p2 | ST23 | ST23/parallel/OP09-001_p2.png
+[ERROR] OP09-001 | loop | OperationalError('database is locked')
+[SKIP] OP09-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-002 | _p2 | TC2025FEB | TC2025FEB/parallel/OP09-002_p2.png
+[ERROR] OP09-002 | loop | OperationalError('database is locked')
+[SKIP] OP09-004 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-004 | _p2 | OP09 | OP09/parallel/OP09-004_p2.png
+[ERROR] OP09-004 | loop | OperationalError('database is locked')
+[FETCHED] OP09-005 | _p1 | OP11 | OP11/parallel/OP09-005_p1.png
+[ERROR] OP09-005 | loop | OperationalError('database is locked')
+[FETCHED] OP09-006 | _r1 | ST23 | ST23/reprint/OP09-006_r1.png
+[ERROR] OP09-006 | loop | OperationalError('database is locked')
+[FETCHED] OP09-008 | _p1 | BCV4 | BCV4/parallel/OP09-008_p1.png
+[ERROR] OP09-008 | loop | OperationalError('database is locked')
+[SKIP] OP09-009 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-009 | _p2 | CS2526ORS2 | CS2526ORS2/parallel/OP09-009_p2.png
+[ERROR] OP09-009 | loop | OperationalError('database is locked')
+[FETCHED] OP09-010 | _r1 | ST23 | ST23/reprint/OP09-010_r1.png
+[ERROR] OP09-010 | loop | OperationalError('database is locked')
+[FETCHED] OP09-011 | _p1 | TK2025V2 | TK2025V2/parallel/OP09-011_p1.png
+[ERROR] OP09-011 | loop | OperationalError('database is locked')
+[FETCHED] OP09-012 | _r1 | ST23 | ST23/reprint/OP09-012_r1.png
+[ERROR] OP09-012 | loop | OperationalError('database is locked')
+[FETCHED] OP09-013 | _p1 | CS2526ORS2 | CS2526ORS2/parallel/OP09-013_p1.png
+[ERROR] OP09-013 | loop | OperationalError('database is locked')
+[FETCHED] OP09-014 | _p1 | PRB02 | PRB02/parallel/OP09-014_p1.png
+[ERROR] OP09-014 | loop | OperationalError('database is locked')
+[FETCHED] OP09-015 | _p1 | OP11 | OP11/parallel/OP09-015_p1.png
+[ERROR] OP09-015 | loop | OperationalError('database is locked')
+[FETCHED] OP09-016 | _r1 | ST23 | ST23/reprint/OP09-016_r1.png
+[ERROR] OP09-016 | loop | OperationalError('database is locked')
+[FETCHED] OP09-020 | _r1 | ST23 | ST23/reprint/OP09-020_r1.png
+[ERROR] OP09-020 | loop | OperationalError('database is locked')
+[SKIP] OP09-022 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP09-023 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-027 | _p1 | PRB02 | PRB02/parallel/OP09-027_p1.png
+[ERROR] OP09-027 | loop | OperationalError('database is locked')
+[FETCHED] OP09-033 | _p1 | PRB02 | PRB02/parallel/OP09-033_p1.png
+[ERROR] OP09-033 | loop | OperationalError('database is locked')
+[SKIP] OP09-034 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP09-034 | _p2 | 'ONE PIECE HEROINES CAMPAIGN Dash Pack'
+[FETCHED] OP09-034 | _p2 | _unclassified | _unclassified/parallel/OP09-034_p2.png
+[ERROR] OP09-034 | loop | OperationalError('database is locked')
+[FETCHED] OP09-035 | _r1 | ST28 | ST28/reprint/OP09-035_r1.png
+[ERROR] OP09-035 | loop | OperationalError('database is locked')
+[SKIP] OP09-037 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-037 | _p2 | OP12 | OP12/parallel/OP09-037_p2.png
+[ERROR] OP09-037 | loop | OperationalError('database is locked')
+[SKIP] OP09-042 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-042 | _p2 | ST25 | ST25/parallel/OP09-042_p2.png
+[ERROR] OP09-042 | loop | OperationalError('database is locked')
+[FETCHED] OP09-043 | _p1 | CS2526TP2 | CS2526TP2/parallel/OP09-043_p1.png
+[ERROR] OP09-043 | loop | OperationalError('database is locked')
+[FETCHED] OP09-045 | _r1 | ST25 | ST25/reprint/OP09-045_r1.png
+[ERROR] OP09-045 | loop | OperationalError('database is locked')
+[SKIP] OP09-046 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-046 | _r1 | PRB02 | PRB02/reprint/OP09-046_r1.png
+[ERROR] OP09-046 | loop | OperationalError('database is locked')
+[SKIP] OP09-048 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-048 | _r1 | PRB02 | PRB02/reprint/OP09-048_r1.png
+[ERROR] OP09-048 | loop | OperationalError('database is locked')
+[SKIP] OP09-050 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-050 | _p2 | REG2526S1 | REG2526S1/parallel/OP09-050_p2.png
+[ERROR] OP09-050 | loop | OperationalError('database is locked')
+[SKIP] OP09-051 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-051 | _p2 | OP09 | OP09/parallel/OP09-051_p2.png
+[ERROR] OP09-051 | loop | OperationalError('database is locked')
+[FETCHED] OP09-053 | _r1 | ST25 | ST25/reprint/OP09-053_r1.png
+[ERROR] OP09-053 | loop | OperationalError('database is locked')
+[FETCHED] OP09-054 | _r1 | ST25 | ST25/reprint/OP09-054_r1.png
+[ERROR] OP09-054 | loop | OperationalError('database is locked')
+[FETCHED] OP09-055 | _r1 | ST25 | ST25/reprint/OP09-055_r1.png
+[ERROR] OP09-055 | loop | OperationalError('database is locked')
+[FETCHED] OP09-056 | _p1 | PRB02 | PRB02/parallel/OP09-056_p1.png
+[ERROR] OP09-056 | loop | OperationalError('database is locked')
+[FETCHED] OP09-057 | _r1 | ST25 | ST25/reprint/OP09-057_r1.png
+[ERROR] OP09-057 | loop | OperationalError('database is locked')
+[SKIP] OP09-061 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-061 | _p2 | ST26 | ST26/parallel/OP09-061_p2.png
+[ERROR] OP09-061 | loop | OperationalError('database is locked')
+[SKIP] OP09-062 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-063 | _r1 | ST26 | ST26/reprint/OP09-063_r1.png
+[ERROR] OP09-063 | loop | OperationalError('database is locked')
+[SKIP] OP09-065 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-065 | _p2 | REG2526S1 | REG2526S1/parallel/OP09-065_p2.png
+[ERROR] OP09-065 | loop | OperationalError('database is locked')
+[SKIP] OP09-069 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP09-069 | _p2 | 'Treasure Cup May 2025~'
+[FETCHED] OP09-069 | _p2 | _unclassified | _unclassified/parallel/OP09-069_p2.png
+[ERROR] OP09-069 | loop | OperationalError('database is locked')
+[FETCHED] OP09-070 | _p1 | BCV4 | BCV4/parallel/OP09-070_p1.png
+[ERROR] OP09-070 | loop | OperationalError('database is locked')
+[SKIP] OP09-072 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-072 | _r1 | PRB02 | PRB02/reprint/OP09-072_r1.png
+[ERROR] OP09-072 | loop | OperationalError('database is locked')
+[FETCHED] OP09-076 | _p1 | REG2526S1 | REG2526S1/parallel/OP09-076_p1.png
+[ERROR] OP09-076 | loop | OperationalError('database is locked')
+[FETCHED] OP09-077 | _p1 | PRB02 | PRB02/parallel/OP09-077_p1.png
+[ERROR] OP09-077 | loop | OperationalError('database is locked')
+[FETCHED] OP09-078 | _p1 | ST26 | ST26/parallel/OP09-078_p1.png
+[ERROR] OP09-078 | loop | OperationalError('database is locked')
+[FETCHED] OP09-079 | _p1 | PRB02 | PRB02/parallel/OP09-079_p1.png
+[ERROR] OP09-079 | loop | OperationalError('database is locked')
+[SKIP] OP09-081 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-081 | _p2 | ST27 | ST27/parallel/OP09-081_p2.png
+[ERROR] OP09-081 | loop | OperationalError('database is locked')
+[FETCHED] OP09-083 | _r1 | ST27 | ST27/reprint/OP09-083_r1.png
+[ERROR] OP09-083 | loop | OperationalError('database is locked')
+[FETCHED] OP09-084 | _p1 | PRB02 | PRB02/parallel/OP09-084_p1.png
+[ERROR] OP09-084 | loop | OperationalError('database is locked')
+[FETCHED] OP09-086 | _p1 | PRB02 | PRB02/parallel/OP09-086_p1.png
+[ERROR] OP09-086 | loop | OperationalError('database is locked')
+[FETCHED] OP09-088 | _r1 | ST27 | ST27/reprint/OP09-088_r1.png
+[ERROR] OP09-088 | loop | OperationalError('database is locked')
+[FETCHED] OP09-089 | _p1 | CS2526TP2 | CS2526TP2/parallel/OP09-089_p1.png
+[ERROR] OP09-089 | loop | OperationalError('database is locked')
+[FETCHED] OP09-090 | _r1 | ST27 | ST27/reprint/OP09-090_r1.png
+[ERROR] OP09-090 | loop | OperationalError('database is locked')
+[FETCHED] OP09-091 | _r1 | ST27 | ST27/reprint/OP09-091_r1.png
+[ERROR] OP09-091 | loop | OperationalError('database is locked')
+[SKIP] OP09-093 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-093 | _p2 | OP09 | OP09/parallel/OP09-093_p2.png
+[ERROR] OP09-093 | loop | OperationalError('database is locked')
+[FETCHED] OP09-095 | _p1 | BCV4 | BCV4/parallel/OP09-095_p1.png
+[ERROR] OP09-095 | loop | OperationalError('database is locked')
+[FETCHED] OP09-096 | _p1 | PRB02 | PRB02/parallel/OP09-096_p1.png
+[ERROR] OP09-096 | loop | OperationalError('database is locked')
+[FETCHED] OP09-097 | _p1 | PRB02 | PRB02/parallel/OP09-097_p1.png
+[ERROR] OP09-097 | loop | OperationalError('database is locked')
+[FETCHED] OP09-098 | _p1 | PRB02 | PRB02/parallel/OP09-098_p1.png
+[ERROR] OP09-098 | loop | OperationalError('database is locked')
+[FETCHED] OP09-099 | _r1 | ST27 | ST27/reprint/OP09-099_r1.png
+[ERROR] OP09-099 | loop | OperationalError('database is locked')
+[SKIP] OP09-103 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-106 | _p1 | ORP2025V1 | ORP2025V1/parallel/OP09-106_p1.png
+[ERROR] OP09-106 | loop | OperationalError('database is locked')
+[SKIP] OP09-107 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-108 | _p1 | TP2025V4 | TP2025V4/parallel/OP09-108_p1.png
+[ERROR] OP09-108 | loop | OperationalError('database is locked')
+[FETCHED] OP09-117 | _p1 | BCV4 | BCV4/parallel/OP09-117_p1.png
+[ERROR] OP09-117 | loop | OperationalError('database is locked')
+[SKIP] OP09-118 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-118 | _p2 | OP09 | OP09/parallel/OP09-118_p2.png
+[ERROR] OP09-118 | loop | OperationalError('database is locked')
+[SKIP] OP09-119 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP09-119 | _p2 | OP09 | OP09/parallel/OP09-119_p2.png
+[ERROR] OP09-119 | loop | OperationalError('database is locked')
+[SKIP] OP10-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP10-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP10-003 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP10-005 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP10-005 | _p2 | 'Treasure Cup November 2025~'
+[FETCHED] OP10-005 | _p2 | _unclassified | _unclassified/parallel/OP10-005_p2.png
+[ERROR] OP10-005 | loop | OperationalError('database is locked')
+[FETCHED] OP10-011 | _p1 | PRB02 | PRB02/parallel/OP10-011_p1.png
+[ERROR] OP10-011 | loop | OperationalError('database is locked')
+[SKIP] OP10-016 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-018 | _r1 | PRB02 | PRB02/reprint/OP10-018_r1.png
+[ERROR] OP10-018 | loop | OperationalError('database is locked')
+[SKIP] OP10-019 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP10-022 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-028 | _p1 | BCV4 | BCV4/parallel/OP10-028_p1.png
+[ERROR] OP10-028 | loop | OperationalError('database is locked')
+[SKIP] OP10-030 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-030 | _p2 | OP13 | OP13/parallel/OP10-030_p2.png
+[ERROR] OP10-030 | loop | OperationalError('database is locked')
+[SKIP] OP10-032 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-032 | _r1 | PRB02 | PRB02/reprint/OP10-032_r1.png
+[ERROR] OP10-032 | loop | OperationalError('database is locked')
+[FETCHED] OP10-033 | _p1 | CS2526TP1 | CS2526TP1/parallel/OP10-033_p1.png
+[ERROR] OP10-033 | loop | OperationalError('database is locked')
+[SKIP] OP10-037 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP10-042 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP10-042 | _p2 | 'Official Playmat Limited Edition Vol.3'
+[FETCHED] OP10-042 | _p2 | _unclassified | _unclassified/parallel/OP10-042_p2.png
+[ERROR] OP10-042 | loop | OperationalError('database is locked')
+[SKIP] OP10-045 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP10-046 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-046 | _r1 | PRB02 | PRB02/reprint/OP10-046_r1.png
+[ERROR] OP10-046 | loop | OperationalError('database is locked')
+[FETCHED] OP10-049 | _p1 | BCV4 | BCV4/parallel/OP10-049_p1.png
+[ERROR] OP10-049 | loop | OperationalError('database is locked')
+[SKIP] OP10-058 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-063 | _p1 | OP12 | OP12/parallel/OP10-063_p1.png
+[ERROR] OP10-063 | loop | OperationalError('database is locked')
+[FETCHED] OP10-065 | _p1 | OP14 | OP14/parallel/OP10-065_p1.png
+[ERROR] OP10-065 | loop | OperationalError('database is locked')
+[SKIP] OP10-067 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP10-071 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP10-072 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-079 | _p1 | PRB02 | PRB02/parallel/OP10-079_p1.png
+[ERROR] OP10-079 | loop | OperationalError('database is locked')
+[SKIP] OP10-082 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-082 | _p2 | OP12 | OP12/parallel/OP10-082_p2.png
+[ERROR] OP10-082 | loop | OperationalError('database is locked')
+[FETCHED] OP10-084 | _r1 | ST27 | ST27/reprint/OP10-084_r1.png
+[ERROR] OP10-084 | loop | OperationalError('database is locked')
+[SKIP] OP10-090 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-092 | _p1 | CS2526TP1 | CS2526TP1/parallel/OP10-092_p1.png
+[ERROR] OP10-092 | loop | OperationalError('database is locked')
+[FETCHED] OP10-095 | _p1 | PRB02 | PRB02/parallel/OP10-095_p1.png
+[ERROR] OP10-095 | loop | OperationalError('database is locked')
+[SKIP] OP10-099 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-105 | _p1 | PRB02 | PRB02/parallel/OP10-105_p1.png
+[ERROR] OP10-105 | loop | OperationalError('database is locked')
+[FETCHED] OP10-107 | _p1 | CS2526TP2 | CS2526TP2/parallel/OP10-107_p1.png
+[ERROR] OP10-107 | loop | OperationalError('database is locked')
+[FETCHED] OP10-108 | _p1 | PRB02 | PRB02/parallel/OP10-108_p1.png
+[ERROR] OP10-108 | loop | OperationalError('database is locked')
+[FETCHED] OP10-109 | _p1 | PRB02 | PRB02/parallel/OP10-109_p1.png
+[ERROR] OP10-109 | loop | OperationalError('database is locked')
+[SKIP] OP10-111 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP10-112 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-112 | _r1 | PRB02 | PRB02/reprint/OP10-112_r1.png
+[ERROR] OP10-112 | loop | OperationalError('database is locked')
+[FETCHED] OP10-114 | _p1 | PRB02 | PRB02/parallel/OP10-114_p1.png
+[ERROR] OP10-114 | loop | OperationalError('database is locked')
+[SKIP] OP10-118 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP10-119 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP10-119 | _p2 | OP10 | OP10/parallel/OP10-119_p2.png
+[ERROR] OP10-119 | loop | OperationalError('database is locked')
+[SKIP] OP11-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-004 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP11-004 | _p2 | 'Treasure Cup August 2025~'
+[FETCHED] OP11-004 | _p2 | _unclassified | _unclassified/parallel/OP11-004_p2.png
+[ERROR] OP11-004 | loop | OperationalError('database is locked')
+[SKIP] OP11-008 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-010 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP11-010 | _p2 | 'Treasure Cup August 2025~'
+[FETCHED] OP11-010 | _p2 | _unclassified | _unclassified/parallel/OP11-010_p2.png
+[ERROR] OP11-010 | loop | OperationalError('database is locked')
+[SKIP] OP11-018 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-021 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-022 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-023 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-031 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-040 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-041 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP11-041 | _p2 | 'Learn Together Deck Set'
+[FETCHED] OP11-041 | _p2 | _unclassified | _unclassified/parallel/OP11-041_p2.png
+[ERROR] OP11-041 | loop | OperationalError('database is locked')
+[SKIP] OP11-047 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-051 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-054 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP11-054 | _p2 | ANN3JP | ANN3JP/parallel/OP11-054_p2.png
+[ERROR] OP11-054 | loop | OperationalError('database is locked')
+[FETCHED] OP11-058 | _p1 | OP13 | OP13/parallel/OP11-058_p1.png
+[ERROR] OP11-058 | loop | OperationalError('database is locked')
+[FETCHED] OP11-060 | _p1 | BCV5 | BCV5/parallel/OP11-060_p1.png
+[ERROR] OP11-060 | loop | OperationalError('database is locked')
+[SKIP] OP11-062 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-067 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP11-067 | _p2 | ANN3JP | ANN3JP/parallel/OP11-067_p2.png
+[ERROR] OP11-067 | loop | OperationalError('database is locked')
+[SKIP] OP11-070 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-073 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-080 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-084 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-092 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-095 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-101 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-106 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP11-106 | _p2 | OP15 | OP15/parallel/OP11-106_p2.png
+[SKIP] OP11-106 | _p2 | no_variant_row variant_key='parallel 2'
+[SKIP] OP11-114 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP11-118 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP11-118 | _p2 | OP11 | OP11/parallel/OP11-118_p2.png
+[ERROR] OP11-118 | loop | OperationalError('database is locked')
+[SKIP] OP11-119 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP11-119 | _p2 | 'Treasure Cup August 2025~'
+[FETCHED] OP11-119 | _p2 | _unclassified | _unclassified/parallel/OP11-119_p2.png
+[ERROR] OP11-119 | loop | OperationalError('database is locked')
+[SKIP] OP12-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP12-006 | _p1 | BCV5 | BCV5/parallel/OP12-006_p1.png
+[ERROR] OP12-006 | loop | OperationalError('database is locked')
+[SKIP] OP12-008 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-014 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP12-014 | _p2 | OP15 | OP15/parallel/OP12-014_p2.png
+[SKIP] OP12-014 | _p2 | no_variant_row variant_key='parallel 2'
+[SKIP] OP12-015 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP12-015 | _p2 | 'Treasure Cup November 2025~'
+[FETCHED] OP12-015 | _p2 | _unclassified | _unclassified/parallel/OP12-015_p2.png
+[ERROR] OP12-015 | loop | OperationalError('database is locked')
+[SKIP] OP12-020 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP12-020 | _p2 | 'Treasure Cup November 2025~'
+[FETCHED] OP12-020 | _p2 | _unclassified | _unclassified/parallel/OP12-020_p2.png
+[ERROR] OP12-020 | loop | OperationalError('database is locked')
+[FETCHED] OP12-026 | _p1 | BCV5 | BCV5/parallel/OP12-026_p1.png
+[ERROR] OP12-026 | loop | OperationalError('database is locked')
+[SKIP] OP12-030 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP12-030 | _p2 | OP14 | OP14/parallel/OP12-030_p2.png
+[ERROR] OP12-030 | loop | OperationalError('database is locked')
+[SKIP] OP12-031 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] OP12-031 | _p2 | 'Treasure Cup November 2025~'
+[FETCHED] OP12-031 | _p2 | _unclassified | _unclassified/parallel/OP12-031_p2.png
+[ERROR] OP12-031 | loop | OperationalError('database is locked')
+[SKIP] OP12-034 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP12-034 | _p2 | ANN3JP | ANN3JP/parallel/OP12-034_p2.png
+[ERROR] OP12-034 | loop | OperationalError('database is locked')
+[SKIP] OP12-037 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP12-039 | _p1 | ANN3JP | ANN3JP/parallel/OP12-039_p1.png
+[ERROR] OP12-039 | loop | OperationalError('database is locked')
+[SKIP] OP12-040 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-041 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-043 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP12-051 | _p1 | BCV5 | BCV5/parallel/OP12-051_p1.png
+[ERROR] OP12-051 | loop | OperationalError('database is locked')
+[SKIP] OP12-056 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-060 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-061 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-063 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-070 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-073 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP12-079 | _p1 | ANN3JP | ANN3JP/parallel/OP12-079_p1.png
+[ERROR] OP12-079 | loop | OperationalError('database is locked')
+[SKIP] OP12-081 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-086 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-087 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-094 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP12-094 | _p2 | ANN3JP | ANN3JP/parallel/OP12-094_p2.png
+[ERROR] OP12-094 | loop | OperationalError('database is locked')
+[FETCHED] OP12-098 | _p1 | BCV5 | BCV5/parallel/OP12-098_p1.png
+[ERROR] OP12-098 | loop | OperationalError('database is locked')
+[SKIP] OP12-102 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP12-108 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP12-108 | _p2 | OP14 | OP14/parallel/OP12-108_p2.png
+[ERROR] OP12-108 | loop | OperationalError('database is locked')
+[FETCHED] OP12-112 | _p1 | BCV5 | BCV5/parallel/OP12-112_p1.png
+[ERROR] OP12-112 | loop | OperationalError('database is locked')
+[SKIP] OP12-118 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP12-118 | _p2 | OP12 | OP12/parallel/OP12-118_p2.png
+[ERROR] OP12-118 | loop | OperationalError('database is locked')
+[SKIP] OP12-119 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP12-119 | _p2 | ANN3JP | ANN3JP/parallel/OP12-119_p2.png
+[ERROR] OP12-119 | loop | OperationalError('database is locked')
+[SKIP] OP13-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-003 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-004 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-007 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-016 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-023 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-027 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-028 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP13-031 | _p1 | OP15 | OP15/parallel/OP13-031_p1.png
+[SKIP] OP13-031 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP13-037 | _p1 | OP15 | OP15/parallel/OP13-037_p1.png
+[SKIP] OP13-037 | _p1 | no_variant_row variant_key='parallel 1'
+[SKIP] OP13-042 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP13-042 | _p2 | OP15 | OP15/parallel/OP13-042_p2.png
+[SKIP] OP13-042 | _p2 | no_variant_row variant_key='parallel 2'
+[SKIP] OP13-051 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-054 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP13-063 | _p1 | BCV5 | BCV5/parallel/OP13-063_p1.png
+[ERROR] OP13-063 | loop | OperationalError('database is locked')
+[SKIP] OP13-064 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-065 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-066 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-076 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-079 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-080 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP13-080 | _p2 | OP13 | OP13/parallel/OP13-080_p2.png
+[ERROR] OP13-080 | loop | OperationalError('database is locked')
+[SKIP] OP13-082 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-083 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP13-083 | _p2 | OP13 | OP13/parallel/OP13-083_p2.png
+[ERROR] OP13-083 | loop | OperationalError('database is locked')
+[SKIP] OP13-084 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP13-084 | _p2 | OP13 | OP13/parallel/OP13-084_p2.png
+[ERROR] OP13-084 | loop | OperationalError('database is locked')
+[FETCHED] OP13-086 | _p1 | BCV5 | BCV5/parallel/OP13-086_p1.png
+[ERROR] OP13-086 | loop | OperationalError('database is locked')
+[SKIP] OP13-089 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP13-089 | _p2 | OP13 | OP13/parallel/OP13-089_p2.png
+[ERROR] OP13-089 | loop | OperationalError('database is locked')
+[SKIP] OP13-091 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP13-091 | _p2 | OP13 | OP13/parallel/OP13-091_p2.png
+[ERROR] OP13-091 | loop | OperationalError('database is locked')
+[SKIP] OP13-100 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-108 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-110 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-113 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-114 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] OP13-118 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP13-118 | _p2 | OP13 | OP13/parallel/OP13-118_p2.png
+[ERROR] OP13-118 | loop | OperationalError('database is locked')
+[SKIP] OP13-119 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP13-119 | _p2 | OP13 | OP13/parallel/OP13-119_p2.png
+[ERROR] OP13-119 | loop | OperationalError('database is locked')
+[SKIP] OP13-120 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] OP13-120 | _p2 | OP13 | OP13/parallel/OP13-120_p2.png
+[ERROR] OP13-120 | loop | OperationalError('database is locked')
+[FETCHED] OP14-001 | _p1 | OP14 | OP14/parallel/OP14-001_p1.png
+[ERROR] OP14-001 | loop | OperationalError('database is locked')
+[FETCHED] OP14-009 | _p1 | OP14 | OP14/parallel/OP14-009_p1.png
+[ERROR] OP14-009 | loop | OperationalError('database is locked')
+[FETCHED] OP14-013 | _p1 | OP14 | OP14/parallel/OP14-013_p1.png
+[ERROR] OP14-013 | loop | OperationalError('database is locked')
+[FETCHED] OP14-015 | _p1 | OP14 | OP14/parallel/OP14-015_p1.png
+[ERROR] OP14-015 | loop | OperationalError('database is locked')
+[FETCHED] OP14-020 | _p1 | OP14 | OP14/parallel/OP14-020_p1.png
+[ERROR] OP14-020 | loop | OperationalError('database is locked')
+[FETCHED] OP14-027 | _p1 | OP14 | OP14/parallel/OP14-027_p1.png
+[ERROR] OP14-027 | loop | OperationalError('database is locked')
+[FETCHED] OP14-031 | _p1 | OP14 | OP14/parallel/OP14-031_p1.png
+[ERROR] OP14-031 | loop | OperationalError('database is locked')
+[FETCHED] OP14-033 | _p1 | OP14 | OP14/parallel/OP14-033_p1.png
+[ERROR] OP14-033 | loop | OperationalError('database is locked')
+[FETCHED] OP14-040 | _p1 | OP14 | OP14/parallel/OP14-040_p1.png
+[ERROR] OP14-040 | loop | OperationalError('database is locked')
+[FETCHED] OP14-041 | _p1 | OP14 | OP14/parallel/OP14-041_p1.png
+[ERROR] OP14-041 | loop | OperationalError('database is locked')
+[FETCHED] OP14-042 | _p1 | OP14 | OP14/parallel/OP14-042_p1.png
+[ERROR] OP14-042 | loop | OperationalError('database is locked')
+[FETCHED] OP14-049 | _p1 | OP14 | OP14/parallel/OP14-049_p1.png
+[ERROR] OP14-049 | loop | OperationalError('database is locked')
+[FETCHED] OP14-060 | _p1 | OP14 | OP14/parallel/OP14-060_p1.png
+[ERROR] OP14-060 | loop | OperationalError('database is locked')
+[FETCHED] OP14-061 | _p1 | OP14 | OP14/parallel/OP14-061_p1.png
+[ERROR] OP14-061 | loop | OperationalError('database is locked')
+[FETCHED] OP14-069 | _p1 | OP14 | OP14/parallel/OP14-069_p1.png
+[ERROR] OP14-069 | loop | OperationalError('database is locked')
+[FETCHED] OP14-079 | _p1 | OP14 | OP14/parallel/OP14-079_p1.png
+[ERROR] OP14-079 | loop | OperationalError('database is locked')
+[FETCHED] OP14-080 | _p1 | OP14 | OP14/parallel/OP14-080_p1.png
+[ERROR] OP14-080 | loop | OperationalError('database is locked')
+[FETCHED] OP14-084 | _p1 | OP14 | OP14/parallel/OP14-084_p1.png
+[ERROR] OP14-084 | loop | OperationalError('database is locked')
+[FETCHED] OP14-090 | _p1 | OP14 | OP14/parallel/OP14-090_p1.png
+[ERROR] OP14-090 | loop | OperationalError('database is locked')
+[FETCHED] OP14-091 | _p1 | OP14 | OP14/parallel/OP14-091_p1.png
+[ERROR] OP14-091 | loop | OperationalError('database is locked')
+[FETCHED] OP14-096 | _p1 | OP14 | OP14/parallel/OP14-096_p1.png
+[ERROR] OP14-096 | loop | OperationalError('database is locked')
+[FETCHED] OP14-104 | _p1 | OP14 | OP14/parallel/OP14-104_p1.png
+[ERROR] OP14-104 | loop | OperationalError('database is locked')
+[FETCHED] OP14-111 | _p1 | OP14 | OP14/parallel/OP14-111_p1.png
+[ERROR] OP14-111 | loop | OperationalError('database is locked')
+[FETCHED] OP14-112 | _p1 | OP14 | OP14/parallel/OP14-112_p1.png
+[ERROR] OP14-112 | loop | OperationalError('database is locked')
+[FETCHED] OP14-118 | _p1 | OP14 | OP14/parallel/OP14-118_p1.png
+[ERROR] OP14-118 | loop | OperationalError('database is locked')
+[FETCHED] OP14-119 | _p1 | OP14 | OP14/parallel/OP14-119_p1.png
+[ERROR] OP14-119 | loop | OperationalError('database is locked')
+[FETCHED] OP14-120 | _p1 | OP14 | OP14/parallel/OP14-120_p1.png
+[ERROR] OP14-120 | loop | OperationalError('database is locked')
+[FETCHED] OP15-001 | _p1 | OP15 | OP15/parallel/OP15-001_p1.png
+[SKIP] OP15-001 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-002 | _p1 | OP15 | OP15/parallel/OP15-002_p1.png
+[SKIP] OP15-002 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-003 | _p1 | OP15 | OP15/parallel/OP15-003_p1.png
+[SKIP] OP15-003 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-007 | _p1 | OP15 | OP15/parallel/OP15-007_p1.png
+[SKIP] OP15-007 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-008 | _p1 | OP15 | OP15/parallel/OP15-008_p1.png
+[SKIP] OP15-008 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-022 | _p1 | OP15 | OP15/parallel/OP15-022_p1.png
+[SKIP] OP15-022 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-025 | _p1 | OP15 | OP15/parallel/OP15-025_p1.png
+[SKIP] OP15-025 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-032 | _p1 | OP15 | OP15/parallel/OP15-032_p1.png
+[SKIP] OP15-032 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-039 | _p1 | OP15 | OP15/parallel/OP15-039_p1.png
+[SKIP] OP15-039 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-046 | _p1 | OP15 | OP15/parallel/OP15-046_p1.png
+[SKIP] OP15-046 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-047 | _p1 | OP15 | OP15/parallel/OP15-047_p1.png
+[SKIP] OP15-047 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-053 | _p1 | OP15 | OP15/parallel/OP15-053_p1.png
+[SKIP] OP15-053 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-058 | _p1 | OP15 | OP15/parallel/OP15-058_p1.png
+[SKIP] OP15-058 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-060 | _p1 | OP15 | OP15/parallel/OP15-060_p1.png
+[SKIP] OP15-060 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-061 | _p1 | OP15 | OP15/parallel/OP15-061_p1.png
+[SKIP] OP15-061 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-077 | _p1 | OP15 | OP15/parallel/OP15-077_p1.png
+[SKIP] OP15-077 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-078 | _p1 | OP15 | OP15/parallel/OP15-078_p1.png
+[SKIP] OP15-078 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-086 | _p1 | OP15 | OP15/parallel/OP15-086_p1.png
+[SKIP] OP15-086 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-092 | _p1 | OP15 | OP15/parallel/OP15-092_p1.png
+[SKIP] OP15-092 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-098 | _p1 | OP15 | OP15/parallel/OP15-098_p1.png
+[SKIP] OP15-098 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-109 | _p1 | OP15 | OP15/parallel/OP15-109_p1.png
+[SKIP] OP15-109 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-113 | _p1 | OP15 | OP15/parallel/OP15-113_p1.png
+[SKIP] OP15-113 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-114 | _p1 | OP15 | OP15/parallel/OP15-114_p1.png
+[SKIP] OP15-114 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-116 | _p1 | OP15 | OP15/parallel/OP15-116_p1.png
+[SKIP] OP15-116 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-118 | _p1 | OP15 | OP15/parallel/OP15-118_p1.png
+[SKIP] OP15-118 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] OP15-118 | _p2 | OP15 | OP15/parallel/OP15-118_p2.png
+[SKIP] OP15-118 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] OP15-119 | _p1 | OP15 | OP15/parallel/OP15-119_p1.png
+[SKIP] OP15-119 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] P-001 | _p1 | SPRRE | SPRRE/parallel/P-001_p1.png
+[ERROR] P-001 | loop | OperationalError('database is locked')
+[FETCHED] P-003 | _p1 | ORP2024V2 | ORP2024V2/parallel/P-003_p1.png
+[ERROR] P-003 | loop | OperationalError('database is locked')
+[UNMAPPED] P-014 | _p1 | <empty modal Card Set(s)>
+[FETCHED] P-014 | _p1 | _unclassified | _unclassified/parallel/P-014_p1.png
+[SKIP] P-014 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] P-014 | _p2 | PRB01 | PRB01/parallel/P-014_p2.png
+[ERROR] P-014 | loop | OperationalError('database is locked')
+[FETCHED] P-016 | _p1 | PCCFR | PCCFR/parallel/P-016_p1.png
+[ERROR] P-016 | loop | OperationalError('database is locked')
+[FETCHED] P-017 | _p1 | TP07 | TP07/parallel/P-017_p1.png
+[ERROR] P-017 | loop | OperationalError('database is locked')
+[FETCHED] P-019 | _p1 | TP07 | TP07/parallel/P-019_p1.png
+[ERROR] P-019 | loop | OperationalError('database is locked')
+[FETCHED] P-022 | _p1 | PCCFR | PCCFR/parallel/P-022_p1.png
+[ERROR] P-022 | loop | OperationalError('database is locked')
+[FETCHED] P-028 | _p1 | GC01 | GC01/parallel/P-028_p1.png
+[ERROR] P-028 | loop | OperationalError('database is locked')
+[UNMAPPED] P-029 | _p1 | <empty modal Card Set(s)>
+[FETCHED] P-029 | _p1 | _unclassified | _unclassified/parallel/P-029_p1.png
+[SKIP] P-029 | _p1 | no_variant_row variant_key='parallel 1'
+[UNMAPPED] P-029 | _p2 | <empty modal Card Set(s)>
+[FETCHED] P-029 | _p2 | _unclassified | _unclassified/parallel/P-029_p2.png
+[SKIP] P-029 | _p2 | no_variant_row variant_key='parallel 2'
+[FETCHED] P-029 | _p3 | PRB01 | PRB01/parallel/P-029_p3.png
+[ERROR] P-029 | loop | OperationalError('database is locked')
+[UNMAPPED] P-030 | _p1 | <empty modal Card Set(s)>
+[FETCHED] P-030 | _p1 | _unclassified | _unclassified/parallel/P-030_p1.png
+[SKIP] P-030 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] P-030 | _p2 | SWBS01 | SWBS01/parallel/P-030_p2.png
+[ERROR] P-030 | loop | OperationalError('database is locked')
+[FETCHED] P-041 | _p1 | ORP2024V2 | ORP2024V2/parallel/P-041_p1.png
+[ERROR] P-041 | loop | OperationalError('database is locked')
+[FETCHED] P-044 | _r1 | PRB02 | PRB02/reprint/P-044_r1.png
+[ERROR] P-044 | loop | OperationalError('database is locked')
+[FETCHED] P-045 | _p1 | ST1520RE | ST1520RE/parallel/P-045_p1.png
+[ERROR] P-045 | loop | OperationalError('database is locked')
+[FETCHED] P-047 | _p1 | PCCLA1 | PCCLA1/parallel/P-047_p1.png
+[ERROR] P-047 | loop | OperationalError('database is locked')
+[FETCHED] P-048 | _p1 | PCCLA1 | PCCLA1/parallel/P-048_p1.png
+[ERROR] P-048 | loop | OperationalError('database is locked')
+[FETCHED] P-049 | _p1 | PCCLA1 | PCCLA1/parallel/P-049_p1.png
+[ERROR] P-049 | loop | OperationalError('database is locked')
+[FETCHED] P-050 | _p1 | PCCLA1 | PCCLA1/parallel/P-050_p1.png
+[ERROR] P-050 | loop | OperationalError('database is locked')
+[FETCHED] P-051 | _p1 | PCCLA1 | PCCLA1/parallel/P-051_p1.png
+[ERROR] P-051 | loop | OperationalError('database is locked')
+[FETCHED] P-052 | _p1 | PCCLA1 | PCCLA1/parallel/P-052_p1.png
+[ERROR] P-052 | loop | OperationalError('database is locked')
+[UNMAPPED] P-053 | _p1 | <empty modal Card Set(s)>
+[FETCHED] P-053 | _p1 | _unclassified | _unclassified/parallel/P-053_p1.png
+[SKIP] P-053 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] P-053 | _p2 | PRB01 | PRB01/parallel/P-053_p2.png
+[ERROR] P-053 | loop | OperationalError('database is locked')
+[UNMAPPED] P-055 | _p1 | <empty modal Card Set(s)>
+[FETCHED] P-055 | _p1 | _unclassified | _unclassified/parallel/P-055_p1.png
+[SKIP] P-055 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] P-055 | _p2 | PRB01 | PRB01/parallel/P-055_p2.png
+[ERROR] P-055 | loop | OperationalError('database is locked')
+[FETCHED] P-056 | _p1 | PCCLA1 | PCCLA1/parallel/P-056_p1.png
+[ERROR] P-056 | loop | OperationalError('database is locked')
+[FETCHED] P-057 | _p1 | ST16 | ST16/parallel/P-057_p1.png
+[ERROR] P-057 | loop | OperationalError('database is locked')
+[FETCHED] P-058 | _p1 | ST16 | ST16/parallel/P-058_p1.png
+[ERROR] P-058 | loop | OperationalError('database is locked')
+[FETCHED] P-059 | _p1 | ST16 | ST16/parallel/P-059_p1.png
+[ERROR] P-059 | loop | OperationalError('database is locked')
+[FETCHED] P-060 | _p1 | ST16 | ST16/parallel/P-060_p1.png
+[ERROR] P-060 | loop | OperationalError('database is locked')
+[UNMAPPED] P-061 | _p1 | <empty modal Card Set(s)>
+[FETCHED] P-061 | _p1 | _unclassified | _unclassified/parallel/P-061_p1.png
+[SKIP] P-061 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] P-061 | _r1 | ST16 | ST16/reprint/P-061_r1.png
+[ERROR] P-061 | loop | OperationalError('database is locked')
+[FETCHED] P-063 | _p1 | PRB02 | PRB02/parallel/P-063_p1.png
+[ERROR] P-063 | loop | OperationalError('database is locked')
+[FETCHED] P-065 | _p1 | CS2526EP | CS2526EP/parallel/P-065_p1.png
+[ERROR] P-065 | loop | OperationalError('database is locked')
+[FETCHED] P-068 | _p1 | PRB02 | PRB02/parallel/P-068_p1.png
+[ERROR] P-068 | loop | OperationalError('database is locked')
+[FETCHED] P-069 | _p1 | CS2526EP | CS2526EP/parallel/P-069_p1.png
+[ERROR] P-069 | loop | OperationalError('database is locked')
+[FETCHED] P-070 | _p1 | CS2526EP | CS2526EP/parallel/P-070_p1.png
+[ERROR] P-070 | loop | OperationalError('database is locked')
+[FETCHED] P-073 | _p1 | BCV3 | BCV3/parallel/P-073_p1.png
+[ERROR] P-073 | loop | OperationalError('database is locked')
+[FETCHED] P-074 | _p1 | BCV3 | BCV3/parallel/P-074_p1.png
+[ERROR] P-074 | loop | OperationalError('database is locked')
+[FETCHED] P-075 | _p1 | BCV3 | BCV3/parallel/P-075_p1.png
+[ERROR] P-075 | loop | OperationalError('database is locked')
+[FETCHED] P-077 | _p1 | CS2526EP | CS2526EP/parallel/P-077_p1.png
+[ERROR] P-077 | loop | OperationalError('database is locked')
+[FETCHED] P-078 | _p1 | ORFC2526S1 | ORFC2526S1/parallel/P-078_p1.png
+[ERROR] P-078 | loop | OperationalError('database is locked')
+[FETCHED] P-079 | _p1 | CS2526EP | CS2526EP/parallel/P-079_p1.png
+[ERROR] P-079 | loop | OperationalError('database is locked')
+[FETCHED] P-081 | _p1 | OP11RE | OP11RE/parallel/P-081_p1.png
+[ERROR] P-081 | loop | OperationalError('database is locked')
+[FETCHED] P-082 | _p1 | S2ON2 | S2ON2/parallel/P-082_p1.png
+[ERROR] P-082 | loop | OperationalError('database is locked')
+[FETCHED] P-083 | _p1 | CS2526EP | CS2526EP/parallel/P-083_p1.png
+[ERROR] P-083 | loop | OperationalError('database is locked')
+[FETCHED] P-085 | _p1 | ORFC2025V2 | ORFC2025V2/parallel/P-085_p1.png
+[ERROR] P-085 | loop | OperationalError('database is locked')
+[FETCHED] P-088 | _r1 | PRB02 | PRB02/reprint/P-088_r1.png
+[ERROR] P-088 | loop | OperationalError('database is locked')
+[FETCHED] P-089 | _p1 | ORFC2025V2 | ORFC2025V2/parallel/P-089_p1.png
+[ERROR] P-089 | loop | OperationalError('database is locked')
+[FETCHED] P-092 | _p1 | OP12RE | OP12RE/parallel/P-092_p1.png
+[ERROR] P-092 | loop | OperationalError('database is locked')
+[FETCHED] P-096 | _p1 | OP14RE | OP14RE/parallel/P-096_p1.png
+[ERROR] P-096 | loop | OperationalError('database is locked')
+[FETCHED] P-105 | _p1 | OP15 | OP15/parallel/P-105_p1.png
+[SKIP] P-105 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] P-111 | _p1 | HBWP01 | HBWP01/parallel/P-111_p1.png
+[ERROR] P-111 | loop | OperationalError('database is locked')
+[FETCHED] P-112 | _p1 | HBWP01 | HBWP01/parallel/P-112_p1.png
+[ERROR] P-112 | loop | OperationalError('database is locked')
+[FETCHED] P-113 | _p1 | HBWP01 | HBWP01/parallel/P-113_p1.png
+[ERROR] P-113 | loop | OperationalError('database is locked')
+[FETCHED] P-115 | _p1 | OP15RE | OP15RE/parallel/P-115_p1.png
+[SKIP] P-115 | _p1 | no_variant_row variant_key='parallel 1'
+[SKIP] PRB01-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-003 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-004 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-005 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-006 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] PRB02-006 | _p2 | OP14 | OP14/parallel/PRB02-006_p2.png
+[ERROR] PRB02-006 | loop | OperationalError('database is locked')
+[SKIP] PRB02-007 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-008 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-009 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-010 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-011 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-012 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-014 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] PRB02-014 | _p2 | OP15 | OP15/parallel/PRB02-014_p2.png
+[SKIP] PRB02-014 | _p2 | no_variant_row variant_key='parallel 2'
+[SKIP] PRB02-015 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-016 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-017 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] PRB02-018 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] ST01-002 | _p1 | PCCFR | PCCFR/parallel/ST01-002_p1.png
+[ERROR] ST01-002 | loop | OperationalError('database is locked')
+[FETCHED] ST01-004 | _p1 | ORP01 | ORP01/parallel/ST01-004_p1.png
+[ERROR] ST01-004 | loop | OperationalError('database is locked')
+[FETCHED] ST01-005 | _p1 | PCC25 | PCC25/parallel/ST01-005_p1.png
+[ERROR] ST01-005 | loop | OperationalError('database is locked')
+[FETCHED] ST01-006 | _p1 | PCCFR | PCCFR/parallel/ST01-006_p1.png
+[ERROR] ST01-006 | loop | OperationalError('database is locked')
+[FETCHED] ST01-007 | _p1 | PCCFR | PCCFR/parallel/ST01-007_p1.png
+[ERROR] ST01-007 | loop | OperationalError('database is locked')
+[FETCHED] ST01-008 | _p1 | PCC25 | PCC25/parallel/ST01-008_p1.png
+[ERROR] ST01-008 | loop | OperationalError('database is locked')
+[FETCHED] ST01-009 | _p1 | PREP03 | PREP03/parallel/ST01-009_p1.png
+[ERROR] ST01-009 | loop | OperationalError('database is locked')
+[FETCHED] ST01-010 | _p1 | PCC25 | PCC25/parallel/ST01-010_p1.png
+[ERROR] ST01-010 | loop | OperationalError('database is locked')
+[FETCHED] ST01-011 | _p1 | PCCFR | PCCFR/parallel/ST01-011_p1.png
+[ERROR] ST01-011 | loop | OperationalError('database is locked')
+[FETCHED] ST01-012 | _p1 | OP03 | OP03/parallel/ST01-012_p1.png
+[ERROR] ST01-012 | loop | OperationalError('database is locked')
+[FETCHED] ST01-013 | _p1 | PCCFR | PCCFR/parallel/ST01-013_p1.png
+[ERROR] ST01-013 | loop | OperationalError('database is locked')
+[UNMAPPED] ST01-014 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST01-014 | _p1 | _unclassified | _unclassified/parallel/ST01-014_p1.png
+[SKIP] ST01-014 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST01-014 | _p2 | PRB01 | PRB01/parallel/ST01-014_p2.png
+[ERROR] ST01-014 | loop | OperationalError('database is locked')
+[FETCHED] ST01-015 | _p1 | ORP2024V1 | ORP2024V1/parallel/ST01-015_p1.png
+[ERROR] ST01-015 | loop | OperationalError('database is locked')
+[UNMAPPED] ST02-004 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST02-004 | _p1 | _unclassified | _unclassified/parallel/ST02-004_p1.png
+[SKIP] ST02-004 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST02-004 | _p2 | PRB01 | PRB01/parallel/ST02-004_p2.png
+[ERROR] ST02-004 | loop | OperationalError('database is locked')
+[FETCHED] ST02-007 | _p1 | TP03 | TP03/parallel/ST02-007_p1.png
+[ERROR] ST02-007 | loop | OperationalError('database is locked')
+[FETCHED] ST02-008 | _p1 | ORP2024V1 | ORP2024V1/parallel/ST02-008_p1.png
+[ERROR] ST02-008 | loop | OperationalError('database is locked')
+[FETCHED] ST02-013 | _p1 | TP05 | TP05/parallel/ST02-013_p1.png
+[ERROR] ST02-013 | loop | OperationalError('database is locked')
+[UNMAPPED] ST03-002 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST03-002 | _p1 | _unclassified | _unclassified/parallel/ST03-002_p1.png
+[SKIP] ST03-002 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST03-002 | _r1 | ST17 | ST17/reprint/ST03-002_r1.png
+[ERROR] ST03-002 | loop | OperationalError('database is locked')
+[FETCHED] ST03-003 | _p1 | TP05 | TP05/parallel/ST03-003_p1.png
+[ERROR] ST03-003 | loop | OperationalError('database is locked')
+[FETCHED] ST03-004 | _p1 | OP08 | OP08/parallel/ST03-004_p1.png
+[ERROR] ST03-004 | loop | OperationalError('database is locked')
+[FETCHED] ST03-005 | _p1 | TP04 | TP04/parallel/ST03-005_p1.png
+[ERROR] ST03-005 | loop | OperationalError('database is locked')
+[FETCHED] ST03-007 | _p1 | TP03 | TP03/parallel/ST03-007_p1.png
+[ERROR] ST03-007 | loop | OperationalError('database is locked')
+[FETCHED] ST03-008 | _p1 | GC01 | GC01/parallel/ST03-008_p1.png
+[ERROR] ST03-008 | loop | OperationalError('database is locked')
+[FETCHED] ST03-009 | _p1 | OP03 | OP03/parallel/ST03-009_p1.png
+[ERROR] ST03-009 | loop | OperationalError('database is locked')
+[FETCHED] ST03-012 | _p1 | BCV1 | BCV1/parallel/ST03-012_p1.png
+[ERROR] ST03-012 | loop | OperationalError('database is locked')
+[UNMAPPED] ST03-013 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST03-013 | _p1 | _unclassified | _unclassified/parallel/ST03-013_p1.png
+[SKIP] ST03-013 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST03-013 | _p2 | PRB01 | PRB01/parallel/ST03-013_p2.png
+[ERROR] ST03-013 | loop | OperationalError('database is locked')
+[FETCHED] ST03-014 | _p1 | ORP01 | ORP01/parallel/ST03-014_p1.png
+[ERROR] ST03-014 | loop | OperationalError('database is locked')
+[FETCHED] ST03-017 | _p1 | BCV1 | BCV1/parallel/ST03-017_p1.png
+[ERROR] ST03-017 | loop | OperationalError('database is locked')
+[FETCHED] ST04-002 | _p1 | BCV3 | BCV3/parallel/ST04-002_p1.png
+[ERROR] ST04-002 | loop | OperationalError('database is locked')
+[FETCHED] ST04-003 | _p1 | OP03 | OP03/parallel/ST04-003_p1.png
+[ERROR] ST04-003 | loop | OperationalError('database is locked')
+[FETCHED] ST04-005 | _p1 | OP08 | OP08/parallel/ST04-005_p1.png
+[ERROR] ST04-005 | loop | OperationalError('database is locked')
+[FETCHED] ST04-008 | _p1 | ORP01 | ORP01/parallel/ST04-008_p1.png
+[ERROR] ST04-008 | loop | OperationalError('database is locked')
+[FETCHED] ST04-010 | _p1 | TP03 | TP03/parallel/ST04-010_p1.png
+[ERROR] ST04-010 | loop | OperationalError('database is locked')
+[FETCHED] ST04-011 | _p1 | TP02 | TP02/parallel/ST04-011_p1.png
+[ERROR] ST04-011 | loop | OperationalError('database is locked')
+[UNMAPPED] ST04-016 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST04-016 | _p1 | _unclassified | _unclassified/parallel/ST04-016_p1.png
+[SKIP] ST04-016 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST04-016 | _p2 | PRB01 | PRB01/parallel/ST04-016_p2.png
+[ERROR] ST04-016 | loop | OperationalError('database is locked')
+[FETCHED] ST05-002 | _p1 | BCV3 | BCV3/parallel/ST05-002_p1.png
+[ERROR] ST05-002 | loop | OperationalError('database is locked')
+[FETCHED] ST05-014 | _p1 | BCV1 | BCV1/parallel/ST05-014_p1.png
+[ERROR] ST05-014 | loop | OperationalError('database is locked')
+[FETCHED] ST06-006 | _p1 | TP04 | TP04/parallel/ST06-006_p1.png
+[ERROR] ST06-006 | loop | OperationalError('database is locked')
+[FETCHED] ST06-008 | _p1 | PRB02 | PRB02/parallel/ST06-008_p1.png
+[ERROR] ST06-008 | loop | OperationalError('database is locked')
+[UNMAPPED] ST06-010 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST06-010 | _p1 | _unclassified | _unclassified/parallel/ST06-010_p1.png
+[SKIP] ST06-010 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST06-010 | _p2 | PRB01 | PRB01/parallel/ST06-010_p2.png
+[ERROR] ST06-010 | loop | OperationalError('database is locked')
+[UNMAPPED] ST06-014 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST06-014 | _p1 | _unclassified | _unclassified/parallel/ST06-014_p1.png
+[SKIP] ST06-014 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST06-014 | _p2 | PRB01 | PRB01/parallel/ST06-014_p2.png
+[ERROR] ST06-014 | loop | OperationalError('database is locked')
+[UNMAPPED] ST07-005 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST07-005 | _p1 | _unclassified | _unclassified/parallel/ST07-005_p1.png
+[SKIP] ST07-005 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST07-005 | _r1 | ST20 | ST20/reprint/ST07-005_r1.png
+[ERROR] ST07-005 | loop | OperationalError('database is locked')
+[UNMAPPED] ST07-007 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST07-007 | _p1 | _unclassified | _unclassified/parallel/ST07-007_p1.png
+[SKIP] ST07-007 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST07-007 | _p2 | PRB01 | PRB01/parallel/ST07-007_p2.png
+[ERROR] ST07-007 | loop | OperationalError('database is locked')
+[FETCHED] ST07-008 | _p1 | ORP01 | ORP01/parallel/ST07-008_p1.png
+[ERROR] ST07-008 | loop | OperationalError('database is locked')
+[UNMAPPED] ST07-014 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST07-014 | _p1 | _unclassified | _unclassified/parallel/ST07-014_p1.png
+[SKIP] ST07-014 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST07-014 | _r1 | ST20 | ST20/reprint/ST07-014_r1.png
+[ERROR] ST07-014 | loop | OperationalError('database is locked')
+[FETCHED] ST09-012 | _p1 | GC01 | GC01/parallel/ST09-012_p1.png
+[ERROR] ST09-012 | loop | OperationalError('database is locked')
+[UNMAPPED] ST09-014 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST09-014 | _p1 | _unclassified | _unclassified/parallel/ST09-014_p1.png
+[SKIP] ST09-014 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST09-014 | _p2 | PRB01 | PRB01/parallel/ST09-014_p2.png
+[ERROR] ST09-014 | loop | OperationalError('database is locked')
+[FETCHED] ST10-005 | _p1 | ANN1EN | ANN1EN/parallel/ST10-005_p1.png
+[ERROR] ST10-005 | loop | OperationalError('database is locked')
+[FETCHED] ST10-006 | _p1 | REG2024W1 | REG2024W1/parallel/ST10-006_p1.png
+[ERROR] ST10-006 | loop | OperationalError('database is locked')
+[FETCHED] ST10-008 | _p1 | TP2025V4 | TP2025V4/parallel/ST10-008_p1.png
+[ERROR] ST10-008 | loop | OperationalError('database is locked')
+[FETCHED] ST10-010 | _p1 | REG2024W1 | REG2024W1/parallel/ST10-010_p1.png
+[ERROR] ST10-010 | loop | OperationalError('database is locked')
+[FETCHED] ST10-013 | _p1 | REG2024W1 | REG2024W1/parallel/ST10-013_p1.png
+[ERROR] ST10-013 | loop | OperationalError('database is locked')
+[FETCHED] ST11-001 | _p1 | ST16 | ST16/parallel/ST11-001_p1.png
+[ERROR] ST11-001 | loop | OperationalError('database is locked')
+[FETCHED] ST11-003 | _p1 | ST11BP | ST11BP/parallel/ST11-003_p1.png
+[ERROR] ST11-003 | loop | OperationalError('database is locked')
+[FETCHED] ST11-004 | _p1 | ST11BP | ST11BP/parallel/ST11-004_p1.png
+[ERROR] ST11-004 | loop | OperationalError('database is locked')
+[FETCHED] ST11-005 | _p1 | ST11BP | ST11BP/parallel/ST11-005_p1.png
+[ERROR] ST11-005 | loop | OperationalError('database is locked')
+[FETCHED] ST12-005 | _p1 | PRB02 | PRB02/parallel/ST12-005_p1.png
+[ERROR] ST12-005 | loop | OperationalError('database is locked')
+[UNMAPPED] ST12-008 | _p1 | 'Treasure Cup August – September'
+[FETCHED] ST12-008 | _p1 | _unclassified | _unclassified/parallel/ST12-008_p1.png
+[ERROR] ST12-008 | loop | OperationalError('database is locked')
+[FETCHED] ST12-012 | _p1 | OP10 | OP10/parallel/ST12-012_p1.png
+[ERROR] ST12-012 | loop | OperationalError('database is locked')
+[UNMAPPED] ST12-014 | _p1 | <empty modal Card Set(s)>
+[FETCHED] ST12-014 | _p1 | _unclassified | _unclassified/parallel/ST12-014_p1.png
+[SKIP] ST12-014 | _p1 | no_variant_row variant_key='parallel 1'
+[FETCHED] ST12-014 | _p2 | PRB01 | PRB01/parallel/ST12-014_p2.png
+[ERROR] ST12-014 | loop | OperationalError('database is locked')
+[FETCHED] ST12-017 | _p1 | PRB02 | PRB02/parallel/ST12-017_p1.png
+[ERROR] ST12-017 | loop | OperationalError('database is locked')
+[SKIP] ST13-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST13-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST13-003 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] ST13-003 | _p2 | 'ONE PIECE CARD GAME and Football Team DORTMUND collaboration event'
+[FETCHED] ST13-003 | _p2 | _unclassified | _unclassified/parallel/ST13-003_p2.png
+[ERROR] ST13-003 | loop | OperationalError('database is locked')
+[SKIP] ST13-004 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] ST13-004 | _p2 | PRB02 | PRB02/parallel/ST13-004_p2.png
+[ERROR] ST13-004 | loop | OperationalError('database is locked')
+[SKIP] ST13-005 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST13-006 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST13-007 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] ST13-007 | _p2 | PRB02 | PRB02/parallel/ST13-007_p2.png
+[ERROR] ST13-007 | loop | OperationalError('database is locked')
+[SKIP] ST13-008 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST13-009 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST13-010 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] ST13-010 | _p2 | PRB02 | PRB02/parallel/ST13-010_p2.png
+[ERROR] ST13-010 | loop | OperationalError('database is locked')
+[SKIP] ST13-011 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] ST13-011 | _p2 | OP12 | OP12/parallel/ST13-011_p2.png
+[ERROR] ST13-011 | loop | OperationalError('database is locked')
+[SKIP] ST13-012 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] ST13-012 | _p2 | BCV3 | BCV3/parallel/ST13-012_p2.png
+[ERROR] ST13-012 | loop | OperationalError('database is locked')
+[SKIP] ST13-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST13-014 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] ST13-014 | _p2 | PRB02 | PRB02/parallel/ST13-014_p2.png
+[ERROR] ST13-014 | loop | OperationalError('database is locked')
+[SKIP] ST13-015 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] ST13-015 | _p2 | ANN2JP | ANN2JP/parallel/ST13-015_p2.png
+[ERROR] ST13-015 | loop | OperationalError('database is locked')
+[SKIP] ST13-016 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] ST13-016 | _r1 | ST28 | ST28/reprint/ST13-016_r1.png
+[ERROR] ST13-016 | loop | OperationalError('database is locked')
+[FETCHED] ST13-019 | _p1 | PRB02 | PRB02/parallel/ST13-019_p1.png
+[ERROR] ST13-019 | loop | OperationalError('database is locked')
+[FETCHED] ST14-003 | _p1 | OP10 | OP10/parallel/ST14-003_p1.png
+[ERROR] ST14-003 | loop | OperationalError('database is locked')
+[FETCHED] ST14-007 | _p1 | PRB02 | PRB02/parallel/ST14-007_p1.png
+[ERROR] ST14-007 | loop | OperationalError('database is locked')
+[FETCHED] ST14-010 | _p1 | PRB02 | PRB02/parallel/ST14-010_p1.png
+[ERROR] ST14-010 | loop | OperationalError('database is locked')
+[FETCHED] ST14-013 | _p1 | PRB02 | PRB02/parallel/ST14-013_p1.png
+[ERROR] ST14-013 | loop | OperationalError('database is locked')
+[FETCHED] ST14-016 | _p1 | PRB02 | PRB02/parallel/ST14-016_p1.png
+[ERROR] ST14-016 | loop | OperationalError('database is locked')
+[FETCHED] ST14-017 | _p1 | PRB02 | PRB02/parallel/ST14-017_p1.png
+[ERROR] ST14-017 | loop | OperationalError('database is locked')
+[FETCHED] ST15-002 | _p1 | OP10 | OP10/parallel/ST15-002_p1.png
+[ERROR] ST15-002 | loop | OperationalError('database is locked')
+[FETCHED] ST15-005 | _p1 | CS2526TP1 | CS2526TP1/parallel/ST15-005_p1.png
+[ERROR] ST15-005 | loop | OperationalError('database is locked')
+[FETCHED] ST16-003 | _p1 | PRB02 | PRB02/parallel/ST16-003_p1.png
+[ERROR] ST16-003 | loop | OperationalError('database is locked')
+[FETCHED] ST16-004 | _p1 | OP11 | OP11/parallel/ST16-004_p1.png
+[ERROR] ST16-004 | loop | OperationalError('database is locked')
+[FETCHED] ST16-005 | _p1 | PRB02 | PRB02/parallel/ST16-005_p1.png
+[ERROR] ST16-005 | loop | OperationalError('database is locked')
+[FETCHED] ST17-002 | _p1 | PRB02 | PRB02/parallel/ST17-002_p1.png
+[ERROR] ST17-002 | loop | OperationalError('database is locked')
+[FETCHED] ST17-003 | _p1 | CS2526TP1 | CS2526TP1/parallel/ST17-003_p1.png
+[ERROR] ST17-003 | loop | OperationalError('database is locked')
+[FETCHED] ST17-005 | _p1 | PRB02 | PRB02/parallel/ST17-005_p1.png
+[ERROR] ST17-005 | loop | OperationalError('database is locked')
+[FETCHED] ST18-001 | _p1 | OP10 | OP10/parallel/ST18-001_p1.png
+[ERROR] ST18-001 | loop | OperationalError('database is locked')
+[FETCHED] ST18-002 | _p1 | PRB02 | PRB02/parallel/ST18-002_p1.png
+[ERROR] ST18-002 | loop | OperationalError('database is locked')
+[FETCHED] ST18-003 | _p1 | TC2025FEB | TC2025FEB/parallel/ST18-003_p1.png
+[ERROR] ST18-003 | loop | OperationalError('database is locked')
+[FETCHED] ST18-004 | _p1 | OP09 | OP09/parallel/ST18-004_p1.png
+[ERROR] ST18-004 | loop | OperationalError('database is locked')
+[FETCHED] ST18-005 | _p1 | OP11 | OP11/parallel/ST18-005_p1.png
+[ERROR] ST18-005 | loop | OperationalError('database is locked')
+[FETCHED] ST19-002 | _p1 | TP2025V3 | TP2025V3/parallel/ST19-002_p1.png
+[ERROR] ST19-002 | loop | OperationalError('database is locked')
+[FETCHED] ST20-003 | _p1 | PRB02 | PRB02/parallel/ST20-003_p1.png
+[ERROR] ST20-003 | loop | OperationalError('database is locked')
+[SKIP] ST21-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] ST21-001 | _p2 | 'Learn Together Deck Set'
+[FETCHED] ST21-001 | _p2 | _unclassified | _unclassified/parallel/ST21-001_p2.png
+[ERROR] ST21-001 | loop | OperationalError('database is locked')
+[SKIP] ST21-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-003 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] ST21-003 | _p2 | PRB02 | PRB02/parallel/ST21-003_p2.png
+[ERROR] ST21-003 | loop | OperationalError('database is locked')
+[SKIP] ST21-004 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-005 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-006 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-007 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-008 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-009 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-010 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-011 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-012 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-014 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST21-015 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[UNMAPPED] ST21-015 | _p2 | 'Championship 25-26 Finals Season 1'
+[FETCHED] ST21-015 | _p2 | _unclassified | _unclassified/parallel/ST21-015_p2.png
+[ERROR] ST21-015 | loop | OperationalError('database is locked')
+[FETCHED] ST21-017 | _p1 | BCV5 | BCV5/parallel/ST21-017_p1.png
+[ERROR] ST21-017 | loop | OperationalError('database is locked')
+[SKIP] ST22-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-003 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-004 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-005 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-006 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-007 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-008 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-009 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-010 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-011 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-012 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST22-014 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[FETCHED] ST26-005 | _p1 | OP15 | OP15/parallel/ST26-005_p1.png
+[SKIP] ST26-005 | _p1 | no_variant_row variant_key='parallel 1'
+[SKIP] ST29-001 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-002 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-003 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-004 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-005 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-006 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-007 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-008 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-009 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-010 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-011 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-012 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-013 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+[SKIP] ST29-014 | _p1 | resume_existing_asset path_ok variant_key='parallel 1'
+=== END 2026-03-31T08:14:09Z ===

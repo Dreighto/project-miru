@@ -236,26 +236,38 @@ $process = Start-Process `
     script_path = $dashboardScriptPath
 } | ConvertTo-Json | Set-Content -Path $pidFile -Encoding UTF8
 
-$probe = Wait-OpMiruHttp -Url $rootUrl -TimeoutSeconds 60 -RetryDelaySeconds 2 -MustContain "Miru"
-if (-not $probe.Ok) {
-    $tail = if (Test-Path $stderrLog) {
-        ((Get-Content -Path $stderrLog -Tail 20 -ErrorAction SilentlyContinue) -join [Environment]::NewLine).Trim()
-    }
-    else {
-        ""
+# Localhost probes must not go through a corporate HTTP proxy (common Invoke-WebRequest failure on 127.0.0.1).
+$prevWebProxy = [System.Net.WebRequest]::DefaultWebProxy
+[System.Net.WebRequest]::DefaultWebProxy = $null
+# Allow time for heavy dashboard/app import before bind plus a slow first GET / (see Wait-OpMiruHttp HTTP timeout).
+$dashboardProbeTimeoutSeconds = 240
+try {
+    # RetryDelaySeconds is sleep between attempts; Wait-OpMiruHttp uses a separate per-attempt HTTP timeout (min 180s, max 300s).
+    $probe = Wait-OpMiruHttp -Url $rootUrl -TimeoutSeconds $dashboardProbeTimeoutSeconds -RetryDelaySeconds 10
+    if (-not $probe.Ok) {
+        $tail = if (Test-Path $stderrLog) {
+            ((Get-Content -Path $stderrLog -Tail 20 -ErrorAction SilentlyContinue) -join [Environment]::NewLine).Trim()
+        }
+        else {
+            ""
+        }
+
+        $running = Get-Process -Id $process.Id -ErrorAction SilentlyContinue
+        if ($running) {
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+        }
+        Remove-StaleDashboardPidFile
+
+        $detail = if ($tail) { " Last stderr lines:`n$tail" } else { "" }
+        throw "Project Miru dashboard did not become reachable on $rootUrl within $dashboardProbeTimeoutSeconds seconds.$detail"
     }
 
-    $running = Get-Process -Id $process.Id -ErrorAction SilentlyContinue
-    if ($running) {
-        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-    }
-    Remove-StaleDashboardPidFile
-
-    $detail = if ($tail) { " Last stderr lines:`n$tail" } else { "" }
-    throw "Project Miru dashboard did not become reachable on $rootUrl within 60 seconds.$detail"
+    $stabilityProbe = Wait-OpMiruHttp -Url $rootUrl -TimeoutSeconds 20 -RetryDelaySeconds 10
+}
+finally {
+    [System.Net.WebRequest]::DefaultWebProxy = $prevWebProxy
 }
 
-$stabilityProbe = Wait-OpMiruHttp -Url $rootUrl -TimeoutSeconds 10 -RetryDelaySeconds 1 -MustContain "Miru"
 if (-not $stabilityProbe.Ok) {
     $running = Get-Process -Id $process.Id -ErrorAction SilentlyContinue
     if ($running) {

@@ -5,7 +5,7 @@ import atexit
 import copy
 from contextlib import closing
 import argparse
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import ctypes
 import ipaddress
 import json
@@ -18,13 +18,23 @@ import sys
 import time
 import traceback
 from pathlib import Path
-from threading import Lock
+from threading import Lock, Thread, Timer
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
+import uuid
 
-from flask import Flask, jsonify, render_template, request, url_for
+from flask import (
+    Flask,
+    abort,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    url_for,
+)
 from werkzeug.exceptions import HTTPException
 
 try:
@@ -41,7 +51,11 @@ from tools.miru_ai_onepiece import (
     inspect_fallback_catalog_db,
     normalize_card_code,
 )
-from tools.miru_env import build_pushover_status_message, inspect_pushover_env, load_project_env
+from tools.miru_env import (
+    build_pushover_status_message,
+    inspect_pushover_env,
+    load_project_env,
+)
 from tools.miru_learning_engine import (
     load_learning_engine_status,
     build_engine_from_args,
@@ -50,11 +64,15 @@ from tools.miru_learning_engine import (
 from tools.miru_pushover import send_pushover_notification
 from tools.miru_project_sync import (
     MiruProjectDbSync,
+    connect_catalog_db,
+    ensure_catalog_sync_schema,
     load_card_validation_audit,
     list_validation_audit_insights,
+    run_publish_ready_insight_sync,
     run_worktree_card_insight_sync,
 )
 from tools.miru_action_governance import (
+    _log_action_history,
     build_action_governance_snapshot,
     build_publication_batch_summary,
     execute_governed_action,
@@ -67,6 +85,7 @@ from tools.miru_action_governance import (
 from tools.miru_source_adapters import NormalizedSourceRecord
 from tools.miru_learner_config import get_learner_mode, set_learner_mode, LEARNER_MODES
 from tools.miru_self_report import build_self_report
+from tools.miru_image_fetcher import fetch_all_missing
 from tools.miru_operator_handoff_resolution import (
     clear_operator_handoff_resolution,
     compute_operator_handoff_need_fingerprint,
@@ -89,17 +108,30 @@ LEARNING_STATUS_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_log.db"
 LEARNING_DOSSIER_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_dossiers.db"
 PRICES_PATH = PROJECT_ROOT / "data" / "prices.json"
 LIMITS_STATUS_PATH = PROJECT_ROOT / "data" / "miru_limits_status.json"
-PUSHOVER_LEARNING_SNAPSHOT_PATH = PROJECT_ROOT / "data" / "miru_pushover_learning_snapshot.json"
+PUSHOVER_LEARNING_SNAPSHOT_PATH = (
+    PROJECT_ROOT / "data" / "miru_pushover_learning_snapshot.json"
+)
 WORKTREE_LEARNER_PID_DIR = PROJECT_ROOT / "data" / "startup-logs"
 WORKTREE_LEARNER_PID_FILE = WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree.pid"
 MIRU_AI_DEV_PID_FILE = WORKTREE_LEARNER_PID_DIR / "miru_ai_worktree.pid"
 WORKER_LAST_RUN_PATH = PROJECT_ROOT / "data" / "miru_worker_last_run.json"
 GOVERNED_AUTOPILOT_DATA_DIR = PROJECT_ROOT / "data"
-WORKTREE_LEARNER_STDOUT_LOG = WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree_stdout.log"
-WORKTREE_LEARNER_STDERR_LOG = WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree_stderr.log"
+WORKTREE_LEARNER_STDOUT_LOG = (
+    WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree_stdout.log"
+)
+WORKTREE_LEARNER_STDERR_LOG = (
+    WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree_stderr.log"
+)
 CSS_PATH = STATIC_DIR / "miru_ai.css"
 JS_PATH = STATIC_DIR / "miru_ai.js"
 TEMPLATE_PATH = TEMPLATE_DIR / "miru_ai.html"
+MIRU_ASSETS_ROOT = Path(r"D:\Miru_Assets")
+MIRU_FETCH_LOG_PATH = MIRU_ASSETS_ROOT / "fetch_log.txt"
+OCR_AUDIT_PARALLEL_REPRINT_PATH = MIRU_ASSETS_ROOT / "ocr_audit_parallel_reprint.txt"
+IMAGE_REVIEW_DECISIONS_PATH = MIRU_ASSETS_ROOT / "image_review_decisions.json"
+_IMAGE_REVIEW_DECISIONS_LOCK = Lock()
+IMAGE_REVIEW_STAGED_PATH = MIRU_ASSETS_ROOT / "image_review_staged.json"
+_IMAGE_REVIEW_STAGED_LOCK = Lock()
 DEFAULT_TIMEOUT_SECONDS = 180
 RUN_API_PATH = "/api/run"
 APP_NAME = "Miru AI"
@@ -108,7 +140,7 @@ PROJECT_ENV_LOAD = load_project_env()
 _PUSHOVER_STATUS_LOCK = Lock()
 _PUSHOVER_STATUS_LOGGED = False
 CURRENT_SERVER_PORT = 8765
-_SERVER_STARTED_AT: str = ""   # ISO-8601 UTC; set in main() before create_app()
+_SERVER_STARTED_AT: str = ""  # ISO-8601 UTC; set in main() before create_app()
 _TTL_CACHE_LOCK = Lock()
 _TTL_CACHE: dict[str, dict[str, Any]] = {}
 _RUNTIME_TRUTH_CACHE_LOCK = Lock()
@@ -527,18 +559,114 @@ HOME_HIGHLIGHTS = (
 )
 
 VOYAGE_ISLANDS = (
-    {"key": "east_blue", "name": "East Blue", "short_name": "East Blue", "sprite": "islands/island_east_blue.png", "stage": "East Blue", "map_x": 10, "map_y": 75},
-    {"key": "reverse_mountain", "name": "Reverse Mountain", "short_name": "Reverse Mountain", "sprite": "islands/island_reverse_mountain.png", "stage": "Grand Line Approach", "map_x": 23, "map_y": 57},
-    {"key": "alabasta", "name": "Alabasta", "short_name": "Alabasta", "sprite": "islands/island_alabasta.png", "stage": "Grand Line", "map_x": 35, "map_y": 66},
-    {"key": "skypiea", "name": "Skypiea", "short_name": "Skypiea", "sprite": "islands/island_skypiea.png", "stage": "Grand Line", "map_x": 45, "map_y": 42},
-    {"key": "water_7", "name": "Water 7", "short_name": "Water 7", "sprite": "islands/island_water_7.png", "stage": "Grand Line", "map_x": 56, "map_y": 56},
-    {"key": "thriller_bark", "name": "Thriller Bark", "short_name": "Thriller Bark", "sprite": "islands/island_thriller_bark.png", "stage": "Grand Line", "map_x": 66, "map_y": 42},
-    {"key": "fishman_island", "name": "Fishman Island", "short_name": "Fishman Island", "sprite": "islands/island_fishman_island.png", "stage": "New World", "map_x": 74, "map_y": 64},
-    {"key": "dressrosa", "name": "Dressrosa", "short_name": "Dressrosa", "sprite": "islands/island_dressrosa.png", "stage": "New World", "map_x": 83, "map_y": 48},
-    {"key": "whole_cake", "name": "Whole Cake", "short_name": "Whole Cake", "sprite": "islands/island_whole_cake.png", "stage": "New World", "map_x": 90, "map_y": 62},
-    {"key": "wano", "name": "Wano", "short_name": "Wano", "sprite": "islands/island_wano.png", "stage": "New World", "map_x": 86, "map_y": 29},
-    {"key": "egghead", "name": "Egghead", "short_name": "Egghead", "sprite": "islands/island_egghead.png", "stage": "Final Voyage", "map_x": 69, "map_y": 15},
-    {"key": "laugh_tale", "name": "Laugh Tale", "short_name": "Laugh Tale", "sprite": "islands/island_laugh_tale.png", "stage": "Final Voyage", "map_x": 50, "map_y": 11},
+    {
+        "key": "east_blue",
+        "name": "East Blue",
+        "short_name": "East Blue",
+        "sprite": "islands/island_east_blue.png",
+        "stage": "East Blue",
+        "map_x": 10,
+        "map_y": 75,
+    },
+    {
+        "key": "reverse_mountain",
+        "name": "Reverse Mountain",
+        "short_name": "Reverse Mountain",
+        "sprite": "islands/island_reverse_mountain.png",
+        "stage": "Grand Line Approach",
+        "map_x": 23,
+        "map_y": 57,
+    },
+    {
+        "key": "alabasta",
+        "name": "Alabasta",
+        "short_name": "Alabasta",
+        "sprite": "islands/island_alabasta.png",
+        "stage": "Grand Line",
+        "map_x": 35,
+        "map_y": 66,
+    },
+    {
+        "key": "skypiea",
+        "name": "Skypiea",
+        "short_name": "Skypiea",
+        "sprite": "islands/island_skypiea.png",
+        "stage": "Grand Line",
+        "map_x": 45,
+        "map_y": 42,
+    },
+    {
+        "key": "water_7",
+        "name": "Water 7",
+        "short_name": "Water 7",
+        "sprite": "islands/island_water_7.png",
+        "stage": "Grand Line",
+        "map_x": 56,
+        "map_y": 56,
+    },
+    {
+        "key": "thriller_bark",
+        "name": "Thriller Bark",
+        "short_name": "Thriller Bark",
+        "sprite": "islands/island_thriller_bark.png",
+        "stage": "Grand Line",
+        "map_x": 66,
+        "map_y": 42,
+    },
+    {
+        "key": "fishman_island",
+        "name": "Fishman Island",
+        "short_name": "Fishman Island",
+        "sprite": "islands/island_fishman_island.png",
+        "stage": "New World",
+        "map_x": 74,
+        "map_y": 64,
+    },
+    {
+        "key": "dressrosa",
+        "name": "Dressrosa",
+        "short_name": "Dressrosa",
+        "sprite": "islands/island_dressrosa.png",
+        "stage": "New World",
+        "map_x": 83,
+        "map_y": 48,
+    },
+    {
+        "key": "whole_cake",
+        "name": "Whole Cake",
+        "short_name": "Whole Cake",
+        "sprite": "islands/island_whole_cake.png",
+        "stage": "New World",
+        "map_x": 90,
+        "map_y": 62,
+    },
+    {
+        "key": "wano",
+        "name": "Wano",
+        "short_name": "Wano",
+        "sprite": "islands/island_wano.png",
+        "stage": "New World",
+        "map_x": 86,
+        "map_y": 29,
+    },
+    {
+        "key": "egghead",
+        "name": "Egghead",
+        "short_name": "Egghead",
+        "sprite": "islands/island_egghead.png",
+        "stage": "Final Voyage",
+        "map_x": 69,
+        "map_y": 15,
+    },
+    {
+        "key": "laugh_tale",
+        "name": "Laugh Tale",
+        "short_name": "Laugh Tale",
+        "sprite": "islands/island_laugh_tale.png",
+        "stage": "Final Voyage",
+        "map_x": 50,
+        "map_y": 11,
+    },
 )
 
 VOYAGE_BOSSES = (
@@ -547,17 +675,41 @@ VOYAGE_BOSSES = (
     {"name": "Krieg", "sprite": "bosses/boss_krieg.png", "island_key": "east_blue"},
     {"name": "Buggy", "sprite": "bosses/boss_buggy.png", "island_key": "east_blue"},
     {"name": "Arlong", "sprite": "bosses/boss_arlong.png", "island_key": "east_blue"},
-    {"name": "Crocodile", "sprite": "bosses/boss_crocodile.png", "island_key": "alabasta"},
+    {
+        "name": "Crocodile",
+        "sprite": "bosses/boss_crocodile.png",
+        "island_key": "alabasta",
+    },
     {"name": "Enel", "sprite": "bosses/boss_enel.png", "island_key": "skypiea"},
     {"name": "Lucci", "sprite": "bosses/boss_lucci.png", "island_key": "water_7"},
     {"name": "Moria", "sprite": "bosses/boss_moria.png", "island_key": "thriller_bark"},
-    {"name": "Doflamingo", "sprite": "bosses/boss_doflamingo.png", "island_key": "dressrosa"},
-    {"name": "Katakuri", "sprite": "bosses/boss_katakuri.png", "island_key": "whole_cake"},
-    {"name": "Big Mom", "sprite": "bosses/boss_big_mom.png", "island_key": "whole_cake"},
+    {
+        "name": "Doflamingo",
+        "sprite": "bosses/boss_doflamingo.png",
+        "island_key": "dressrosa",
+    },
+    {
+        "name": "Katakuri",
+        "sprite": "bosses/boss_katakuri.png",
+        "island_key": "whole_cake",
+    },
+    {
+        "name": "Big Mom",
+        "sprite": "bosses/boss_big_mom.png",
+        "island_key": "whole_cake",
+    },
     {"name": "Kaido", "sprite": "bosses/boss_kaido.png", "island_key": "wano"},
-    {"name": "Five Elders", "sprite": "bosses/boss_five_elders.png", "island_key": "egghead"},
+    {
+        "name": "Five Elders",
+        "sprite": "bosses/boss_five_elders.png",
+        "island_key": "egghead",
+    },
     {"name": "Imu", "sprite": "bosses/boss_imu.png", "island_key": "egghead"},
-    {"name": "Blackbeard", "sprite": "bosses/boss_blackbeard.png", "island_key": "laugh_tale"},
+    {
+        "name": "Blackbeard",
+        "sprite": "bosses/boss_blackbeard.png",
+        "island_key": "laugh_tale",
+    },
 )
 
 VOYAGE_ROUTE_MARKERS = {
@@ -584,12 +736,33 @@ VOYAGE_SHARED_ASSETS = {
 }
 
 TRAINING_STAGE_BLUEPRINT = (
-    ("catalog_ready", "Catalog Ready", "Local card catalog is indexed and ready for lookup."),
-    ("dossiers_building", "Dossiers Building", "Structured dossiers are being created card by card."),
-    ("verification_expanding", "Verification Expanding", "Verified dossiers are growing with trusted evidence."),
-    ("relationship_graph_later", "Relationship Graph Later", "Card and variant relationships will deepen later."),
-    ("deck_intelligence_later", "Deck Intelligence Later", "Deck-level intelligence comes after card knowledge is solid."),
+    (
+        "catalog_ready",
+        "Catalog Ready",
+        "Local card catalog is indexed and ready for lookup.",
+    ),
+    (
+        "dossiers_building",
+        "Dossiers Building",
+        "Structured dossiers are being created card by card.",
+    ),
+    (
+        "verification_expanding",
+        "Verification Expanding",
+        "Verified dossiers are growing with trusted evidence.",
+    ),
+    (
+        "relationship_graph_later",
+        "Relationship Graph Later",
+        "Card and variant relationships will deepen later.",
+    ),
+    (
+        "deck_intelligence_later",
+        "Deck Intelligence Later",
+        "Deck-level intelligence comes after card knowledge is solid.",
+    ),
 )
+
 
 def read_port_env(name: str, default: int) -> int:
     raw_value = str(os.getenv(name, "") or "").strip()
@@ -629,7 +802,11 @@ def get_ttl_cached_value(
     now = time.time()
     with _TTL_CACHE_LOCK:
         entry = _TTL_CACHE.get(key)
-        if entry and entry.get("expires_at", 0.0) > now and entry.get("signature") == signature:
+        if (
+            entry
+            and entry.get("expires_at", 0.0) > now
+            and entry.get("signature") == signature
+        ):
             return copy.deepcopy(entry["value"])
     value = builder()
     with _TTL_CACHE_LOCK:
@@ -648,10 +825,30 @@ def invalidate_ttl_cache(key: str) -> None:
 
 
 DEV_ACTIVITY_BLUEPRINT = (
-    {"key": "sleeping", "title": "Idle", "description": "Miru is online but not working on a learning task right now.", "visual": "sleeping"},
-    {"key": "setting_sail", "title": "Running", "description": "Miru is online and moving through structured learning work.", "visual": "sailing"},
-    {"key": "gathering_crew", "title": "Working Now", "description": "Miru is actively processing a live learning task.", "visual": "crew"},
-    {"key": "storm_warning", "title": "Needs Attention", "description": "The learning engine reported a recent problem that may need help.", "visual": "storm"},
+    {
+        "key": "sleeping",
+        "title": "Idle",
+        "description": "Miru is online but not working on a learning task right now.",
+        "visual": "sleeping",
+    },
+    {
+        "key": "setting_sail",
+        "title": "Running",
+        "description": "Miru is online and moving through structured learning work.",
+        "visual": "sailing",
+    },
+    {
+        "key": "gathering_crew",
+        "title": "Working Now",
+        "description": "Miru is actively processing a live learning task.",
+        "visual": "crew",
+    },
+    {
+        "key": "storm_warning",
+        "title": "Needs Attention",
+        "description": "The learning engine reported a recent problem that may need help.",
+        "visual": "storm",
+    },
 )
 
 MIRU_ACTIVITY_LOCK = Lock()
@@ -664,19 +861,21 @@ MIRU_ACTIVITY_STATE = {
     "last_error": "",
 }
 
+# Bumped once per server process so ?v= on miru_ai.js / miru_ai.css changes on every restart
+# (avoids mobile 304 loops when mtimes did not move).
+_MIRU_ASSET_VERSION: str = ""
+
+
 def compute_asset_version() -> str:
-    candidates = [Path(__file__)]
-    if TEMPLATE_DIR.exists():
-        candidates.extend(path for path in TEMPLATE_DIR.rglob("*") if path.is_file())
-    if STATIC_DIR.exists():
-        candidates.extend(path for path in STATIC_DIR.rglob("*") if path.is_file())
-    latest_mtime = max(int(path.stat().st_mtime_ns) for path in candidates)
-    return str(latest_mtime)
+    """Return a cache-bust query value stable for this process, new on each server start."""
+    global _MIRU_ASSET_VERSION
+    if not _MIRU_ASSET_VERSION:
+        _MIRU_ASSET_VERSION = str(int(time.time() * 1000))
+    return _MIRU_ASSET_VERSION
 
 
 def format_mode_label(mode_key: str) -> str:
     return ALL_MODE_LABELS.get(mode_key, mode_key.title())
-
 
 
 def format_count(value: int) -> str:
@@ -815,19 +1014,29 @@ def inspect_dossier_db(path: Path | None = None) -> dict[str, Any]:
                         ).fetchone()[0]
                     )
             else:
-                status["error"] = "Miru dossier database opened, but no recognized dossier tables were found."
+                status["error"] = (
+                    "Miru dossier database opened, but no recognized dossier tables were found."
+                )
                 return status
 
-            status["usable"] = status["dossiers_created"] > 0 or "cards" in tables or "dossiers" in tables
+            status["usable"] = (
+                status["dossiers_created"] > 0
+                or "cards" in tables
+                or "dossiers" in tables
+            )
             if not status["usable"] and not status["error"]:
-                status["error"] = "Miru dossier database opened, but contains no dossier rows yet."
+                status["error"] = (
+                    "Miru dossier database opened, but contains no dossier rows yet."
+                )
     except sqlite3.Error as exc:
         status["error"] = f"{exc.__class__.__name__}: {exc}"
 
     return status
 
 
-def determine_training_stage(total_cards: int, dossiers_created: int, verified_dossiers: int) -> str:
+def determine_training_stage(
+    total_cards: int, dossiers_created: int, verified_dossiers: int
+) -> str:
     if total_cards <= 0:
         return "catalog_ready"
     if dossiers_created <= 0:
@@ -881,12 +1090,18 @@ def build_intelligence_progress(training_status: dict[str, Any]) -> dict[str, An
     current_index = determine_intelligence_stage_index(training_status)
     total_stages = len(INTELLIGENCE_STAGE_BLUEPRINT)
     current_stage = dict(INTELLIGENCE_STAGE_BLUEPRINT[current_index])
-    next_stage = dict(INTELLIGENCE_STAGE_BLUEPRINT[current_index + 1]) if current_index + 1 < total_stages else None
+    next_stage = (
+        dict(INTELLIGENCE_STAGE_BLUEPRINT[current_index + 1])
+        if current_index + 1 < total_stages
+        else None
+    )
 
     for stage in (current_stage, next_stage):
         if isinstance(stage, dict):
             stage["number"] = 1 + next(
-                index for index, entry in enumerate(INTELLIGENCE_STAGE_BLUEPRINT) if entry["key"] == stage["key"]
+                index
+                for index, entry in enumerate(INTELLIGENCE_STAGE_BLUEPRINT)
+                if entry["key"] == stage["key"]
             )
 
     stage_rows = []
@@ -947,15 +1162,25 @@ def _build_training_status_uncached() -> dict[str, Any]:
     dossier_status = inspect_dossier_db(DOSSIER_DB_PATH)
 
     total_cards = int(catalog_status["cards"]) if catalog_status["usable"] else 0
-    dossiers_created = min(int(dossier_status["dossiers_created"]), total_cards) if total_cards else int(dossier_status["dossiers_created"])
-    verified_dossiers = min(int(dossier_status["verified_dossiers"]), dossiers_created) if dossiers_created else 0
+    dossiers_created = (
+        min(int(dossier_status["dossiers_created"]), total_cards)
+        if total_cards
+        else int(dossier_status["dossiers_created"])
+    )
+    verified_dossiers = (
+        min(int(dossier_status["verified_dossiers"]), dossiers_created)
+        if dossiers_created
+        else 0
+    )
     remaining_gaps = max(total_cards - verified_dossiers, 0)
 
     catalog_coverage_percent = 100.0 if total_cards > 0 else 0.0
     dossier_coverage_percent = safe_percent(dossiers_created, total_cards)
     verified_coverage_percent = safe_percent(verified_dossiers, total_cards)
     progress_percent = verified_coverage_percent
-    training_stage = determine_training_stage(total_cards, dossiers_created, verified_dossiers)
+    training_stage = determine_training_stage(
+        total_cards, dossiers_created, verified_dossiers
+    )
 
     ring_metrics = [
         {
@@ -979,18 +1204,51 @@ def _build_training_status_uncached() -> dict[str, Any]:
     ]
 
     verified_summary = f"{format_count(verified_dossiers)} verified dossiers out of {format_count(total_cards)} catalog cards"
-    remaining_summary = f"{format_count(remaining_gaps)} cards still need verified dossier coverage."
+    remaining_summary = (
+        f"{format_count(remaining_gaps)} cards still need verified dossier coverage."
+    )
 
     ring_metrics_clear = [
-        {"label": "Catalog size", "percent": catalog_coverage_percent, "value": format_count(total_cards), "detail": "Indexed card identities available locally."},
-        {"label": "Dossiers in store", "percent": dossier_coverage_percent, "value": format_count(dossiers_created), "detail": "Cards with dossier records in the verified store."},
-        {"label": "Verified", "percent": verified_coverage_percent, "value": format_count(verified_dossiers), "detail": "Cards with verified dossier state."},
+        {
+            "label": "Catalog size",
+            "percent": catalog_coverage_percent,
+            "value": format_count(total_cards),
+            "detail": "Indexed card identities available locally.",
+        },
+        {
+            "label": "Dossiers in store",
+            "percent": dossier_coverage_percent,
+            "value": format_count(dossiers_created),
+            "detail": "Cards with dossier records in the verified store.",
+        },
+        {
+            "label": "Verified",
+            "percent": verified_coverage_percent,
+            "value": format_count(verified_dossiers),
+            "detail": "Cards with verified dossier state.",
+        },
     ]
     stats_clear = (
-        {"label": "Catalog size", "value": format_count(total_cards), "detail": "Cards in local catalog."},
-        {"label": "Dossiers in verified store", "value": format_count(dossiers_created), "detail": "Card profiles in the main verified store."},
-        {"label": "Verified in store", "value": format_count(verified_dossiers), "detail": "Dossiers marked verified."},
-        {"label": "Still to verify", "value": format_count(remaining_gaps), "detail": "Catalog cards without a verified dossier."},
+        {
+            "label": "Catalog size",
+            "value": format_count(total_cards),
+            "detail": "Cards in local catalog.",
+        },
+        {
+            "label": "Dossiers in verified store",
+            "value": format_count(dossiers_created),
+            "detail": "Card profiles in the main verified store.",
+        },
+        {
+            "label": "Verified in store",
+            "value": format_count(verified_dossiers),
+            "detail": "Dossiers marked verified.",
+        },
+        {
+            "label": "Still to verify",
+            "value": format_count(remaining_gaps),
+            "detail": "Catalog cards without a verified dossier.",
+        },
     )
 
     training_status = {
@@ -1045,7 +1303,9 @@ def _build_training_status_uncached() -> dict[str, Any]:
         "remaining_summary": remaining_summary,
         "stats": stats_clear,
     }
-    training_status["intelligence_progress"] = build_intelligence_progress(training_status)
+    training_status["intelligence_progress"] = build_intelligence_progress(
+        training_status
+    )
     training_status["voyage"] = ensure_voyage_state(training_status)
     return training_status
 
@@ -1054,7 +1314,9 @@ def voyage_asset_url(relative_path: str) -> str:
     return url_for("static", filename=f"icons/miru_voyage/{relative_path}")
 
 
-def safe_voyage_asset_url(relative_path: str | None, fallback_relative_path: str = "ui/ui_log_pose.png") -> str:
+def safe_voyage_asset_url(
+    relative_path: str | None, fallback_relative_path: str = "ui/ui_log_pose.png"
+) -> str:
     voyage_root = STATIC_DIR / "icons" / "miru_voyage"
     candidate = voyage_root / str(relative_path or "")
     if relative_path and candidate.is_file():
@@ -1065,7 +1327,9 @@ def safe_voyage_asset_url(relative_path: str | None, fallback_relative_path: str
     return url_for("static", filename="icons/miru-fruit.png")
 
 
-def voyage_shared_asset_url(key: str, fallback_relative_path: str = "ui/ui_log_pose.png") -> str:
+def voyage_shared_asset_url(
+    key: str, fallback_relative_path: str = "ui/ui_log_pose.png"
+) -> str:
     return safe_voyage_asset_url(VOYAGE_SHARED_ASSETS.get(key), fallback_relative_path)
 
 
@@ -1099,7 +1363,9 @@ def build_voyage_location(island: dict[str, str], status: str) -> dict[str, str]
         "status": status,
         "map_x": int(island.get("map_x", 0) or 0),
         "map_y": int(island.get("map_y", 0) or 0),
-        "sprite_url": safe_voyage_asset_url(island.get("sprite"), "islands/island_east_blue.png"),
+        "sprite_url": safe_voyage_asset_url(
+            island.get("sprite"), "islands/island_east_blue.png"
+        ),
     }
 
 
@@ -1108,7 +1374,9 @@ def build_voyage_boss(boss: dict[str, str], status: str) -> dict[str, str]:
         "name": boss.get("name", "Planned"),
         "island_key": boss.get("island_key", ""),
         "status": status,
-        "sprite_url": safe_voyage_asset_url(boss.get("sprite"), "characters/barto_idle.png"),
+        "sprite_url": safe_voyage_asset_url(
+            boss.get("sprite"), "characters/barto_idle.png"
+        ),
     }
 
 
@@ -1184,11 +1452,26 @@ def build_voyage_state(
 ) -> dict[str, Any]:
     progress_percent = float(training_status.get("progress_percent") or 0.0)
     island_total = len(VOYAGE_ISLANDS)
-    reverse_mountain_index = next((index for index, island in enumerate(VOYAGE_ISLANDS) if island.get("key") == "reverse_mountain"), 0)
-    next_island_index = min(reverse_mountain_index + 1, island_total - 1) if island_total else 0
+    reverse_mountain_index = next(
+        (
+            index
+            for index, island in enumerate(VOYAGE_ISLANDS)
+            if island.get("key") == "reverse_mountain"
+        ),
+        0,
+    )
+    next_island_index = (
+        min(reverse_mountain_index + 1, island_total - 1) if island_total else 0
+    )
 
-    current_island = build_voyage_location(VOYAGE_ISLANDS[reverse_mountain_index], "current")
-    next_island = build_voyage_location(VOYAGE_ISLANDS[next_island_index], "next") if island_total else None
+    current_island = build_voyage_location(
+        VOYAGE_ISLANDS[reverse_mountain_index], "current"
+    )
+    next_island = (
+        build_voyage_location(VOYAGE_ISLANDS[next_island_index], "next")
+        if island_total
+        else None
+    )
     route_nodes = []
     for index, island in enumerate(VOYAGE_ISLANDS):
         if index == reverse_mountain_index:
@@ -1207,8 +1490,13 @@ def build_voyage_state(
                 "status": status,
                 "map_x": int(island.get("map_x", 0) or 0),
                 "map_y": int(island.get("map_y", 0) or 0),
-                "sprite_url": safe_voyage_asset_url(island.get("sprite"), "islands/island_east_blue.png"),
-                "marker_url": safe_voyage_asset_url(VOYAGE_ROUTE_MARKERS.get(status), "routes/route_checkpoint_marker.png"),
+                "sprite_url": safe_voyage_asset_url(
+                    island.get("sprite"), "islands/island_east_blue.png"
+                ),
+                "marker_url": safe_voyage_asset_url(
+                    VOYAGE_ROUTE_MARKERS.get(status),
+                    "routes/route_checkpoint_marker.png",
+                ),
                 "bosses": [],
             }
         )
@@ -1230,13 +1518,17 @@ def build_voyage_state(
         can_do_now_detail = "Miru can compare queued card facts with source material and lock in trusted details."
     elif learning_phase["title"] == "Writing Dossiers":
         can_do_now = "Write structured card notes"
-        can_do_now_detail = "Miru can turn trusted facts into cleaner dossier records for later lookup."
+        can_do_now_detail = (
+            "Miru can turn trusted facts into cleaner dossier records for later lookup."
+        )
     elif learning_phase["title"] == "Scanning Sources":
         can_do_now = "Collect source material for verification"
         can_do_now_detail = "Miru can gather new source pages and queue them for the next verification pass."
     elif learning_phase["title"] == "Processing Images":
         can_do_now = "Track and verify card images"
-        can_do_now_detail = "Miru can fetch or review card images so the learning archive stays usable."
+        can_do_now_detail = (
+            "Miru can fetch or review card images so the learning archive stays usable."
+        )
     else:
         can_do_now = "Build dependable card knowledge"
         can_do_now_detail = "Miru can work through source-backed card tasks and keep structured learning moving."
@@ -1247,9 +1539,13 @@ def build_voyage_state(
     elif running_count > 0:
         next_detail = "The next step is finishing the work already in flight and turning it into trusted coverage."
     else:
-        next_detail = "The next step is widening trusted coverage and keeping the queue healthy."
+        next_detail = (
+            "The next step is widening trusted coverage and keeping the queue healthy."
+        )
 
-    route_polyline = " ".join(f"{node['map_x']},{node['map_y']}" for node in route_nodes)
+    route_polyline = " ".join(
+        f"{node['map_x']},{node['map_y']}" for node in route_nodes
+    )
     ship_position = {
         "x": int(current_island.get("map_x", 0) or 0),
         "y": int(current_island.get("map_y", 0) or 0),
@@ -1296,7 +1592,11 @@ def ensure_voyage_state(
 ) -> dict[str, Any]:
     training_status = dict(training_status or {})
     base_voyage = build_voyage_state(training_status, learning_status=learning_status)
-    candidate = voyage_state if isinstance(voyage_state, dict) else training_status.get("voyage")
+    candidate = (
+        voyage_state
+        if isinstance(voyage_state, dict)
+        else training_status.get("voyage")
+    )
     if not isinstance(candidate, dict):
         return base_voyage
 
@@ -1330,7 +1630,10 @@ def ensure_voyage_state(
         if isinstance(candidate.get(key), dict):
             merged[key] = {**merged.get(key, {}), **candidate[key]}
     if isinstance(candidate.get("assets"), dict):
-        merged["assets"] = {**merged["assets"], **{k: v for k, v in candidate["assets"].items() if v}}
+        merged["assets"] = {
+            **merged["assets"],
+            **{k: v for k, v in candidate["assets"].items() if v},
+        }
     if isinstance(candidate.get("recent_log"), list) and candidate["recent_log"]:
         merged["recent_log"] = candidate["recent_log"]
     if isinstance(candidate.get("route_nodes"), list) and candidate["route_nodes"]:
@@ -1360,32 +1663,79 @@ def seconds_since(timestamp: str) -> float | None:
     return max(time.time() - time.mktime(parsed), 0.0)
 
 
-def compute_learner_state_and_freshness(learning_status: dict[str, Any]) -> dict[str, str]:
+# Heartbeat age above this is never treated as "Running" while a PID looks alive; aligns dev-status with live process truth.
+LEARNER_HEARTBEAT_STALE_SECONDS = 120.0
+
+
+def compute_learner_state_and_freshness(
+    learning_status: dict[str, Any],
+) -> dict[str, str]:
     """Compute learner_state (Offline/Starting/Running/Idle/Stale/Error) and heartbeat_freshness (fresh/stale/none)."""
     current_state = str(learning_status.get("current_state") or "").strip().lower()
     last_heartbeat = str(learning_status.get("last_heartbeat") or "").strip()
     last_error = str(learning_status.get("last_error") or "").strip()
     queue_waiting = int(learning_status.get("queue_length") or 0)
     queue_running = int(learning_status.get("running_count") or 0)
-    active_states = {"processing", "running", "validating", "learning", "syncing", "discovering", "starting"}
+    active_states = {
+        "processing",
+        "running",
+        "validating",
+        "learning",
+        "syncing",
+        "discovering",
+        "starting",
+    }
     heartbeat_age = seconds_since(last_heartbeat) if last_heartbeat else None
     status_db_exists = bool(learning_status.get("status_db_exists"))
 
     if last_error or current_state == "error":
-        heartbeat_freshness = "stale" if heartbeat_age is not None and heartbeat_age <= 180 else ("none" if heartbeat_age is None else "stale")
+        heartbeat_freshness = (
+            "stale"
+            if heartbeat_age is not None
+            and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
+            else ("none" if heartbeat_age is None else "stale")
+        )
         return {"learner_state": "Error", "heartbeat_freshness": heartbeat_freshness}
     if not status_db_exists and heartbeat_age is None:
         return {"learner_state": "Offline", "heartbeat_freshness": "none"}
     if heartbeat_age is not None and heartbeat_age > 600:
         return {"learner_state": "Offline", "heartbeat_freshness": "stale"}
-    if heartbeat_age is not None and heartbeat_age > 180 and (queue_waiting > 0 or queue_running > 0 or current_state in active_states):
+    if (
+        heartbeat_age is not None
+        and heartbeat_age > LEARNER_HEARTBEAT_STALE_SECONDS
+        and (queue_waiting > 0 or queue_running > 0 or current_state in active_states)
+    ):
         return {"learner_state": "Stale", "heartbeat_freshness": "stale"}
     if current_state == "starting":
-        return {"learner_state": "Starting", "heartbeat_freshness": "fresh" if heartbeat_age is not None and heartbeat_age <= 180 else "stale"}
+        return {
+            "learner_state": "Starting",
+            "heartbeat_freshness": (
+                "fresh"
+                if heartbeat_age is not None
+                and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
+                else "stale"
+            ),
+        }
     if queue_running > 0 or current_state in active_states:
-        return {"learner_state": "Running", "heartbeat_freshness": "fresh" if heartbeat_age is not None and heartbeat_age <= 180 else "stale"}
+        return {
+            "learner_state": "Running",
+            "heartbeat_freshness": (
+                "fresh"
+                if heartbeat_age is not None
+                and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
+                else "stale"
+            ),
+        }
     if last_heartbeat:
-        return {"learner_state": "Idle", "heartbeat_freshness": "fresh" if heartbeat_age is not None and heartbeat_age <= 180 else "stale"}
+        return {
+            "learner_state": "Idle",
+            "heartbeat_freshness": (
+                "fresh"
+                if heartbeat_age is not None
+                and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
+                else "stale"
+            ),
+        }
     return {"learner_state": "Offline", "heartbeat_freshness": "none"}
 
 
@@ -1402,12 +1752,22 @@ def classify_learning_task(
     current_image_task: str = "",
 ) -> tuple[str, str]:
     normalized = str(task_type or "").strip().lower()
-    if current_image_task or normalized in {"fetch_card_image", "verify_card_image", "refresh_card_image", "inspect_missing_image"}:
+    if current_image_task or normalized in {
+        "fetch_card_image",
+        "verify_card_image",
+        "refresh_card_image",
+        "inspect_missing_image",
+    }:
         return (
             "Processing Images",
             "Miru is fetching or checking card images for the learning archive.",
         )
-    if normalized in {"discover_sources", "discover_set_cards", "fetch_official_source", "refresh_from_source"}:
+    if normalized in {
+        "discover_sources",
+        "discover_set_cards",
+        "fetch_official_source",
+        "refresh_from_source",
+    }:
         return (
             "Scanning Sources",
             "Miru is collecting source material before it verifies new card facts.",
@@ -1485,7 +1845,9 @@ def build_learning_notification_snapshot(
     return {
         "generated_at": current_timestamp(),
         "verified_dossiers": int(training_status.get("verified_dossiers") or 0),
-        "verified_coverage_percent": round(float(training_status.get("verified_coverage_percent") or 0.0), 1),
+        "verified_coverage_percent": round(
+            float(training_status.get("verified_coverage_percent") or 0.0), 1
+        ),
         "queue_length": int(learning_status.get("queue_length") or 0),
         "running_count": int(learning_status.get("running_count") or 0),
         "failed_count": int(learning_status.get("failed_count") or 0),
@@ -1494,13 +1856,27 @@ def build_learning_notification_snapshot(
         "source_error_count": int(learning_status.get("source_error_count") or 0),
         "image_success_count": int(learning_status.get("image_success_count") or 0),
         "image_error_count": int(learning_status.get("image_error_count") or 0),
-        "current_state": str(learning_status.get("current_state") or "").strip().lower(),
-        "current_task_type": str(learning_status.get("current_task_type") or "").strip().lower(),
-        "current_task_label": str(learning_status.get("current_task_label") or "").strip(),
-        "current_card_code": str(learning_status.get("current_card_code") or "").strip(),
-        "current_source_id": str(learning_status.get("current_source_id") or "").strip(),
-        "last_completed_task": str(learning_status.get("last_completed_task") or "").strip().lower(),
-        "last_completed_card": str(learning_status.get("last_completed_card") or "").strip(),
+        "current_state": str(learning_status.get("current_state") or "")
+        .strip()
+        .lower(),
+        "current_task_type": str(learning_status.get("current_task_type") or "")
+        .strip()
+        .lower(),
+        "current_task_label": str(
+            learning_status.get("current_task_label") or ""
+        ).strip(),
+        "current_card_code": str(
+            learning_status.get("current_card_code") or ""
+        ).strip(),
+        "current_source_id": str(
+            learning_status.get("current_source_id") or ""
+        ).strip(),
+        "last_completed_task": str(learning_status.get("last_completed_task") or "")
+        .strip()
+        .lower(),
+        "last_completed_card": str(
+            learning_status.get("last_completed_card") or ""
+        ).strip(),
         "last_error": str(learning_status.get("last_error") or "").strip(),
         "last_heartbeat": str(learning_status.get("last_heartbeat") or "").strip(),
     }
@@ -1519,7 +1895,11 @@ def describe_learning_notification_engine_state(snapshot: dict[str, Any]) -> str
     if current_state in {"processing", "starting"}:
         if "image" in task_type:
             return "checking images"
-        if "source" in task_type or task_type.startswith("verify_") or task_type.startswith("discover_"):
+        if (
+            "source" in task_type
+            or task_type.startswith("verify_")
+            or task_type.startswith("discover_")
+        ):
             return "searching"
         return "learning"
     if queue_length > 0:
@@ -1573,13 +1953,50 @@ def build_learning_notification_payload(
     baseline = previous_snapshot if isinstance(previous_snapshot, dict) else None
 
     previous_verified = int(baseline.get("verified_dossiers") or 0) if baseline else 0
-    previous_coverage = round(float(baseline.get("verified_coverage_percent") or 0.0), 1) if baseline else 0.0
-    verified_delta = (snapshot["verified_dossiers"] - previous_verified) if baseline else 0
-    coverage_delta = round(snapshot["verified_coverage_percent"] - previous_coverage, 1) if baseline else 0.0
-    processed_delta = (snapshot["processed_count"] - int(baseline.get("processed_count") or 0)) if baseline else 0
-    source_success_delta = (snapshot["source_success_count"] - int(baseline.get("source_success_count") or 0)) if baseline else 0
-    image_success_delta = (snapshot["image_success_count"] - int(baseline.get("image_success_count") or 0)) if baseline else 0
-    error_delta = (snapshot["source_error_count"] + snapshot["image_error_count"] - int(baseline.get("source_error_count") or 0) - int(baseline.get("image_error_count") or 0)) if baseline else 0
+    previous_coverage = (
+        round(float(baseline.get("verified_coverage_percent") or 0.0), 1)
+        if baseline
+        else 0.0
+    )
+    verified_delta = (
+        (snapshot["verified_dossiers"] - previous_verified) if baseline else 0
+    )
+    coverage_delta = (
+        round(snapshot["verified_coverage_percent"] - previous_coverage, 1)
+        if baseline
+        else 0.0
+    )
+    processed_delta = (
+        (snapshot["processed_count"] - int(baseline.get("processed_count") or 0))
+        if baseline
+        else 0
+    )
+    source_success_delta = (
+        (
+            snapshot["source_success_count"]
+            - int(baseline.get("source_success_count") or 0)
+        )
+        if baseline
+        else 0
+    )
+    image_success_delta = (
+        (
+            snapshot["image_success_count"]
+            - int(baseline.get("image_success_count") or 0)
+        )
+        if baseline
+        else 0
+    )
+    error_delta = (
+        (
+            snapshot["source_error_count"]
+            + snapshot["image_error_count"]
+            - int(baseline.get("source_error_count") or 0)
+            - int(baseline.get("image_error_count") or 0)
+        )
+        if baseline
+        else 0
+    )
 
     engine_state = describe_learning_notification_engine_state(snapshot)
     task_summary = describe_learning_notification_task(snapshot)
@@ -1590,7 +2007,9 @@ def build_learning_notification_payload(
     if api_permission_required:
         title = "Miru: API permission required"
         first_sentence = "A source requires API or permission; Miru has not used it automatically. Check the Dev page."
-        coverage_sentence = f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
+        coverage_sentence = (
+            f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
+        )
     elif meaningful_gain:
         title = "Miru learning improved"
         if verified_delta > 0:
@@ -1600,48 +2019,76 @@ def build_learning_notification_payload(
             )
         else:
             first_sentence = "Miru improved verified coverage since the last report."
-        coverage_sentence = (
-            f"Coverage rose from {previous_coverage:.1f}% to {snapshot['verified_coverage_percent']:.1f}%."
-        )
+        coverage_sentence = f"Coverage rose from {previous_coverage:.1f}% to {snapshot['verified_coverage_percent']:.1f}%."
     elif not baseline:
         title = "Miru learning snapshot"
-        first_sentence = (
-            f"Miru currently has {format_compact_count(snapshot['verified_dossiers'])} verified card dossiers."
+        first_sentence = f"Miru currently has {format_compact_count(snapshot['verified_dossiers'])} verified card dossiers."
+        coverage_sentence = (
+            f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
         )
-        coverage_sentence = f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
     elif snapshot.get("last_error") or engine_state == "stuck" or error_delta > 0:
         title = "Miru may be stuck"
-        first_sentence = "Miru retried work but did not add new verified learning this cycle."
-        coverage_sentence = f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+        first_sentence = (
+            "Miru retried work but did not add new verified learning this cycle."
+        )
+        coverage_sentence = (
+            f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+        )
     elif engine_state == "idle" and snapshot["queue_length"] <= 0:
         title = "Miru is idle"
         first_sentence = "Miru is online but idle. No queued learning work right now."
-        coverage_sentence = f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
+        coverage_sentence = (
+            f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
+        )
     elif engine_state == "searching":
         title = "Miru is searching"
-        first_sentence = "Miru scanned sources but has not added new verified learning yet."
-        coverage_sentence = f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+        first_sentence = (
+            "Miru scanned sources but has not added new verified learning yet."
+        )
+        coverage_sentence = (
+            f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+        )
     elif engine_state == "checking images":
         title = "Miru is checking images"
-        first_sentence = "Miru processed image work but has not added new verified learning yet."
-        coverage_sentence = f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
-    elif processed_delta > 0 or source_success_delta > 0 or image_success_delta > 0 or snapshot["queue_length"] > 0:
+        first_sentence = (
+            "Miru processed image work but has not added new verified learning yet."
+        )
+        coverage_sentence = (
+            f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+        )
+    elif (
+        processed_delta > 0
+        or source_success_delta > 0
+        or image_success_delta > 0
+        or snapshot["queue_length"] > 0
+    ):
         title = "Miru is working"
         first_sentence = "Miru is active but has not added new verified learning yet."
-        coverage_sentence = f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+        coverage_sentence = (
+            f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+        )
     else:
         title = "Miru learning steady"
-        first_sentence = "Miru has not added meaningful new verified learning this cycle."
-        coverage_sentence = f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+        first_sentence = (
+            "Miru has not added meaningful new verified learning this cycle."
+        )
+        coverage_sentence = (
+            f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
+        )
 
-    engine_sentence = (
-        f"Engine is {engine_state}"
-        + (f" on {task_summary}." if task_summary and engine_state not in {"idle", "stuck"} else ".")
+    engine_sentence = f"Engine is {engine_state}" + (
+        f" on {task_summary}."
+        if task_summary and engine_state not in {"idle", "stuck"}
+        else "."
     )
     if engine_state == "stuck" and snapshot.get("last_error"):
         engine_sentence = f"Engine is stuck. {str(snapshot['last_error'])[:120]}."
 
-    message = " ".join(part for part in (first_sentence, coverage_sentence, queue_summary, engine_sentence) if part)
+    message = " ".join(
+        part
+        for part in (first_sentence, coverage_sentence, queue_summary, engine_sentence)
+        if part
+    )
     return {
         "title": title,
         "message": message.strip(),
@@ -1695,7 +2142,9 @@ def describe_learning_engine_phase(learning_status: dict[str, Any]) -> dict[str,
         }
 
     if current_state in {"processing", "running"} or running_count > 0:
-        title, description = classify_learning_task(task_type, current_image_task=current_image_task)
+        title, description = classify_learning_task(
+            task_type, current_image_task=current_image_task
+        )
         return {
             "key": "gathering_crew",
             "title": title,
@@ -1786,21 +2235,34 @@ def note_miru_run_started(selected_mode: str, request_text: str) -> None:
         MIRU_ACTIVITY_STATE["active_runs"] += 1
         MIRU_ACTIVITY_STATE["last_started_at"] = current_timestamp()
         MIRU_ACTIVITY_STATE["last_mode"] = selected_mode
-        MIRU_ACTIVITY_STATE["last_request_text"] = summarize_activity_request(request_text)
+        MIRU_ACTIVITY_STATE["last_request_text"] = summarize_activity_request(
+            request_text
+        )
         MIRU_ACTIVITY_STATE["last_error"] = ""
 
 
-def note_miru_run_finished(selected_mode: str, request_text: str, ok: bool, message: str) -> None:
+def note_miru_run_finished(
+    selected_mode: str, request_text: str, ok: bool, message: str
+) -> None:
     with MIRU_ACTIVITY_LOCK:
-        MIRU_ACTIVITY_STATE["active_runs"] = max(int(MIRU_ACTIVITY_STATE["active_runs"]) - 1, 0)
+        MIRU_ACTIVITY_STATE["active_runs"] = max(
+            int(MIRU_ACTIVITY_STATE["active_runs"]) - 1, 0
+        )
         MIRU_ACTIVITY_STATE["last_finished_at"] = current_timestamp()
         MIRU_ACTIVITY_STATE["last_mode"] = selected_mode
-        MIRU_ACTIVITY_STATE["last_request_text"] = summarize_activity_request(request_text)
-        MIRU_ACTIVITY_STATE["last_error"] = "" if ok else summarize_activity_request(message)
+        MIRU_ACTIVITY_STATE["last_request_text"] = summarize_activity_request(
+            request_text
+        )
+        MIRU_ACTIVITY_STATE["last_error"] = (
+            "" if ok else summarize_activity_request(message)
+        )
 
 
 def build_activity_states(current_key: str) -> list[dict[str, Any]]:
-    return [{**item, "active": item["key"] == current_key} for item in DEV_ACTIVITY_BLUEPRINT]
+    return [
+        {**item, "active": item["key"] == current_key}
+        for item in DEV_ACTIVITY_BLUEPRINT
+    ]
 
 
 def build_miru_activity(training_status: dict[str, Any]) -> dict[str, Any]:
@@ -1819,21 +2281,33 @@ def build_miru_activity(training_status: dict[str, Any]) -> dict[str, Any]:
         )
     else:
         recent_error_age = seconds_since(str(snapshot.get("last_finished_at") or ""))
-        if snapshot.get("last_error") and recent_error_age is not None and recent_error_age <= ACTIVITY_RECENT_WINDOW_SECONDS:
+        if (
+            snapshot.get("last_error")
+            and recent_error_age is not None
+            and recent_error_age <= ACTIVITY_RECENT_WINDOW_SECONDS
+        ):
             current_key = "storm_warning"
             detail = str(snapshot["last_error"])
-        elif training_status["dossiers_created"] > 0 and training_status["remaining_gaps"] > 0:
+        elif (
+            training_status["dossiers_created"] > 0
+            and training_status["remaining_gaps"] > 0
+        ):
             current_key = "setting_sail"
             detail = training_status["remaining_summary"]
 
-    current = next((item for item in DEV_ACTIVITY_BLUEPRINT if item["key"] == current_key), DEV_ACTIVITY_BLUEPRINT[0])
+    current = next(
+        (item for item in DEV_ACTIVITY_BLUEPRINT if item["key"] == current_key),
+        DEV_ACTIVITY_BLUEPRINT[0],
+    )
     return {
         "key": current_key,
         "title": current["title"],
         "description": current["description"],
         "detail": detail,
         "visual": current["visual"],
-        "updated_at": snapshot.get("last_finished_at") or snapshot.get("last_started_at") or current_timestamp(),
+        "updated_at": snapshot.get("last_finished_at")
+        or snapshot.get("last_started_at")
+        or current_timestamp(),
         "active_runs": int(snapshot.get("active_runs") or 0),
     }
 
@@ -1889,10 +2363,15 @@ def sample_memory_usage() -> dict[str, float | int] | None:
     if psutil is not None:
         try:
             memory = psutil.virtual_memory()
-            return {"percent": float(memory.percent), "used": int(memory.used), "total": int(memory.total)}
+            return {
+                "percent": float(memory.percent),
+                "used": int(memory.used),
+                "total": int(memory.total),
+            }
         except Exception:
             return None
     if os.name == "nt":
+
         class MEMORYSTATUSEX(ctypes.Structure):
             _fields_ = [
                 ("dwLength", ctypes.c_ulong),
@@ -1911,7 +2390,11 @@ def sample_memory_usage() -> dict[str, float | int] | None:
         if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
             return None
         used = int(status.ullTotalPhys - status.ullAvailPhys)
-        return {"percent": float(status.dwMemoryLoad), "used": used, "total": int(status.ullTotalPhys)}
+        return {
+            "percent": float(status.dwMemoryLoad),
+            "used": used,
+            "total": int(status.ullTotalPhys),
+        }
     try:
         page_size = int(os.sysconf("SC_PAGE_SIZE"))
         total_pages = int(os.sysconf("SC_PHYS_PAGES"))
@@ -1927,7 +2410,11 @@ def sample_memory_usage() -> dict[str, float | int] | None:
 def sample_gpu_usage() -> dict[str, float | int] | None:
     try:
         result = subprocess.run(
-            ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total", "--format=csv,noheader,nounits"],
+            [
+                "nvidia-smi",
+                "--query-gpu=utilization.gpu,memory.used,memory.total",
+                "--format=csv,noheader,nounits",
+            ],
             capture_output=True,
             text=True,
             timeout=2,
@@ -1947,28 +2434,48 @@ def sample_gpu_usage() -> dict[str, float | int] | None:
         memory_total_mb = int(float(parts[2]))
     except ValueError:
         return None
-    return {"percent": percent, "memory_used_mb": memory_used_mb, "memory_total_mb": memory_total_mb}
+    return {
+        "percent": percent,
+        "memory_used_mb": memory_used_mb,
+        "memory_total_mb": memory_total_mb,
+    }
 
 
 def build_resource_metrics() -> list[dict[str, Any]]:
     cpu_percent = sample_cpu_usage()
     memory = sample_memory_usage()
     gpu = sample_gpu_usage()
-    disk_total, disk_used, disk_free = shutil.disk_usage(str(PROJECT_ROOT.anchor or PROJECT_ROOT))
+    disk_total, disk_used, disk_free = shutil.disk_usage(
+        str(PROJECT_ROOT.anchor or PROJECT_ROOT)
+    )
     return [
         {
             "key": "cpu",
             "label": "CPU",
-            "value": f"{cpu_percent:.1f}%" if cpu_percent is not None else "Unavailable",
-            "detail": "Current processor use." if cpu_percent is not None else "CPU usage is unavailable on this machine.",
+            "value": (
+                f"{cpu_percent:.1f}%" if cpu_percent is not None else "Unavailable"
+            ),
+            "detail": (
+                "Current processor use."
+                if cpu_percent is not None
+                else "CPU usage is unavailable on this machine."
+            ),
             "percent": cpu_percent if cpu_percent is not None else 0.0,
             "available": cpu_percent is not None,
         },
         {
             "key": "memory",
             "label": "Memory",
-            "value": f"{format_bytes(int(memory['used']))} / {format_bytes(int(memory['total']))}" if memory else "Unavailable",
-            "detail": f"{float(memory['percent']):.1f}% in use." if memory else "Memory usage is unavailable on this machine.",
+            "value": (
+                f"{format_bytes(int(memory['used']))} / {format_bytes(int(memory['total']))}"
+                if memory
+                else "Unavailable"
+            ),
+            "detail": (
+                f"{float(memory['percent']):.1f}% in use."
+                if memory
+                else "Memory usage is unavailable on this machine."
+            ),
             "percent": float(memory["percent"]) if memory else 0.0,
             "available": memory is not None,
         },
@@ -1976,7 +2483,11 @@ def build_resource_metrics() -> list[dict[str, Any]]:
             "key": "gpu",
             "label": "GPU",
             "value": f"{float(gpu['percent']):.1f}%" if gpu else "Unavailable",
-            "detail": f"{int(gpu['memory_used_mb'])} MB of {int(gpu['memory_total_mb'])} MB used." if gpu else "GPU stats are unavailable on this machine.",
+            "detail": (
+                f"{int(gpu['memory_used_mb'])} MB of {int(gpu['memory_total_mb'])} MB used."
+                if gpu
+                else "GPU stats are unavailable on this machine."
+            ),
             "percent": float(gpu["percent"]) if gpu else 0.0,
             "available": gpu is not None,
         },
@@ -2002,7 +2513,9 @@ def build_companion_url(port: int, path: str = "/") -> str:
     return f"{request.scheme}://{host}:{port}{route_path}"
 
 
-def inspect_local_http_route(url: str, *, timeout_seconds: float = 0.35) -> dict[str, Any]:
+def inspect_local_http_route(
+    url: str, *, timeout_seconds: float = 0.35
+) -> dict[str, Any]:
     started = time.perf_counter()
     try:
         req = Request(url, headers={"User-Agent": "Miru-Runtime-Probe/1"})
@@ -2037,20 +2550,28 @@ def inspect_local_http_route(url: str, *, timeout_seconds: float = 0.35) -> dict
 
 
 def build_runtime_status_payload() -> dict[str, Any]:
-    fast_probe = inspect_local_http_route(f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/", timeout_seconds=0.35)
+    fast_probe = inspect_local_http_route(
+        f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/", timeout_seconds=0.35
+    )
     confirm_probe: dict[str, Any] | None = None
     project_state = "confirmed_healthy"
     project_certainty = "confirmed"
     project_detail = str(fast_probe.get("detail") or "")
     project_status_value = "ok"
-    fast_ok = bool(fast_probe.get("reachable")) and int(fast_probe.get("status_code") or 0) == 200
+    fast_ok = (
+        bool(fast_probe.get("reachable"))
+        and int(fast_probe.get("status_code") or 0) == 200
+    )
     if fast_ok:
-        project_detail = (
-            f"Fast runtime probe returned HTTP 200 in {fast_probe.get('elapsed_ms', 0)}ms."
-        )
+        project_detail = f"Fast runtime probe returned HTTP 200 in {fast_probe.get('elapsed_ms', 0)}ms."
     else:
-        confirm_probe = inspect_local_http_route(f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/", timeout_seconds=1.5)
-        confirm_ok = bool(confirm_probe.get("reachable")) and int(confirm_probe.get("status_code") or 0) == 200
+        confirm_probe = inspect_local_http_route(
+            f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/", timeout_seconds=1.5
+        )
+        confirm_ok = (
+            bool(confirm_probe.get("reachable"))
+            and int(confirm_probe.get("status_code") or 0) == 200
+        )
         if confirm_ok:
             project_state = "direct_check_healthy"
             project_certainty = "degraded"
@@ -2065,9 +2586,19 @@ def build_runtime_status_payload() -> dict[str, Any]:
             project_status_value = "unhealthy"
             project_detail = str((confirm_probe or fast_probe).get("detail") or "")
     main_port = int(PROJECT_MIRU_PORT)
-    main_probe = inspect_local_http_route(f"http://127.0.0.1:{main_port}/", timeout_seconds=0.45)
+    main_probe = inspect_local_http_route(
+        f"http://127.0.0.1:{main_port}/", timeout_seconds=0.45
+    )
     main_code = int(main_probe.get("status_code") or 0)
-    main_ok = bool(main_probe.get("reachable")) and main_code in (200, 204, 301, 302, 304, 403, 404)
+    main_ok = bool(main_probe.get("reachable")) and main_code in (
+        200,
+        204,
+        301,
+        302,
+        304,
+        403,
+        404,
+    )
     main_site_value = "ok" if main_ok else "unhealthy"
 
     payload: dict[str, Any] = {
@@ -2097,10 +2628,24 @@ def load_runtime_status_payload(*, force: bool = False) -> dict[str, Any]:
     )
 
 
-def build_issue_card(label: str, issues: list[str], *, ok_detail: str, warn_detail: str) -> dict[str, Any]:
+def build_issue_card(
+    label: str, issues: list[str], *, ok_detail: str, warn_detail: str
+) -> dict[str, Any]:
     if issues:
-        return {"label": label, "status": issues[0], "tone": "warn", "detail": warn_detail, "items": issues}
-    return {"label": label, "status": "No issues detected", "tone": "good", "detail": ok_detail, "items": []}
+        return {
+            "label": label,
+            "status": issues[0],
+            "tone": "warn",
+            "detail": warn_detail,
+            "items": issues,
+        }
+    return {
+        "label": label,
+        "status": "No issues detected",
+        "tone": "good",
+        "detail": ok_detail,
+        "items": [],
+    }
 
 
 def build_learning_engine_activity(
@@ -2131,7 +2676,9 @@ def build_issue_detection(
     for ev in learning_status.get("api_permission_events") or []:
         msg = ev.get("message") or ev.get("event_type") or "API/permission event"
         miru_issues.append(f"Learner: {msg}")
-    for warning in (learning_status.get("snapshot_inputs") or {}).get("required_warnings") or []:
+    for warning in (learning_status.get("snapshot_inputs") or {}).get(
+        "required_warnings"
+    ) or []:
         w = str(warning or "").strip()
         if w:
             miru_issues.append(w)
@@ -2140,7 +2687,11 @@ def build_issue_detection(
         recent_error = str(MIRU_ACTIVITY_STATE.get("last_error") or "")
         recent_finished = str(MIRU_ACTIVITY_STATE.get("last_finished_at") or "")
     error_age = seconds_since(recent_finished)
-    if recent_error and error_age is not None and error_age <= ACTIVITY_RECENT_WINDOW_SECONDS:
+    if (
+        recent_error
+        and error_age is not None
+        and error_age <= ACTIVITY_RECENT_WINDOW_SECONDS
+    ):
         miru_issues.append("Latest Ask run needs attention")
 
     project_issues = []
@@ -2163,37 +2714,187 @@ def build_issue_detection(
     }
 
 
-def build_learning_engine_metrics(learning_status: dict[str, Any]) -> list[dict[str, Any]]:
+def build_learning_engine_metrics(
+    learning_status: dict[str, Any],
+) -> list[dict[str, Any]]:
     """Build learning-engine-only metrics (queue, throughput, sidecar) with clear keys and labels."""
     return [
-        {"key": "queue_queued_count", "label": "Queue: waiting", "value": format_count(learning_status.get("queue_length", 0)), "detail": "Learning tasks waiting in the queue."},
-        {"key": "queue_running_count", "label": "Queue: running", "value": format_count(learning_status.get("running_count", 0)), "detail": "Tasks currently running."},
-        {"key": "queue_failed_count", "label": "Queue: failed", "value": format_count(learning_status.get("failed_count", 0)), "detail": "Tasks that permanently failed."},
-        {"key": "queue_completed_count", "label": "Queue: completed", "value": format_count(learning_status.get("completed_count", 0)), "detail": "Tasks completed (all time)."},
-        {"key": "queue_backlog", "label": "Queue backlog", "value": format_count(learning_status.get("queue_backlog", 0)), "detail": "Queued learning work still waiting to run."},
-        {"key": "parallel_workers", "label": "Parallel validations", "value": format_count(learning_status.get("max_parallel_validations", 1)), "detail": "Configured safe concurrency limit for validation work."},
-        {"key": "engine_processed_count", "label": "Tasks run", "value": format_count(learning_status.get("processed_count", 0)), "detail": "Total task attempts processed."},
-        {"key": "engine_success_count", "label": "Succeeded", "value": format_count(learning_status.get("success_count", 0)), "detail": "Tasks completed without error."},
-        {"key": "engine_error_count", "label": "Failed", "value": format_count(learning_status.get("error_count", 0)), "detail": "Task attempts that ended in error."},
-        {"key": "validated_cards_total", "label": "Validated cards", "value": format_count(learning_status.get("validated_card_count", 0)), "detail": "Cards that completed the verified field validation step."},
-        {"key": "cards_learned_per_hour", "label": "Cards learned/hr", "value": format_count(learning_status.get("cards_learned_per_hour", 0)), "detail": "Verified cards completed during the last rolling hour."},
-        {"key": "validation_success_rate", "label": "Validation success", "value": f"{float(learning_status.get('validation_success_rate', 0.0)):.1f}%", "detail": "Share of validation tasks that finished successfully."},
-        {"key": "average_validation_seconds", "label": "Avg validation time", "value": f"{float(learning_status.get('average_validation_seconds', 0.0)):.2f}s", "detail": "Average runtime for completed validation tasks."},
-        {"key": "engine_source_success_count", "label": "Source: success", "value": format_count(learning_status.get("source_success_count", 0)), "detail": "Source-backed tasks completed successfully."},
-        {"key": "engine_source_error_count", "label": "Source: errors", "value": format_count(learning_status.get("source_error_count", 0)), "detail": "Source-backed tasks that ended in error."},
-        {"key": "engine_image_success_count", "label": "Images: success", "value": format_count(learning_status.get("image_success_count", 0)), "detail": "Image ingestion tasks completed successfully."},
-        {"key": "engine_image_error_count", "label": "Images: errors", "value": format_count(learning_status.get("image_error_count", 0)), "detail": "Image ingestion tasks that ended in error."},
-        {"key": "discovery_candidates", "label": "Source candidates", "value": format_count(learning_status.get("discovery_candidate_count", 0)), "detail": "Potential source sites discovered locally."},
-        {"key": "discovery_pending_review", "label": "Source review queue", "value": format_count(learning_status.get("discovery_pending_review_count", 0)), "detail": "Discovered source candidates still waiting for operator review."},
-        {"key": "approved_sources_loaded", "label": "Approved sources (config)", "value": format_count(learning_status.get("approved_sources_loaded_count", 0)), "detail": "Sources loaded from worktree config/miru_approved_sources.json (allowlist)."},
-        {"key": "approved_sources_config_errors", "label": "Config load errors", "value": format_count(len(learning_status.get("approved_sources_config_errors") or [])), "detail": "Invalid or skipped entries in approved-sources config (see status payload for messages)."},
-        {"key": "sidecar_dossiers_count", "label": "Sidecar dossiers", "value": format_count(learning_status.get("dossier_count", 0)), "detail": "Profiles in the learning engine store."},
-        {"key": "dossier_verified_count", "label": "Dossiers: verified", "value": format_count(learning_status.get("dossier_verified_count", 0)), "detail": "Learning dossiers with verification_state = verified."},
-        {"key": "dossier_source_backed_count", "label": "Dossiers: source-backed", "value": format_count(learning_status.get("dossier_source_backed_count", 0)), "detail": "Learning dossiers with verification_state = source-backed (used for insight sync)."},
-        {"key": "sidecar_images_tracked_count", "label": "Sidecar images: tracked", "value": format_count(learning_status.get("images_tracked", 0)), "detail": "Image registry entries tracked."},
-        {"key": "sidecar_images_verified_count", "label": "Sidecar images: verified", "value": format_count(learning_status.get("images_verified", 0)), "detail": "Image registry entries marked verified."},
-        {"key": "sidecar_images_missing_count", "label": "Sidecar images: missing", "value": format_count(learning_status.get("images_missing", 0)), "detail": "Catalog cards missing a sidecar image entry."},
-        {"key": "last_image_update", "label": "Last image update", "value": learning_status.get("last_image_update") or "—", "detail": "Most recent image ingestion update timestamp."},
+        {
+            "key": "queue_queued_count",
+            "label": "Queue: waiting",
+            "value": format_count(learning_status.get("queue_length", 0)),
+            "detail": "Learning tasks waiting in the queue.",
+        },
+        {
+            "key": "queue_running_count",
+            "label": "Queue: running",
+            "value": format_count(learning_status.get("running_count", 0)),
+            "detail": "Tasks currently running.",
+        },
+        {
+            "key": "queue_failed_count",
+            "label": "Queue: failed",
+            "value": format_count(learning_status.get("failed_count", 0)),
+            "detail": "Tasks that permanently failed.",
+        },
+        {
+            "key": "queue_completed_count",
+            "label": "Queue: completed",
+            "value": format_count(learning_status.get("completed_count", 0)),
+            "detail": "Tasks completed (all time).",
+        },
+        {
+            "key": "queue_backlog",
+            "label": "Queue backlog",
+            "value": format_count(learning_status.get("queue_backlog", 0)),
+            "detail": "Queued learning work still waiting to run.",
+        },
+        {
+            "key": "parallel_workers",
+            "label": "Parallel validations",
+            "value": format_count(learning_status.get("max_parallel_validations", 1)),
+            "detail": "Configured safe concurrency limit for validation work.",
+        },
+        {
+            "key": "engine_processed_count",
+            "label": "Tasks run",
+            "value": format_count(learning_status.get("processed_count", 0)),
+            "detail": "Total task attempts processed.",
+        },
+        {
+            "key": "engine_success_count",
+            "label": "Succeeded",
+            "value": format_count(learning_status.get("success_count", 0)),
+            "detail": "Tasks completed without error.",
+        },
+        {
+            "key": "engine_error_count",
+            "label": "Failed",
+            "value": format_count(learning_status.get("error_count", 0)),
+            "detail": "Task attempts that ended in error.",
+        },
+        {
+            "key": "validated_cards_total",
+            "label": "Validated cards",
+            "value": format_count(learning_status.get("validated_card_count", 0)),
+            "detail": "Cards that completed the verified field validation step.",
+        },
+        {
+            "key": "cards_learned_per_hour",
+            "label": "Cards learned/hr",
+            "value": format_count(learning_status.get("cards_learned_per_hour", 0)),
+            "detail": "Verified cards completed during the last rolling hour.",
+        },
+        {
+            "key": "validation_success_rate",
+            "label": "Validation success",
+            "value": f"{float(learning_status.get('validation_success_rate', 0.0)):.1f}%",
+            "detail": "Share of validation tasks that finished successfully.",
+        },
+        {
+            "key": "average_validation_seconds",
+            "label": "Avg validation time",
+            "value": f"{float(learning_status.get('average_validation_seconds', 0.0)):.2f}s",
+            "detail": "Average runtime for completed validation tasks.",
+        },
+        {
+            "key": "engine_source_success_count",
+            "label": "Source: success",
+            "value": format_count(learning_status.get("source_success_count", 0)),
+            "detail": "Source-backed tasks completed successfully.",
+        },
+        {
+            "key": "engine_source_error_count",
+            "label": "Source: errors",
+            "value": format_count(learning_status.get("source_error_count", 0)),
+            "detail": "Source-backed tasks that ended in error.",
+        },
+        {
+            "key": "engine_image_success_count",
+            "label": "Images: success",
+            "value": format_count(learning_status.get("image_success_count", 0)),
+            "detail": "Image ingestion tasks completed successfully.",
+        },
+        {
+            "key": "engine_image_error_count",
+            "label": "Images: errors",
+            "value": format_count(learning_status.get("image_error_count", 0)),
+            "detail": "Image ingestion tasks that ended in error.",
+        },
+        {
+            "key": "discovery_candidates",
+            "label": "Source candidates",
+            "value": format_count(learning_status.get("discovery_candidate_count", 0)),
+            "detail": "Potential source sites discovered locally.",
+        },
+        {
+            "key": "discovery_pending_review",
+            "label": "Source review queue",
+            "value": format_count(
+                learning_status.get("discovery_pending_review_count", 0)
+            ),
+            "detail": "Discovered source candidates still waiting for operator review.",
+        },
+        {
+            "key": "approved_sources_loaded",
+            "label": "Approved sources (config)",
+            "value": format_count(
+                learning_status.get("approved_sources_loaded_count", 0)
+            ),
+            "detail": "Sources loaded from worktree config/miru_approved_sources.json (allowlist).",
+        },
+        {
+            "key": "approved_sources_config_errors",
+            "label": "Config load errors",
+            "value": format_count(
+                len(learning_status.get("approved_sources_config_errors") or [])
+            ),
+            "detail": "Invalid or skipped entries in approved-sources config (see status payload for messages).",
+        },
+        {
+            "key": "sidecar_dossiers_count",
+            "label": "Sidecar dossiers",
+            "value": format_count(learning_status.get("dossier_count", 0)),
+            "detail": "Profiles in the learning engine store.",
+        },
+        {
+            "key": "dossier_verified_count",
+            "label": "Dossiers: verified",
+            "value": format_count(learning_status.get("dossier_verified_count", 0)),
+            "detail": "Learning dossiers with verification_state = verified.",
+        },
+        {
+            "key": "dossier_source_backed_count",
+            "label": "Dossiers: source-backed",
+            "value": format_count(
+                learning_status.get("dossier_source_backed_count", 0)
+            ),
+            "detail": "Learning dossiers with verification_state = source-backed (used for insight sync).",
+        },
+        {
+            "key": "sidecar_images_tracked_count",
+            "label": "Sidecar images: tracked",
+            "value": format_count(learning_status.get("images_tracked", 0)),
+            "detail": "Image registry entries tracked.",
+        },
+        {
+            "key": "sidecar_images_verified_count",
+            "label": "Sidecar images: verified",
+            "value": format_count(learning_status.get("images_verified", 0)),
+            "detail": "Image registry entries marked verified.",
+        },
+        {
+            "key": "sidecar_images_missing_count",
+            "label": "Sidecar images: missing",
+            "value": format_count(learning_status.get("images_missing", 0)),
+            "detail": "Catalog cards missing a sidecar image entry.",
+        },
+        {
+            "key": "last_image_update",
+            "label": "Last image update",
+            "value": learning_status.get("last_image_update") or "—",
+            "detail": "Most recent image ingestion update timestamp.",
+        },
     ]
 
 
@@ -2226,7 +2927,9 @@ def load_monitor_validation_counts(
     if not path.is_file():
         return snapshot
 
-    cutoff = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - max(recent_window_seconds, 0)))
+    cutoff = time.strftime(
+        "%Y-%m-%d %H:%M:%S", time.gmtime(time.time() - max(recent_window_seconds, 0))
+    )
     try:
         with closing(sqlite3.connect(path)) as conn:
             conn.row_factory = sqlite3.Row
@@ -2243,8 +2946,7 @@ def load_monitor_validation_counts(
                         END
                     ) AS recent_rows
                 FROM miru_validations
-                """
-                ,
+                """,
                 (cutoff,),
             ).fetchone()
     except sqlite3.Error:
@@ -2342,16 +3044,22 @@ def build_monitor_activity_item_from_log(row: sqlite3.Row) -> dict[str, Any] | N
         return {
             "kind": event_type,
             "title": "Blocked: source not registered",
-            "detail": message or "Miru ignored a source that is not in the allowed registry.",
+            "detail": message
+            or "Miru ignored a source that is not in the allowed registry.",
             "timestamp": created_at,
             "card_code": card_code,
             "tone": "warn",
         }
-    if event_type in {"api_required_source_detected", "access_policy_unclear", "permission_required"}:
+    if event_type in {
+        "api_required_source_detected",
+        "access_policy_unclear",
+        "permission_required",
+    }:
         return {
             "kind": event_type,
             "title": "API permission required",
-            "detail": message or "A source requires API or permission; Miru did not use it automatically.",
+            "detail": message
+            or "A source requires API or permission; Miru did not use it automatically.",
             "timestamp": created_at,
             "card_code": card_code,
             "tone": "warn",
@@ -2360,7 +3068,8 @@ def build_monitor_activity_item_from_log(row: sqlite3.Row) -> dict[str, Any] | N
         return {
             "kind": event_type,
             "title": "Publish blocked by mode",
-            "detail": message or "Miru did not publish; mode is dry run or review required.",
+            "detail": message
+            or "Miru did not publish; mode is dry run or review required.",
             "timestamp": created_at,
             "card_code": card_code,
             "tone": "neutral",
@@ -2432,6 +3141,281 @@ def load_pending_approvals(
     ]
 
 
+def load_publication_review_queue(
+    *,
+    project_db_path: Path = FALLBACK_CATALOG_DB_PATH,
+    limit: int = 500,
+) -> list[dict[str, Any]]:
+    """Load pending operator approval/review items from miru_review_queue (catalog DB)."""
+    path = Path(project_db_path)
+    if not path.is_file():
+        return []
+    limit = max(int(limit), 1)
+    sql = """
+        SELECT
+            rq.item_key,
+            rq.target_id AS card_code,
+            rq.status,
+            rq.approval_state,
+            rq.readiness_state,
+            rq.review_reason,
+            rq.guardrail_label,
+            rq.confidence_score,
+            rq.risk_level,
+            rq.recommended_next_step,
+            rq.summary_text,
+            rq.updated_at,
+            rq.created_at,
+            c.card_name,
+            c.set_code,
+            c.set_name
+        FROM miru_review_queue rq
+        INNER JOIN cards c ON upper(trim(c.canonical_code)) = upper(trim(rq.target_id))
+        INNER JOIN card_intelligence ci ON ci.card_id = c.id
+        WHERE rq.status = 'pending'
+          AND lower(trim(coalesce(ci.publish_status, ''))) = 'publish_requires_review'
+        ORDER BY
+            CASE WHEN rq.approval_state = 'pending_review' THEN 0
+                 WHEN rq.approval_state = '' THEN 1
+                 ELSE 2
+            END,
+            rq.confidence_score DESC,
+            rq.updated_at DESC
+        LIMIT ?
+    """
+    try:
+        with closing(sqlite3.connect(str(path))) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(sql, (limit,)).fetchall()
+    except sqlite3.Error:
+        return []
+
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        code = str(row["card_code"] or "").strip().upper()
+        preview_src = (
+            str(row["summary_text"] or "").strip()
+            or str(row["review_reason"] or "").strip()
+        )
+        preview = preview_src.replace("\n", " ").strip()
+        if len(preview) > 220:
+            preview = preview[:217] + "…"
+        conf: float
+        try:
+            conf = float(row["confidence_score"] or 0.0)
+        except (TypeError, ValueError):
+            conf = 0.0
+        if conf < 0.0:
+            conf = 0.0
+        if conf > 1.0:
+            conf = 1.0
+        out.append(
+            {
+                "queue_kind": "publication",
+                "item_key": str(row["item_key"] or "").strip(),
+                "card_code": code,
+                "status": str(row["status"] or "").strip(),
+                "approval_state": str(row["approval_state"] or "").strip(),
+                "readiness_state": str(row["readiness_state"] or "").strip(),
+                "review_reason": str(row["review_reason"] or "").strip(),
+                "guardrail_label": str(row["guardrail_label"] or "").strip(),
+                "confidence_score": conf,
+                "risk_level": str(row["risk_level"] or "").strip(),
+                "recommended_next_step": str(
+                    row["recommended_next_step"] or ""
+                ).strip(),
+                "summary_text": str(row["summary_text"] or "").strip(),
+                "updated_at": str(row["updated_at"] or "").strip(),
+                "created_at": str(row["created_at"] or "").strip(),
+                "card_name": str(row["card_name"] or "").strip(),
+                "set_code": str(row["set_code"] or "").strip(),
+                "set_name": str(row["set_name"] or "").strip(),
+                "id": code,
+                "insight_type": str(row["guardrail_label"] or "").strip() or "—",
+                "confidence": conf,
+                "insight_preview": preview or "—",
+            }
+        )
+    return out
+
+
+_TASK_QUEUE_LOCK = Lock()
+
+
+def _task_queue_path() -> Path:
+    return PROJECT_ROOT / "data" / "task_queue.json"
+
+
+def _read_task_queue_items() -> list[dict[str, Any]]:
+    path = _task_queue_path()
+    if not path.is_file():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    if isinstance(payload, dict) and isinstance(payload.get("items"), list):
+        return [item for item in payload["items"] if isinstance(item, dict)]
+    return []
+
+
+def _write_task_queue_items(items: list[dict[str, Any]]) -> None:
+    path = _task_queue_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(items, indent=2, sort_keys=False), encoding="utf-8")
+
+
+def count_publication_review_rows(
+    *,
+    project_db_path: Path = FALLBACK_CATALOG_DB_PATH,
+) -> int:
+    path = Path(project_db_path).resolve()
+    if not path.is_file():
+        return 0
+    try:
+        with closing(sqlite3.connect(f"file:{path}?mode=ro", uri=True)) as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS n
+                FROM card_intelligence
+                WHERE lower(trim(coalesce(publish_status, ''))) = 'publish_requires_review'
+                """
+            ).fetchone()
+    except sqlite3.Error:
+        return 0
+    return int(row[0] or 0) if row is not None else 0
+
+
+def compute_catalog_publish_pulse_coverage_percent(
+    *,
+    project_db_path: Path = FALLBACK_CATALOG_DB_PATH,
+) -> float | None:
+    """Live % for /dev System Pulse: distinct card_intelligence.card_id in publish pipeline / 2527."""
+    path = Path(project_db_path).resolve()
+    if not path.is_file():
+        return None
+    sql = """
+        SELECT COUNT(DISTINCT card_id) AS n
+        FROM card_intelligence
+        WHERE coalesce(publish_status, '') != ''
+          AND publish_status IN (
+            'publish_ready',
+            'approved_for_candidate',
+            'publish_requires_review',
+            'publish_blocked'
+          )
+    """
+    try:
+        with closing(sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)) as conn:
+            row = conn.execute(sql).fetchone()
+        n = int(row[0] or 0) if row else 0
+        return round((n / 2527.0) * 100, 1)
+    except sqlite3.Error:
+        return None
+
+
+def update_publication_review_status(
+    card_code: str,
+    new_status: str,
+    *,
+    project_db_path: Path = FALLBACK_CATALOG_DB_PATH,
+    require_review_state: bool = True,
+) -> bool:
+    """
+    Set card_intelligence.publish_status for one card. Only publication field is written.
+    When require_review_state is True, only updates rows currently in publish_requires_review.
+    """
+    code = str(card_code or "").strip().upper()
+    status = str(new_status or "").strip()
+    if not code or status not in {"publish_ready", "publish_deferred"}:
+        return False
+    path = Path(project_db_path)
+    if not path.is_file():
+        return False
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    review_clause = (
+        "AND lower(trim(coalesce(publish_status, ''))) = 'publish_requires_review'"
+        if require_review_state
+        else ""
+    )
+    try:
+        with closing(sqlite3.connect(path)) as conn:
+            cur = conn.execute(
+                f"""
+                UPDATE card_intelligence
+                SET publish_status = ?, publish_updated_at = ?
+                WHERE card_id = (SELECT id FROM cards WHERE upper(trim(canonical_code)) = ? LIMIT 1)
+                {review_clause}
+                """,
+                (status, ts, code),
+            )
+            conn.commit()
+            return bool(cur.rowcount and cur.rowcount > 0)
+    except sqlite3.Error:
+        return False
+
+
+def dismiss_image_variant_sp_operator_review(
+    card_code: str,
+    *,
+    project_db_path: Path = FALLBACK_CATALOG_DB_PATH,
+) -> bool:
+    """
+    Dismiss SP-label triage for a card when there is no publication row to defer or the
+    review-queue row is missing. Only ``review_status`` on ``image_variant_analysis`` is
+    updated (to ``reviewed_not_sp``).
+    """
+    code = str(card_code or "").strip().upper()
+    if not code:
+        return False
+    path = Path(project_db_path).resolve()
+    if not path.is_file():
+        return False
+    try:
+        with closing(sqlite3.connect(path)) as conn:
+            cur = conn.execute(
+                """
+                UPDATE image_variant_analysis
+                SET review_status = 'reviewed_not_sp'
+                WHERE upper(trim(canonical_code)) = ?
+                  AND COALESCE(sp_marker_detected, 0) = 1
+                  AND lower(trim(review_status)) IN ('queued_sp_review', 'review_required')
+                """,
+                (code,),
+            )
+            conn.commit()
+            return bool(cur.rowcount and cur.rowcount > 0)
+    except sqlite3.Error:
+        return False
+
+
+def approve_all_publication_review(
+    *,
+    project_db_path: Path = FALLBACK_CATALOG_DB_PATH,
+) -> int:
+    """Move every publish_requires_review row to publish_ready. Returns rows updated."""
+    path = Path(project_db_path)
+    if not path.is_file():
+        return 0
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    try:
+        with closing(sqlite3.connect(path)) as conn:
+            cur = conn.execute(
+                """
+                UPDATE card_intelligence
+                SET publish_status = 'publish_ready', publish_updated_at = ?
+                WHERE lower(trim(coalesce(publish_status, ''))) = 'publish_requires_review'
+                """,
+                (ts,),
+            )
+            conn.commit()
+            return int(cur.rowcount or 0)
+    except sqlite3.Error:
+        return 0
+
+
 def load_monitor_engine_events(
     *,
     status_db_path: Path = LEARNING_STATUS_DB_PATH,
@@ -2469,9 +3453,17 @@ def load_monitor_engine_events(
     for row in rows:
         event_type = str(row["event_type"] or "").strip().lower()
         created_at = str(row["created_at"] or "").strip()
-        if event_type == "card_synced" and seconds_since(created_at) is not None and seconds_since(created_at) <= recent_window_seconds:
+        if (
+            event_type == "card_synced"
+            and seconds_since(created_at) is not None
+            and seconds_since(created_at) <= recent_window_seconds
+        ):
             synced_count += 1
-        if event_type in {"task_failed", "card_sync_failed"} and seconds_since(created_at) is not None and seconds_since(created_at) <= churn_window_seconds:
+        if (
+            event_type in {"task_failed", "card_sync_failed"}
+            and seconds_since(created_at) is not None
+            and seconds_since(created_at) <= churn_window_seconds
+        ):
             failure_count += 1
         item = build_monitor_activity_item_from_log(row)
         if item is not None:
@@ -2483,14 +3475,23 @@ def load_monitor_engine_events(
     return snapshot
 
 
-def fetch_remote_runtime_dev_status(url: str, *, timeout_seconds: float = 1.0) -> dict[str, Any] | None:
+def fetch_remote_runtime_dev_status(
+    url: str, *, timeout_seconds: float = 1.0
+) -> dict[str, Any] | None:
     target = str(url or "").strip()
     if not target:
         return None
     try:
         with urlopen(target, timeout=timeout_seconds) as response:
             payload = json.load(response)
-    except (HTTPError, URLError, OSError, TimeoutError, json.JSONDecodeError, ValueError):
+    except (
+        HTTPError,
+        URLError,
+        OSError,
+        TimeoutError,
+        json.JSONDecodeError,
+        ValueError,
+    ):
         return None
     return payload if isinstance(payload, dict) else None
 
@@ -2539,7 +3540,9 @@ def build_runtime_truth_source_descriptor(
             detail = f"Using the live main-runtime snapshot refreshed {age_label}."
     elif mode == "main_runtime_cached":
         label = "Cached main-runtime snapshot"
-        detail = "Using the last good main-runtime snapshot while live access catches up."
+        detail = (
+            "Using the last good main-runtime snapshot while live access catches up."
+        )
         if age_label:
             detail = f"Using the last good main-runtime snapshot from {age_label} while live access catches up."
     else:
@@ -2576,7 +3579,9 @@ def fetch_truth_source_dev_status_result(
 
     cached_entry = load_cached_runtime_truth_snapshot(target)
     if cached_entry and not force_refresh:
-        cached_age = max(time.time() - float(cached_entry.get("fetched_at") or 0.0), 0.0)
+        cached_age = max(
+            time.time() - float(cached_entry.get("fetched_at") or 0.0), 0.0
+        )
         fresh_cache_window = 8.0 if summary_only and not include_heavy else 4.0
         if cached_age <= fresh_cache_window:
             source = build_runtime_truth_source_descriptor(
@@ -2601,7 +3606,9 @@ def fetch_truth_source_dev_status_result(
         timeout_plan = (2.0, 4.5)
     live_payload = None
     for timeout_seconds in timeout_plan:
-        live_payload = fetch_remote_runtime_dev_status(target, timeout_seconds=timeout_seconds)
+        live_payload = fetch_remote_runtime_dev_status(
+            target, timeout_seconds=timeout_seconds
+        )
         if live_payload:
             break
     if live_payload:
@@ -2648,10 +3655,27 @@ def fetch_truth_source_dev_status(
     return dict(result.get("payload") or {}) if result else None
 
 
+def _ensure_dev_bootstrap_display_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    out = dict(payload or {})
+    out.setdefault(
+        "activity",
+        {
+            "key": "status_trimmed",
+            "title": "Status trimmed",
+            "description": "The legacy monitor hero activity was removed from the live API payload.",
+            "detail": "Use the activity feed and health cards for current runtime state.",
+            "visual": "status",
+        },
+    )
+    return out
+
+
 def build_dev_bootstrap_status() -> dict[str, Any]:
     remote_status_url = resolve_runtime_monitor_status_url()
     if remote_status_url:
-        target = f"{remote_status_url}{'&' if '?' in remote_status_url else '?'}view=summary"
+        target = (
+            f"{remote_status_url}{'&' if '?' in remote_status_url else '?'}view=summary"
+        )
         cached_entry = load_cached_runtime_truth_snapshot(target)
         if cached_entry:
             payload = dict(cached_entry.get("payload") or {})
@@ -2665,14 +3689,31 @@ def build_dev_bootstrap_status() -> dict[str, Any]:
                 payload["dev_environment"] = build_dev_environment_descriptor()
                 payload = ensure_governed_autopilot_payload(payload)
                 _apply_worker_heartbeat_fallback(payload)
-                return ensure_control_layer_payload(payload, force_runtime_probe=True)
+                return _ensure_dev_bootstrap_display_payload(
+                    ensure_control_layer_payload(payload, force_runtime_probe=True)
+                )
 
     training_status = build_training_status()
-    return ensure_control_layer_payload(ensure_governed_autopilot_payload(build_dev_status(
-        training_status,
-        lightweight=True,
-        fetch_truth_source=False,
-    )), force_runtime_probe=True)
+    signature = (
+        path_signature(FALLBACK_CATALOG_DB_PATH),
+        path_signature(DOSSIER_DB_PATH),
+        path_signature(LEARNING_QUEUE_DB_PATH),
+        path_signature(LEARNING_STATUS_DB_PATH),
+        path_signature(LEARNING_DOSSIER_DB_PATH),
+        path_signature(WORKER_LAST_RUN_PATH),
+    )
+    return get_ttl_cached_value(
+        "dev_bootstrap_status_local",
+        ttl_seconds=600.0,
+        signature=signature,
+        builder=lambda: _ensure_dev_bootstrap_display_payload(
+            build_dev_status(
+                training_status,
+                lightweight=True,
+                fetch_truth_source=False,
+            )
+        ),
+    )
 
 
 def resolve_runtime_monitor_status_url() -> str:
@@ -2775,7 +3816,9 @@ def _is_worktree_learner_process_alive(pid: int) -> bool:
                 return False
             return proc.is_running() and proc.status() != psutil.STATUS_ZOMBIE
         except Exception as e:
-            if psutil is not None and isinstance(e, (psutil.NoSuchProcess, psutil.AccessDenied)):
+            if psutil is not None and isinstance(
+                e, (psutil.NoSuchProcess, psutil.AccessDenied)
+            ):
                 return False
             raise
     try:
@@ -2835,7 +3878,9 @@ def _list_worktree_learner_process_ids() -> list[int]:
         try:
             cmdline = proc.info.get("cmdline")
             # Pass as-is: list on Unix, sometimes list or str on Windows; avoid list(str) -> chars
-            if not _looks_like_worktree_learner_command(cmdline if cmdline is not None else []):
+            if not _looks_like_worktree_learner_command(
+                cmdline if cmdline is not None else []
+            ):
                 continue
             if proc.is_running() and proc.status() != psutil.STATUS_ZOMBIE:
                 process_ids.add(int(proc.pid))
@@ -2871,8 +3916,16 @@ def _start_worktree_learner_process() -> tuple[bool, str, int | None]:
         adopted_pid = int(running_pids[0])
         _write_worktree_learner_pid(adopted_pid)
         duplicate_count = len(running_pids)
-        suffix = f" ({duplicate_count} matching process(es) detected)." if duplicate_count > 1 else ""
-        return True, f"Worktree learner already running; adopted PID {adopted_pid}.{suffix}", adopted_pid
+        suffix = (
+            f" ({duplicate_count} matching process(es) detected)."
+            if duplicate_count > 1
+            else ""
+        )
+        return (
+            True,
+            f"Worktree learner already running; adopted PID {adopted_pid}.{suffix}",
+            adopted_pid,
+        )
 
     cmd = [
         sys.executable,
@@ -2880,10 +3933,14 @@ def _start_worktree_learner_process() -> tuple[bool, str, int | None]:
         "tools.miru_learning_engine",
         "--mode",
         "continuous",
-        "--queue-db", str(LEARNING_QUEUE_DB_PATH),
-        "--status-db", str(LEARNING_STATUS_DB_PATH),
-        "--dossier-db", str(LEARNING_DOSSIER_DB_PATH),
-        "--catalog-db", str(FALLBACK_CATALOG_DB_PATH),
+        "--queue-db",
+        str(LEARNING_QUEUE_DB_PATH),
+        "--status-db",
+        str(LEARNING_STATUS_DB_PATH),
+        "--dossier-db",
+        str(LEARNING_DOSSIER_DB_PATH),
+        "--catalog-db",
+        str(FALLBACK_CATALOG_DB_PATH),
     ]
     env = os.environ.copy()
     kwargs: dict[str, Any] = {
@@ -2893,7 +3950,9 @@ def _start_worktree_learner_process() -> tuple[bool, str, int | None]:
         "close_fds": True,
     }
     if sys.platform == "win32":
-        flags = getattr(subprocess, "DETACHED_PROCESS", 0x00000008) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+        flags = getattr(subprocess, "DETACHED_PROCESS", 0x00000008) | getattr(
+            subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200
+        )
         kwargs["creationflags"] = flags
     else:
         kwargs["start_new_session"] = True
@@ -2901,7 +3960,9 @@ def _start_worktree_learner_process() -> tuple[bool, str, int | None]:
     try:
         stderr_file = open(WORKTREE_LEARNER_STDERR_LOG, "a", encoding="utf-8")
         stdout_file = open(WORKTREE_LEARNER_STDOUT_LOG, "a", encoding="utf-8")
-        stderr_file.write(f"\n[worktree] learner start requested at {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())} UTC\n")
+        stderr_file.write(
+            f"\n[worktree] learner start requested at {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())} UTC\n"
+        )
         stderr_file.flush()
     except OSError:
         stderr_file = subprocess.DEVNULL
@@ -2945,12 +4006,18 @@ def _stop_worktree_learner_process() -> tuple[bool, str]:
     running_pids = _list_worktree_learner_process_ids()
     if record:
         record_pid = int(record["pid"])
-        if _is_worktree_learner_process_alive(record_pid) and record_pid not in running_pids:
+        if (
+            _is_worktree_learner_process_alive(record_pid)
+            and record_pid not in running_pids
+        ):
             running_pids.append(record_pid)
     running_pids = sorted(set(int(pid) for pid in running_pids if int(pid) > 0))
     if not running_pids:
         _clear_worktree_learner_pid()
-        return True, "No worktree learner process found (already stopped or not started by this runtime)."
+        return (
+            True,
+            "No worktree learner process found (already stopped or not started by this runtime).",
+        )
 
     if psutil is None:
         pid = int(running_pids[0])
@@ -2984,7 +4051,10 @@ def _stop_worktree_learner_process() -> tuple[bool, str]:
 
     _clear_worktree_learner_pid()
     if stopped_count <= 0:
-        return True, "No worktree learner process found (already stopped or not started by this runtime)."
+        return (
+            True,
+            "No worktree learner process found (already stopped or not started by this runtime).",
+        )
     if stopped_count == 1:
         return True, "Worktree learner stopped."
     return True, f"Stopped {stopped_count} worktree learner processes."
@@ -3040,6 +4110,55 @@ def _apply_worktree_learner_state_override(
     return learning_engine
 
 
+def _reconcile_learner_status_with_process_truth(
+    learning_engine: dict[str, Any],
+    activity: dict[str, Any],
+) -> dict[str, Any]:
+    """
+    Process truth first: stale/missing PID => Offline; live PID + old heartbeat => Stale (never Running).
+    DB-only signals cannot upgrade a dead learner to Running.
+    """
+    if not _is_worktree_runtime():
+        return _apply_worktree_learner_state_override(learning_engine, activity)
+    le = dict(learning_engine)
+    pid = le.get("learner_pid")
+    pid_stale = bool(le.get("learner_pid_stale"))
+    has_live_pid = (
+        pid is not None
+        and str(pid).strip() != ""
+        and not pid_stale
+        and bool(le.get("learner_managed_by_worktree"))
+    )
+    hb = str(le.get("last_heartbeat") or "").strip()
+    hb_age = seconds_since(hb) if hb else None
+
+    if not has_live_pid:
+        le = dict(le)
+        le["learner_state"] = "Offline"
+        if hb_age is None:
+            le["heartbeat_freshness"] = "none"
+        else:
+            le["heartbeat_freshness"] = "stale"
+        if activity.get("title") in ("Idle", "Running (waiting)", "Running"):
+            activity["title"] = "Idle"
+        return le
+
+    if hb_age is not None and hb_age > LEARNER_HEARTBEAT_STALE_SECONDS:
+        le = dict(le)
+        prev = str(le.get("learner_state") or "")
+        if prev in (
+            "Running",
+            "Starting",
+            "Running (waiting)",
+            "Idle",
+        ):
+            le["learner_state"] = "Stale"
+        le["heartbeat_freshness"] = "stale"
+        return le
+
+    return _apply_worktree_learner_state_override(le, activity)
+
+
 def build_dev_environment_descriptor() -> dict[str, Any]:
     """Label and ports for the Dev page so environment (worktree vs main) and runtime target are explicit."""
     current = int(CURRENT_SERVER_PORT or 0)
@@ -3051,7 +4170,11 @@ def build_dev_environment_descriptor() -> dict[str, Any]:
         truth_source_label = "Remote main runtime (proxied via MIRU_RUNTIME_STATUS_URL)"
     else:
         runtime_target = "local/worktree" if is_worktree else "local/main"
-        truth_source_label = f"Worktree runtime (port {current})" if is_worktree else f"Main runtime (port {truth_port})"
+        truth_source_label = (
+            f"Worktree runtime (port {current})"
+            if is_worktree
+            else f"Main runtime (port {truth_port})"
+        )
     return {
         "environment": "worktree" if is_worktree else "main",
         "runtime_target": runtime_target,
@@ -3078,7 +4201,9 @@ def build_worktree_update_summary(
     review_queue_count = int(learning_status.get("review_queue_count") or 0)
     verified_dossiers = int(training_status.get("verified_dossiers") or 0)
     cards_recently_added = len(recently_validated)
-    awaiting_review = review_queue_count > 0 or len(rejected) > 0 or len(lowest_conf) > 0
+    awaiting_review = (
+        review_queue_count > 0 or len(rejected) > 0 or len(lowest_conf) > 0
+    )
     has_verified_updates = cards_recently_added > 0 or verified_dossiers > 0
 
     if awaiting_review and has_verified_updates:
@@ -3166,20 +4291,36 @@ def build_monitor_source(
     runtime_queue_db = Path(queue_db_raw) if queue_db_raw else None
     runtime_status_db = Path(status_db_raw) if status_db_raw else None
     runtime_dossier_db = Path(dossier_db_raw) if dossier_db_raw else None
-    runtime_root = runtime_status_db.parent if runtime_status_db else (runtime_queue_db.parent if runtime_queue_db else None)
+    runtime_root = (
+        runtime_status_db.parent
+        if runtime_status_db
+        else (runtime_queue_db.parent if runtime_queue_db else None)
+    )
     runtime_project_db = runtime_root / "card_catalog.db" if runtime_root else None
 
-    if runtime_queue_db and runtime_status_db and runtime_dossier_db and runtime_project_db and runtime_project_db.is_file():
+    if (
+        runtime_queue_db
+        and runtime_status_db
+        and runtime_dossier_db
+        and runtime_project_db
+        and runtime_project_db.is_file()
+    ):
         runtime_catalog_status = inspect_fallback_catalog_db(runtime_project_db)
         runtime_total_cards = int(
             runtime_catalog_status.get("cards")
-            or (remote_payload.get("training_progress") or {}).get("catalog_cards_total")
+            or (remote_payload.get("training_progress") or {}).get(
+                "catalog_cards_total"
+            )
             or training_status.get("total_cards")
             or 0
         )
         truth_mode = str(truth_source.get("mode") or "")
         return {
-            "mode": "main_runtime" if truth_mode == "main_runtime_live" else "main_runtime_cached",
+            "mode": (
+                "main_runtime"
+                if truth_mode == "main_runtime_live"
+                else "main_runtime_cached"
+            ),
             "label": str(truth_source.get("label") or "Live main runtime"),
             "detail": (
                 f"{str(truth_source.get('detail') or 'Using main-runtime truth.')}"
@@ -3199,12 +4340,18 @@ def build_monitor_source(
                 dossier_db_path=runtime_dossier_db,
                 total_cards=runtime_total_cards,
             ),
-            "validation_audit": list_validation_audit_insights(project_db_path=runtime_project_db),
+            "validation_audit": list_validation_audit_insights(
+                project_db_path=runtime_project_db
+            ),
         }
 
     fallback_remote = dict(local_source)
     truth_mode = str(truth_source.get("mode") or "")
-    fallback_remote["mode"] = "main_runtime_api" if truth_mode == "main_runtime_live" else "main_runtime_api_cached"
+    fallback_remote["mode"] = (
+        "main_runtime_api"
+        if truth_mode == "main_runtime_live"
+        else "main_runtime_api_cached"
+    )
     fallback_remote["label"] = str(truth_source.get("label") or "Live main runtime")
     fallback_remote["detail"] = (
         f"{str(truth_source.get('detail') or 'Using main-runtime truth.')} "
@@ -3214,7 +4361,9 @@ def build_monitor_source(
     fallback_remote["queue_db_path"] = queue_db_raw
     fallback_remote["status_db_path"] = status_db_raw
     fallback_remote["dossier_db_path"] = dossier_db_raw
-    fallback_remote["project_db_path"] = str(runtime_project_db) if runtime_project_db else ""
+    fallback_remote["project_db_path"] = (
+        str(runtime_project_db) if runtime_project_db else ""
+    )
     fallback_remote["fetched_at"] = truth_source.get("fetched_at")
     fallback_remote["age_label"] = str(truth_source.get("age_label") or "")
     fallback_remote["catalog_total"] = int(
@@ -3223,7 +4372,9 @@ def build_monitor_source(
         or 0
     )
     fallback_remote["learning_status"] = remote_learning or dict(learning_status or {})
-    fallback_remote["validation_audit"] = dict(remote_payload.get("validation_audit") or {})
+    fallback_remote["validation_audit"] = dict(
+        remote_payload.get("validation_audit") or {}
+    )
     return fallback_remote
 
 
@@ -3233,7 +4384,9 @@ def build_monitor_payload(
 ) -> dict[str, Any]:
     learning_status = dict(monitor_source.get("learning_status") or {})
     validation_audit = dict(monitor_source.get("validation_audit") or {})
-    activity = build_learning_engine_activity(learning_status, build_miru_activity(training_status))
+    activity = build_learning_engine_activity(
+        learning_status, build_miru_activity(training_status)
+    )
     project_db_path_raw = str(monitor_source.get("project_db_path") or "").strip()
     status_db_path_raw = str(monitor_source.get("status_db_path") or "").strip()
     project_db_path = Path(project_db_path_raw) if project_db_path_raw else None
@@ -3246,20 +4399,39 @@ def build_monitor_payload(
     engine_events = (
         load_monitor_engine_events(status_db_path=status_db_path)
         if status_db_path and status_db_path.is_file()
-        else {"recent_activity": [], "recent_synced_cards_count": 0, "recent_failure_count": 0}
+        else {
+            "recent_activity": [],
+            "recent_synced_cards_count": 0,
+            "recent_failure_count": 0,
+        }
     )
     queue_length = int(learning_status.get("queue_length") or 0)
     running_count = int(learning_status.get("running_count") or 0)
     failed_count = int(learning_status.get("failed_count") or 0)
     cards_per_hour = int(learning_status.get("cards_learned_per_hour") or 0)
-    validation_success_rate = float(learning_status.get("validation_success_rate") or 0.0)
-    catalog_total = int(monitor_source.get("catalog_total") or training_status.get("total_cards") or 0)
-    recent_validation_writes = int(validation_counts["recent_validation_writes_count"] or 0)
+    validation_success_rate = float(
+        learning_status.get("validation_success_rate") or 0.0
+    )
+    catalog_total = int(
+        monitor_source.get("catalog_total") or training_status.get("total_cards") or 0
+    )
+    recent_validation_writes = int(
+        validation_counts["recent_validation_writes_count"] or 0
+    )
     recent_synced_cards = int(engine_events["recent_synced_cards_count"] or 0)
     recent_failure_count = int(engine_events["recent_failure_count"] or 0)
     source_mode = str(monitor_source.get("mode") or "worktree_runtime")
-    if source_mode in {"main_runtime", "main_runtime_api", "main_runtime_cached", "main_runtime_api_cached"}:
-        verified_dossiers = int(validation_counts["miru_validations_count"] or learning_status.get("validated_card_count") or 0)
+    if source_mode in {
+        "main_runtime",
+        "main_runtime_api",
+        "main_runtime_cached",
+        "main_runtime_api_cached",
+    }:
+        verified_dossiers = int(
+            validation_counts["miru_validations_count"]
+            or learning_status.get("validated_card_count")
+            or 0
+        )
     else:
         verified_dossiers = int(training_status.get("verified_dossiers") or 0)
     verified_coverage = safe_percent(verified_dossiers, catalog_total)
@@ -3273,7 +4445,11 @@ def build_monitor_payload(
 
     state_label = str(activity.get("title") or "Idle")
     state_tone = "neutral"
-    if heartbeat_stale and (running_count > 0 or queue_length > 0 or current_state in {"processing", "running"}):
+    if heartbeat_stale and (
+        running_count > 0
+        or queue_length > 0
+        or current_state in {"processing", "running"}
+    ):
         state_label = "Stuck"
         state_tone = "warn"
     elif str(activity.get("key") or "") == "storm_warning":
@@ -3281,7 +4457,11 @@ def build_monitor_payload(
     elif str(activity.get("key") or "") in {"setting_sail", "gathering_crew"}:
         state_tone = "good"
 
-    if recent_failure_count >= 3 and recent_validation_writes <= 0 and recent_synced_cards <= 0:
+    if (
+        recent_failure_count >= 3
+        and recent_validation_writes <= 0
+        and recent_synced_cards <= 0
+    ):
         progress_label = "Churning"
         progress_tone = "warn"
         meaningful_progress = False
@@ -3291,7 +4471,9 @@ def build_monitor_payload(
         progress_label = "Improving"
         progress_tone = "good"
         meaningful_progress = True
-        progress_summary = "Miru is adding verified knowledge and Project Miru is receiving it."
+        progress_summary = (
+            "Miru is adding verified knowledge and Project Miru is receiving it."
+        )
         progress_detail = f"{format_count(recent_validation_writes)} validation write(s) and {format_count(recent_synced_cards)} sync(s) landed in the last hour."
     elif recent_validation_writes > 0:
         progress_label = "Improving"
@@ -3309,8 +4491,12 @@ def build_monitor_payload(
         progress_label = "Idle"
         progress_tone = "neutral"
         meaningful_progress = False
-        progress_summary = "Miru is not showing meaningful new verified progress right now."
-        progress_detail = "Queue is clear and no recent validation or sync writes are visible."
+        progress_summary = (
+            "Miru is not showing meaningful new verified progress right now."
+        )
+        progress_detail = (
+            "Queue is clear and no recent validation or sync writes are visible."
+        )
 
     warnings: list[dict[str, Any]] = []
     if heartbeat_stale:
@@ -3442,7 +4628,9 @@ def build_monitor_payload(
         "state": {
             "label": state_label,
             "tone": state_tone,
-            "description": str(activity.get("description") or "Miru is online and waiting."),
+            "description": str(
+                activity.get("description") or "Miru is online and waiting."
+            ),
             "task_label": task_label or "No active task",
             "task_type_label": task_type_label,
             "queue_status": (
@@ -3478,25 +4666,120 @@ def build_learning_metrics(
     images_verified = int(learning_status.get("images_verified") or 0)
     images_missing = int(learning_status.get("images_missing") or 0)
     metrics = [
-        {"key": "queue_length", "label": "Queued tasks", "value": format_count(learning_status["queue_length"]), "detail": "Learning tasks waiting in the SQLite queue."},
-        {"key": "processed_count", "label": "Processed tasks", "value": format_count(learning_status["processed_count"]), "detail": "Total task attempts processed by the learning engine."},
-        {"key": "success_count", "label": "Successful tasks", "value": format_count(learning_status["success_count"]), "detail": "Learning tasks completed without error."},
-        {"key": "error_count", "label": "Errored tasks", "value": format_count(learning_status["error_count"]), "detail": "Learning task attempts that ended in an error."},
-        {"key": "source_success_count", "label": "Source fetch success", "value": format_count(learning_status["source_success_count"]), "detail": "Source-backed tasks completed successfully."},
-        {"key": "source_error_count", "label": "Source fetch errors", "value": format_count(learning_status["source_error_count"]), "detail": "Source-backed tasks that ended in error."},
-        {"key": "image_success_count", "label": "Image fetch success", "value": format_count(learning_status.get("image_success_count", 0)), "detail": "Image ingestion tasks completed successfully."},
-        {"key": "image_error_count", "label": "Image fetch errors", "value": format_count(learning_status.get("image_error_count", 0)), "detail": "Image ingestion tasks that ended in error."},
-        {"key": "images_tracked", "label": "Images tracked", "value": format_count(images_tracked), "detail": "Image registry entries tracked by the learning engine."},
-        {"key": "images_verified", "label": "Images verified", "value": format_count(images_verified), "detail": "Image registry entries marked as verified."},
-        {"key": "images_missing", "label": "Images missing", "value": format_count(images_missing), "detail": "Catalog cards missing an image registry entry."},
-        {"key": "last_image_update", "label": "Last image update", "value": learning_status.get("last_image_update") or "—", "detail": "Most recent image ingestion update timestamp."},
-        {"key": "learning_dossiers", "label": "Learning dossiers", "value": format_count(learning_status["dossier_count"]), "detail": "Bootstrap dossier rows managed by the learning engine."},
-        {"key": "total_cards", "label": "Total cards", "value": format_count(total_cards), "detail": "Catalog identities loaded locally."},
-        {"key": "dossiers_created", "label": "Dossiers created", "value": format_count(training_status["dossiers_created"]), "detail": "Structured card profiles in the training store."},
-        {"key": "verified_dossiers", "label": "Verified dossiers", "value": format_count(training_status["verified_dossiers"]), "detail": "Cards that currently read as verified."},
-        {"key": "remaining_gaps", "label": "Remaining gaps", "value": format_count(training_status["remaining_gaps"]), "detail": "Cards still missing verified dossier coverage."},
-        {"key": "variants_tracked", "label": "Variants tracked", "value": format_count(variants_tracked), "detail": "Variant rows currently indexed in the local catalog."},
-        {"key": "image_coverage", "label": "Image coverage", "value": format_count(image_coverage_cards), "detail": f"{image_coverage_percent:.1f}% of catalog cards have a stored image identity."},
+        {
+            "key": "queue_length",
+            "label": "Queued tasks",
+            "value": format_count(learning_status["queue_length"]),
+            "detail": "Learning tasks waiting in the SQLite queue.",
+        },
+        {
+            "key": "processed_count",
+            "label": "Processed tasks",
+            "value": format_count(learning_status["processed_count"]),
+            "detail": "Total task attempts processed by the learning engine.",
+        },
+        {
+            "key": "success_count",
+            "label": "Successful tasks",
+            "value": format_count(learning_status["success_count"]),
+            "detail": "Learning tasks completed without error.",
+        },
+        {
+            "key": "error_count",
+            "label": "Errored tasks",
+            "value": format_count(learning_status["error_count"]),
+            "detail": "Learning task attempts that ended in an error.",
+        },
+        {
+            "key": "source_success_count",
+            "label": "Source fetch success",
+            "value": format_count(learning_status["source_success_count"]),
+            "detail": "Source-backed tasks completed successfully.",
+        },
+        {
+            "key": "source_error_count",
+            "label": "Source fetch errors",
+            "value": format_count(learning_status["source_error_count"]),
+            "detail": "Source-backed tasks that ended in error.",
+        },
+        {
+            "key": "image_success_count",
+            "label": "Image fetch success",
+            "value": format_count(learning_status.get("image_success_count", 0)),
+            "detail": "Image ingestion tasks completed successfully.",
+        },
+        {
+            "key": "image_error_count",
+            "label": "Image fetch errors",
+            "value": format_count(learning_status.get("image_error_count", 0)),
+            "detail": "Image ingestion tasks that ended in error.",
+        },
+        {
+            "key": "images_tracked",
+            "label": "Images tracked",
+            "value": format_count(images_tracked),
+            "detail": "Image registry entries tracked by the learning engine.",
+        },
+        {
+            "key": "images_verified",
+            "label": "Images verified",
+            "value": format_count(images_verified),
+            "detail": "Image registry entries marked as verified.",
+        },
+        {
+            "key": "images_missing",
+            "label": "Images missing",
+            "value": format_count(images_missing),
+            "detail": "Catalog cards missing an image registry entry.",
+        },
+        {
+            "key": "last_image_update",
+            "label": "Last image update",
+            "value": learning_status.get("last_image_update") or "—",
+            "detail": "Most recent image ingestion update timestamp.",
+        },
+        {
+            "key": "learning_dossiers",
+            "label": "Learning dossiers",
+            "value": format_count(learning_status["dossier_count"]),
+            "detail": "Bootstrap dossier rows managed by the learning engine.",
+        },
+        {
+            "key": "total_cards",
+            "label": "Total cards",
+            "value": format_count(total_cards),
+            "detail": "Catalog identities loaded locally.",
+        },
+        {
+            "key": "dossiers_created",
+            "label": "Dossiers created",
+            "value": format_count(training_status["dossiers_created"]),
+            "detail": "Structured card profiles in the training store.",
+        },
+        {
+            "key": "verified_dossiers",
+            "label": "Verified dossiers",
+            "value": format_count(training_status["verified_dossiers"]),
+            "detail": "Cards that currently read as verified.",
+        },
+        {
+            "key": "remaining_gaps",
+            "label": "Remaining gaps",
+            "value": format_count(training_status["remaining_gaps"]),
+            "detail": "Cards still missing verified dossier coverage.",
+        },
+        {
+            "key": "variants_tracked",
+            "label": "Variants tracked",
+            "value": format_count(variants_tracked),
+            "detail": "Variant rows currently indexed in the local catalog.",
+        },
+        {
+            "key": "image_coverage",
+            "label": "Image coverage",
+            "value": format_count(image_coverage_cards),
+            "detail": f"{image_coverage_percent:.1f}% of catalog cards have a stored image identity.",
+        },
     ]
     return metrics
 
@@ -3533,7 +4816,9 @@ def build_image_coverage_by_set(
                 images_tracked = int(row["images_tracked"] or 0)
                 images_verified = int(row["images_verified"] or 0)
                 images_missing = max(total_cards - images_tracked, 0)
-                coverage_percent = (images_tracked / total_cards * 100.0) if total_cards else 0.0
+                coverage_percent = (
+                    (images_tracked / total_cards * 100.0) if total_cards else 0.0
+                )
                 if images_tracked == 0:
                     milestone_stage = 0
                     milestone_label = "not_started"
@@ -3576,7 +4861,9 @@ def load_limits_status() -> list[dict[str, Any]]:
         return []
     if not isinstance(data, list):
         return []
-    return [entry for entry in data if isinstance(entry, dict) and entry.get("provider")]
+    return [
+        entry for entry in data if isinstance(entry, dict) and entry.get("provider")
+    ]
 
 
 def _format_timestamp_readable(ts: str | None) -> str:
@@ -3608,7 +4895,7 @@ def _learner_state_display(learning_engine: dict[str, Any]) -> str:
     if state == "Idle":
         return "Idle"
     if state == "Offline":
-        return "Idle"
+        return "Offline"
     if state == "Error":
         return "Error"
     if state == "Stale":
@@ -3698,25 +4985,43 @@ def _build_governed_recent_activity(rollup: dict[str, Any]) -> list[dict[str, st
     n_review = len(open_items)
     parts = [f"{runs} run{'s' if runs != 1 else ''} today"]
     if total_auto > 0:
-        parts.append(f"{total_auto} safe update{'s' if total_auto != 1 else ''} applied")
+        parts.append(
+            f"{total_auto} safe update{'s' if total_auto != 1 else ''} applied"
+        )
     if total_skipped > 0:
         parts.append(f"{total_skipped} skipped (no change)")
     if n_review > 0:
         parts.append(f"{n_review} need{'s' if n_review == 1 else ''} your review")
-    activities.append({"message": "Governed batch: " + ", ".join(parts) + ".", "label": "Governed batch"})
+    activities.append(
+        {
+            "message": "Governed batch: " + ", ".join(parts) + ".",
+            "label": "Governed batch",
+        }
+    )
     report_cards = _load_last_governed_report_cards(rollup)
     if report_cards["auto_applied"]:
         codes = ", ".join(report_cards["auto_applied"][:8])
-        activities.append({"message": f"Safely updated: {codes}.", "label": "Safe update"})
+        activities.append(
+            {"message": f"Safely updated: {codes}.", "label": "Safe update"}
+        )
     if report_cards["skipped"]:
         codes = ", ".join(report_cards["skipped"][:8])
-        activities.append({"message": f"Checked (no change): {codes}.", "label": "Checked"})
+        activities.append(
+            {"message": f"Checked (no change): {codes}.", "label": "Checked"}
+        )
     for item in open_items[:4]:
         ident = str(item.get("item_identifier") or "").strip()
         state = str(item.get("proposed_state") or "").strip()
         title = str(item.get("simple_title") or "Item for review").strip()
         if ident:
-            activities.append({"message": f"{ident} ({state}): {title}" if state else f"{ident}: {title}", "label": "Needs review"})
+            activities.append(
+                {
+                    "message": (
+                        f"{ident} ({state}): {title}" if state else f"{ident}: {title}"
+                    ),
+                    "label": "Needs review",
+                }
+            )
     return activities
 
 
@@ -3727,10 +5032,18 @@ def ensure_governed_autopilot_payload(payload: dict[str, Any] | None) -> dict[st
     out["governed_autopilot"] = rollup
     out["governed_recent_activity"] = _build_governed_recent_activity(rollup)
     try:
-        from tools.miru_official_rules import DEFAULT_RULES_DB_PATH, get_official_rules_summary
+        from tools.miru_official_rules import (
+            DEFAULT_RULES_DB_PATH,
+            get_official_rules_summary,
+        )
+
         out["official_rules"] = get_official_rules_summary(DEFAULT_RULES_DB_PATH)
     except Exception:
-        out["official_rules"] = {"current_notices": 0, "upcoming_notices": 0, "upcoming_legality_count": 0}
+        out["official_rules"] = {
+            "current_notices": 0,
+            "upcoming_notices": 0,
+            "upcoming_legality_count": 0,
+        }
     return out
 
 
@@ -3748,6 +5061,7 @@ def _parse_worker_timestamp_age(ts: str) -> tuple[float | None, str]:
         return None, ""
     try:
         from datetime import datetime, timezone
+
         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
@@ -3796,7 +5110,9 @@ def build_pushover_runtime_state(
     state["env_exists"] = bool(PROJECT_ENV_LOAD.get("exists"))
     state["env_parser"] = PROJECT_ENV_LOAD.get("parser")
     state["loaded_keys"] = list(PROJECT_ENV_LOAD.get("loaded_keys") or [])
-    state["skipped_existing_keys"] = list(PROJECT_ENV_LOAD.get("skipped_existing_keys") or [])
+    state["skipped_existing_keys"] = list(
+        PROJECT_ENV_LOAD.get("skipped_existing_keys") or []
+    )
     state["server_script_path"] = str(Path(__file__).resolve())
     state["project_root"] = str(PROJECT_ROOT)
     state["test_endpoint"] = build_route_url("/api/dev/test-pushover")
@@ -3837,18 +5153,33 @@ def build_dev_intelligence_status(
     current_state = str(learning_status.get("current_state") or "").strip().lower()
     last_heartbeat = str(learning_status.get("last_heartbeat") or "").strip()
     heartbeat_age = seconds_since(last_heartbeat)
-    active_state_keys = {"processing", "running", "validating", "learning", "syncing", "discovering"}
+    active_state_keys = {
+        "processing",
+        "running",
+        "validating",
+        "learning",
+        "syncing",
+        "discovering",
+    }
 
     if not bool(learning_status.get("status_db_exists")) and heartbeat_age is None:
         worker_label = "Offline"
         worker_tone = "warn"
-        worker_detail = "No worker heartbeat or status store is visible from this server."
+        worker_detail = (
+            "No worker heartbeat or status store is visible from this server."
+        )
     elif heartbeat_age is not None and heartbeat_age > 600:
         worker_label = "Offline"
         worker_tone = "warn"
-        worker_detail = f"Last worker heartbeat was {format_relative_age(heartbeat_age)}."
-    elif heartbeat_age is not None and heartbeat_age > 180 and (
-        queue_waiting > 0 or queue_running > 0 or current_state in active_state_keys
+        worker_detail = (
+            f"Last worker heartbeat was {format_relative_age(heartbeat_age)}."
+        )
+    elif (
+        heartbeat_age is not None
+        and heartbeat_age > 180
+        and (
+            queue_waiting > 0 or queue_running > 0 or current_state in active_state_keys
+        )
     ):
         worker_label = "Stalled"
         worker_tone = "warn"
@@ -3856,11 +5187,15 @@ def build_dev_intelligence_status(
     elif queue_waiting > 0 or queue_running > 0 or current_state in active_state_keys:
         worker_label = "Running"
         worker_tone = "good"
-        worker_detail = "The learning worker is actively processing or holding queued work."
+        worker_detail = (
+            "The learning worker is actively processing or holding queued work."
+        )
     else:
         worker_label = "Idle"
         worker_tone = "neutral"
-        worker_detail = "The worker is online, but no learning tasks are waiting right now."
+        worker_detail = (
+            "The worker is online, but no learning tasks are waiting right now."
+        )
 
     verified_coverage = float(training_status.get("verified_coverage_percent") or 0.0)
     dossier_coverage = float(training_status.get("dossier_coverage_percent") or 0.0)
@@ -3869,7 +5204,9 @@ def build_dev_intelligence_status(
 
     last_signal_timestamp = ""
     last_signal_label = "No recent meaningful learning signal"
-    last_signal_detail = "No recent verified, source, or image completion timestamp is available yet."
+    last_signal_detail = (
+        "No recent verified, source, or image completion timestamp is available yet."
+    )
     for timestamp, label, detail in (
         (
             str(learning_status.get("last_source_update") or "").strip(),
@@ -3890,7 +5227,9 @@ def build_dev_intelligence_status(
         if timestamp:
             last_signal_timestamp = timestamp
             age = seconds_since(timestamp)
-            last_signal_label = format_relative_age(age) if age is not None else timestamp
+            last_signal_label = (
+                format_relative_age(age) if age is not None else timestamp
+            )
             last_signal_detail = f"{label}. {detail}"
             break
 
@@ -3904,23 +5243,36 @@ def build_dev_intelligence_status(
     elif not pushover_configured:
         pushover_label = "Quiet because unavailable/error"
         pushover_tone = "warn"
-        pushover_detail = "Pushover is enabled, but credentials are incomplete or unavailable."
+        pushover_detail = (
+            "Pushover is enabled, but credentials are incomplete or unavailable."
+        )
     elif bool(preview.get("meaningful_gain")):
         pushover_label = "Sending normally"
         pushover_tone = "good"
-        pushover_detail = str(preview.get("message") or "Meaningful verified gains are ready to notify.")
+        pushover_detail = str(
+            preview.get("message") or "Meaningful verified gains are ready to notify."
+        )
     elif worker_label == "Idle" and queue_waiting <= 0 and queue_running <= 0:
         pushover_label = "Quiet because idle"
         pushover_tone = "neutral"
-        pushover_detail = str(preview.get("message") or "Miru is online, but there is no queued learning work.")
+        pushover_detail = str(
+            preview.get("message")
+            or "Miru is online, but there is no queued learning work."
+        )
     elif worker_label in {"Offline", "Stalled"}:
         pushover_label = "Quiet because unavailable/error"
         pushover_tone = "warn"
-        pushover_detail = str(preview.get("message") or "Worker health needs attention before notification timing can be trusted.")
+        pushover_detail = str(
+            preview.get("message")
+            or "Worker health needs attention before notification timing can be trusted."
+        )
     else:
         pushover_label = "Quiet because threshold not reached"
         pushover_tone = "neutral"
-        pushover_detail = str(preview.get("message") or "Miru is active, but this cycle has not reached a meaningful learning threshold yet.")
+        pushover_detail = str(
+            preview.get("message")
+            or "Miru is active, but this cycle has not reached a meaningful learning threshold yet."
+        )
 
     if worker_label == "Running":
         status_sentence = "Miru is processing queued card tasks."
@@ -3931,8 +5283,13 @@ def build_dev_intelligence_status(
     else:
         status_sentence = "Miru looks offline from this Dev server."
 
-    if worker_label == "Running" and pushover_label == "Quiet because threshold not reached":
-        status_sentence = "Miru is running, but no new notification threshold has been reached yet."
+    if (
+        worker_label == "Running"
+        and pushover_label == "Quiet because threshold not reached"
+    ):
+        status_sentence = (
+            "Miru is running, but no new notification threshold has been reached yet."
+        )
 
     stage_rows = [
         {
@@ -3957,7 +5314,11 @@ def build_dev_intelligence_status(
         },
         {
             "label": "Image intelligence",
-            "status": "Building" if images_tracked > 0 or images_verified > 0 else "Not built yet",
+            "status": (
+                "Building"
+                if images_tracked > 0 or images_verified > 0
+                else "Not built yet"
+            ),
             "tone": "neutral",
             "detail": (
                 f"{format_compact_count(images_verified)} verified image records and {format_compact_count(images_tracked)} tracked."
@@ -4043,7 +5404,12 @@ def build_dev_intelligence_status(
             "detail": pushover_detail,
         },
         "stages": stage_rows,
-        "current_stage_label": str((training_status.get("intelligence_progress") or {}).get("current_stage", {}).get("label") or "Card awareness"),
+        "current_stage_label": str(
+            (training_status.get("intelligence_progress") or {})
+            .get("current_stage", {})
+            .get("label")
+            or "Card awareness"
+        ),
         "activity_hint": str(activity.get("description") or status_sentence),
     }
 
@@ -4058,7 +5424,9 @@ def humanize_operator_truth_source(monitor_source: dict[str, Any]) -> dict[str, 
             detail = f"Using the live main-runtime snapshot refreshed {age_label}."
     elif mode in {"main_runtime_cached", "main_runtime_api_cached"}:
         label = "Cached main-runtime snapshot"
-        detail = "Using the last good main-runtime snapshot while live access catches up."
+        detail = (
+            "Using the last good main-runtime snapshot while live access catches up."
+        )
         if age_label:
             detail = f"Using the last good main-runtime snapshot from {age_label} while live access catches up."
     else:
@@ -4075,7 +5443,10 @@ def build_operator_recent_activity(
     validation_audit: dict[str, Any],
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
-    last_completed_task = humanize_snake_label(str(learning_status.get("last_completed_task") or "")) or "No completed task recorded"
+    last_completed_task = (
+        humanize_snake_label(str(learning_status.get("last_completed_task") or ""))
+        or "No completed task recorded"
+    )
     last_heartbeat = str(learning_status.get("last_heartbeat") or "").strip()
     if last_completed_task:
         items.append(
@@ -4083,11 +5454,17 @@ def build_operator_recent_activity(
                 "title": "Latest completed task",
                 "detail": last_completed_task,
                 "timestamp": last_heartbeat,
-                "tone": "good" if last_completed_task != "No completed task recorded" else "neutral",
+                "tone": (
+                    "good"
+                    if last_completed_task != "No completed task recorded"
+                    else "neutral"
+                ),
             }
         )
 
-    latest_validation = next(iter(list(validation_audit.get("recently_validated") or [])), None)
+    latest_validation = next(
+        iter(list(validation_audit.get("recently_validated") or [])), None
+    )
     if latest_validation:
         items.append(
             {
@@ -4127,7 +5504,9 @@ def build_operator_recent_activity(
     return items[:4]
 
 
-def build_set_progress_snapshot(set_code: str, *, catalog_db_path: Path, dossier_db_path: Path | None) -> dict[str, Any] | None:
+def build_set_progress_snapshot(
+    set_code: str, *, catalog_db_path: Path, dossier_db_path: Path | None
+) -> dict[str, Any] | None:
     normalized = str(set_code or "").strip().upper()
     if not re.fullmatch(r"(?:OP|EB|ST|PRB)\d{2}", normalized):
         return None
@@ -4140,7 +5519,10 @@ def build_set_progress_snapshot(set_code: str, *, catalog_db_path: Path, dossier
     try:
         with closing(sqlite3.connect(catalog_db_path)) as conn:
             catalog_total = int(
-                conn.execute("SELECT COUNT(*) FROM cards WHERE upper(coalesce(set_code, '')) = ?", (normalized,)).fetchone()[0]
+                conn.execute(
+                    "SELECT COUNT(*) FROM cards WHERE upper(coalesce(set_code, '')) = ?",
+                    (normalized,),
+                ).fetchone()[0]
             )
     except sqlite3.Error:
         return None
@@ -4149,7 +5531,10 @@ def build_set_progress_snapshot(set_code: str, *, catalog_db_path: Path, dossier
         try:
             with closing(sqlite3.connect(dossier_db_path)) as conn:
                 dossier_count = int(
-                    conn.execute("SELECT COUNT(*) FROM cards WHERE upper(coalesce(set_code, '')) = ?", (normalized,)).fetchone()[0]
+                    conn.execute(
+                        "SELECT COUNT(*) FROM cards WHERE upper(coalesce(set_code, '')) = ?",
+                        (normalized,),
+                    ).fetchone()[0]
                 )
                 verified_count = int(
                     conn.execute(
@@ -4173,322 +5558,6 @@ def build_set_progress_snapshot(set_code: str, *, catalog_db_path: Path, dossier
         "verified_count": verified_count,
         "verified_percent": safe_percent(verified_count, catalog_total),
         "dossier_percent": safe_percent(dossier_count, catalog_total),
-    }
-
-
-def build_operator_console_payload(*, force_runtime_recheck: bool = False) -> dict[str, Any]:
-    training_status = build_training_status()
-    local_learning_status = load_learning_engine_status(
-        queue_db_path=LEARNING_QUEUE_DB_PATH,
-        status_db_path=LEARNING_STATUS_DB_PATH,
-        dossier_db_path=LEARNING_DOSSIER_DB_PATH,
-        total_cards=int(training_status.get("total_cards") or 0),
-    )
-    local_validation_audit = load_cached_validation_audit()
-    monitor_source = (
-        build_monitor_source(training_status, local_learning_status, local_validation_audit)
-        if force_runtime_recheck
-        else load_cached_monitor_source(training_status, local_learning_status, local_validation_audit)
-    )
-    truth_payload = fetch_truth_source_dev_status(summary_only=True) or {}
-    runtime_learning = dict(monitor_source.get("learning_status") or truth_payload.get("learning_engine") or local_learning_status)
-    runtime_validation_audit = dict(monitor_source.get("validation_audit") or truth_payload.get("validation_audit") or local_validation_audit)
-    runtime_activity = dict(truth_payload.get("activity") or build_learning_engine_activity(runtime_learning, build_miru_activity(training_status)))
-    runtime_training = dict(truth_payload.get("training") or {})
-    runtime_truth_source = dict(truth_payload.get("truth_source") or {})
-    runtime_pushover = dict(truth_payload.get("pushover") or build_pushover_runtime_state(training_status=training_status, learning_status=runtime_learning))
-    source_mode = str((monitor_source.get("mode") or runtime_truth_source.get("mode") or "")).strip().lower()
-    using_live_runtime = source_mode in {"main_runtime", "main_runtime_api", "main_runtime_live"}
-    using_cached_runtime = source_mode in {"main_runtime_cached", "main_runtime_api_cached", "main_runtime_cached_snapshot"}
-    source_reference = (
-        "the main runtime"
-        if using_live_runtime
-        else ("the last good main-runtime snapshot" if using_cached_runtime else "local fallback data")
-    )
-
-    worker_state = "Idle"
-    worker_tone = "neutral"
-    heartbeat_age = seconds_since(str(runtime_learning.get("last_heartbeat") or ""))
-    current_state = str(runtime_learning.get("current_state") or "").strip().lower()
-    queue_waiting = int(runtime_learning.get("queue_length") or 0)
-    queue_running = int(runtime_learning.get("running_count") or 0)
-    if heartbeat_age is not None and heartbeat_age > 600:
-        worker_state = "Offline"
-        worker_tone = "warn"
-    elif heartbeat_age is not None and heartbeat_age > 180 and (queue_waiting > 0 or queue_running > 0 or current_state in {"processing", "running"}):
-        worker_state = "Stalled"
-        worker_tone = "warn"
-    elif queue_waiting > 0 or queue_running > 0 or current_state in {"processing", "running"}:
-        worker_state = "Running"
-        worker_tone = "good"
-
-    last_heartbeat = str(runtime_learning.get("last_heartbeat") or "").strip()
-    last_heartbeat_label = format_relative_age(heartbeat_age) if heartbeat_age is not None else "Unavailable"
-    last_completed_task = humanize_snake_label(str(runtime_learning.get("last_completed_task") or "")) or "No completed task recorded"
-    queue_failed = int(runtime_learning.get("failed_count") or 0)
-    queue_completed = int(runtime_learning.get("completed_count") or 0)
-    operator_sentence = str((truth_payload.get("intelligence_status") or {}).get("status_sentence") or "")
-    if not operator_sentence:
-        if worker_state == "Running":
-            operator_sentence = f"Miru is processing queued learning tasks from {source_reference}."
-        elif worker_state == "Idle":
-            operator_sentence = f"Miru is idle. No learning tasks are waiting in {source_reference}."
-        elif worker_state == "Stalled":
-            operator_sentence = f"Miru is online, but the heartbeat from {source_reference} looks stalled."
-        else:
-            operator_sentence = (
-                "Miru's main-runtime heartbeat is not currently visible."
-                if not using_cached_runtime
-                else "Live main-runtime access is quiet, so the console is holding the last good snapshot."
-            )
-
-    verified_percent = float(training_status.get("verified_coverage_percent") or 0.0)
-    image_percent = safe_percent(max(int(runtime_learning.get("images_verified") or 0), int(runtime_learning.get("images_tracked") or 0)), int(training_status.get("total_cards") or 0))
-    truth_freshness = (
-        "Live main runtime."
-        if using_live_runtime
-        else ("Cached main-runtime snapshot." if using_cached_runtime else "Local fallback from this worktree.")
-    )
-    health_summary = (
-        "Miru looks healthy."
-        if worker_state in {"Idle", "Running"} and using_live_runtime
-        else (
-            "Miru's last good main-runtime snapshot still looks healthy, but live access is temporarily unavailable."
-            if worker_state in {"Idle", "Running"} and using_cached_runtime
-            else (
-                "Miru looks available, but the console is using local fallback data until the main runtime answers again."
-                if worker_state in {"Idle", "Running"}
-                else "Miru needs attention before operator summaries will be fully trustworthy."
-            )
-        )
-    )
-    momentum_summary = (
-        "Miru is improving when verified coverage and validation writes move forward."
-        if queue_waiting > 0 or queue_running > 0
-        else "Miru is waiting for new learning work right now."
-    )
-    strongest_summary = (
-        f"Miru is strongest at card awareness and verified card knowledge ({verified_percent:.1f}% verified coverage). "
-        "Deck and meta intelligence are not built yet."
-    )
-
-    def category_status(percent: float, *, has_any: bool = True) -> str:
-        if not has_any:
-            return "Not started"
-        if percent >= 80.0:
-            return "Strong"
-        if percent >= 20.0:
-            return "In progress"
-        if percent > 0.0:
-            return "Early"
-        return "Not started"
-
-    progress_categories = [
-        {
-            "label": "Card awareness",
-            "status": category_status(100.0, has_any=int(training_status.get("total_cards") or 0) > 0),
-            "detail": f"{format_compact_count(int(training_status.get('total_cards') or 0))} catalog cards are available for lookup.",
-        },
-        {
-            "label": "Verified card knowledge",
-            "status": category_status(verified_percent, has_any=int(training_status.get("verified_dossiers") or 0) > 0),
-            "detail": f"{verified_percent:.1f}% of catalog cards have verified dossier coverage.",
-        },
-        {
-            "label": "Image intelligence",
-            "status": category_status(image_percent, has_any=int(runtime_learning.get("images_tracked") or 0) > 0 or int(runtime_learning.get("images_verified") or 0) > 0),
-            "detail": f"{format_compact_count(int(runtime_learning.get('images_verified') or 0))} verified image records and {format_compact_count(int(runtime_learning.get('images_tracked') or 0))} tracked so far.",
-        },
-        {
-            "label": "Deck intelligence",
-            "status": "Not started",
-            "detail": "Deck-level reasoning is not implemented in the live runtime yet.",
-        },
-        {
-            "label": "Meta intelligence",
-            "status": "Not started",
-            "detail": "Meta interpretation is not currently part of Miru's live learning loop.",
-        },
-        {
-            "label": "Market intelligence",
-            "status": "Not started",
-            "detail": "Market reasoning is not currently part of Miru's live worker state.",
-        },
-    ]
-
-    if using_cached_runtime:
-        needs_next_title = "Restore live main-runtime access"
-        needs_next_detail = "The console is holding the last good main-runtime snapshot until live access responds again."
-    elif not using_live_runtime:
-        needs_next_title = "Reconnect the main runtime truth source"
-        needs_next_detail = "The operator console is using local fallback data because the main runtime did not answer."
-    elif worker_state in {"Offline", "Stalled"}:
-        needs_next_title = "Restore a fresh worker heartbeat"
-        needs_next_detail = "Miru needs a fresh runtime heartbeat before the operator console can report healthy live state again."
-    elif queue_waiting <= 0 and queue_running <= 0:
-        needs_next_title = "Queue new learning work"
-        needs_next_detail = "Miru is ready, but no learning tasks are waiting right now."
-    elif image_percent < 10.0:
-        needs_next_title = "Grow image intelligence"
-        needs_next_detail = "Image coverage is still very low, so sharper image knowledge would help next."
-    else:
-        needs_next_title = "Close the remaining verified card gaps"
-        needs_next_detail = str(training_status.get("remaining_summary") or "Miru still needs more verified coverage.")
-
-    return {
-        "updated_at": current_timestamp(),
-        "guidance": {
-            "summary": f"{health_summary} {operator_sentence}",
-            "health": health_summary,
-            "momentum": momentum_summary,
-            "strongest": strongest_summary,
-            "freshness": f"{truth_freshness} {humanize_operator_truth_source(monitor_source if monitor_source else runtime_truth_source).get('detail', '')}".strip(),
-        },
-        "snapshot": {
-            "worker_state": {"label": worker_state, "tone": worker_tone},
-            "queue_summary": f"{format_compact_count(queue_waiting)} pending, {format_compact_count(queue_running)} running, {format_compact_count(queue_completed)} completed",
-            "queue_detail": f"{format_compact_count(queue_failed)} failed task(s) still recorded.",
-            "truth_source": humanize_operator_truth_source(monitor_source if monitor_source else runtime_truth_source),
-            "last_heartbeat": {"label": last_heartbeat_label, "detail": last_heartbeat or "Unavailable"},
-            "last_completed_task": {
-                "label": last_completed_task,
-                "detail": str(runtime_learning.get("current_task_label") or "Waiting for queued work"),
-            },
-            "sentence": operator_sentence,
-            "current_task": str(runtime_learning.get("current_task_label") or "Waiting for queued work"),
-            "runtime_state": str(runtime_activity.get("title") or worker_state),
-        },
-        "recent_activity": build_operator_recent_activity(
-            learning_status=runtime_learning,
-            monitor_source=monitor_source,
-            validation_audit=runtime_validation_audit,
-        ),
-        "progress_categories": progress_categories,
-        "needs_next": {
-            "title": needs_next_title,
-            "detail": needs_next_detail,
-        },
-        "actions": [
-            {"key": "refresh_snapshot", "label": "Refresh Dev Snapshot", "detail": "Reload the operator console from the latest cached runtime summary."},
-            {"key": "refresh_progress", "label": "Refresh Progress", "detail": "Re-read verified coverage and queue progress without changing worker behavior."},
-            {"key": "recheck_runtime_status", "label": "Recheck Runtime Status", "detail": "Bypass the short cache and probe the main runtime again."},
-        ],
-        "query_suggestions": [
-            "What are you doing?",
-            "Why are notifications quiet?",
-            "How far along are you?",
-            "What is left to learn?",
-            "Show OP01 progress",
-        ],
-        "query_context": {
-            "training": runtime_training,
-            "pushover": runtime_pushover,
-            "monitor_source": humanize_operator_truth_source(monitor_source if monitor_source else runtime_truth_source),
-            "runtime_learning": runtime_learning,
-            "catalog_db_path": str(monitor_source.get("project_db_path") or FALLBACK_CATALOG_DB_PATH),
-            "dossier_db_path": str(monitor_source.get("dossier_db_path") or DOSSIER_DB_PATH),
-        },
-    }
-
-
-def build_operator_query_answer(query: str) -> dict[str, Any]:
-    console = build_operator_console_payload()
-    normalized = re.sub(r"\s+", " ", str(query or "").strip()).lower()
-    snapshot = dict(console.get("snapshot") or {})
-    guidance = dict(console.get("guidance") or {})
-    training = dict((console.get("query_context") or {}).get("training") or {})
-    pushover = dict((console.get("query_context") or {}).get("pushover") or {})
-    runtime_learning = dict((console.get("query_context") or {}).get("runtime_learning") or {})
-    progress_categories = list(console.get("progress_categories") or [])
-    catalog_db_path = Path(str((console.get("query_context") or {}).get("catalog_db_path") or FALLBACK_CATALOG_DB_PATH))
-    dossier_db_path = Path(str((console.get("query_context") or {}).get("dossier_db_path") or DOSSIER_DB_PATH))
-
-    answer = "I do not have a structured operator answer for that prompt yet."
-    matched = False
-    answer_meta = str(guidance.get("freshness") or "Using the latest operator snapshot available.")
-    verified_progress = next(
-        (
-            item
-            for item in progress_categories
-            if str(item.get("label") or "").strip().lower() == "verified card knowledge"
-        ),
-        {},
-    )
-    image_progress = next(
-        (
-            item
-            for item in progress_categories
-            if str(item.get("label") or "").strip().lower() == "image intelligence"
-        ),
-        {},
-    )
-
-    if normalized in {"what are you doing?", "what are you doing", "what are you doing now", "what are you doing now?"}:
-        matched = True
-        answer = (
-            f"{snapshot.get('sentence', 'Miru status is unavailable.')} "
-            f"Current task: {snapshot.get('current_task', 'Unavailable')}. "
-            f"Queue: {snapshot.get('queue_summary', 'unavailable')}."
-        )
-    elif "why are notifications quiet" in normalized:
-        matched = True
-        preview = dict(pushover.get("learning_preview") or {})
-        answer = str(preview.get("message") or "")
-        if not answer:
-            worker_state = dict(snapshot.get("worker_state") or {}).get("label") or "Unavailable"
-            answer = (
-                f"Notifications are quiet because Miru is not reporting a fresh notification-ready learning gain from the current truth source. "
-                f"Worker state is {worker_state} and queue summary is {snapshot.get('queue_summary', 'unavailable')}."
-            )
-    elif "how far along" in normalized:
-        matched = True
-        answer = (
-            f"{guidance.get('strongest') or 'Miru is strongest at card facts and verified card knowledge.'} "
-            f"{verified_progress.get('detail') or training.get('summary') or 'Verified progress summary is unavailable.'}"
-        )
-    elif "what is left to learn" in normalized or "what's left to learn" in normalized:
-        matched = True
-        answer = (
-            f"{str(training.get('detail') or 'Remaining learning scope is not currently available.')} "
-            f"{image_progress.get('detail') or 'Image intelligence is still early.'} "
-            "Deck, meta, and market intelligence are not built yet."
-        )
-    else:
-        set_match = re.search(r"\b((?:op|eb|st|prb)\d{2})\b", normalized, re.I)
-        if set_match and "progress" in normalized:
-            matched = True
-            set_code = set_match.group(1).upper()
-            progress = build_set_progress_snapshot(set_code, catalog_db_path=catalog_db_path, dossier_db_path=dossier_db_path)
-            if progress and progress.get("catalog_total", 0) > 0:
-                if progress["verified_percent"] >= 80.0:
-                    progress_label = "strong"
-                elif progress["verified_percent"] > 0:
-                    progress_label = "early"
-                else:
-                    progress_label = "not started"
-                answer = (
-                    f"{set_code} progress is currently {progress_label}. "
-                    f"It has {format_compact_count(progress['catalog_total'])} catalog cards, with "
-                    f"{progress['verified_percent']:.1f}% verified coverage "
-                    f"({format_compact_count(progress['verified_count'])} verified) and "
-                    f"{progress['dossier_percent']:.1f}% dossier coverage "
-                    f"({format_compact_count(progress['dossier_count'])} dossiers)."
-                )
-                answer_meta = (
-                    f"{answer_meta} Set-level progress is calculated from the local catalog and dossier snapshot."
-                )
-            else:
-                answer = f"I could not find a grounded set-progress snapshot for {set_code}."
-
-    return {
-        "ok": True,
-        "matched": matched,
-        "query": query,
-        "answer": answer,
-        "meta": answer_meta,
-        "updated_at": current_timestamp(),
-        "worker_state": snapshot.get("worker_state", {}),
-        "queue_summary": snapshot.get("queue_summary", ""),
     }
 
 
@@ -4519,7 +5588,9 @@ def load_cached_validation_audit() -> dict[str, Any]:
         "validation_audit",
         ttl_seconds=20.0,
         signature=signature,
-        builder=lambda: list_validation_audit_insights(project_db_path=FALLBACK_CATALOG_DB_PATH),
+        builder=lambda: list_validation_audit_insights(
+            project_db_path=FALLBACK_CATALOG_DB_PATH
+        ),
     )
 
 
@@ -4566,7 +5637,9 @@ def load_cached_monitor_source(
         "monitor_source",
         ttl_seconds=10.0,
         signature=signature,
-        builder=lambda: build_monitor_source(training_status, learning_status, validation_audit),
+        builder=lambda: build_monitor_source(
+            training_status, learning_status, validation_audit
+        ),
     )
 
 
@@ -4580,7 +5653,10 @@ def build_deferred_monitor_payload(
     coverage_percent = safe_percent(verified_dossiers, total_cards)
     state_label = str(activity.get("title") or "Loading live monitor")
     state_description = str(activity.get("description") or "Miru telemetry is loading.")
-    state_detail = str(activity.get("detail") or "Detailed runtime data will appear after the first refresh.")
+    state_detail = str(
+        activity.get("detail")
+        or "Detailed runtime data will appear after the first refresh."
+    )
     queue_waiting = int(learning_status.get("queue_length") or 0)
     queue_running = int(learning_status.get("running_count") or 0)
     queue_failed = int(learning_status.get("failed_count") or 0)
@@ -4597,8 +5673,13 @@ def build_deferred_monitor_payload(
             "label": state_label,
             "tone": str(activity.get("tone") or "neutral"),
             "description": state_description,
-            "task_label": str(learning_status.get("current_task_label") or "Loading active task"),
-            "task_type_label": humanize_snake_label(str(learning_status.get("current_task_type") or "")) or "Waiting",
+            "task_label": str(
+                learning_status.get("current_task_label") or "Loading active task"
+            ),
+            "task_type_label": humanize_snake_label(
+                str(learning_status.get("current_task_type") or "")
+            )
+            or "Waiting",
             "queue_status": f"{queue_waiting} waiting, {queue_running} running, {queue_failed} failed",
             "heartbeat": heartbeat,
         },
@@ -4614,7 +5695,9 @@ def build_deferred_monitor_payload(
     }
 
 
-def build_monitor_panel_payload(training_status: dict[str, Any] | None = None) -> dict[str, Any]:
+def build_monitor_panel_payload(
+    training_status: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     training_status = training_status or build_training_status()
     learning_status = load_learning_engine_status(
         queue_db_path=LEARNING_QUEUE_DB_PATH,
@@ -4623,7 +5706,9 @@ def build_monitor_panel_payload(training_status: dict[str, Any] | None = None) -
         total_cards=int(training_status.get("total_cards") or 0),
     )
     validation_audit = load_cached_validation_audit()
-    monitor_source = load_cached_monitor_source(training_status, learning_status, validation_audit)
+    monitor_source = load_cached_monitor_source(
+        training_status, learning_status, validation_audit
+    )
     return {
         "updated_at": current_timestamp(),
         "monitor": build_monitor_payload(training_status, monitor_source),
@@ -4690,58 +5775,98 @@ def _build_control_recent_issues(payload: dict[str, Any]) -> dict[str, Any]:
 
     miru_issue = issues.get("miru_ai") or {}
     if str(miru_issue.get("tone") or "") == "warn":
-        items.append({
-            "title": "Miru AI warning",
-            "detail": str(miru_issue.get("detail") or "Miru AI reported a degraded state."),
-            "tone": "warn",
-            "source": "Issue detection from /api/dev-status.",
-        })
+        items.append(
+            {
+                "title": "Miru AI warning",
+                "detail": str(
+                    miru_issue.get("detail") or "Miru AI reported a degraded state."
+                ),
+                "tone": "warn",
+                "source": "Issue detection from /api/dev-status.",
+            }
+        )
 
     project_issue = issues.get("project_miru") or {}
     if str(project_issue.get("tone") or "") == "warn":
-        items.append({
-            "title": "Project Miru warning",
-            "detail": str(project_issue.get("detail") or "Project Miru is not answering normally."),
-            "tone": "warn",
-            "source": "Project Miru reachability check from /api/dev-status.",
-        })
+        items.append(
+            {
+                "title": "Project Miru warning",
+                "detail": str(
+                    project_issue.get("detail")
+                    or "Project Miru is not answering normally."
+                ),
+                "tone": "warn",
+                "source": "Project Miru reachability check from /api/dev-status.",
+            }
+        )
 
-    worker_status = (learning_engine.get("worker_status") or {})
-    worker_label = str(worker_status.get("label") or (intelligence.get("worker") or {}).get("label") or "").strip()
-    worker_detail = str(worker_status.get("detail") or (intelligence.get("worker") or {}).get("detail") or "").strip()
+    worker_status = learning_engine.get("worker_status") or {}
+    worker_label = str(
+        worker_status.get("label")
+        or (intelligence.get("worker") or {}).get("label")
+        or ""
+    ).strip()
+    worker_detail = str(
+        worker_status.get("detail")
+        or (intelligence.get("worker") or {}).get("detail")
+        or ""
+    ).strip()
     if worker_label and worker_label.lower() in {"stale", "offline", "stalled"}:
-        items.append({
-            "title": f"Worker heartbeat {worker_label.lower()}",
-            "detail": worker_detail or "The learning worker freshness signal needs a closer look.",
-            "tone": "warn",
-            "source": "Learning engine heartbeat and worker status.",
-        })
+        items.append(
+            {
+                "title": f"Worker heartbeat {worker_label.lower()}",
+                "detail": worker_detail
+                or "The learning worker freshness signal needs a closer look.",
+                "tone": "warn",
+                "source": "Learning engine heartbeat and worker status.",
+            }
+        )
 
     open_review_items = governed.get("open_review_items") or []
     if int(governed.get("newly_surfaced_review") or 0) > 0 or open_review_items:
         first_item = open_review_items[0] if open_review_items else {}
-        review_title = str(first_item.get("simple_title") or "Governed review item needs attention")
-        review_detail = str(first_item.get("simple_reason") or "Governed autopilot surfaced an item for operator review.")
-        items.append({
-            "title": review_title,
-            "detail": review_detail,
-            "tone": "warn",
-            "source": "Governed autopilot rollup for today.",
-        })
+        review_title = str(
+            first_item.get("simple_title") or "Governed review item needs attention"
+        )
+        review_detail = str(
+            first_item.get("simple_reason")
+            or "Governed autopilot surfaced an item for operator review."
+        )
+        items.append(
+            {
+                "title": review_title,
+                "detail": review_detail,
+                "tone": "warn",
+                "source": "Governed autopilot rollup for today.",
+            }
+        )
 
     worker_action = str(worker_last_run.get("action") or "").strip().lower()
-    worker_blocker = str(worker_last_run.get("blocker") or worker_last_run.get("no_new_work_reason") or "").strip()
+    worker_blocker = str(
+        worker_last_run.get("blocker")
+        or worker_last_run.get("no_new_work_reason")
+        or ""
+    ).strip()
     if worker_action in {"overlap_blocked", "blocked", "error"} and worker_blocker:
-        items.append({
-            "title": humanize_snake_label(worker_action) or "Scheduled worker blocked",
-            "detail": worker_blocker,
-            "tone": "warn",
-            "source": "Scheduled worker last-run record.",
-        })
+        items.append(
+            {
+                "title": humanize_snake_label(worker_action)
+                or "Scheduled worker blocked",
+                "detail": worker_blocker,
+                "tone": "warn",
+                "source": "Scheduled worker last-run record.",
+            }
+        )
 
     if items:
         return {
-            "status": "FAILED" if any(item["title"].lower().startswith("project miru") for item in items) else "INCONCLUSIVE",
+            "status": (
+                "FAILED"
+                if any(
+                    item["title"].lower().startswith("project miru") for item in items
+                )
+                else "INCONCLUSIVE"
+            ),
             "tone": "warn",
             "headline": items[0]["title"],
             "summary": items[0]["detail"],
@@ -4765,15 +5890,19 @@ def _build_control_recent_activity(payload: dict[str, Any]) -> list[dict[str, An
     items: list[dict[str, Any]] = []
 
     for entry in activity_feed[:4]:
-        items.append({
-            "title": str(entry.get("title") or "Runtime event"),
-            "detail": str(entry.get("detail") or ""),
-            "timestamp": str(entry.get("timestamp") or ""),
-            "tone": str(entry.get("tone") or "neutral"),
-            "source": "Learning engine event log",
-        })
+        items.append(
+            {
+                "title": str(entry.get("title") or "Runtime event"),
+                "detail": str(entry.get("detail") or ""),
+                "timestamp": str(entry.get("timestamp") or ""),
+                "tone": str(entry.get("tone") or "neutral"),
+                "source": "Learning engine event log",
+            }
+        )
 
-    worker_action = str(worker_last_run.get("action_display") or worker_last_run.get("action") or "").strip()
+    worker_action = str(
+        worker_last_run.get("action_display") or worker_last_run.get("action") or ""
+    ).strip()
     if worker_action and str(worker_last_run.get("action") or "") != "no_run_recorded":
         detail_parts = []
         if worker_last_run.get("blocker"):
@@ -4781,23 +5910,34 @@ def _build_control_recent_activity(payload: dict[str, Any]) -> list[dict[str, An
         elif worker_last_run.get("no_new_work_reason"):
             detail_parts.append(str(worker_last_run["no_new_work_reason"]))
         if worker_last_run.get("insight_count_after") is not None:
-            detail_parts.append(f"{int(worker_last_run['insight_count_after'])} insights after run")
-        items.append({
-            "title": worker_action,
-            "detail": " ".join(part for part in detail_parts if part).strip() or "Latest scheduled worker record.",
-            "timestamp": str(worker_last_run.get("timestamp") or ""),
-            "tone": "neutral" if "idle" in worker_action.lower() else "good",
-            "source": "Scheduled worker last-run record",
-        })
+            detail_parts.append(
+                f"{int(worker_last_run['insight_count_after'])} insights after run"
+            )
+        items.append(
+            {
+                "title": worker_action,
+                "detail": " ".join(part for part in detail_parts if part).strip()
+                or "Latest scheduled worker record.",
+                "timestamp": str(worker_last_run.get("timestamp") or ""),
+                "tone": "neutral" if "idle" in worker_action.lower() else "good",
+                "source": "Scheduled worker last-run record",
+            }
+        )
 
     for entry in governed_recent[:2]:
-        items.append({
-            "title": str(entry.get("label") or "Governed batch"),
-            "detail": str(entry.get("message") or ""),
-            "timestamp": "",
-            "tone": "warn" if "review" in str(entry.get("label") or "").lower() else "neutral",
-            "source": "Governed autopilot rollup",
-        })
+        items.append(
+            {
+                "title": str(entry.get("label") or "Governed batch"),
+                "detail": str(entry.get("message") or ""),
+                "timestamp": "",
+                "tone": (
+                    "warn"
+                    if "review" in str(entry.get("label") or "").lower()
+                    else "neutral"
+                ),
+                "source": "Governed autopilot rollup",
+            }
+        )
 
     deduped: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
@@ -4898,12 +6038,15 @@ def _build_judgment_item(
     return {
         "key": key,
         "title": title.strip() or "Miru judgment",
-        "summary": summary.strip() or "Miru surfaced a state that needs interpretation.",
+        "summary": summary.strip()
+        or "Miru surfaced a state that needs interpretation.",
         "detail": detail.strip() or summary.strip(),
         "category": category_normalized,
-        "category_label": humanize_snake_label(category_normalized) or category_normalized.title(),
+        "category_label": humanize_snake_label(category_normalized)
+        or category_normalized.title(),
         "issue_type": issue_type_normalized,
-        "issue_type_label": humanize_snake_label(issue_type_normalized) or issue_type_normalized.title(),
+        "issue_type_label": humanize_snake_label(issue_type_normalized)
+        or issue_type_normalized.title(),
         "tone": tone,
         "source": source.strip() or "Current Dev status signals.",
         "recommendation": recommendation,
@@ -4924,131 +6067,199 @@ def _build_control_judgment(
     worker_last_run = payload.get("worker_last_run") or {}
     items: list[dict[str, Any]] = []
 
-    project_health = next((item for item in system_health if str(item.get("key") or "") == "project_miru"), {})
-    miru_health = next((item for item in system_health if str(item.get("key") or "") == "miru_ai"), {})
-    worker_health = next((item for item in system_health if str(item.get("key") or "") == "worker"), {})
+    project_health = next(
+        (
+            item
+            for item in system_health
+            if str(item.get("key") or "") == "project_miru"
+        ),
+        {},
+    )
+    miru_health = next(
+        (item for item in system_health if str(item.get("key") or "") == "miru_ai"), {}
+    )
+    worker_health = next(
+        (item for item in system_health if str(item.get("key") or "") == "worker"), {}
+    )
 
     open_review_items = governed.get("open_review_items") or []
     if open_review_items:
         first_item = open_review_items[0] if open_review_items else {}
-        review_title = str(first_item.get("simple_title") or "Governed review item needs attention")
-        review_summary = str(first_item.get("simple_reason") or "Governed autopilot surfaced an item for human review.")
-        suggested_action = str(first_item.get("suggested_action") or "Review the item before applying any related change.")
-        items.append(_build_judgment_item(
-            key="governed_review",
-            title=review_title,
-            summary=review_summary,
-            detail=suggested_action,
-            category="needs_review",
-            issue_type="approval",
-            source="Governed autopilot rollup for today.",
-            action_class="user_review_required",
-            rationale="A governed or conflicting item is waiting for a human decision before Miru should treat it as safe.",
-            confidence="high",
-            risk="high",
-        ))
+        review_title = str(
+            first_item.get("simple_title") or "Governed review item needs attention"
+        )
+        review_summary = str(
+            first_item.get("simple_reason")
+            or "Governed autopilot surfaced an item for human review."
+        )
+        suggested_action = str(
+            first_item.get("suggested_action")
+            or "Review the item before applying any related change."
+        )
+        items.append(
+            _build_judgment_item(
+                key="governed_review",
+                title=review_title,
+                summary=review_summary,
+                detail=suggested_action,
+                category="needs_review",
+                issue_type="approval",
+                source="Governed autopilot rollup for today.",
+                action_class="user_review_required",
+                rationale="A governed or conflicting item is waiting for a human decision before Miru should treat it as safe.",
+                confidence="high",
+                risk="high",
+            )
+        )
 
     project_issue = issues.get("project_miru") or {}
-    if str(project_health.get("status") or "").strip().upper() == "FAILED" or str(project_issue.get("tone") or "") == "warn":
-        items.append(_build_judgment_item(
-            key="project_runtime",
-            title="Project Miru runtime needs attention",
-            summary=str(project_health.get("detail") or project_issue.get("detail") or "Project Miru is not answering normally from the Dev surface."),
-            detail=f"Observed from {project_health.get('source') or 'Project Miru runtime health.'}",
-            category="failure",
-            issue_type="runtime",
-            source=str(project_health.get("source") or "Observed via Project Miru runtime health."),
-            action_class="investigate",
-            rationale="If the user-facing site is not healthy, retries or follow-on checks can mislead you until the runtime path is understood.",
-            confidence="high",
-            risk="high",
-            route_task="Investigate the Project Miru runtime path that 18765 is observing, confirm why it is unhealthy, and report the exact live verification evidence without changing any 18080 user-facing files.",
-        ))
+    if (
+        str(project_health.get("status") or "").strip().upper() == "FAILED"
+        or str(project_issue.get("tone") or "") == "warn"
+    ):
+        items.append(
+            _build_judgment_item(
+                key="project_runtime",
+                title="Project Miru runtime needs attention",
+                summary=str(
+                    project_health.get("detail")
+                    or project_issue.get("detail")
+                    or "Project Miru is not answering normally from the Dev surface."
+                ),
+                detail=f"Observed from {project_health.get('source') or 'Project Miru runtime health.'}",
+                category="failure",
+                issue_type="runtime",
+                source=str(
+                    project_health.get("source")
+                    or "Observed via Project Miru runtime health."
+                ),
+                action_class="investigate",
+                rationale="If the user-facing site is not healthy, retries or follow-on checks can mislead you until the runtime path is understood.",
+                confidence="high",
+                risk="high",
+                route_task="Investigate the Project Miru runtime path that 18765 is observing, confirm why it is unhealthy, and report the exact live verification evidence without changing any 18080 user-facing files.",
+            )
+        )
 
     if str(miru_health.get("status") or "").strip().upper() == "FAILED":
-        items.append(_build_judgment_item(
-            key="dev_runtime",
-            title="Miru Dev surface needs attention",
-            summary=str(miru_health.get("detail") or "The Dev runtime is not healthy."),
-            detail="The control surface itself is degraded, so every downstream signal is less trustworthy until the runtime path is understood.",
-            category="failure",
-            issue_type="environment",
-            source=str(miru_health.get("source") or "Observed from Dev runtime status."),
-            action_class="investigate",
-            rationale="The Dev surface is the authority for these signals, so runtime instability here should be investigated before acting on the page.",
-            confidence="high",
-            risk="high",
-            route_task="Investigate why the Miru Dev surface on 18765 is degraded, verify the failing runtime path live, and explain the safest next step without adding new background actions.",
-        ))
+        items.append(
+            _build_judgment_item(
+                key="dev_runtime",
+                title="Miru Dev surface needs attention",
+                summary=str(
+                    miru_health.get("detail") or "The Dev runtime is not healthy."
+                ),
+                detail="The control surface itself is degraded, so every downstream signal is less trustworthy until the runtime path is understood.",
+                category="failure",
+                issue_type="environment",
+                source=str(
+                    miru_health.get("source") or "Observed from Dev runtime status."
+                ),
+                action_class="investigate",
+                rationale="The Dev surface is the authority for these signals, so runtime instability here should be investigated before acting on the page.",
+                confidence="high",
+                risk="high",
+                route_task="Investigate why the Miru Dev surface on 18765 is degraded, verify the failing runtime path live, and explain the safest next step without adding new background actions.",
+            )
+        )
 
     worker_status = learning_engine.get("worker_status") or {}
     worker_label = str(worker_status.get("label") or "").strip().lower()
-    worker_detail = str(worker_health.get("detail") or worker_status.get("detail") or "").strip()
+    worker_detail = str(
+        worker_health.get("detail") or worker_status.get("detail") or ""
+    ).strip()
     if worker_label in {"stale", "offline", "stalled"}:
-        items.append(_build_judgment_item(
-            key="worker_heartbeat",
-            title="Worker heartbeat needs investigation",
-            summary=worker_detail or "The learner heartbeat looks stale or offline.",
-            detail=str(worker_health.get("source") or "Derived from the learning engine heartbeat."),
-            category="warning",
-            issue_type="worker",
-            source="Learning engine heartbeat and worker status.",
-            action_class="worker_prompt",
-            rationale="Miru can still answer from cached state, but a stale worker signal can hide blocked learning or an idle process that needs confirmation.",
-            confidence="high" if worker_label in {"stale", "stalled"} else "medium",
-            risk="medium",
-            route_task="Inspect the Miru learner heartbeat and worker state on 18765, explain why the signal is stale, and verify whether the worker is safely idle or blocked before recommending any retry.",
-        ))
+        items.append(
+            _build_judgment_item(
+                key="worker_heartbeat",
+                title="Worker heartbeat needs investigation",
+                summary=worker_detail
+                or "The learner heartbeat looks stale or offline.",
+                detail=str(
+                    worker_health.get("source")
+                    or "Derived from the learning engine heartbeat."
+                ),
+                category="warning",
+                issue_type="worker",
+                source="Learning engine heartbeat and worker status.",
+                action_class="worker_prompt",
+                rationale="Miru can still answer from cached state, but a stale worker signal can hide blocked learning or an idle process that needs confirmation.",
+                confidence="high" if worker_label in {"stale", "stalled"} else "medium",
+                risk="medium",
+                route_task="Inspect the Miru learner heartbeat and worker state on 18765, explain why the signal is stale, and verify whether the worker is safely idle or blocked before recommending any retry.",
+            )
+        )
 
     worker_action = str(worker_last_run.get("action") or "").strip().lower()
-    worker_blocker = str(worker_last_run.get("blocker") or worker_last_run.get("no_new_work_reason") or "").strip()
+    worker_blocker = str(
+        worker_last_run.get("blocker")
+        or worker_last_run.get("no_new_work_reason")
+        or ""
+    ).strip()
     if worker_action in {"overlap_blocked", "blocked", "error"} and worker_blocker:
-        issue_type = "source_freshness" if "snapshot" in worker_blocker.lower() or "overlap" in worker_action else "intelligence"
-        items.append(_build_judgment_item(
-            key="worker_last_run",
-            title=humanize_snake_label(worker_action) or "Scheduled worker blocked",
-            summary=worker_blocker,
-            detail=str(worker_last_run.get("exact_snapshot_needed") or worker_last_run.get("timestamp_display") or ""),
-            category="watch" if worker_action == "overlap_blocked" else "warning",
-            issue_type=issue_type,
-            source="Scheduled worker last-run record.",
-            action_class="safe_check",
-            rationale="A read-only source or overlap check can confirm whether the worker is blocked by incomplete inputs before you try anything else.",
-            confidence="medium",
-            risk="low" if worker_action == "overlap_blocked" else "medium",
-            route_task="Check the scheduled worker blocker that Miru is surfacing on 18765, confirm whether the snapshot or overlap state is incomplete, and report the safest next action without changing 18080.",
-        ))
+        issue_type = (
+            "source_freshness"
+            if "snapshot" in worker_blocker.lower() or "overlap" in worker_action
+            else "intelligence"
+        )
+        items.append(
+            _build_judgment_item(
+                key="worker_last_run",
+                title=humanize_snake_label(worker_action) or "Scheduled worker blocked",
+                summary=worker_blocker,
+                detail=str(
+                    worker_last_run.get("exact_snapshot_needed")
+                    or worker_last_run.get("timestamp_display")
+                    or ""
+                ),
+                category="watch" if worker_action == "overlap_blocked" else "warning",
+                issue_type=issue_type,
+                source="Scheduled worker last-run record.",
+                action_class="safe_check",
+                rationale="A read-only source or overlap check can confirm whether the worker is blocked by incomplete inputs before you try anything else.",
+                confidence="medium",
+                risk="low" if worker_action == "overlap_blocked" else "medium",
+                route_task="Check the scheduled worker blocker that Miru is surfacing on 18765, confirm whether the snapshot or overlap state is incomplete, and report the safest next action without changing 18080.",
+            )
+        )
 
     truth_mode = str(truth_source.get("mode") or "").strip().lower()
     if truth_mode == "local_fallback":
-        items.append(_build_judgment_item(
-            key="truth_source",
-            title="Using local worktree truth source",
-            summary=str(truth_source.get("detail") or "Miru is using local worktree data for this view."),
-            detail="The page is grounded in local worktree signals rather than a remote truth source.",
-            category="info",
-            issue_type="environment",
-            source="Truth-source descriptor.",
-            action_class="observe_only",
-            rationale="This is informative rather than broken, but it matters when comparing what you see here to another runtime.",
-            confidence="high",
-            risk="low",
-        ))
+        items.append(
+            _build_judgment_item(
+                key="truth_source",
+                title="Using local worktree truth source",
+                summary=str(
+                    truth_source.get("detail")
+                    or "Miru is using local worktree data for this view."
+                ),
+                detail="The page is grounded in local worktree signals rather than a remote truth source.",
+                category="info",
+                issue_type="environment",
+                source="Truth-source descriptor.",
+                action_class="observe_only",
+                rationale="This is informative rather than broken, but it matters when comparing what you see here to another runtime.",
+                confidence="high",
+                risk="low",
+            )
+        )
 
     if not items:
-        items.append(_build_judgment_item(
-            key="stable",
-            title="Miru looks stable from this Dev surface",
-            summary="The current runtime, worker, and governed signals do not surface an active failure or review blocker.",
-            detail="Keep observing from the current Dev control layer.",
-            category="info",
-            issue_type="runtime",
-            source="Rules-based interpretation of current control-layer signals.",
-            action_class="observe_only",
-            rationale="No surfaced signal currently justifies a retry, intervention, or human review step.",
-            confidence="medium",
-            risk="low",
-        ))
+        items.append(
+            _build_judgment_item(
+                key="stable",
+                title="Miru looks stable from this Dev surface",
+                summary="The current runtime, worker, and governed signals do not surface an active failure or review blocker.",
+                detail="Keep observing from the current Dev control layer.",
+                category="info",
+                issue_type="runtime",
+                source="Rules-based interpretation of current control-layer signals.",
+                action_class="observe_only",
+                rationale="No surfaced signal currently justifies a retry, intervention, or human review step.",
+                confidence="medium",
+                risk="low",
+            )
+        )
 
     ranked_items = sorted(items, key=_judgment_priority)
     primary = ranked_items[0]
@@ -5059,7 +6270,9 @@ def _build_control_judgment(
     if primary_category == "needs_review":
         what_i_think = "Miru looks operational, but a governed item is waiting for a human decision."
     elif primary_type == "worker":
-        what_i_think = "Miru is up, but the learning worker signal looks stale or blocked."
+        what_i_think = (
+            "Miru is up, but the learning worker signal looks stale or blocked."
+        )
     elif primary_type == "runtime":
         what_i_think = "One of the observed runtime paths needs attention before Miru should trust follow-on actions."
     elif primary_type == "source_freshness":
@@ -5067,7 +6280,11 @@ def _build_control_judgment(
     else:
         what_i_think = "Miru is interpreting the current worktree signals without surfacing a hard failure."
 
-    what_matters = str(primary.get("summary") or recent_issues.get("summary") or "No dominant concern surfaced.")
+    what_matters = str(
+        primary.get("summary")
+        or recent_issues.get("summary")
+        or "No dominant concern surfaced."
+    )
     action_label = str(recommendation.get("label") or "Observe only")
     if str(recommendation.get("guardrail_label") or "") == "Review required":
         what_next = f"{action_label}. Human review should happen before any related retry or apply step."
@@ -5083,12 +6300,19 @@ def _build_control_judgment(
         "what_matters_most": what_matters,
         "what_i_recommend_next": what_next,
         "guardrail_label": str(recommendation.get("guardrail_label") or "Read-only"),
-        "retry_guidance": str(recommendation.get("retry_guidance") or "Observe the current state before retrying."),
+        "retry_guidance": str(
+            recommendation.get("retry_guidance")
+            or "Observe the current state before retrying."
+        ),
         "primary": primary,
         "items": ranked_items[:4],
         "secondary": ranked_items[1:4],
         "source": "Rules-based interpretation of runtime health, worker freshness, governed review state, scheduled worker signals, and truth-source context.",
-        "activity_hint": str((recent_activity[0] or {}).get("title") or "") if recent_activity else "",
+        "activity_hint": (
+            str((recent_activity[0] or {}).get("title") or "")
+            if recent_activity
+            else ""
+        ),
     }
 
 
@@ -5111,20 +6335,35 @@ def build_dev_control_layer(
     project_reachable = bool(project.get("reachable"))
     project_status_code = int(project.get("status_code") or 0)
     project_runtime_ok = str(runtime_status.get("18080") or "").strip().lower() == "ok"
-    project_probe_state = str(runtime_status.get("project_probe_state") or "").strip().lower()
-    project_probe_certainty = str(runtime_status.get("project_probe_certainty") or "").strip().lower()
-    runtime_checked_at = _format_timestamp_readable(str(runtime_status.get("checked_at") or "")) or str(runtime_status.get("checked_at") or "")
+    project_probe_state = (
+        str(runtime_status.get("project_probe_state") or "").strip().lower()
+    )
+    project_probe_certainty = (
+        str(runtime_status.get("project_probe_certainty") or "").strip().lower()
+    )
+    runtime_checked_at = _format_timestamp_readable(
+        str(runtime_status.get("checked_at") or "")
+    ) or str(runtime_status.get("checked_at") or "")
     worker_status = learning_engine.get("worker_status") or {}
     worker_state = str(worker_status.get("status") or "").strip().lower()
-    worker_detail = str(worker_status.get("detail") or (intelligence.get("worker") or {}).get("detail") or "").strip()
-    worker_has_heartbeat = bool(str(learning_engine.get("last_heartbeat") or "").strip())
+    worker_detail = str(
+        worker_status.get("detail")
+        or (intelligence.get("worker") or {}).get("detail")
+        or ""
+    ).strip()
+    worker_has_heartbeat = bool(
+        str(learning_engine.get("last_heartbeat") or "").strip()
+    )
     worker_store_visible = bool(learning_engine.get("status_db_exists"))
 
     system_health = [
         _build_control_observation(
             key="miru_ai",
             label="18765 Dev surface",
-            detail=str((issues.get("miru_ai") or {}).get("detail") or "Miru AI Dev status is available."),
+            detail=str(
+                (issues.get("miru_ai") or {}).get("detail")
+                or "Miru AI Dev status is available."
+            ),
             source="Observed from the local /api/dev-status worktree payload.",
             confirmed=miru_running and not miru_issue_warn,
             failed=not miru_running,
@@ -5134,18 +6373,26 @@ def build_dev_control_layer(
             label="18080 Project Miru",
             detail=(
                 f"Observed healthy via local runtime probe ({runtime_checked_at})."
-                if project_runtime_ok and project_probe_certainty == "confirmed" and runtime_checked_at
+                if project_runtime_ok
+                and project_probe_certainty == "confirmed"
+                and runtime_checked_at
                 else (
                     "Storefront answered the confirmatory direct check, but the fast runtime probe was inconclusive."
                     if project_runtime_ok and project_probe_certainty != "confirmed"
-                    else str(project.get("detail") or runtime_status.get("project_detail") or "Project Miru observation is not available yet.")
+                    else str(
+                        project.get("detail")
+                        or runtime_status.get("project_detail")
+                        or "Project Miru observation is not available yet."
+                    )
                 )
             ),
             source=(
                 "Observed from the cached runtime probe plus a confirmatory direct localhost check when the fast probe is inconclusive."
             ),
             confirmed=project_runtime_ok and project_probe_certainty == "confirmed",
-            failed=(not project_runtime_ok) and (not project_reachable) and project_probe_state == "confirmed_unhealthy",
+            failed=(not project_runtime_ok)
+            and (not project_reachable)
+            and project_probe_state == "confirmed_unhealthy",
         ),
         _build_control_observation(
             key="worker",
@@ -5156,7 +6403,8 @@ def build_dev_control_layer(
                 if learning_engine.get("last_heartbeat")
                 else "Worker freshness derived from learning engine status."
             ),
-            confirmed=worker_state in {"fresh", "ok"} or str((intelligence.get("worker") or {}).get("tone") or "") == "good",
+            confirmed=worker_state in {"fresh", "ok"}
+            or str((intelligence.get("worker") or {}).get("tone") or "") == "good",
             failed=not worker_store_visible and not worker_has_heartbeat,
         ),
     ]
@@ -5174,10 +6422,14 @@ def build_dev_control_layer(
             f"Health cards reuse /api/dev-status and the same cached local runtime probe used by /api/runtime/status."
             + (f" Last checked {runtime_checked_at}." if runtime_checked_at else "")
         ),
-        "judgment": judgment.get("source") or "Rules-based interpretation of current Dev signals.",
-        "recent_issues": recent_issues.get("source") or "Issue detection and runtime freshness signals.",
+        "judgment": judgment.get("source")
+        or "Rules-based interpretation of current Dev signals.",
+        "recent_issues": recent_issues.get("source")
+        or "Issue detection and runtime freshness signals.",
         "recent_activity": "Recent activity reuses the learning engine event log, governed autopilot rollup, and scheduled worker run record.",
-        "truth": str(truth_source.get("detail") or "Using the current Dev runtime snapshot."),
+        "truth": str(
+            truth_source.get("detail") or "Using the current Dev runtime snapshot."
+        ),
     }
     summary = (
         f"18765: {system_health[0]['status']}. "
@@ -5185,19 +6437,21 @@ def build_dev_control_layer(
         f"Worker: {system_health[2]['status']}. "
         f"Judgment: {judgment.get('headline') or recent_issues['headline']}."
     )
-    copy_summary = "\n".join([
-        "Miru Control Layer summary",
-        summary,
-        f"What Miru thinks: {judgment.get('what_i_think') or 'Judgment summary unavailable.'}",
-        f"What matters most: {judgment.get('what_matters_most') or recent_issues.get('summary') or 'No dominant concern surfaced.'}",
-        f"Recommended next: {judgment.get('what_i_recommend_next') or 'Observe the current state.'}",
-        f"Guardrail: {judgment.get('guardrail_label') or 'Read-only'}",
-        f"Health source: {status_sources['health']}",
-        f"Judgment source: {status_sources['judgment']}",
-        f"Issue source: {status_sources['recent_issues']}",
-        f"Activity source: {status_sources['recent_activity']}",
-        f"Truth source: {status_sources['truth']}",
-    ])
+    copy_summary = "\n".join(
+        [
+            "Miru Control Layer summary",
+            summary,
+            f"What Miru thinks: {judgment.get('what_i_think') or 'Judgment summary unavailable.'}",
+            f"What matters most: {judgment.get('what_matters_most') or recent_issues.get('summary') or 'No dominant concern surfaced.'}",
+            f"Recommended next: {judgment.get('what_i_recommend_next') or 'Observe the current state.'}",
+            f"Guardrail: {judgment.get('guardrail_label') or 'Read-only'}",
+            f"Health source: {status_sources['health']}",
+            f"Judgment source: {status_sources['judgment']}",
+            f"Issue source: {status_sources['recent_issues']}",
+            f"Activity source: {status_sources['recent_activity']}",
+            f"Truth source: {status_sources['truth']}",
+        ]
+    )
     return {
         "summary": summary,
         "judgment": judgment,
@@ -5205,12 +6459,19 @@ def build_dev_control_layer(
         "runtime_reliability": {
             "project_miru": {
                 "healthy": project_runtime_ok,
-                "uncertain": project_runtime_ok and project_probe_certainty != "confirmed",
-                "state": project_probe_state or ("confirmed_healthy" if project_runtime_ok else "confirmed_unhealthy"),
-                "certainty": project_probe_certainty or ("confirmed" if project_runtime_ok else "confirmed"),
+                "uncertain": project_runtime_ok
+                and project_probe_certainty != "confirmed",
+                "state": project_probe_state
+                or (
+                    "confirmed_healthy" if project_runtime_ok else "confirmed_unhealthy"
+                ),
+                "certainty": project_probe_certainty
+                or ("confirmed" if project_runtime_ok else "confirmed"),
                 "detail": str(runtime_status.get("project_detail") or ""),
                 "fast_probe": dict(runtime_status.get("project_fast_probe") or {}),
-                "confirm_probe": dict(runtime_status.get("project_confirm_probe") or {}),
+                "confirm_probe": dict(
+                    runtime_status.get("project_confirm_probe") or {}
+                ),
             }
         },
         "recent_issues": recent_issues,
@@ -5226,7 +6487,9 @@ def ensure_control_layer_payload(
     force_runtime_probe: bool = False,
 ) -> dict[str, Any]:
     out = dict(payload or {})
-    out["control_layer"] = build_dev_control_layer(out, force_runtime_probe=force_runtime_probe)
+    out["control_layer"] = build_dev_control_layer(
+        out, force_runtime_probe=force_runtime_probe
+    )
     try:
         out["action_governance"] = build_action_governance_snapshot(
             dev_payload=out,
@@ -5242,8 +6505,19 @@ def ensure_control_layer_payload(
         out["action_governance"] = {
             "generated_at": current_timestamp(),
             "error": str(exc),
-            "actions": {"all": [], "allowed_now": [], "allowed_with_review": [], "blocked": [], "not_applicable": []},
-            "publication_readiness": {"counts": {}, "remaining_candidate_count": 0, "top_targets": [], "target_evaluation": {}},
+            "actions": {
+                "all": [],
+                "allowed_now": [],
+                "allowed_with_review": [],
+                "blocked": [],
+                "not_applicable": [],
+            },
+            "publication_readiness": {
+                "counts": {},
+                "remaining_candidate_count": 0,
+                "top_targets": [],
+                "target_evaluation": {},
+            },
         }
     return out
 
@@ -5308,7 +6582,9 @@ def build_operator_handoff_payload(payload: dict[str, Any]) -> dict[str, Any]:
     """
     dev_env = payload.get("dev_environment") or {}
     env_label = str(dev_env.get("environment") or "local").strip() or "local"
-    runtime_target = str(dev_env.get("runtime_target") or "worktree").strip() or "worktree"
+    runtime_target = (
+        str(dev_env.get("runtime_target") or "worktree").strip() or "worktree"
+    )
     target_environment = f"{env_label} · {runtime_target}"
 
     boundaries = (
@@ -5322,7 +6598,9 @@ def build_operator_handoff_payload(payload: dict[str, Any]) -> dict[str, Any]:
     intel = osr.get("intelligence_surface") or {}
     met = osr.get("metrics") or {}
     issues = payload.get("issues") or {}
-    miru_issue_tone = str((issues.get("miru_ai") or {}).get("tone") or "good").strip().lower()
+    miru_issue_tone = (
+        str((issues.get("miru_ai") or {}).get("tone") or "good").strip().lower()
+    )
 
     if osr.get("error"):
         err = str(osr.get("error"))
@@ -5481,7 +6759,7 @@ def _strip_dev_cockpit_dev_status_payload(payload: dict[str, Any]) -> dict[str, 
     Preserves operator_self_report, operator_handoff, issues, learning_engine, runtime fields.
     Read-only trim; does not change governance or stored data.
     """
-    out = dict(payload)
+    out = trim_dev_status_payload(payload)
     for k in (
         "activity_feed",
         "monitor",
@@ -5491,21 +6769,36 @@ def _strip_dev_cockpit_dev_status_payload(payload: dict[str, Any]) -> dict[str, 
         "worktree_update_summary",
     ):
         out.pop(k, None)
-    voy = out.get("voyage")
-    if isinstance(voy, dict):
-        out["voyage"] = {
-            "sea_label": str(voy.get("sea_label") or "").strip(),
-            "_cockpit_trimmed": True,
-        }
     cl = out.get("control_layer")
     if isinstance(cl, dict):
-        jud = cl.get("judgment") or {}
         out["control_layer"] = {
-            "judgment": {
-                "status_label": str(jud.get("status_label") or "—"),
-                "tone": str(jud.get("tone") or "neutral"),
-            },
+            "system_health": list(cl.get("system_health") or []),
+            "runtime_reliability": dict(cl.get("runtime_reliability") or {}),
             "_cockpit_trimmed": True,
+        }
+    return out
+
+
+def trim_dev_status_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
+    out = dict(payload or {})
+    for key in (
+        "voyage",
+        "training",
+        "training_progress",
+        "intelligence_progress",
+        "operator_console",
+        "worker_router",
+        "judgment",
+        "activity",
+        "activity_states",
+        "limits_by_provider",
+    ):
+        out.pop(key, None)
+    cl = out.get("control_layer")
+    if isinstance(cl, dict):
+        out["control_layer"] = {
+            "system_health": list(cl.get("system_health") or []),
+            "runtime_reliability": dict(cl.get("runtime_reliability") or {}),
         }
     return out
 
@@ -5529,7 +6822,7 @@ def build_dev_status(
             out["operator_handoff"] = build_operator_handoff_payload(out)
             out = ensure_governed_autopilot_payload(out)
             _apply_worker_heartbeat_fallback(out)
-            return ensure_control_layer_payload(out)
+            return trim_dev_status_payload(ensure_control_layer_payload(out))
     training_status = training_status or build_training_status()
     _learning_sig = (
         path_signature(LEARNING_QUEUE_DB_PATH),
@@ -5555,7 +6848,9 @@ def build_dev_status(
         training_status,
         learning_status=learning_status,
     )
-    activity = build_learning_engine_activity(learning_status, build_miru_activity(training_status))
+    activity = build_learning_engine_activity(
+        learning_status, build_miru_activity(training_status)
+    )
     pushover_state = build_pushover_runtime_state(
         training_status=training_status,
         learning_status=learning_status,
@@ -5563,12 +6858,23 @@ def build_dev_status(
     links = {
         "miru_ai": build_route_url("/"),
         "project_miru": build_companion_url(PROJECT_MIRU_DEV_PORT, "/"),
-        "training": build_route_url("/training"),
-        "status": build_route_url("/status"),
     }
     training_progress = training_status.get("training_progress")
     if lightweight:
-        project_status = {"reachable": True, "status_code": 0, "detail": "Checking Project Miru after first paint."}
+        _rt_probe = build_runtime_status_payload()
+        _pm_ok = str(_rt_probe.get("18080") or "").strip().lower() == "ok"
+        project_status = {
+            "reachable": _pm_ok,
+            "status_code": 200 if _pm_ok else 0,
+            "detail": str(
+                _rt_probe.get("project_detail")
+                or (
+                    "Project Miru responded to runtime probe."
+                    if _pm_ok
+                    else "Project Miru not reachable on 18080."
+                )
+            ),
+        }
         limits_status = []
         limits_by_provider = {}
         validation_audit = {
@@ -5578,21 +6884,29 @@ def build_dev_status(
             "rejected_evidence": [],
         }
         image_coverage_by_set = []
-        monitor = build_deferred_monitor_payload(training_status, learning_status, activity)
+        monitor = build_deferred_monitor_payload(
+            training_status, learning_status, activity
+        )
         resource_metrics = []
     else:
         project_status = get_ttl_cached_value(
             "project_miru_route_status",
             ttl_seconds=5.0,
             signature=PROJECT_MIRU_DEV_PORT,
-            builder=lambda: inspect_local_http_route(f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/"),
+            builder=lambda: inspect_local_http_route(
+                f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/"
+            ),
         )
         limits_status = load_limits_status()
-        limits_by_provider = {e["provider"]: e for e in limits_status if e.get("provider")}
+        limits_by_provider = {
+            e["provider"]: e for e in limits_status if e.get("provider")
+        }
         if include_heavy_sections:
             validation_audit = load_cached_validation_audit()
             image_coverage_by_set = load_cached_image_coverage_by_set()
-            monitor_source = load_cached_monitor_source(training_status, learning_status, validation_audit)
+            monitor_source = load_cached_monitor_source(
+                training_status, learning_status, validation_audit
+            )
             monitor = build_monitor_payload(training_status, monitor_source)
             resource_metrics = load_cached_resource_metrics()
         else:
@@ -5603,7 +6917,9 @@ def build_dev_status(
                 "rejected_evidence": [],
             }
             image_coverage_by_set = []
-            monitor = build_deferred_monitor_payload(training_status, learning_status, activity)
+            monitor = build_deferred_monitor_payload(
+                training_status, learning_status, activity
+            )
             resource_metrics = []
     _updated = current_timestamp()
     payload = {
@@ -5611,25 +6927,16 @@ def build_dev_status(
         "updated_at_display": _format_timestamp_readable(_updated),
         "snapshot_inputs": learning_status.get("snapshot_inputs") or {},
         "links": links,
-        "activity": activity,
-        "activity_states": build_activity_states(activity["key"]),
         "limits_status": limits_status,
-        "limits_by_provider": limits_by_provider,
-        "training": {
-            "progress_percent": float(training_status["progress_percent"]),
-            "summary": training_status["verified_summary"],
-            "detail": training_status["remaining_summary"],
-            "stage": training_status["training_stage"],
-        },
-        "training_progress": training_progress,
-        "voyage": dict(training_status["voyage"]),
         "monitor": monitor,
         "learning_metrics": build_learning_engine_metrics(learning_status),
         "validation_audit": validation_audit,
         "validation_audit_url_base": build_route_url("/api/dev/card-validation"),
         "image_coverage_by_set": image_coverage_by_set,
         "resource_metrics": resource_metrics,
-        "issues": build_issue_detection(training_status, project_status, learning_status),
+        "issues": build_issue_detection(
+            training_status, project_status, learning_status
+        ),
         "catalog_status": training_status["catalog_status"],
         "dossier_status": training_status["dossier_status"],
         "pushover": pushover_state,
@@ -5657,7 +6964,7 @@ def build_dev_status(
             },
             "worktree_dashboard": {
                 "port": str(PROJECT_MIRU_DEV_PORT),
-                "status": "Running" if project_status.get("reachable") else "Unreachable",
+                "status": ("Running" if project_status.get("reachable") else "Offline"),
             },
         },
         "truth_source": build_runtime_truth_source_descriptor(
@@ -5665,8 +6972,16 @@ def build_dev_status(
             status_url=resolve_runtime_monitor_status_url() or "",
         ),
         "worker_last_run": _enrich_worker_last_run_display(load_worker_last_run()),
-        "pending_approvals_count": len(load_pending_approvals(status_db_path=LEARNING_STATUS_DB_PATH)),
-        "dev_environment": (dev_environment_descriptor := build_dev_environment_descriptor()),
+        "pending_approvals_count": count_publication_review_rows(
+            project_db_path=FALLBACK_CATALOG_DB_PATH
+        )
+        + len(load_pending_approvals(status_db_path=LEARNING_STATUS_DB_PATH)),
+        "publication_review_count": count_publication_review_rows(
+            project_db_path=FALLBACK_CATALOG_DB_PATH
+        ),
+        "dev_environment": (
+            dev_environment_descriptor := build_dev_environment_descriptor()
+        ),
         "worktree_update_summary": build_worktree_update_summary(
             training_status,
             learning_status,
@@ -5674,7 +6989,7 @@ def build_dev_status(
             dev_environment_descriptor,
         ),
         "learning_engine": _enrich_learning_engine_display(
-            _apply_worktree_learner_state_override(
+            _reconcile_learner_status_with_process_truth(
                 {
                     **learning_status,
                     **compute_learner_state_and_freshness(learning_status),
@@ -5693,7 +7008,9 @@ def build_dev_status(
     payload["operator_handoff"] = build_operator_handoff_payload(payload)
     payload = ensure_governed_autopilot_payload(payload)
     _apply_worker_heartbeat_fallback(payload)
-    return ensure_control_layer_payload(payload, force_runtime_probe=lightweight)
+    return trim_dev_status_payload(
+        ensure_control_layer_payload(payload, force_runtime_probe=lightweight)
+    )
 
 
 def log_pushover_startup_status(logger: Any) -> None:
@@ -5713,7 +7030,20 @@ def log_pushover_startup_status(logger: Any) -> None:
         _PUSHOVER_STATUS_LOGGED = True
 
 
+_TAILSCALE_IPV4_CGNAT = ipaddress.ip_network(
+    "100.64.0.0/10"
+)  # Tailscale IPv4 (shared CGNAT range; RFC 6598)
+_TAILSCALE_IPV6_ULA = ipaddress.ip_network(
+    "fd7a:115c:a1e0::/48"
+)  # Tailscale IPv6 ULA (matches runtime restart allowlist)
+
+
 def is_local_request() -> bool:
+    """True for loopback, private LAN, and Tailscale (100.64.0.0/10 + TS IPv6 ULA).
+
+    Uses Werkzeug ``REMOTE_ADDR`` only (not X-Forwarded-For). Approve/reject and similar
+    dev controls rely on this for localhost-equivalent trust.
+    """
     remote_addr = (request.remote_addr or "").strip()
     if not remote_addr:
         return False
@@ -5730,10 +7060,13 @@ def is_local_request() -> bool:
             ipaddress.ip_network("10.0.0.0/8"),
             ipaddress.ip_network("172.16.0.0/12"),
             ipaddress.ip_network("192.168.0.0/16"),
-            ipaddress.ip_network("100.64.0.0/10"),
+            _TAILSCALE_IPV4_CGNAT,
         )
         return any(address in network for network in trusted_networks)
+    if isinstance(address, ipaddress.IPv6Address):
+        return address in _TAILSCALE_IPV6_ULA
     return False
+
 
 def resolve_cli_mode(selected_mode: str) -> str:
     mapping = {
@@ -5751,41 +7084,6 @@ def resolve_cli_mode(selected_mode: str) -> str:
         "review": "review",
     }
     return mapping.get(selected_mode, selected_mode)
-
-
-def normalize_request_text(request_text: str) -> str:
-    return re.sub(r"\s+", " ", (request_text or "").strip().lower())
-
-
-def is_explicit_development_request(request_text: str) -> bool:
-    normalized = normalize_request_text(request_text)
-    return any(token in normalized for token in EXPLICIT_DEVELOPMENT_HINTS)
-
-
-def infer_knowledge_mode(request_text: str) -> str:
-    normalized = normalize_request_text(request_text)
-    has_card_reference = bool(CARD_REFERENCE_RE.search(request_text or ""))
-    has_gameplay_hint = any(token in normalized for token in GAMEPLAY_HINTS)
-
-    if any(token in normalized for token in TRAINING_HINTS):
-        return "knowledge training"
-    if any(token in normalized for token in SET_CATALOG_HINTS):
-        return "set & catalog knowledge"
-    if any(token in normalized for token in MATCHING_HINTS):
-        return "variant & print analysis"
-    if has_gameplay_hint or any(token in normalized for token in DIRECT_KNOWLEDGE_HINTS):
-        return "card analysis" if ("effect" in normalized or "what does" in normalized or has_gameplay_hint) else "card lookup"
-    if has_card_reference:
-        return "card lookup"
-    return "card lookup"
-
-
-def resolve_effective_mode(selected_mode: str, request_text: str) -> str:
-    if selected_mode not in {"development", "codex prompt"}:
-        return selected_mode
-    if is_explicit_development_request(request_text):
-        return selected_mode
-    return infer_knowledge_mode(request_text)
 
 
 def collect_runtime_dependencies() -> list[dict[str, Any]]:
@@ -5870,98 +7168,6 @@ def runtime_issue_messages() -> list[str]:
 
 def startup_issues() -> list[str]:
     return runtime_issue_messages()
-
-
-def validate_inputs(selected_mode: str, request_text: str, file_path: str) -> list[str]:
-    errors = []
-
-    if selected_mode not in ALL_MODE_LABELS:
-        errors.append("Choose a valid mode before you run Miru AI.")
-    if not SCRIPT_PATH.is_file():
-        errors.append(f"Required helper script is missing: {SCRIPT_PATH}")
-    if resolve_cli_mode(selected_mode) == "review":
-        if not file_path.strip():
-            errors.append("Review needs a readable file path.")
-    elif not request_text.strip():
-        errors.append("Request text is required for this mode.")
-
-    return errors
-
-
-def build_command(selected_mode: str, request_text: str, file_path: str) -> list[str]:
-    cli_mode = resolve_cli_mode(selected_mode)
-    command = [sys.executable, str(SCRIPT_PATH), cli_mode]
-
-    if cli_mode == "review":
-        command.append(file_path.strip())
-    else:
-        command.append(request_text.strip())
-
-    return command
-
-
-def build_command_preview(selected_mode: str, request_text: str, file_path: str) -> str:
-    cli_mode = resolve_cli_mode(selected_mode)
-    if cli_mode == "review":
-        target = file_path.strip() or "<file path required>"
-    else:
-        target = "<request text>" if request_text.strip() else "<request text required>"
-
-    return f"{Path(sys.executable).name} {SCRIPT_PATH.name} {cli_mode} {target}"
-
-
-def build_command_summary(selected_mode: str) -> str:
-    cli_mode = resolve_cli_mode(selected_mode)
-    return f"{Path(sys.executable).name} {SCRIPT_PATH.name} {cli_mode}"
-
-
-def run_miru_ai(selected_mode: str, request_text: str, file_path: str) -> tuple[bool, str]:
-    dependency_issues = runtime_issue_messages()
-    if dependency_issues:
-        diagnostic = " | ".join(dependency_issues)
-        print(f"[miru_ai_server] Runtime dependency issue before /api/run: {diagnostic}", file=sys.stderr)
-        return False, f"Runtime dependency issue: {diagnostic}"
-
-    command = build_command(selected_mode, request_text, file_path)
-    env = os.environ.copy()
-    env.setdefault("PYTHONIOENCODING", "utf-8")
-
-    try:
-        result = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=DEFAULT_TIMEOUT_SECONDS,
-            check=False,
-            env=env,
-            cwd=str(PROJECT_ROOT),
-        )
-    except OSError as exc:
-        print(f"[miru_ai_server] Failed to start subprocess: {exc}", file=sys.stderr)
-        return False, f"Failed to start subprocess: {exc}"
-    except subprocess.TimeoutExpired:
-        print("[miru_ai_server] Subprocess timed out while waiting for miru_ai.py.", file=sys.stderr)
-        return False, "Subprocess timed out while waiting for miru_ai.py."
-    except Exception as exc:
-        print(f"[miru_ai_server] Unexpected subprocess failure: {exc}", file=sys.stderr)
-        traceback.print_exc()
-        return False, f"Unexpected subprocess failure: {exc}"
-
-    stdout = (result.stdout or "").strip()
-    stderr = (result.stderr or "").strip()
-
-    if result.returncode != 0:
-        details = stderr or stdout or f"Exited with status {result.returncode}."
-        print(f"[miru_ai_server] miru_ai.py failed with status {result.returncode}: {details}", file=sys.stderr)
-        return False, f"miru_ai.py failed: {details}"
-
-    if not stdout:
-        print("[miru_ai_server] miru_ai.py completed without any output.", file=sys.stderr)
-        return False, "miru_ai.py completed without any output."
-
-    return True, stdout
 
 
 def build_inline_logo_data_uri() -> str:
@@ -6064,21 +7270,23 @@ def build_status_snapshot() -> list[dict[str, str]]:
                 "label": dependency["label"],
                 "value": (
                     "Ready"
-                    if dependency["label"] != "Fallback catalog database" and dependency["exists"]
+                    if dependency["label"] != "Fallback catalog database"
+                    and dependency["exists"]
                     else (
                         "Ready"
                         if catalog_status["usable"]
-                        else ("Present but unavailable" if catalog_status["exists"] else "Missing")
+                        else (
+                            "Present but unavailable"
+                            if catalog_status["exists"]
+                            else "Missing"
+                        )
                     )
                 ),
                 "tone": (
                     "good"
-                    if dependency["label"] != "Fallback catalog database" and dependency["exists"]
-                    else (
-                        "good"
-                        if catalog_status["usable"]
-                        else "warn"
-                    )
+                    if dependency["label"] != "Fallback catalog database"
+                    and dependency["exists"]
+                    else ("good" if catalog_status["usable"] else "warn")
                 ),
                 "detail": detail,
             }
@@ -6105,269 +7313,6 @@ def build_status_snapshot() -> list[dict[str, str]]:
 
 # Leader Hub: read-only load from miru_deck_intel.db; no new intelligence logic.
 _LEADER_HUB_FORMAT = ""
-
-
-def _leader_hub_confidence(decks_sampled: int) -> str:
-    if decks_sampled <= 4:
-        return "low"
-    if decks_sampled <= 14:
-        return "medium"
-    return "strong"
-
-
-def load_leader_hub_data(leader_code: str) -> dict[str, Any]:
-    """Load leader intelligence for the Leader Hub page. Returns stub if DB missing."""
-    leader_code = (leader_code or "").strip().upper()
-    if not leader_code:
-        return {
-            "leader_name": "",
-            "leader_code": "",
-            "decks_sampled": 0,
-            "confidence": "low",
-            "archetypes": [],
-            "shared_shell": [],
-            "variant_packages": [],
-            "cost_curves": [],
-            "miru_insight": None,
-        }
-
-    stub = {
-        "leader_name": "",
-        "leader_code": leader_code,
-        "decks_sampled": 0,
-        "confidence": "low",
-        "archetypes": [],
-        "shared_shell": [],
-        "variant_packages": [],
-        "cost_curves": [],
-        "miru_insight": None,
-    }
-
-    if not DECK_INTEL_DB_PATH.is_file():
-        return stub
-
-    try:
-        conn = sqlite3.connect(f"file:{DECK_INTEL_DB_PATH}?mode=ro", uri=True)
-        conn.row_factory = sqlite3.Row
-    except sqlite3.Error:
-        return stub
-
-    try:
-        tables = {
-            row[0]
-            for row in conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name IN (?,?,?,?)",
-                ("decklists", "archetype_profiles", "archetype_profile_cards", "archetype_profile_cost_curve"),
-            ).fetchall()
-        }
-        if "decklists" not in tables:
-            return stub
-
-        decks_sampled = 0
-        row = conn.execute(
-            "SELECT COUNT(DISTINCT deck_uid) FROM decklists WHERE leader_code = ?",
-            (leader_code,),
-        ).fetchone()
-        if row:
-            decks_sampled = row[0] or 0
-        stub["decks_sampled"] = decks_sampled
-        stub["confidence"] = _leader_hub_confidence(decks_sampled)
-
-        # Leader name from dossiers
-        if DOSSIER_DB_PATH.is_file():
-            try:
-                dconn = sqlite3.connect(f"file:{DOSSIER_DB_PATH}?mode=ro", uri=True)
-                r = dconn.execute(
-                    "SELECT card_name FROM cards WHERE canonical_code = ?",
-                    (leader_code,),
-                ).fetchone()
-                if r and r[0]:
-                    stub["leader_name"] = (r[0] or "").strip()
-                dconn.close()
-            except sqlite3.Error:
-                pass
-
-        if "archetype_profiles" in tables:
-            profiles = conn.execute(
-                """
-                SELECT archetype_id, deck_count, avg_similarity
-                FROM archetype_profiles
-                WHERE leader_code = ? AND format_code = ?
-                ORDER BY deck_count DESC, avg_similarity DESC, archetype_id ASC
-                """,
-                (leader_code, _LEADER_HUB_FORMAT),
-            ).fetchall()
-            stub["archetypes"] = [
-                {
-                    "archetype_id": r["archetype_id"],
-                    "deck_count": r["deck_count"],
-                    "avg_similarity": round(float(r["avg_similarity"] or 0), 2),
-                }
-                for r in profiles
-            ]
-
-        arch_cards: dict[str, dict[str, str]] = {}
-        if "archetype_profile_cards" in tables:
-            rows = conn.execute(
-                """
-                SELECT archetype_id, card_code, role_label
-                FROM archetype_profile_cards
-                WHERE leader_code = ? AND format_code = ?
-                ORDER BY archetype_id, card_code
-                """,
-                (leader_code, _LEADER_HUB_FORMAT),
-            ).fetchall()
-            for r in rows:
-                aid = r["archetype_id"]
-                if aid not in arch_cards:
-                    arch_cards[aid] = {}
-                arch_cards[aid][r["card_code"]] = (r["role_label"] or "tech").lower()
-
-        # Shared shell: core in 2+ archetypes
-        core_count: dict[str, int] = {}
-        for cards in arch_cards.values():
-            for code, role in cards.items():
-                if role == "core":
-                    core_count[code] = core_count.get(code, 0) + 1
-        stub["shared_shell"] = sorted(c for c, n in core_count.items() if n >= 2)
-
-        # Variant packages per archetype: core/flex here, not core/flex elsewhere
-        strong_roles = frozenset({"core", "flex"})
-        for aid in stub["archetypes"]:
-            aid_key = aid["archetype_id"]
-            my_cards = arch_cards.get(aid_key, {})
-            others = [cards for a, cards in arch_cards.items() if a != aid_key]
-            package = []
-            for code, role in my_cards.items():
-                if role not in strong_roles:
-                    continue
-                if any(other.get(code, "") in strong_roles for other in others):
-                    continue
-                package.append({"card_code": code, "role_label": role})
-            package.sort(key=lambda x: (0 if x["role_label"] == "core" else 1, x["card_code"]))
-            aid["variant_package"] = package
-
-        # Cost curve: weighted avg per archetype
-        if "archetype_profile_cost_curve" in tables:
-            rows = conn.execute(
-                """
-                SELECT archetype_id, cost_bucket, total_copies
-                FROM archetype_profile_cost_curve
-                WHERE leader_code = ? AND format_code = ?
-                """,
-                (leader_code, _LEADER_HUB_FORMAT),
-            ).fetchall()
-            curve_by_arch: dict[str, dict[str, int]] = {}
-            for r in rows:
-                aid = r["archetype_id"]
-                if aid not in curve_by_arch:
-                    curve_by_arch[aid] = {}
-                curve_by_arch[aid][r["cost_bucket"]] = int(r["total_copies"] or 0)
-            for aid in stub["archetypes"]:
-                aid_key = aid["archetype_id"]
-                curve = curve_by_arch.get(aid_key, {})
-                total_copies = sum(curve.values())
-                total_cost = 0.0
-                for bucket, copies in curve.items():
-                    try:
-                        total_cost += float(bucket) * copies
-                    except (ValueError, TypeError):
-                        pass
-                aid["avg_cost"] = round(total_cost / total_copies, 1) if total_copies else 0
-            stub["cost_curves"] = [
-                {"archetype_id": a["archetype_id"], "avg_cost": a.get("avg_cost", 0)}
-                for a in stub["archetypes"]
-            ]
-
-        # Deterministic Miru insight from stored data only; no new computation.
-        stub["miru_insight"] = _build_leader_hub_insight(stub)
-    finally:
-        conn.close()
-
-    return stub
-
-
-def _build_leader_hub_insight(data: dict[str, Any]) -> dict[str, str] | None:
-    """
-    Build a short, evidence-backed insight for the Leader Hub. Returns None when
-    there is not enough data for a meaningful statement. Uses only data already
-    in the leader hub payload; first-person, calm, transparent about confidence.
-    """
-    decks = data.get("decks_sampled", 0) or 0
-    confidence = data.get("confidence", "low")
-    archetypes = data.get("archetypes") or []
-    shared_shell = data.get("shared_shell") or []
-    n_arch = len(archetypes)
-
-    # Minimum evidence: need at least 2 decks and at least 1 archetype.
-    if decks < 2 or n_arch < 1:
-        return None
-
-    # Cost identity labels from avg_cost (plain strategy terms).
-    def _cost_label(avg: float) -> str:
-        if avg < 2.2:
-            return "lower-curve pressure"
-        if avg < 3.5:
-            return "balanced midrange"
-        return "heavier top-end"
-
-    parts: list[str] = []
-
-    if n_arch >= 2:
-        # Multiple build paths; mention shared shell and cost split.
-        path_word = "build path" if n_arch == 2 else "build paths"
-        parts.append(f"I'm seeing {n_arch} real {path_word} here.")
-        cost_split = _describe_cost_split(archetypes, _cost_label)
-        suffix = " builds." if "," in cost_split or " and " in cost_split else "."
-        if shared_shell:
-            parts.append("The shared shell stays stable, but players split between " + cost_split + suffix)
-        else:
-            parts.append("Players split between " + cost_split + suffix)
-        category = "Variant Signal" if (shared_shell and any(a.get("variant_package") for a in archetypes)) else "Strategy Insight"
-    else:
-        # Single archetype: one main build, define by cost or shell.
-        parts.append("From the decks I've seen, this leader looks centered around one main build.")
-        arch = archetypes[0]
-        avg_cost = arch.get("avg_cost")
-        if avg_cost is not None:
-            parts.append(f"It runs a {_cost_label(float(avg_cost))} plan.")
-        elif shared_shell:
-            parts.append("The shared core defines the build.")
-        category = "Strategy Insight"
-
-    if confidence == "low":
-        parts.append("Sample size is still small — worth watching as more data comes in.")
-
-    text = " ".join(parts)
-    return {
-        "category": category,
-        "text": text,
-        "confidence": confidence,
-    }
-
-
-def _describe_cost_split(archetypes: list[dict[str, Any]], cost_label_fn: Callable[[float], str]) -> str:
-    """Describe the cost split across archetypes in plain strategy terms (low to high)."""
-    # Collect (avg_cost, label) and sort by cost so sentence reads low -> high.
-    pairs: list[tuple[float, str]] = []
-    seen: set[str] = set()
-    for a in archetypes:
-        avg = a.get("avg_cost")
-        if avg is None:
-            continue
-        label = cost_label_fn(float(avg))
-        if label not in seen:
-            seen.add(label)
-            pairs.append((float(avg), label))
-    if not pairs:
-        return "different curve choices"
-    pairs.sort(key=lambda x: x[0])
-    labels = [p[1] for p in pairs]
-    if len(labels) == 1:
-        return labels[0]
-    if len(labels) == 2:
-        return f"{labels[0]} and {labels[1]}"
-    return ", ".join(labels[:-1]) + ", and " + labels[-1]
 
 
 def load_card_page_data(card_code: str) -> dict[str, Any]:
@@ -6432,7 +7377,9 @@ def load_card_page_data(card_code: str) -> dict[str, Any]:
     if not out["card_name"] and DOSSIER_DB_PATH.is_file():
         try:
             dconn = sqlite3.connect(f"file:{DOSSIER_DB_PATH}?mode=ro", uri=True)
-            r = dconn.execute("SELECT card_name FROM cards WHERE canonical_code = ?", (code,)).fetchone()
+            r = dconn.execute(
+                "SELECT card_name FROM cards WHERE canonical_code = ?", (code,)
+            ).fetchone()
             if r and r[0]:
                 out["card_name"] = (r[0] or "").strip()
             dconn.close()
@@ -6489,8 +7436,12 @@ def _build_card_page_insight(data: dict[str, Any]) -> dict[str, str] | None:
     if not roles and not leaders:
         return None
     # One sentence from stored usage: core/flex per leader (dedupe by leader)
-    core_leaders = sorted({r["leader_code"] for r in roles if r.get("role_label") == "core"})
-    flex_leaders = sorted({r["leader_code"] for r in roles if r.get("role_label") == "flex"})
+    core_leaders = sorted(
+        {r["leader_code"] for r in roles if r.get("role_label") == "core"}
+    )
+    flex_leaders = sorted(
+        {r["leader_code"] for r in roles if r.get("role_label") == "flex"}
+    )
     if core_leaders:
         if len(core_leaders) == 1:
             text = f"I see this card in the core shell for {core_leaders[0]}."
@@ -6522,10 +7473,14 @@ def render_page(page_key: str, current_endpoint: str):
 
     if page_key == "training":
         training_status = build_training_status()
-        training_status["voyage"] = ensure_voyage_state(training_status, training_status.get("voyage"))
+        training_status["voyage"] = ensure_voyage_state(
+            training_status, training_status.get("voyage")
+        )
     elif page_key in ("dev", "dev_monitor"):
         dev_status = build_dev_bootstrap_status()
-        runtime_restart_token = (os.environ.get("MIRU_RUNTIME_RESTART_TOKEN") or "").strip()
+        runtime_restart_token = (
+            os.environ.get("MIRU_RUNTIME_RESTART_TOKEN") or ""
+        ).strip()
     elif page_key == "status":
         status_snapshot = build_status_snapshot()
         runtime_dependencies = collect_runtime_dependencies()
@@ -6571,6 +7526,1173 @@ def render_page(page_key: str, current_endpoint: str):
     )
 
 
+OPTCG_IMAGES_ROOT = Path("F:/OPTCG_Images")
+OFFICIAL_RULES_DB_PATH = PROJECT_ROOT / "data" / "miru_official_rules.db"
+
+
+def _catalog_image_rel_to_images_cards_url(raw: Any) -> str | None:
+    """Map a catalog ``card_variants.image_path`` (relative to OPTCG root) to a Miru URL."""
+    text = str(raw or "").strip().replace("\\", "/")
+    if not text or any(part == ".." for part in text.split("/")):
+        return None
+    return f"/images/cards/{text}"
+
+
+def resolve_card_image_url(card_code: str) -> str | None:
+    """Return a public ``/images/cards/...`` URL if a matching file exists under OPTCG.
+
+    Tries set folder = first segment of ``card_code`` (e.g. ST06 from ST06-015), then a
+    collapsed numeric form (e.g. OP07 → OP7) when the exact folder is missing.
+    """
+    code = str(card_code or "").strip().upper()
+    if not code or "-" not in code:
+        return None
+    prefix = code.split("-", 1)[0].strip()
+    if not prefix:
+        return None
+    set_folders = [prefix]
+    m = re.fullmatch(r"([A-Za-z]+)(\d+)", prefix)
+    if m:
+        letters, digits = m.group(1).upper(), m.group(2)
+        collapsed = letters + str(int(digits))
+        if collapsed != prefix:
+            set_folders.append(collapsed)
+    for set_folder in set_folders:
+        thumb = OPTCG_IMAGES_ROOT / "thumbs" / set_folder / f"{code}.webp"
+        try:
+            if thumb.is_file():
+                return f"/images/cards/thumbs/{set_folder}/{code}.webp"
+        except OSError:
+            pass
+        for ext in (".jpg", ".png"):
+            main = OPTCG_IMAGES_ROOT / set_folder / f"{code}{ext}"
+            try:
+                if main.is_file():
+                    return f"/images/cards/{set_folder}/{code}{ext}"
+            except OSError:
+                pass
+    return None
+
+
+def _ruling_effective_date_prefix(val: Any) -> str | None:
+    raw = str(val or "").strip()
+    if not raw:
+        return None
+    if "T" in raw:
+        raw = raw.split("T", 1)[0]
+    raw = raw[:10]
+    if len(raw) != 10 or raw[4] != "-" or raw[7] != "-":
+        return None
+    try:
+        date.fromisoformat(raw)
+    except ValueError:
+        return None
+    return raw
+
+
+def _utc_today() -> date:
+    return datetime.now(timezone.utc).date()
+
+
+def _lookup_ruling_citation_from_card_rulings_catalog(
+    catalog_db_path: Path, card_code: str
+) -> dict[str, Any] | None:
+    """Fallback: ``official_card_rulings`` on the catalog DB when rules-DB legality path misses."""
+    code = str(card_code or "").strip().upper()
+    if not code:
+        return None
+    path = Path(catalog_db_path)
+    if not path.is_file():
+        return None
+
+    def _opt_str(val: Any) -> str | None:
+        t = str(val or "").strip()
+        return t if t else None
+
+    try:
+        with closing(sqlite3.connect(str(path))) as conn:
+            conn.row_factory = sqlite3.Row
+            if not conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='official_card_rulings'"
+            ).fetchone():
+                return None
+            row = conn.execute(
+                """
+                SELECT source_title, source_type, source_url, source_anchor
+                FROM official_card_rulings
+                WHERE upper(trim(coalesce(card_code, ''))) = ?
+                  AND trim(coalesce(source_url, '')) != ''
+                ORDER BY effective_at DESC, id DESC
+                LIMIT 1
+                """,
+                (code,),
+            ).fetchone()
+    except sqlite3.Error:
+        return None
+    if not row:
+        return None
+    return {
+        "source_title": _opt_str(row["source_title"]),
+        "source_type": _opt_str(row["source_type"]) or "other_official",
+        "source_url": _opt_str(row["source_url"]),
+        "source_reference": None,
+        "source_anchor": _opt_str(row["source_anchor"]),
+        "unban_effective_at": None,
+    }
+
+
+def lookup_legality_sensitive_ruling_citation(
+    catalog_db_path: Path, card_code: str
+) -> dict[str, Any] | None:
+    """Banlist citation from ``miru_official_rules.db``; fallback to catalog ``official_card_rulings``."""
+    code = str(card_code or "").strip().upper()
+    if not code:
+        return None
+
+    def _opt_str(val: Any) -> str | None:
+        t = str(val or "").strip()
+        return t if t else None
+
+    rules_path = Path(OFFICIAL_RULES_DB_PATH)
+    if not rules_path.is_file():
+        return _lookup_ruling_citation_from_card_rulings_catalog(catalog_db_path, code)
+
+    today = _utc_today()
+    rows: list[sqlite3.Row] = []
+    notice: sqlite3.Row | None = None
+    unban_iso: str | None = None
+    try:
+        with closing(
+            sqlite3.connect(f"file:{rules_path.resolve().as_posix()}?mode=ro", uri=True)
+        ) as conn:
+            conn.row_factory = sqlite3.Row
+            if not (
+                conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='official_legality_history'"
+                ).fetchone()
+                and conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name='official_rule_notices'"
+                ).fetchone()
+            ):
+                return _lookup_ruling_citation_from_card_rulings_catalog(
+                    catalog_db_path, code
+                )
+
+            rows = list(
+                conn.execute(
+                    """
+                    SELECT lh.legality_state, lh.effective_start, lh.notice_id,
+                           lh.is_current, lh.id
+                    FROM official_legality_history lh
+                    WHERE upper(trim(lh.card_code)) = ?
+                    ORDER BY lh.effective_start DESC, lh.id DESC
+                    LIMIT 5
+                    """,
+                    (code,),
+                ).fetchall()
+            )
+            if not rows:
+                return _lookup_ruling_citation_from_card_rulings_catalog(
+                    catalog_db_path, code
+                )
+
+            for r in rows:
+                st = str(r["legality_state"] or "").strip().lower()
+                if st != "legal":
+                    continue
+                eff = _ruling_effective_date_prefix(r["effective_start"])
+                if not eff:
+                    continue
+                try:
+                    d = date.fromisoformat(eff)
+                except ValueError:
+                    continue
+                if d > today:
+                    unban_iso = eff
+                    break
+
+            if unban_iso is None:
+                extras = conn.execute(
+                    """
+                    SELECT effective_start
+                    FROM official_legality_history
+                    WHERE upper(trim(card_code)) = ?
+                      AND lower(trim(legality_state)) = 'legal'
+                      AND trim(coalesce(effective_start, '')) != ''
+                    ORDER BY effective_start ASC, id ASC
+                    """,
+                    (code,),
+                ).fetchall()
+                for r in extras:
+                    eff = _ruling_effective_date_prefix(r["effective_start"])
+                    if not eff:
+                        continue
+                    try:
+                        d = date.fromisoformat(eff)
+                    except ValueError:
+                        continue
+                    if d > today:
+                        unban_iso = eff
+                        break
+
+            ban_row = None
+            for r in rows:
+                if (
+                    str(r["legality_state"] or "").strip().lower() == "banned"
+                    and int(r["is_current"] or 0) == 1
+                ):
+                    ban_row = r
+                    break
+            if ban_row is None:
+                for r in rows:
+                    if str(r["legality_state"] or "").strip().lower() == "banned":
+                        ban_row = r
+                        break
+
+            if ban_row is None:
+                return _lookup_ruling_citation_from_card_rulings_catalog(
+                    catalog_db_path, code
+                )
+
+            notice_id = str(ban_row["notice_id"] or "").strip()
+            if not notice_id:
+                return _lookup_ruling_citation_from_card_rulings_catalog(
+                    catalog_db_path, code
+                )
+
+            notice = conn.execute(
+                """
+                SELECT source_url, source_reference, title
+                FROM official_rule_notices
+                WHERE notice_id = ?
+                LIMIT 1
+                """,
+                (notice_id,),
+            ).fetchone()
+    except sqlite3.Error:
+        return _lookup_ruling_citation_from_card_rulings_catalog(catalog_db_path, code)
+
+    if not notice or not str(notice["source_url"] or "").strip():
+        return _lookup_ruling_citation_from_card_rulings_catalog(catalog_db_path, code)
+
+    return {
+        "source_title": _opt_str(notice["title"]),
+        "source_type": "banlist",
+        "source_url": _opt_str(notice["source_url"]),
+        "source_reference": _opt_str(notice["source_reference"]),
+        "unban_effective_at": unban_iso,
+        "source_anchor": None,
+    }
+
+
+def _image_review_port_ok() -> bool:
+    return int(CURRENT_SERVER_PORT or 0) == 18765
+
+
+def _parse_ocr_audit_data_line(line: str) -> dict[str, str] | None:
+    line = line.strip()
+    if not line or line.startswith("==="):
+        return None
+    parts = line.split(" | ")
+    if len(parts) < 5:
+        return None
+    status = parts[-1].strip()
+    if status not in ("MISMATCH", "UNREADABLE"):
+        return None
+    folder = parts[0].strip()
+    filename = parts[1].strip()
+    expected = parts[2].strip()
+    vision = " | ".join(parts[3:-1]).strip()
+    return {
+        "folder": folder,
+        "filename": filename,
+        "expected_code": expected,
+        "vision_returned": vision,
+        "status": status,
+    }
+
+
+def _image_review_queue_item_id(folder: str, filename: str) -> str:
+    return f"{folder}|{filename}"
+
+
+def _set_prefix_from_expected_code(code: str) -> str:
+    c = (code or "").strip().upper()
+    if not c:
+        return "UNKNOWN"
+    return c.split("-", 1)[0]
+
+
+def _load_image_review_decisions_unlocked(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    try:
+        raw = path.read_text(encoding="utf-8")
+        data = json.loads(raw)
+        return data if isinstance(data, dict) else {}
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def _atomic_write_image_review_decisions(path: Path, data: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(str(tmp), str(path))
+
+
+def _image_review_img_url(folder: str, filename: str) -> str:
+    root = MIRU_ASSETS_ROOT.resolve()
+    try:
+        rel = (Path(folder) / filename).resolve().relative_to(root)
+    except ValueError:
+        rel = Path(filename)
+    return "/img/" + rel.as_posix()
+
+
+def _image_review_target_path_from_id(item_id: str) -> Path | None:
+    if "|" not in item_id:
+        return None
+    folder, fname = item_id.split("|", 1)
+    target = (Path(folder) / fname).resolve()
+    root = MIRU_ASSETS_ROOT.resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return None
+    return target
+
+
+def build_image_review_queue_response() -> dict[str, Any]:
+    audit_path = OCR_AUDIT_PARALLEL_REPRINT_PATH
+    if not audit_path.is_file():
+        return {
+            "total": 0,
+            "reviewed": 0,
+            "remaining": 0,
+            "groups": {},
+        }
+    text = audit_path.read_text(encoding="utf-8", errors="replace")
+    by_id: dict[str, dict[str, str]] = {}
+    for line in text.splitlines():
+        rec = _parse_ocr_audit_data_line(line)
+        if not rec:
+            continue
+        iid = _image_review_queue_item_id(rec["folder"], rec["filename"])
+        by_id[iid] = rec
+
+    with _IMAGE_REVIEW_DECISIONS_LOCK:
+        decisions = _load_image_review_decisions_unlocked(IMAGE_REVIEW_DECISIONS_PATH)
+
+    total = len(by_id)
+    reviewed = sum(1 for iid in by_id if iid in decisions)
+    groups: dict[str, list[dict[str, Any]]] = {}
+    remaining = 0
+    for iid, rec in sorted(
+        by_id.items(), key=lambda x: (x[1]["folder"].lower(), x[1]["filename"].lower())
+    ):
+        if iid in decisions:
+            continue
+        remaining += 1
+        prefix = _set_prefix_from_expected_code(rec["expected_code"])
+        groups.setdefault(prefix, []).append(
+            {
+                "id": iid,
+                "folder": rec["folder"],
+                "filename": rec["filename"],
+                "expected_code": rec["expected_code"],
+                "vision_returned": rec["vision_returned"],
+                "img_url": _image_review_img_url(rec["folder"], rec["filename"]),
+                "status": rec["status"],
+            }
+        )
+    sorted_groups = {k: groups[k] for k in sorted(groups.keys())}
+    return {
+        "total": total,
+        "reviewed": reviewed,
+        "remaining": remaining,
+        "groups": sorted_groups,
+    }
+
+
+_RECLASSIFY_TREATMENTS = frozenset(
+    {"alt_art", "parallel", "reprint", "tournament_promo", "sp", "tr"}
+)
+
+
+def _norm_rel_asset_path(p: str) -> str:
+    return p.replace("\\", "/").strip().lstrip("/").lower()
+
+
+def _reclassify_next_pr_index(dest_dir: Path, code: str, family: str) -> int:
+    """Next index N for ``{code}_pN.png`` (family 'p') or ``{code}_rN.png`` (family 'r')."""
+    if family == "p":
+        pat = re.compile("^" + re.escape(code) + r"_p(\d+)\.png$", re.I)
+    else:
+        pat = re.compile("^" + re.escape(code) + r"_r(\d+)\.png$", re.I)
+    max_n = 0
+    if dest_dir.is_dir():
+        for f in dest_dir.iterdir():
+            if not f.is_file():
+                continue
+            m = pat.match(f.name)
+            if m:
+                max_n = max(max_n, int(m.group(1)))
+    return max_n + 1
+
+
+def _find_variant_row_for_reclassify(
+    conn: sqlite3.Connection, canonical_code: str, source_rel: str
+) -> int | None:
+    canon = canonical_code.strip().upper()
+    rows = conn.execute(
+        """
+        SELECT cv.id, cv.image_path FROM card_variants cv
+        JOIN cards c ON c.id = cv.card_id
+        WHERE upper(trim(c.canonical_code)) = ?
+        """,
+        (canon,),
+    ).fetchall()
+    if not rows:
+        return None
+    src_norm = _norm_rel_asset_path(source_rel)
+    src_base = Path(source_rel.replace("\\", "/")).name.lower()
+    exact: list[int] = []
+    suffix: list[int] = []
+    empty: list[int] = []
+    for vid, ipath in rows:
+        ip = str(ipath or "").strip()
+        if not ip:
+            empty.append(int(vid))
+            continue
+        ipn = _norm_rel_asset_path(ip)
+        if ipn == src_norm:
+            exact.append(int(vid))
+        elif ipn.endswith("/" + src_base) or ipn == src_base:
+            suffix.append(int(vid))
+    if exact:
+        return exact[0]
+    if suffix:
+        return suffix[0]
+    if empty:
+        return empty[0]
+    return None
+
+
+def _reclassify_dest_filename_and_variant_key(
+    code: str, treatment: str, dest_dir: Path
+) -> tuple[str, str]:
+    if treatment == "alt_art":
+        return f"{code}_alt.png", "alt_art"
+    if treatment == "tournament_promo":
+        return f"{code}_alt.png", "tournament_promo"
+    if treatment == "sp":
+        return f"{code}_sp.png", "sp"
+    if treatment == "tr":
+        return f"{code}_tr.png", "tr"
+    if treatment == "parallel":
+        n = _reclassify_next_pr_index(dest_dir, code, "p")
+        return f"{code}_p{n}.png", f"parallel {n}"
+    if treatment == "reprint":
+        n = _reclassify_next_pr_index(dest_dir, code, "r")
+        return f"{code}_r{n}.png", f"r{n}"
+    raise ValueError("invalid treatment")
+
+
+def run_image_review_reclassify(payload: dict[str, Any]) -> tuple[dict[str, Any], int]:
+    """Move asset under Miru_Assets, update ``data/card_catalog.db`` ``card_variants``, log decisions."""
+    item_id = str(payload.get("id") or "").strip()
+    if "|" not in item_id:
+        return {"error": "id must be folder|filename."}, 400
+    parsed = normalize_card_code(str(payload.get("canonical_code") or ""))
+    canonical_code = (parsed.get("canonical_code") or "").strip().upper()
+    if not canonical_code:
+        return {"error": "invalid or missing canonical_code."}, 400
+    treatment = str(payload.get("variant_treatment") or "").strip().lower()
+    if treatment not in _RECLASSIFY_TREATMENTS:
+        return {"error": "invalid variant_treatment."}, 400
+    dkey = str(payload.get("distribution_product_key") or "").strip()
+    if not dkey:
+        return {"error": "distribution_product_key is required."}, 400
+    release_set_name = str(payload.get("release_set_name") or "").strip()
+
+    src_path = _image_review_target_path_from_id(item_id)
+    if src_path is None:
+        return {"error": "invalid id (path outside Miru_Assets)."}, 400
+    if not src_path.is_file():
+        return {"error": "source file does not exist."}, 400
+
+    root = MIRU_ASSETS_ROOT.resolve()
+    rel_src = src_path.resolve().relative_to(root).as_posix()
+
+    dest_dir = root / dkey / treatment
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    fname, variant_key_db = _reclassify_dest_filename_and_variant_key(
+        canonical_code, treatment, dest_dir
+    )
+    dest_path = dest_dir / fname
+    if dest_path.resolve() == src_path.resolve():
+        return {"error": "source and destination are the same path."}, 400
+    if treatment in ("alt_art", "tournament_promo", "sp", "tr") and dest_path.is_file():
+        return {"error": f"destination already exists: {dest_path}"}, 409
+
+    is_alt = 1 if treatment in ("alt_art", "tournament_promo") else 0
+    is_sp = 1 if treatment == "sp" else 0
+    is_tr = 1 if treatment == "tr" else 0
+    now_ts = datetime.now(timezone.utc).isoformat()
+
+    if not FALLBACK_CATALOG_DB_PATH.is_file():
+        return {"error": "card_catalog.db not found."}, 503
+
+    moved = False
+
+    def rollback_move() -> None:
+        nonlocal moved
+        if moved and dest_path.is_file() and not src_path.is_file():
+            try:
+                shutil.move(str(dest_path), str(src_path))
+            except OSError:
+                pass
+            moved = False
+
+    try:
+        shutil.move(str(src_path), str(dest_path))
+        moved = True
+    except OSError as e:
+        return {"error": f"move failed: {e}"}, 500
+
+    rel_dest = dest_path.resolve().relative_to(root).as_posix()
+
+    try:
+        with closing(sqlite3.connect(str(FALLBACK_CATALOG_DB_PATH))) as conn:
+            conn.execute("PRAGMA foreign_keys = ON")
+            crow = conn.execute(
+                "SELECT id FROM cards WHERE upper(trim(canonical_code)) = ?",
+                (canonical_code,),
+            ).fetchone()
+            if not crow:
+                rollback_move()
+                return {"error": f"no cards row for canonical_code {canonical_code}."}, 400
+            card_id = int(crow[0])
+
+            row_id = _find_variant_row_for_reclassify(conn, canonical_code, rel_src)
+            if row_id is not None:
+                conn.execute(
+                    """
+                    UPDATE card_variants SET
+                        image_path = ?,
+                        release_set_name = ?,
+                        release_set_code = ?,
+                        variant_key = ?,
+                        distribution_product_key = ?,
+                        updated_at = ?,
+                        is_base = 0,
+                        is_alt = ?,
+                        is_sp = ?,
+                        is_tr = ?,
+                        source = 'image-review-reclassify'
+                    WHERE id = ?
+                    """,
+                    (
+                        rel_dest,
+                        release_set_name,
+                        dkey,
+                        variant_key_db,
+                        dkey,
+                        now_ts,
+                        is_alt,
+                        is_sp,
+                        is_tr,
+                        row_id,
+                    ),
+                )
+            else:
+                dup = conn.execute(
+                    """
+                    SELECT id FROM card_variants
+                    WHERE card_id = ? AND variant_key = ? AND trim(coalesce(print_id, '')) = ''
+                    LIMIT 1
+                    """,
+                    (card_id, variant_key_db),
+                ).fetchone()
+                if dup:
+                    conn.execute(
+                        """
+                        UPDATE card_variants SET
+                            image_path = ?,
+                            release_set_name = ?,
+                            release_set_code = ?,
+                            distribution_product_key = ?,
+                            updated_at = ?,
+                            is_base = 0,
+                            is_alt = ?,
+                            is_sp = ?,
+                            is_tr = ?,
+                            source = 'image-review-reclassify'
+                        WHERE id = ?
+                        """,
+                        (
+                            rel_dest,
+                            release_set_name,
+                            dkey,
+                            dkey,
+                            now_ts,
+                            is_alt,
+                            is_sp,
+                            is_tr,
+                            int(dup[0]),
+                        ),
+                    )
+                else:
+                    conn.execute(
+                        """
+                        INSERT INTO card_variants (
+                            card_id, variant_key, variant_label, print_id,
+                            release_set_code, release_set_name,
+                            image_path, image_url, source,
+                            is_base, is_alt, is_sp, has_variant_evidence, is_tr,
+                            distribution_product_key, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            card_id,
+                            variant_key_db,
+                            variant_key_db,
+                            "",
+                            dkey,
+                            release_set_name,
+                            rel_dest,
+                            "",
+                            "image-review-reclassify",
+                            0,
+                            is_alt,
+                            is_sp,
+                            1,
+                            is_tr,
+                            dkey,
+                            now_ts,
+                        ),
+                    )
+            conn.commit()
+    except (sqlite3.Error, OSError) as e:
+        rollback_move()
+        return {"error": f"database update failed: {e}"}, 500
+
+    with _IMAGE_REVIEW_DECISIONS_LOCK:
+        dec = _load_image_review_decisions_unlocked(IMAGE_REVIEW_DECISIONS_PATH)
+        dec[item_id] = {
+            "action": "reclassify",
+            "canonical_code": canonical_code,
+            "variant_treatment": treatment,
+            "distribution_product_key": dkey,
+            "release_set_name": release_set_name,
+            "source_path": str(src_path),
+            "destination_path": str(dest_path),
+            "decided_at": now_ts,
+        }
+        _atomic_write_image_review_decisions(IMAGE_REVIEW_DECISIONS_PATH, dec)
+
+    img_url = f"/img/{dkey}/{treatment}/{fname}"
+    return (
+        {
+            "status": "ok",
+            "destination": str(dest_path),
+            "img_url": img_url,
+        },
+        200,
+    )
+
+
+STAGE_ACTIONS = frozenset({"confirm", "misroute", "reclassify", "delete"})
+STAGE_TREATMENTS = frozenset(
+    {"base", "parallel", "sp", "tr", "alt_art", "ir", "mr", "gmr"}
+)
+
+
+def _set_folder_from_canonical(canonical_code: str) -> str:
+    u = canonical_code.strip().upper()
+    if "-" in u:
+        return u.split("-", 1)[0]
+    return u
+
+
+def _atomic_write_staged_list(path: Path, items: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(
+        json.dumps(items, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    os.replace(str(tmp), str(path))
+
+
+def _load_staged_list_unlocked(path: Path) -> list[dict[str, Any]]:
+    if not path.is_file():
+        return []
+    try:
+        raw = path.read_text(encoding="utf-8")
+        data = json.loads(raw)
+        return data if isinstance(data, list) else []
+    except (OSError, json.JSONDecodeError):
+        return []
+
+
+def _safe_under_assets(p: Path) -> bool:
+    try:
+        p.resolve().relative_to(MIRU_ASSETS_ROOT.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _staging_filename_and_variant_key(
+    code: str, treatment: str, dest_dir: Path
+) -> tuple[str, str]:
+    t = treatment.lower().strip()
+    if t == "base":
+        return f"{code}_base.png", "base"
+    if t == "parallel":
+        n = _reclassify_next_pr_index(dest_dir, code, "p")
+        return f"{code}_p{n}.png", f"parallel {n}"
+    if t == "sp":
+        return f"{code}_sp.png", "sp"
+    if t == "tr":
+        return f"{code}_tr.png", "tr"
+    if t == "alt_art":
+        return f"{code}_alt.png", "alt_art"
+    if t == "ir":
+        return f"{code}_ir.png", "ir"
+    if t == "mr":
+        return f"{code}_mr.png", "mr"
+    if t == "gmr":
+        return f"{code}_gmr.png", "gmr"
+    raise ValueError(f"unsupported variant_treatment: {treatment}")
+
+
+def _compute_stage_destination_path(
+    *,
+    action: str,
+    file_path: Path,
+    canonical_code: str,
+    variant_treatment: str | None,
+    distribution_product_key: str | None,
+) -> Path | None:
+    root = MIRU_ASSETS_ROOT.resolve()
+    parsed = normalize_card_code(canonical_code)
+    code = (parsed.get("canonical_code") or "").strip().upper()
+    if not code:
+        raise ValueError("invalid canonical_code")
+    act = action.lower().strip()
+    if act == "delete":
+        return None
+    vt = (variant_treatment or "parallel").lower().strip()
+    if act == "confirm":
+        if vt != "parallel":
+            vt = "parallel"
+        set_folder = _set_folder_from_canonical(code)
+        dest_dir = root / set_folder / "parallel"
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        fname, _ = _staging_filename_and_variant_key(code, "parallel", dest_dir)
+        return dest_dir / fname
+    if act in ("reclassify", "misroute"):
+        if not distribution_product_key or not distribution_product_key.strip():
+            raise ValueError("distribution_product_key required for reclassify/misroute")
+        if vt not in STAGE_TREATMENTS:
+            raise ValueError("invalid variant_treatment")
+        dkey = distribution_product_key.strip()
+        dest_dir = root / dkey / vt
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        fname, _ = _staging_filename_and_variant_key(code, vt, dest_dir)
+        dest = dest_dir / fname
+        if dest.resolve() == file_path.resolve():
+            raise ValueError("source and destination are the same path")
+        return dest
+    raise ValueError(f"unsupported action: {action}")
+
+
+def _treatment_to_flags(
+    treatment: str,
+) -> tuple[int, int, int, int, int, int]:
+    """is_alt, is_sp, is_tr, is_illustration_rare, is_manga_rare, is_golden_manga_rare"""
+    t = treatment.lower().strip()
+    z = (0, 0, 0, 0, 0, 0)
+    if t == "alt_art":
+        return (1, 0, 0, 0, 0, 0)
+    if t == "sp":
+        return (0, 1, 0, 0, 0, 0)
+    if t == "tr":
+        return (0, 0, 1, 0, 0, 0)
+    if t == "ir":
+        return (0, 0, 0, 1, 0, 0)
+    if t == "mr":
+        return (0, 0, 0, 0, 1, 0)
+    if t == "gmr":
+        return (0, 0, 0, 0, 0, 1)
+    return z
+
+
+def _apply_commit_catalog_update(
+    conn: sqlite3.Connection,
+    *,
+    canonical_code: str,
+    rel_src: str,
+    rel_dest: str,
+    variant_key_db: str,
+    dkey: str,
+    release_set_name: str,
+    treatment: str,
+) -> None:
+    now_ts = datetime.now(timezone.utc).isoformat()
+    ia, isp, itr, iir, imr, igmr = _treatment_to_flags(treatment)
+    is_base_val = 1 if treatment.lower().strip() == "base" else 0
+    crow = conn.execute(
+        "SELECT id FROM cards WHERE upper(trim(canonical_code)) = ?",
+        (canonical_code.strip().upper(),),
+    ).fetchone()
+    if not crow:
+        raise ValueError(f"no cards row for {canonical_code}")
+    card_id = int(crow[0])
+
+    row_id = _find_variant_row_for_reclassify(conn, canonical_code, rel_src)
+    base_set = (
+        "image_path = ?, release_set_name = ?, release_set_code = ?, variant_key = ?, "
+        "distribution_product_key = ?, updated_at = ?, is_base = ?, "
+        "is_alt = ?, is_sp = ?, is_tr = ?, is_illustration_rare = ?, "
+        "is_manga_rare = ?, is_golden_manga_rare = ?, source = 'image-review-commit' "
+    )
+    params_base = (
+        rel_dest,
+        release_set_name,
+        dkey,
+        variant_key_db,
+        dkey,
+        now_ts,
+        is_base_val,
+        ia,
+        isp,
+        itr,
+        iir,
+        imr,
+        igmr,
+    )
+    if row_id is not None:
+        conn.execute(
+            f"UPDATE card_variants SET {base_set} WHERE id = ?",
+            (*params_base, row_id),
+        )
+        return
+    dup = conn.execute(
+        """
+        SELECT id FROM card_variants
+        WHERE card_id = ? AND variant_key = ? AND trim(coalesce(print_id, '')) = ''
+        LIMIT 1
+        """,
+        (card_id, variant_key_db),
+    ).fetchone()
+    if dup:
+        conn.execute(
+            f"UPDATE card_variants SET {base_set} WHERE id = ?",
+            (*params_base, int(dup[0])),
+        )
+        return
+    conn.execute(
+        """
+        INSERT INTO card_variants (
+            card_id, variant_key, variant_label, print_id,
+            release_set_code, release_set_name,
+            image_path, image_url, source,
+            is_base, is_alt, is_sp, has_variant_evidence, is_tr,
+            is_illustration_rare, is_manga_rare, is_golden_manga_rare,
+            distribution_product_key, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            card_id,
+            variant_key_db,
+            variant_key_db,
+            "",
+            dkey,
+            release_set_name,
+            rel_dest,
+            "",
+            "image-review-commit",
+            is_base_val,
+            ia,
+            isp,
+            1,
+            itr,
+            iir,
+            imr,
+            igmr,
+            dkey,
+            now_ts,
+        ),
+    )
+
+
+def _variant_key_for_staged_record(rec: dict[str, Any]) -> str:
+    vt = str(rec.get("variant_treatment") or "parallel").lower().strip()
+    dest = rec.get("destination_path")
+    if not dest:
+        return vt
+    name = Path(str(dest)).name
+    m = re.match(
+        r"^(.+?)_p(\d+)\.png$",
+        name,
+        re.I,
+    )
+    if m:
+        return f"parallel {m.group(2)}"
+    m = re.match(r"^(.+?)_(sp|tr|alt|ir|mr|gmr|base)\.png$", name, re.I)
+    if m:
+        suf = m.group(2).lower()
+        mapping = {
+            "sp": "sp",
+            "tr": "tr",
+            "alt": "alt_art",
+            "ir": "ir",
+            "mr": "mr",
+            "gmr": "gmr",
+            "base": "base",
+        }
+        return mapping.get(suf, vt)
+    return vt
+
+
+def image_review_add_stage(body: dict[str, Any]) -> tuple[dict[str, Any], int]:
+    action = str(body.get("action") or "").lower().strip()
+    if action not in STAGE_ACTIONS:
+        return {"error": "invalid action"}, 400
+    fp: Path | None = None
+    raw_fp = body.get("file_path")
+    if raw_fp:
+        fp = Path(str(raw_fp).strip())
+    elif body.get("id"):
+        fp = _image_review_target_path_from_id(str(body.get("id")).strip())
+    if fp is None or not fp.is_file() or not _safe_under_assets(fp):
+        return {"error": "invalid file_path or id"}, 400
+    parsed = normalize_card_code(str(body.get("canonical_code") or ""))
+    canon = (parsed.get("canonical_code") or "").strip().upper()
+    if not canon:
+        return {"error": "canonical_code required"}, 400
+    vt_in = body.get("variant_treatment")
+    vt_s = str(vt_in).lower().strip() if vt_in not in (None, "") else None
+    dkey_raw = body.get("distribution_product_key")
+    dkey_s = str(dkey_raw).strip() if dkey_raw not in (None, "") else None
+    rname_raw = body.get("release_set_name")
+    rname_s = str(rname_raw).strip() if rname_raw not in (None, "") else None
+
+    dest: Path | None = None
+    if action == "delete":
+        dest = None
+    else:
+        try:
+            dest = _compute_stage_destination_path(
+                action=action,
+                file_path=fp,
+                canonical_code=canon,
+                variant_treatment=vt_s,
+                distribution_product_key=dkey_s,
+            )
+        except ValueError as e:
+            return {"error": str(e)}, 400
+        if dest is not None and dest.is_file():
+            return {"error": "destination already exists"}, 409
+
+    decision_id = str(uuid.uuid4())
+    ts = datetime.now(timezone.utc).isoformat()
+    if action == "delete":
+        rec: dict[str, Any] = {
+            "decision_id": decision_id,
+            "timestamp": ts,
+            "file_path": str(fp.resolve()),
+            "canonical_code": canon,
+            "action": "delete",
+            "destination_path": None,
+            "variant_treatment": None,
+            "distribution_product_key": None,
+            "release_set_name": None,
+        }
+    else:
+        rec = {
+            "decision_id": decision_id,
+            "timestamp": ts,
+            "file_path": str(fp.resolve()),
+            "canonical_code": canon,
+            "action": action,
+            "destination_path": str(dest.resolve()) if dest else None,
+            "variant_treatment": vt_s
+            or ("parallel" if action == "confirm" else None),
+            "distribution_product_key": dkey_s,
+            "release_set_name": rname_s,
+        }
+    with _IMAGE_REVIEW_STAGED_LOCK:
+        items = _load_staged_list_unlocked(IMAGE_REVIEW_STAGED_PATH)
+        items.append(rec)
+        _atomic_write_staged_list(IMAGE_REVIEW_STAGED_PATH, items)
+    return {"decision_id": decision_id}, 200
+
+
+def image_review_legend_rows() -> list[dict[str, Any]]:
+    """One row per ``distribution_product_key``: best ``release_set_name`` by count, then name."""
+    if not FALLBACK_CATALOG_DB_PATH.is_file():
+        return []
+    try:
+        with closing(sqlite3.connect(str(FALLBACK_CATALOG_DB_PATH))) as conn:
+            rows = conn.execute(
+                """
+                SELECT distribution_product_key, release_set_name, COUNT(*) AS card_count
+                FROM card_variants
+                WHERE distribution_product_key IS NOT NULL
+                  AND distribution_product_key NOT LIKE '_unclassified%'
+                GROUP BY distribution_product_key, release_set_name
+                ORDER BY distribution_product_key ASC
+                """
+            ).fetchall()
+    except sqlite3.Error:
+        return []
+    grouped: dict[str, list[tuple[str, int]]] = {}
+    for dkey, rname, cnt in rows:
+        if not dkey:
+            continue
+        dk = str(dkey).strip()
+        if not dk:
+            continue
+        grouped.setdefault(dk, []).append((str(rname or "").strip(), int(cnt or 0)))
+    out: list[dict[str, Any]] = []
+    assets_root = MIRU_ASSETS_ROOT.resolve()
+    for dkey in sorted(grouped.keys()):
+        variants = grouped[dkey]
+        if not variants:
+            continue
+        max_c = max(v[1] for v in variants)
+        tied = [v for v in variants if v[1] == max_c]
+        best_name = min((v[0] for v in tied), default="")
+        folder_path = str((assets_root / dkey).resolve())
+        if not folder_path.endswith("\\"):
+            folder_path += "\\"
+        out.append(
+            {
+                "key": dkey,
+                "product_name": best_name,
+                "folder": folder_path,
+                "card_count": max_c,
+            }
+        )
+    return out
+
+
+def image_review_variants_rows(canonical_code: str) -> list[dict[str, Any]]:
+    if not FALLBACK_CATALOG_DB_PATH.is_file():
+        return []
+    code = canonical_code.strip().upper()
+    if not code:
+        return []
+    try:
+        with closing(sqlite3.connect(str(FALLBACK_CATALOG_DB_PATH))) as conn:
+            rows = conn.execute(
+                """
+                SELECT cv.variant_key, cv.distribution_product_key, cv.release_set_name
+                FROM card_variants cv
+                JOIN cards c ON c.id = cv.card_id
+                WHERE upper(trim(c.canonical_code)) = ?
+                ORDER BY cv.variant_key
+                """,
+                (code,),
+            ).fetchall()
+    except sqlite3.Error:
+        return []
+    return [
+        {
+            "variant_key": r[0] or "",
+            "variant_treatment": r[0] or "",
+            "distribution_product_key": r[1],
+            "release_set_name": r[2] or "",
+        }
+        for r in rows
+    ]
+
+
+def execute_image_review_staged_commit() -> dict[str, Any]:
+    """Execute all staged decisions in order. Clears staged file on full success."""
+    root = MIRU_ASSETS_ROOT.resolve()
+    if not FALLBACK_CATALOG_DB_PATH.is_file():
+        return {"committed": 0, "failed": 1, "failed_id": None, "reason": "card_catalog.db missing"}
+
+    with _IMAGE_REVIEW_STAGED_LOCK:
+        staged = _load_staged_list_unlocked(IMAGE_REVIEW_STAGED_PATH)
+
+    if not staged:
+        return {"committed": 0, "failed": 0}
+
+    committed = 0
+    for rec in staged:
+        did = str(rec.get("decision_id") or "")
+        act = str(rec.get("action") or "").lower().strip()
+        fp = Path(str(rec.get("file_path") or ""))
+        try:
+            if not _safe_under_assets(fp) or not fp.is_file():
+                raise OSError(f"source missing or not under Miru_Assets: {fp}")
+            rel_src = fp.resolve().relative_to(root).as_posix()
+
+            if act == "delete":
+                fp.unlink()
+                committed += 1
+                continue
+
+            dest_s = rec.get("destination_path")
+            if not dest_s:
+                raise ValueError("destination_path required")
+            dest = Path(str(dest_s))
+            if not _safe_under_assets(dest):
+                raise ValueError("destination outside Miru_Assets")
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            if dest.is_file():
+                raise OSError(f"destination already exists: {dest}")
+            shutil.move(str(fp), str(dest))
+            rel_dest = dest.resolve().relative_to(root).as_posix()
+            committed += 1
+
+            canon = str(rec.get("canonical_code") or "").strip().upper()
+            vt = str(rec.get("variant_treatment") or "parallel").lower().strip()
+            dkey = rec.get("distribution_product_key")
+            rname = str(rec.get("release_set_name") or "")
+
+            if act in ("reclassify", "misroute") and dkey:
+                vkey = _variant_key_for_staged_record(rec)
+                with closing(sqlite3.connect(str(FALLBACK_CATALOG_DB_PATH))) as conn:
+                    conn.execute("PRAGMA foreign_keys = ON")
+                    _apply_commit_catalog_update(
+                        conn,
+                        canonical_code=canon,
+                        rel_src=rel_src,
+                        rel_dest=rel_dest,
+                        variant_key_db=vkey,
+                        dkey=str(dkey).strip(),
+                        release_set_name=rname,
+                        treatment=vt,
+                    )
+                    conn.commit()
+        except Exception as e:
+            return {
+                "committed": committed,
+                "failed": 1,
+                "failed_id": did or None,
+                "reason": str(e),
+            }
+
+    with _IMAGE_REVIEW_STAGED_LOCK:
+        _atomic_write_staged_list(IMAGE_REVIEW_STAGED_PATH, [])
+    if committed > 0:
+        send_pushover_notification(
+            title="Miru",
+            message=f"Miru: Image review commit complete — {committed} actions executed",
+            logger=None,
+        )
+    return {"committed": committed, "failed": 0}
+
+
 def create_app() -> Flask:
     app = Flask(
         __name__,
@@ -6581,17 +8703,139 @@ def create_app() -> Flask:
     app.config["TEMPLATES_AUTO_RELOAD"] = True
     app.config["PYTHON_NAME"] = Path(sys.executable).name
     log_pushover_startup_status(app.logger)
+    compute_asset_version()
+    _image_fetch_state_lock = Lock()
+    _image_fetch_state: dict[str, Any] = {"running": False}
+    _image_fetch_schedule: dict[str, Timer | None] = {"timer": None}
+
+    def _append_image_fetch_log(line: str) -> None:
+        stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            MIRU_FETCH_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with MIRU_FETCH_LOG_PATH.open("a", encoding="utf-8") as handle:
+                handle.write(f"[{stamp}] {line}\n")
+        except Exception:
+            pass
+
+    def _run_fetch_missing_images_job(trigger: str) -> None:
+        _append_image_fetch_log(f"FETCH_JOB_START trigger={trigger}")
+        app.logger.info("Miru image fetch started (trigger=%s).", trigger)
+        summary: dict[str, Any] = {"fetched": 0, "skipped": 0, "failed": []}
+        try:
+            summary = fetch_all_missing(
+                db_path=FALLBACK_CATALOG_DB_PATH,
+                assets_dir=MIRU_ASSETS_ROOT,
+                log_callback=lambda msg: app.logger.info(msg),
+            )
+        except Exception as exc:
+            app.logger.exception("Miru image fetch failed (trigger=%s): %s", trigger, exc)
+            _append_image_fetch_log(f"FETCH_JOB_FAIL trigger={trigger} error={exc}")
+            send_pushover_notification(
+                title="Miru Image Fetch Complete",
+                message="Fetched: 0 | Skipped: 0 | Failed: 1",
+                logger=app.logger,
+            )
+            with _image_fetch_state_lock:
+                _image_fetch_state["running"] = False
+            return
+
+        failed_count = len(summary.get("failed") or [])
+        fetched_count = int(summary.get("fetched") or 0)
+        skipped_count = int(summary.get("skipped") or 0)
+        _append_image_fetch_log(
+            "FETCH_JOB_DONE "
+            f"trigger={trigger} fetched={fetched_count} skipped={skipped_count} failed={failed_count}"
+        )
+        app.logger.info(
+            "Miru image fetch finished (trigger=%s, fetched=%s, skipped=%s, failed=%s).",
+            trigger,
+            fetched_count,
+            skipped_count,
+            failed_count,
+        )
+        send_pushover_notification(
+            title="Miru Image Fetch Complete",
+            message=f"Fetched: {fetched_count} | Skipped: {skipped_count} | Failed: {failed_count}",
+            logger=app.logger,
+        )
+        with _image_fetch_state_lock:
+            _image_fetch_state["running"] = False
+
+    def _start_fetch_missing_images_job(trigger: str) -> bool:
+        with _image_fetch_state_lock:
+            if bool(_image_fetch_state["running"]):
+                return False
+            _image_fetch_state["running"] = True
+        Thread(
+            target=_run_fetch_missing_images_job,
+            args=(trigger,),
+            daemon=True,
+        ).start()
+        return True
+
+    def _seconds_until_next_3am(now_local: datetime | None = None) -> int:
+        now = now_local or datetime.now()
+        next_run = now.replace(hour=3, minute=0, second=0, microsecond=0)
+        if next_run <= now:
+            next_run = next_run + timedelta(days=1)
+        return max(int((next_run - now).total_seconds()), 1)
+
+    def _schedule_next_nightly_image_fetch() -> None:
+        delay_seconds = _seconds_until_next_3am()
+        timer = Timer(delay_seconds, _nightly_image_fetch_tick)
+        timer.daemon = True
+        _image_fetch_schedule["timer"] = timer
+        timer.start()
+        app.logger.info(
+            "Scheduled nightly Miru image fetch in %s seconds.", delay_seconds
+        )
+
+    def _nightly_image_fetch_tick() -> None:
+        _start_fetch_missing_images_job(trigger="nightly_0300")
+        _schedule_next_nightly_image_fetch()
+
+    _schedule_next_nightly_image_fetch()
+
+    @app.after_request
+    def _miru_cache_control_core_static(response):
+        """Force revalidation for main JS/CSS so mobile clients pick up new builds after restart."""
+        try:
+            path = (request.path or "").replace("\\", "/")
+        except Exception:
+            return response
+        if path.endswith("/miru_ai.js") or path.endswith("/miru_ai.css"):
+            response.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return response
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(exc):
         if isinstance(exc, HTTPException):
             if request.path.startswith("/api/"):
-                return jsonify({"ok": False, "error": f"{exc.code} {exc.name}: {exc.description}"}), exc.code
+                return (
+                    jsonify(
+                        {
+                            "ok": False,
+                            "error": f"{exc.code} {exc.name}: {exc.description}",
+                        }
+                    ),
+                    exc.code,
+                )
             return exc
-        print(f"[miru_ai_server] Unhandled error while serving {request.path}: {exc}", file=sys.stderr)
+        print(
+            f"[miru_ai_server] Unhandled error while serving {request.path}: {exc}",
+            file=sys.stderr,
+        )
         traceback.print_exc()
         if request.path.startswith("/api/"):
-            return jsonify({"ok": False, "error": f"Miru AI server error: {exc.__class__.__name__}: {exc}"}), 500
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": f"Miru AI server error: {exc.__class__.__name__}: {exc}",
+                    }
+                ),
+                500,
+            )
         return (
             "Miru AI server error. Check the server console for the exact traceback and dependency diagnostics.",
             500,
@@ -6612,42 +8856,79 @@ def create_app() -> Flask:
 
     @app.get("/gaps")
     def gaps_page():
-        return render_page("gaps", "gaps_page")
+        abort(404)
 
     @app.get("/training")
     def training_page():
-        return render_page("training", "training_page")
+        abort(404)
 
     @app.get("/status")
     def status_page():
-        return render_page("status", "status_page")
+        abort(404)
 
     @app.get("/dev")
     def dev_page():
         return render_page("dev", "dev_page")
+
+    @app.get("/dev/approve/<path:card_code>")
+    def dev_approve_publication_link(card_code: str):
+        """GET link handler: publish_requires_review → publish_ready (no JS). Local / LAN only."""
+        if not is_local_request():
+            abort(403)
+        code = str(card_code or "").strip().upper()
+        if not code:
+            return redirect("/dev")
+        ok = update_publication_review_status(
+            code,
+            "publish_ready",
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+            require_review_state=True,
+        )
+        if ok:
+            return redirect(f"/dev?approved={quote(code, safe='')}")
+        return redirect("/dev")
+
+    @app.get("/dev/reject/<path:card_code>")
+    def dev_reject_publication_link(card_code: str):
+        """GET link handler: publish_requires_review → publish_deferred (no JS). Local / LAN only."""
+        if not is_local_request():
+            abort(403)
+        code = str(card_code or "").strip().upper()
+        if not code:
+            return redirect("/dev")
+        ok = update_publication_review_status(
+            code,
+            "publish_deferred",
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+            require_review_state=True,
+        )
+        if ok:
+            return redirect(f"/dev?rejected={quote(code, safe='')}")
+        if dismiss_image_variant_sp_operator_review(
+            code, project_db_path=FALLBACK_CATALOG_DB_PATH
+        ):
+            return redirect(f"/dev?rejected={quote(code, safe='')}")
+        return redirect("/dev")
+
+    @app.route("/images/cards/<path:filename>")
+    def serve_card_image(filename):
+        return send_from_directory("F:/OPTCG_Images", filename)
 
     @app.get("/dev/monitor")
     def dev_monitor_page():
         """Full Dev monitor (legacy tools, diagnostics). Main /dev is the compact cockpit."""
         return render_page("dev_monitor", "dev_monitor_page")
 
+    @app.get("/dev/image-review")
+    def dev_image_review_page():
+        """OCR / vision mismatch review UI (same reachability as /dev: LAN + Tailscale)."""
+        if int(CURRENT_SERVER_PORT or 0) != 18765:
+            abort(404)
+        return render_template("image_review.html")
+
     @app.get("/leader/<leader_code>")
     def leader_hub(leader_code: str):
-        leader_data = load_leader_hub_data(leader_code)
-        brand_assets = build_brand_assets()
-        return render_template(
-            "leader_hub.html",
-            app_name=APP_NAME,
-            app_tagline=APP_TAGLINE,
-            nav_items=build_nav("leader_hub"),
-            leader_data=leader_data,
-            asset_version=compute_asset_version(),
-            logo_url=brand_assets["logo_url"],
-            favicon_url=brand_assets["favicon_url"],
-            apple_icon_url=brand_assets["apple_icon_url"],
-            manifest_url=brand_assets["manifest_url"],
-            uses_inline_logo=brand_assets["uses_inline_logo"],
-        )
+        abort(404)
 
     @app.get("/card/<card_code>")
     def card_page(card_code: str):
@@ -6679,7 +8960,16 @@ def create_app() -> Flask:
                 "helper_script_ready": SCRIPT_PATH.is_file(),
                 "api_key_ready": bool(os.getenv("OPENAI_API_KEY", "").strip()),
                 "default_mode": MODE_CONFIGS[0]["key"],
-                "pages": ["/", "/ask", "/dossiers", "/gaps", "/training", "/status", "/dev", "/dev/monitor"],
+                "pages": [
+                    "/",
+                    "/ask",
+                    "/dossiers",
+                    "/gaps",
+                    "/training",
+                    "/status",
+                    "/dev",
+                    "/dev/monitor",
+                ],
                 "runtime_dependencies": runtime_dependencies,
                 "runtime_issues": runtime_issue_messages(),
                 "fallback_catalog": catalog_status,
@@ -6697,7 +8987,10 @@ def create_app() -> Flask:
             "worktree": True,
         }
         try:
-            req = Request("http://127.0.0.1:18080/", headers={"User-Agent": "Miru-Worktree-Status/1"})
+            req = Request(
+                "http://127.0.0.1:18080/",
+                headers={"User-Agent": "Miru-Worktree-Status/1"},
+            )
             with closing(urlopen(req, timeout=3)) as resp:
                 body = resp.read().decode("utf-8", errors="replace")
                 if (resp.getcode() or 0) == 200 and "Miru" in body:
@@ -6706,7 +8999,10 @@ def create_app() -> Flask:
             pass
         mp = str(int(PROJECT_MIRU_PORT))
         try:
-            req_m = Request(f"http://127.0.0.1:{mp}/", headers={"User-Agent": "Miru-Worktree-Status/1"})
+            req_m = Request(
+                f"http://127.0.0.1:{mp}/",
+                headers={"User-Agent": "Miru-Worktree-Status/1"},
+            )
             with closing(urlopen(req_m, timeout=3)) as resp_m:
                 code = int(resp_m.getcode() or 0)
                 if code in (200, 204, 301, 302, 304):
@@ -6717,25 +9013,32 @@ def create_app() -> Flask:
 
     _TAILSCALE_NET = ipaddress.ip_network("100.0.0.0/8")  # Tailscale IPv4
     _TAILSCALE_NET6 = ipaddress.ip_network("fd7a:115c:a1e0::/48")  # Tailscale IPv6 ULA
-    _RUNTIME_RESTART_TOKEN = (os.environ.get("MIRU_RUNTIME_RESTART_TOKEN") or "").strip()
+    _RUNTIME_RESTART_TOKEN = (
+        os.environ.get("MIRU_RUNTIME_RESTART_TOKEN") or ""
+    ).strip()
 
     def _runtime_control_client_ip() -> str:
         """Client IP for runtime allowlist: X-Forwarded-For (first), X-Real-IP, then REMOTE_ADDR."""
         forwarded = (request.headers.get("X-Forwarded-For") or "").strip()
         if forwarded:
             # First IP is the original client (client, proxy1, proxy2)
-            return forwarded.split(",")[0].strip()
-        real = (request.headers.get("X-Real-IP") or "").strip()
-        if real:
-            return real
-        return (request.environ.get("REMOTE_ADDR") or "").strip()
+            remote = forwarded.split(",")[0].strip()
+        else:
+            real = (request.headers.get("X-Real-IP") or "").strip()
+            if real:
+                remote = real
+            else:
+                remote = (request.environ.get("REMOTE_ADDR") or "").strip()
+        return remote
 
-    def _is_runtime_control_allowed() -> bool:
-        """True if request is from localhost, private LAN, Tailscale, or has valid MIRU_RUNTIME_RESTART_TOKEN."""
-        if _RUNTIME_RESTART_TOKEN:
-            token = (request.headers.get("X-Miru-Runtime-Token") or "").strip()
-            if token and token == _RUNTIME_RESTART_TOKEN:
-                return True
+    def _runtime_restart_token_matches() -> bool:
+        if not _RUNTIME_RESTART_TOKEN:
+            return False
+        token = (request.headers.get("X-Miru-Runtime-Token") or "").strip()
+        return bool(token and token == _RUNTIME_RESTART_TOKEN)
+
+    def _runtime_trusted_network_client() -> bool:
+        """True if the resolved client IP is loopback, RFC1918/CGNAT private, or Tailscale."""
         try:
             remote = _runtime_control_client_ip()
             if not remote:
@@ -6746,31 +9049,66 @@ def create_app() -> Flask:
                 addr = ipaddress.ip_address(remote)
             except ValueError:
                 return False
-            if getattr(addr, "is_private", lambda: False)():
-                return True
+            # Explicit Tailscale check FIRST before is_private()
             if addr in _TAILSCALE_NET:
                 return True
             if getattr(addr, "version", 0) == 6 and addr in _TAILSCALE_NET6:
+                return True
+            if addr.is_private:
                 return True
             return False
         except Exception:
             return False
 
+    def _is_runtime_control_allowed() -> bool:
+        """True if request is from localhost, private LAN, Tailscale, or has valid MIRU_RUNTIME_RESTART_TOKEN.
+
+        Used for Miru AI self-restart (18765), worktree stack, main-site control, and operator handoff writes.
+        """
+        if _runtime_restart_token_matches():
+            return True
+        return _runtime_trusted_network_client()
+
+    def _is_project_miru_dashboard_restart_allowed() -> bool:
+        """Allow restarting the Project Miru dashboard (18080) from /dev without depending on XFF alone.
+
+        Uses :func:`is_local_request` (WSGI ``REMOTE_ADDR``) so a missing or incorrect
+        ``X-Forwarded-For`` header does not block the operator on the same machine or LAN.
+        Self-restart and other runtime controls still use :func:`_is_runtime_control_allowed`.
+        """
+        if _runtime_restart_token_matches():
+            return True
+        if is_local_request():
+            return True
+        return _runtime_trusted_network_client()
+
     @app.get("/api/runtime/status")
     def runtime_status():
         """Runtime status for Dev page control: 18765 and 18080 health. Same as worktree-status with a checked_at timestamp."""
         payload = load_runtime_status_payload(force=True)
-        payload["restart_allowed"] = _is_runtime_control_allowed()
+        payload["restart_allowed"] = _is_project_miru_dashboard_restart_allowed()
         return jsonify(payload)
 
-    def _run_worktree_script(script_name: str, args: list[str] | None = None, wait: bool = True, timeout: int = 120) -> tuple[int, str, str]:
+    def _run_worktree_script(
+        script_name: str,
+        args: list[str] | None = None,
+        wait: bool = True,
+        timeout: int = 120,
+    ) -> tuple[int, str, str]:
         """Run a PowerShell script from windows/ using authoritative worktree scripts. Returns (returncode, stdout, stderr)."""
         windows_dir = PROJECT_ROOT / "windows"
         script_path = windows_dir / script_name
         if not script_path.is_file():
             return -1, "", f"Script not found: {script_path}"
         pwsh = shutil.which("powershell.exe") or "powershell.exe"
-        cmd = [pwsh, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(script_path)]
+        cmd = [
+            pwsh,
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(script_path),
+        ]
         if args:
             cmd.extend(args)
         env = os.environ.copy()
@@ -6823,48 +9161,91 @@ def create_app() -> Flask:
     @app.post("/api/runtime/restart/18080")
     def runtime_restart_18080():
         """Restart Project Miru dashboard (18080). Local-only. Uses authoritative start_project_miru_dashboard.ps1 with -Force."""
-        if not _is_runtime_control_allowed():
-            return jsonify({"ok": False, "error": "Restart allowed only from this machine or Tailscale"}), 403
-        code, out, err = _run_worktree_script("start_project_miru_dashboard.ps1", ["-Force"], wait=True, timeout=90)
+        if not _is_project_miru_dashboard_restart_allowed():
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Restart allowed only from this machine or Tailscale",
+                    }
+                ),
+                403,
+            )
+        code, out, err = _run_worktree_script(
+            "start_project_miru_dashboard.ps1", ["-Force"], wait=True, timeout=90
+        )
         if code == 0:
-            return jsonify({
-                "ok": True,
-                "service": "18080",
-                "message": "Project Miru restarted",
-                "detail": (out or "").strip() or "Script completed successfully",
-            })
-        return jsonify({
-            "ok": False,
-            "service": "18080",
-            "error": "Restart failed",
-            "detail": (err or out or f"exit code {code}").strip(),
-        }), 502
+            return jsonify(
+                {
+                    "ok": True,
+                    "service": "18080",
+                    "message": "Project Miru restarted",
+                    "detail": (out or "").strip() or "Script completed successfully",
+                }
+            )
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "service": "18080",
+                    "error": "Restart failed",
+                    "detail": (err or out or f"exit code {code}").strip(),
+                }
+            ),
+            502,
+        )
 
     @app.post("/api/runtime/restart/18765")
     def runtime_restart_18765():
         """Restart Miru AI Dev (18765). Local-only. Fire-and-forget; this process will be replaced."""
         if not _is_runtime_control_allowed():
-            return jsonify({"ok": False, "error": "Restart allowed only from this machine or Tailscale"}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Restart allowed only from this machine or Tailscale",
+                    }
+                ),
+                403,
+            )
         _run_worktree_script("start_miru_ai_dev.ps1", ["-Force"], wait=False)
-        return jsonify({
-            "ok": True,
-            "service": "18765",
-            "message": "Restart initiated",
-            "detail": "This tab will close. Reconnect to /dev in a few seconds.",
-        }), 202
+        return (
+            jsonify(
+                {
+                    "ok": True,
+                    "service": "18765",
+                    "message": "Restart initiated",
+                    "detail": "This tab will close. Reconnect to /dev in a few seconds.",
+                }
+            ),
+            202,
+        )
 
     @app.post("/api/runtime/restart/worktree")
     def runtime_restart_worktree():
         """Restart full worktree stack (18080 + 18765). Local-only. Fire-and-forget."""
         if not _is_runtime_control_allowed():
-            return jsonify({"ok": False, "error": "Restart allowed only from this machine or Tailscale"}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Restart allowed only from this machine or Tailscale",
+                    }
+                ),
+                403,
+            )
         _run_worktree_script("start_op_miru_worktree.ps1", ["-Native"], wait=False)
-        return jsonify({
-            "ok": True,
-            "service": "worktree",
-            "message": "Worktree restart initiated",
-            "detail": "Reconnect to /dev in a few seconds.",
-        }), 202
+        return (
+            jsonify(
+                {
+                    "ok": True,
+                    "service": "worktree",
+                    "message": "Worktree restart initiated",
+                    "detail": "Reconnect to /dev in a few seconds.",
+                }
+            ),
+            202,
+        )
 
     @app.post("/api/runtime/restart/main-site")
     def runtime_restart_main_site():
@@ -6873,7 +9254,15 @@ def create_app() -> Flask:
         Uses start_main_stable.ps1 -Start (docker compose when available); does not stack duplicate listeners.
         """
         if not _is_runtime_control_allowed():
-            return jsonify({"ok": False, "error": "Restart allowed only from this machine or Tailscale"}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Restart allowed only from this machine or Tailscale",
+                    }
+                ),
+                403,
+            )
         port = int(PROJECT_MIRU_PORT)
         code, out, err = _run_worktree_script(
             "start_main_stable.ps1",
@@ -6882,45 +9271,65 @@ def create_app() -> Flask:
             timeout=180,
         )
         if code == 0:
-            return jsonify({
-                "ok": True,
-                "service": "main-site",
-                "port": port,
-                "message": "Main site start/verify completed",
-                "detail": (out or "").strip() or "Script completed successfully",
-            })
-        return jsonify({
-            "ok": False,
-            "service": "main-site",
-            "port": port,
-            "error": "Main site script failed",
-            "detail": (err or out or f"exit code {code}").strip(),
-        }), 502
+            return jsonify(
+                {
+                    "ok": True,
+                    "service": "main-site",
+                    "port": port,
+                    "message": "Main site start/verify completed",
+                    "detail": (out or "").strip() or "Script completed successfully",
+                }
+            )
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "service": "main-site",
+                    "port": port,
+                    "error": "Main site script failed",
+                    "detail": (err or out or f"exit code {code}").strip(),
+                }
+            ),
+            502,
+        )
 
     @app.get("/api/training-status")
     def training_status():
-        return jsonify(build_training_status())
+        abort(404)
 
     @app.get("/api/dev-status")
     def dev_status():
         summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
         surface = str(request.args.get("surface") or "").strip().lower()
-        include_heavy = str(request.args.get("include") or "").strip().lower() in {"heavy", "all", "full"}
-        payload = build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy)
+        include_heavy = str(request.args.get("include") or "").strip().lower() in {
+            "heavy",
+            "all",
+            "full",
+        }
+        payload = build_dev_status(
+            lightweight=summary_only, include_heavy_sections=include_heavy
+        )
         if summary_only:
             payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
         if summary_only and surface == "cockpit":
             payload = _strip_dev_cockpit_dev_status_payload(payload)
-        return jsonify(payload)
+        return jsonify(trim_dev_status_payload(payload))
 
-    @app.post("/api/dev/operator-handoff/resolve")
+    @app.route(
+        "/api/dev/operator-handoff/resolve", methods=["POST"], strict_slashes=False
+    )
     def dev_operator_handoff_resolve():
         """Persist operator acknowledgement for the current handoff need signature (data/miru_operator_handoff_resolution.json)."""
         if not _is_runtime_control_allowed():
-            return jsonify({
-                "ok": False,
-                "error": "Handoff resolution is only allowed from this machine, private LAN, Tailscale, or with a valid runtime token header.",
-            }), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Handoff resolution is only allowed from this machine, private LAN, Tailscale, or with a valid runtime token header.",
+                    }
+                ),
+                403,
+            )
         body = request.get_json(silent=True) or {}
         note = str(body.get("note") or "").strip()
         payload = build_dev_status(lightweight=True, include_heavy_sections=False)
@@ -6928,10 +9337,15 @@ def create_app() -> Flask:
         issues = payload.get("issues") or {}
         fp = compute_operator_handoff_need_fingerprint(osr, issues)
         if not fp:
-            return jsonify({
-                "ok": False,
-                "error": "Cannot record handoff resolution while operator self-report is in error state; fix self-report first.",
-            }), 400
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Cannot record handoff resolution while operator self-report is in error state; fix self-report first.",
+                    }
+                ),
+                400,
+            )
         saved = save_operator_handoff_resolution(fp, note=note)
         payload2 = build_dev_status(lightweight=True, include_heavy_sections=False)
         handoff = build_operator_handoff_payload(payload2)
@@ -6941,20 +9355,29 @@ def create_app() -> Flask:
     def dev_operator_handoff_clear_resolution():
         """Remove stored acknowledgement so an urgent self-report surfaces an active handoff again."""
         if not _is_runtime_control_allowed():
-            return jsonify({
-                "ok": False,
-                "error": "Clearing handoff resolution is only allowed from this machine, private LAN, Tailscale, or with a valid runtime token header.",
-            }), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Clearing handoff resolution is only allowed from this machine, private LAN, Tailscale, or with a valid runtime token header.",
+                    }
+                ),
+                403,
+            )
         clear_operator_handoff_resolution()
         payload = build_dev_status(lightweight=True, include_heavy_sections=False)
-        return jsonify({"ok": True, "operator_handoff": build_operator_handoff_payload(payload)})
+        return jsonify(
+            {"ok": True, "operator_handoff": build_operator_handoff_payload(payload)}
+        )
 
     @app.get("/api/dev/action-governance")
     def dev_action_governance():
         summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
         target_card = str(request.args.get("card") or "").strip().upper()
         target_batch = str(request.args.get("batch") or "").strip()
-        payload = build_dev_status(lightweight=summary_only, include_heavy_sections=not summary_only)
+        payload = build_dev_status(
+            lightweight=summary_only, include_heavy_sections=not summary_only
+        )
         if summary_only:
             payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
         snapshot = build_action_governance_snapshot(
@@ -6974,7 +9397,15 @@ def create_app() -> Flask:
     @app.post("/api/dev/action-governance/execute")
     def dev_action_governance_execute():
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Governed action execution is only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Governed action execution is only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
         payload = request.get_json(silent=True) or {}
         action_id = str(payload.get("action_id") or "").strip()
         target_card = str(payload.get("card_code") or "").strip().upper()
@@ -6990,7 +9421,11 @@ def create_app() -> Flask:
             dev_payload=current,
             target_card_code=target_card,
             batch_id=target_batch,
-            member_card_codes=[str(item or "").strip().upper() for item in member_card_codes if str(item or "").strip()],
+            member_card_codes=[
+                str(item or "").strip().upper()
+                for item in member_card_codes
+                if str(item or "").strip()
+            ],
             limit=int(limit) if str(limit or "").strip() else None,
             note=note,
             project_db_path=FALLBACK_CATALOG_DB_PATH,
@@ -7044,7 +9479,15 @@ def create_app() -> Flask:
     @app.post("/api/dev/review-queue/resolve")
     def dev_review_queue_resolve():
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Review queue updates are only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Review queue updates are only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
         payload = request.get_json(silent=True) or {}
         item_key = str(payload.get("item_key") or "").strip()
         target_id = str(payload.get("target_id") or "").strip().upper()
@@ -7061,7 +9504,15 @@ def create_app() -> Flask:
     @app.post("/api/dev/review-queue/defer")
     def dev_review_queue_defer():
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Review queue updates are only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Review queue updates are only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
         payload = request.get_json(silent=True) or {}
         item_key = str(payload.get("item_key") or "").strip()
         target_id = str(payload.get("target_id") or "").strip().upper()
@@ -7078,7 +9529,15 @@ def create_app() -> Flask:
     @app.post("/api/dev/review-queue/approve")
     def dev_review_queue_approve():
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Review queue updates are only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Review queue updates are only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
         payload = request.get_json(silent=True) or {}
         item_key = str(payload.get("item_key") or "").strip()
         target_id = str(payload.get("target_id") or "").strip().upper()
@@ -7097,7 +9556,15 @@ def create_app() -> Flask:
     @app.post("/api/dev/review-queue/reject")
     def dev_review_queue_reject():
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Review queue updates are only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Review queue updates are only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
         payload = request.get_json(silent=True) or {}
         item_key = str(payload.get("item_key") or "").strip()
         target_id = str(payload.get("target_id") or "").strip().upper()
@@ -7111,25 +9578,53 @@ def create_app() -> Flask:
             decision_source="dev_review_queue_reject",
             project_db_path=FALLBACK_CATALOG_DB_PATH,
         )
-        return jsonify(result), 200 if result.get("ok") else 400
+        if result.get("ok"):
+            return jsonify(result), 200
+        if dismiss_image_variant_sp_operator_review(
+            target_id, project_db_path=FALLBACK_CATALOG_DB_PATH
+        ):
+            return (
+                jsonify(
+                    {
+                        "ok": True,
+                        "item_key": item_key,
+                        "target_id": target_id,
+                        "dismissed": "image_variant_sp_without_queue_row",
+                    }
+                ),
+                200,
+            )
+        return jsonify(result), 400
 
     @app.get("/api/dev/status")
     def legacy_dev_status():
         summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
-        include_heavy = str(request.args.get("include") or "").strip().lower() in {"heavy", "all", "full"}
-        payload = build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy)
+        include_heavy = str(request.args.get("include") or "").strip().lower() in {
+            "heavy",
+            "all",
+            "full",
+        }
+        payload = build_dev_status(
+            lightweight=summary_only, include_heavy_sections=include_heavy
+        )
         if summary_only:
             payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
-        return jsonify(payload)
+        return jsonify(trim_dev_status_payload(payload))
 
     @app.get("/dev-status")
     def legacy_dev_status_root():
         summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
-        include_heavy = str(request.args.get("include") or "").strip().lower() in {"heavy", "all", "full"}
-        payload = build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy)
+        include_heavy = str(request.args.get("include") or "").strip().lower() in {
+            "heavy",
+            "all",
+            "full",
+        }
+        payload = build_dev_status(
+            lightweight=summary_only, include_heavy_sections=include_heavy
+        )
         if summary_only:
             payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
-        return jsonify(payload)
+        return jsonify(trim_dev_status_payload(payload))
 
     @app.get("/api/dev/monitor-panel")
     def dev_monitor_panel():
@@ -7138,6 +9633,314 @@ def create_app() -> Flask:
     @app.get("/api/dev/image-coverage")
     def dev_image_coverage():
         return jsonify(build_image_coverage_payload())
+
+    @app.get("/img/<path:relpath>")
+    def dev_miru_assets_image(relpath: str):
+        """Serve Miru_Assets images for image-review queue (18765 only)."""
+        if not _image_review_port_ok():
+            abort(404)
+        root = MIRU_ASSETS_ROOT.resolve()
+        candidate = (root / relpath.replace("\\", "/")).resolve()
+        try:
+            candidate.relative_to(root)
+        except ValueError:
+            abort(404)
+        if not candidate.is_file():
+            abort(404)
+        return send_from_directory(str(candidate.parent), candidate.name)
+
+    @app.get("/api/dev/image-review/queue")
+    def dev_image_review_queue():
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "image-review endpoints are only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        return jsonify(build_image_review_queue_response())
+
+    @app.post("/api/dev/image-review/decide")
+    def dev_image_review_decide():
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "image-review endpoints are only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        if not is_local_request():
+            return (
+                jsonify(
+                    {"error": "This action is only allowed from localhost-equivalent clients."}
+                ),
+                403,
+            )
+        payload = request.get_json(silent=True) or {}
+        item_id = str(payload.get("id") or "").strip()
+        action = str(payload.get("action") or "").strip().lower()
+        if not item_id:
+            return jsonify({"error": "id is required."}), 400
+        if action not in ("confirm", "misroute", "delete"):
+            return jsonify({"error": "action must be confirm, misroute, or delete."}), 400
+        now = datetime.now(timezone.utc).isoformat()
+        with _IMAGE_REVIEW_DECISIONS_LOCK:
+            data = _load_image_review_decisions_unlocked(IMAGE_REVIEW_DECISIONS_PATH)
+            if action == "delete":
+                data[item_id] = {"action": "pending_delete", "decided_at": now}
+            else:
+                data[item_id] = {"action": action, "decided_at": now}
+            _atomic_write_image_review_decisions(IMAGE_REVIEW_DECISIONS_PATH, data)
+        if action == "delete":
+            return jsonify({"status": "pending_delete", "id": item_id})
+        return jsonify({"status": "ok", "id": item_id, "action": action})
+
+    @app.post("/api/dev/image-review/confirm-delete")
+    def dev_image_review_confirm_delete():
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "image-review endpoints are only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        if not is_local_request():
+            return (
+                jsonify(
+                    {"error": "This action is only allowed from localhost-equivalent clients."}
+                ),
+                403,
+            )
+        payload = request.get_json(silent=True) or {}
+        item_id = str(payload.get("id") or "").strip()
+        if not item_id:
+            return jsonify({"error": "id is required."}), 400
+        now = datetime.now(timezone.utc).isoformat()
+        with _IMAGE_REVIEW_DECISIONS_LOCK:
+            data = _load_image_review_decisions_unlocked(IMAGE_REVIEW_DECISIONS_PATH)
+            ent = data.get(item_id)
+            if not ent or str(ent.get("action") or "") != "pending_delete":
+                return (
+                    jsonify(
+                        {
+                            "error": "Entry must exist with action pending_delete.",
+                            "id": item_id,
+                        }
+                    ),
+                    400,
+                )
+            target = _image_review_target_path_from_id(item_id)
+            if target is None:
+                return jsonify({"error": "Invalid id path (outside Miru_Assets)."}), 400
+            if target.is_file():
+                try:
+                    target.unlink()
+                except OSError as e:
+                    return jsonify({"error": str(e)}), 500
+            data[item_id] = {"action": "deleted", "decided_at": now}
+            _atomic_write_image_review_decisions(IMAGE_REVIEW_DECISIONS_PATH, data)
+        return jsonify({"status": "deleted", "id": item_id})
+
+    @app.post("/api/dev/image-review/batch-decide")
+    def dev_image_review_batch_decide():
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "image-review endpoints are only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        if not is_local_request():
+            return (
+                jsonify(
+                    {"error": "This action is only allowed from localhost-equivalent clients."}
+                ),
+                403,
+            )
+        payload = request.get_json(silent=True) or {}
+        raw_ids = payload.get("ids")
+        if not isinstance(raw_ids, list):
+            return jsonify({"error": "ids must be a list."}), 400
+        action = str(payload.get("action") or "").strip().lower()
+        if action not in ("confirm", "misroute", "delete"):
+            return jsonify({"error": "action must be confirm, misroute, or delete."}), 400
+        ids_ordered = [str(x).strip() for x in raw_ids if str(x).strip()]
+        seen: set[str] = set()
+        ids_unique: list[str] = []
+        for i in ids_ordered:
+            if i in seen:
+                continue
+            seen.add(i)
+            ids_unique.append(i)
+        now = datetime.now(timezone.utc).isoformat()
+        count = 0
+        with _IMAGE_REVIEW_DECISIONS_LOCK:
+            data = _load_image_review_decisions_unlocked(IMAGE_REVIEW_DECISIONS_PATH)
+            for item_id in ids_unique:
+                if action == "delete":
+                    data[item_id] = {"action": "pending_delete", "decided_at": now}
+                else:
+                    data[item_id] = {"action": action, "decided_at": now}
+                count += 1
+            _atomic_write_image_review_decisions(IMAGE_REVIEW_DECISIONS_PATH, data)
+        return jsonify({"status": "ok", "count": count})
+
+    @app.post("/api/dev/image-review/reclassify")
+    def dev_image_review_reclassify():
+        """Move asset to provenance folder, update card_catalog card_variants, log decision (18765 only)."""
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "image-review endpoints are only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        if not is_local_request():
+            return (
+                jsonify(
+                    {"error": "This action is only allowed from localhost-equivalent clients."}
+                ),
+                403,
+            )
+        payload = request.get_json(silent=True) or {}
+        body, status = run_image_review_reclassify(payload)
+        return jsonify(body), status
+
+    @app.post("/api/dev/image-review/stage")
+    def dev_image_review_stage():
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "image-review endpoints are only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        if not is_local_request():
+            return (
+                jsonify(
+                    {"error": "This action is only allowed from localhost-equivalent clients."}
+                ),
+                403,
+            )
+        body, status = image_review_add_stage(request.get_json(silent=True) or {})
+        return jsonify(body), status
+
+    @app.get("/api/dev/image-review/staged")
+    def dev_image_review_staged_get():
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "image-review endpoints are only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        with _IMAGE_REVIEW_STAGED_LOCK:
+            items = _load_staged_list_unlocked(IMAGE_REVIEW_STAGED_PATH)
+        return jsonify({"items": items})
+
+    @app.delete("/api/dev/image-review/staged/<decision_id>")
+    def dev_image_review_staged_delete(decision_id: str):
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "image-review endpoints are only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        if not is_local_request():
+            return (
+                jsonify(
+                    {"error": "This action is only allowed from localhost-equivalent clients."}
+                ),
+                403,
+            )
+        did = str(decision_id or "").strip()
+        if not did:
+            return jsonify({"error": "decision_id required"}), 400
+        with _IMAGE_REVIEW_STAGED_LOCK:
+            items = _load_staged_list_unlocked(IMAGE_REVIEW_STAGED_PATH)
+            new_items = [x for x in items if str(x.get("decision_id")) != did]
+            if len(new_items) == len(items):
+                return jsonify({"error": "not found"}), 404
+            _atomic_write_staged_list(IMAGE_REVIEW_STAGED_PATH, new_items)
+        return jsonify({"ok": True})
+
+    @app.post("/api/dev/image-review/commit")
+    def dev_image_review_commit():
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "image-review endpoints are only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        if not is_local_request():
+            return (
+                jsonify(
+                    {"error": "This action is only allowed from localhost-equivalent clients."}
+                ),
+                403,
+            )
+        result = execute_image_review_staged_commit()
+        status = 200 if int(result.get("failed") or 0) == 0 else 409
+        return jsonify(result), status
+
+    @app.get("/api/dev/image-review/legend")
+    def dev_image_review_legend():
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "image-review endpoints are only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        return jsonify(image_review_legend_rows())
+
+    @app.get("/api/dev/image-review/variants")
+    def dev_image_review_variants():
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "image-review endpoints are only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        code = str(request.args.get("code") or "").strip()
+        return jsonify({"variants": image_review_variants_rows(code)})
+
+    @app.get("/api/dev/catalog-publish-coverage")
+    def dev_catalog_publish_coverage():
+        pct = compute_catalog_publish_pulse_coverage_percent(
+            project_db_path=FALLBACK_CATALOG_DB_PATH
+        )
+        if pct is None:
+            return (
+                jsonify({"ok": False, "error": "catalog_unavailable"}),
+                503,
+            )
+        return jsonify({"ok": True, "coverage_percent": pct})
 
     @app.get("/api/dev/validation-audit")
     def dev_validation_audit():
@@ -7161,7 +9964,17 @@ def create_app() -> Flask:
                 format_source_citation,
             )
         except ImportError:
-            return jsonify({"ok": False, "error": "Official rules module not available", "best_match": None, "more": []}), 500
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Official rules module not available",
+                        "best_match": None,
+                        "more": [],
+                    }
+                ),
+                500,
+            )
         if not DEFAULT_RULES_DB_PATH.is_file():
             return jsonify({"ok": True, "best_match": None, "more": [], "empty": True})
         best = get_best_official_ruling_match(
@@ -7179,54 +9992,50 @@ def create_app() -> Flask:
             status="current",
             limit=15,
         )
+
         def with_citation(r: dict[str, Any]) -> dict[str, Any]:
-            out = {k: v for k, v in r.items() if isinstance(v, (type(None), str, int, float, bool))}
+            out = {
+                k: v
+                for k, v in r.items()
+                if isinstance(v, (type(None), str, int, float, bool))
+            }
             out["citation"] = format_source_citation(r)
             return out
+
         best_match = with_citation(best) if best else None
-        more = [with_citation(r) for r in candidates if not best_match or r.get("ruling_id") != best_match.get("ruling_id")][:10]
-        return jsonify({"ok": True, "best_match": best_match, "more": more, "empty": best_match is None and not more})
-
-    @app.get("/api/dev/operator-console")
-    def dev_operator_console():
-        force = str(request.args.get("force") or "").strip().lower() in {"1", "true", "yes", "force"}
-        return jsonify(build_operator_console_payload(force_runtime_recheck=force))
-
-    @app.post("/api/dev/operator-console/action")
-    def dev_operator_console_action():
-        payload = request.get_json(silent=True)
-        if not isinstance(payload, dict):
-            payload = request.form
-        action = str(payload.get("action") or "").strip().lower()
-        force = action in {"recheck_runtime_status", "refresh_progress"}
-        if action not in {"refresh_snapshot", "refresh_progress", "recheck_runtime_status"}:
-            return jsonify({"ok": False, "error": f"Unsupported operator action: {action}"}), 400
+        more = [
+            with_citation(r)
+            for r in candidates
+            if not best_match or r.get("ruling_id") != best_match.get("ruling_id")
+        ][:10]
         return jsonify(
             {
                 "ok": True,
-                "action": action,
-                "message": {
-                    "refresh_snapshot": "Operator snapshot refreshed.",
-                    "refresh_progress": "Progress snapshot refreshed from runtime truth.",
-                    "recheck_runtime_status": "Main runtime status rechecked.",
-                }[action],
-                "operator_console": build_operator_console_payload(force_runtime_recheck=force),
+                "best_match": best_match,
+                "more": more,
+                "empty": best_match is None and not more,
             }
         )
 
+    @app.get("/api/dev/operator-console")
+    def dev_operator_console():
+        abort(404)
+
+    @app.post("/api/dev/operator-console/action")
+    def dev_operator_console_action():
+        abort(404)
+
     @app.post("/api/dev/operator-console/query")
     def dev_operator_console_query():
-        payload = request.get_json(silent=True)
-        if not isinstance(payload, dict):
-            payload = request.form
-        query = str(payload.get("query") or "").strip()
-        if not query:
-            return jsonify({"ok": False, "error": "Query text is required."}), 400
-        return jsonify(build_operator_query_answer(query))
+        abort(404)
 
     def _proxy_dev_action_to_main(path: str) -> tuple[bool, dict[str, Any]]:
         """POST to main runtime (8765) and return (ok, body). Used when this server is worktree (e.g. 18765)."""
-        base = (resolve_runtime_monitor_status_url() or "").replace("/api/dev-status", "").rstrip("/")
+        base = (
+            (resolve_runtime_monitor_status_url() or "")
+            .replace("/api/dev-status", "")
+            .rstrip("/")
+        )
         if not base:
             return False, {"ok": False, "error": "Main runtime URL not configured."}
         url = f"{base}{path}"
@@ -7239,13 +10048,19 @@ def create_app() -> Flask:
             )
             with closing(urlopen(req, timeout=10)) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
-                return True, body if isinstance(body, dict) else {"ok": True, "message": str(body)}
+                return True, (
+                    body
+                    if isinstance(body, dict)
+                    else {"ok": True, "message": str(body)}
+                )
         except HTTPError as e:
             try:
                 body = json.loads(e.read().decode("utf-8")) if e.fp else {}
             except Exception:
                 body = {}
-            return False, body if isinstance(body, dict) else {"ok": False, "error": str(e)}
+            return False, (
+                body if isinstance(body, dict) else {"ok": False, "error": str(e)}
+            )
         except (URLError, OSError, ValueError) as e:
             return False, {"ok": False, "error": str(e)}
 
@@ -7253,7 +10068,10 @@ def create_app() -> Flask:
     def dev_wake():
         """Wake Miru (main runtime). On worktree this proxies to main; on main returns success."""
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Wake is only allowed from localhost."}), 403
+            return (
+                jsonify({"ok": False, "error": "Wake is only allowed from localhost."}),
+                403,
+            )
         remote_url = resolve_runtime_monitor_status_url()
         if remote_url:
             ok, body = _proxy_dev_action_to_main("/api/dev/wake")
@@ -7264,7 +10082,15 @@ def create_app() -> Flask:
     def dev_start_learner():
         """Start the learner. On worktree with real control: launch process. Proxies to main if MIRU_RUNTIME_STATUS_URL set. Prevents duplicate start."""
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Start learner is only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Start learner is only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
         invalidate_ttl_cache("learning_engine_status")
         remote_url = resolve_runtime_monitor_status_url()
         if remote_url:
@@ -7281,24 +10107,34 @@ def create_app() -> Flask:
                 primary_pid = int(running_pids[0])
                 _write_worktree_learner_pid(primary_pid)
                 clear_runtime_truth_cache()
-                return jsonify({
-                    "ok": False,
-                    "already_running": True,
-                    "learner_state": "Running",
-                    "learner_pid": primary_pid,
-                    "learner_process_count": len(running_pids),
-                    "message": "Learner is already running. Use Refresh to see current state.",
-                }), 200
+                return (
+                    jsonify(
+                        {
+                            "ok": False,
+                            "already_running": True,
+                            "learner_state": "Running",
+                            "learner_pid": primary_pid,
+                            "learner_process_count": len(running_pids),
+                            "message": "Learner is already running. Use Refresh to see current state.",
+                        }
+                    ),
+                    200,
+                )
             record = _read_worktree_learner_pid()
             if record and _is_worktree_learner_process_alive(int(record["pid"])):
                 clear_runtime_truth_cache()
-                return jsonify({
-                    "ok": False,
-                    "already_running": True,
-                    "learner_state": "Running",
-                    "learner_pid": record["pid"],
-                    "message": "Learner is already running. Use Refresh to see current state.",
-                }), 200
+                return (
+                    jsonify(
+                        {
+                            "ok": False,
+                            "already_running": True,
+                            "learner_state": "Running",
+                            "learner_pid": record["pid"],
+                            "message": "Learner is already running. Use Refresh to see current state.",
+                        }
+                    ),
+                    200,
+                )
             if record and not _is_worktree_learner_process_alive(int(record["pid"])):
                 _clear_worktree_learner_pid()
             fresh_status = load_learning_engine_status(
@@ -7312,35 +10148,52 @@ def create_app() -> Flask:
             heartbeat_fresh = state_fresh.get("heartbeat_freshness", "none")
             if learner_state in ("Running", "Starting") and heartbeat_fresh == "fresh":
                 clear_runtime_truth_cache()
-                return jsonify({
-                    "ok": False,
-                    "already_running": True,
-                    "learner_state": learner_state,
-                    "message": "Learner is already running (heartbeat fresh). Use Refresh to see current state.",
-                }), 200
+                return (
+                    jsonify(
+                        {
+                            "ok": False,
+                            "already_running": True,
+                            "learner_state": learner_state,
+                            "message": "Learner is already running (heartbeat fresh). Use Refresh to see current state.",
+                        }
+                    ),
+                    200,
+                )
             ok, message, pid = _start_worktree_learner_process()
             clear_runtime_truth_cache()
             invalidate_ttl_cache("learning_engine_status")
             if ok:
-                return jsonify({
-                    "ok": True,
-                    "status": "started",
-                    "learner_pid": pid,
-                    "message": message,
-                })
+                return jsonify(
+                    {
+                        "ok": True,
+                        "status": "started",
+                        "learner_pid": pid,
+                        "message": message,
+                    }
+                )
             return jsonify({"ok": False, "status": "error", "error": message}), 200
         # Non-worktree local: acknowledge only
         clear_runtime_truth_cache()
-        return jsonify({
-            "ok": True,
-            "message": "Start Learner acknowledged. This runtime does not run the worktree learner process. Use the worktree Dev page (port 18765) to start the learner.",
-        })
+        return jsonify(
+            {
+                "ok": True,
+                "message": "Start Learner acknowledged. This runtime does not run the worktree learner process. Use the worktree Dev page (port 18765) to start the learner.",
+            }
+        )
 
     @app.post("/api/dev/stop-learner")
     def dev_stop_learner():
         """Stop the learner. On worktree with real control: stop the managed process. Proxies to main if MIRU_RUNTIME_STATUS_URL set."""
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Stop learner is only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Stop learner is only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
         invalidate_ttl_cache("learning_engine_status")
         remote_url = resolve_runtime_monitor_status_url()
         if remote_url:
@@ -7356,15 +10209,34 @@ def create_app() -> Flask:
                     report = run_worktree_card_insight_sync()
                     with _LAST_INSIGHT_SYNC_LOCK:
                         _LAST_INSIGHT_SYNC_REPORT.clear()
-                        _LAST_INSIGHT_SYNC_REPORT.update({
-                            "at": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
-                            "synced_cards": int((report.get("sync_result") or {}).get("synced_cards") or 0),
-                            "inserted_insights": int((report.get("sync_result") or {}).get("inserted_insights") or 0),
-                            "replaced_insights": int((report.get("sync_result") or {}).get("replaced_insights") or 0),
-                            "insight_count_after": int(report.get("insight_count_after") or 0),
-                            "dossier_status": report.get("dossier_status") or {},
-                            "trigger": "after_stop",
-                        })
+                        _LAST_INSIGHT_SYNC_REPORT.update(
+                            {
+                                "at": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+                                "synced_cards": int(
+                                    (report.get("sync_result") or {}).get(
+                                        "synced_cards"
+                                    )
+                                    or 0
+                                ),
+                                "inserted_insights": int(
+                                    (report.get("sync_result") or {}).get(
+                                        "inserted_insights"
+                                    )
+                                    or 0
+                                ),
+                                "replaced_insights": int(
+                                    (report.get("sync_result") or {}).get(
+                                        "replaced_insights"
+                                    )
+                                    or 0
+                                ),
+                                "insight_count_after": int(
+                                    report.get("insight_count_after") or 0
+                                ),
+                                "dossier_status": report.get("dossier_status") or {},
+                                "trigger": "after_stop",
+                            }
+                        )
                     res = report.get("sync_result") or {}
                     insight_sync_report = {
                         "ran": True,
@@ -7375,37 +10247,61 @@ def create_app() -> Flask:
                     }
                 except Exception as e:
                     insight_sync_report = {"ran": True, "error": str(e)}
-            return jsonify({
-                "ok": ok,
-                "status": "stopped" if ok else "error",
-                "message": message,
-                "insight_sync": insight_sync_report,
-            })
+            return jsonify(
+                {
+                    "ok": ok,
+                    "status": "stopped" if ok else "error",
+                    "message": message,
+                    "insight_sync": insight_sync_report,
+                }
+            )
         clear_runtime_truth_cache()
-        return jsonify({
-            "ok": True,
-            "message": "This runtime does not manage the worktree learner. Use the worktree Dev page (port 18765) to stop the learner.",
-        })
+        return jsonify(
+            {
+                "ok": True,
+                "message": "This runtime does not manage the worktree learner. Use the worktree Dev page (port 18765) to stop the learner.",
+            }
+        )
 
     @app.post("/api/dev/sync-insights")
     def dev_sync_insights():
         """Run worktree card insight sync on demand. Worktree-local paths only. Localhost only. Preserves post-stop automatic sync."""
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Sync insights is only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Sync insights is only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
         invalidate_ttl_cache("learning_engine_status")
         try:
             report = run_worktree_card_insight_sync()
             with _LAST_INSIGHT_SYNC_LOCK:
                 _LAST_INSIGHT_SYNC_REPORT.clear()
-                _LAST_INSIGHT_SYNC_REPORT.update({
-                    "at": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
-                    "synced_cards": int((report.get("sync_result") or {}).get("synced_cards") or 0),
-                    "inserted_insights": int((report.get("sync_result") or {}).get("inserted_insights") or 0),
-                    "replaced_insights": int((report.get("sync_result") or {}).get("replaced_insights") or 0),
-                    "insight_count_after": int(report.get("insight_count_after") or 0),
-                    "dossier_status": report.get("dossier_status") or {},
-                    "trigger": "manual",
-                })
+                _LAST_INSIGHT_SYNC_REPORT.update(
+                    {
+                        "at": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
+                        "synced_cards": int(
+                            (report.get("sync_result") or {}).get("synced_cards") or 0
+                        ),
+                        "inserted_insights": int(
+                            (report.get("sync_result") or {}).get("inserted_insights")
+                            or 0
+                        ),
+                        "replaced_insights": int(
+                            (report.get("sync_result") or {}).get("replaced_insights")
+                            or 0
+                        ),
+                        "insight_count_after": int(
+                            report.get("insight_count_after") or 0
+                        ),
+                        "dossier_status": report.get("dossier_status") or {},
+                        "trigger": "manual",
+                    }
+                )
             res = report.get("sync_result") or {}
             insight_sync = {
                 "ran": True,
@@ -7415,37 +10311,73 @@ def create_app() -> Flask:
                 "insight_count_after": report.get("insight_count_after", 0),
                 "dossier_status": report.get("dossier_status") or {},
             }
-            return jsonify({
-                "ok": True,
-                "message": f"Insight sync completed. {insight_sync['synced_cards']} cards, {insight_sync['inserted_insights']} inserted, {insight_sync['replaced_insights']} replaced.",
-                "insight_sync": insight_sync,
-            })
+            return jsonify(
+                {
+                    "ok": True,
+                    "message": f"Insight sync completed. {insight_sync['synced_cards']} cards, {insight_sync['inserted_insights']} inserted, {insight_sync['replaced_insights']} replaced.",
+                    "insight_sync": insight_sync,
+                }
+            )
         except Exception as e:
-            return jsonify({
-                "ok": False,
-                "error": str(e),
-                "insight_sync": {"ran": True, "error": str(e)},
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": str(e),
+                        "insight_sync": {"ran": True, "error": str(e)},
+                    }
+                ),
+                200,
+            )
 
     @app.post("/api/dev/refresh-status")
     def dev_refresh_status():
         """Clear cached status so the next fetch gets fresh data from the main runtime."""
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Refresh status is only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Refresh status is only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
         clear_runtime_truth_cache()
         invalidate_ttl_cache("learning_engine_status")
-        return jsonify({"ok": True, "message": "Status cache cleared. Refresh the page or click Refresh to see current state."})
+        return jsonify(
+            {
+                "ok": True,
+                "message": "Status cache cleared. Refresh the page or click Refresh to see current state.",
+            }
+        )
 
     @app.post("/api/dev/set-learner-mode")
     def dev_set_learner_mode():
         """Set learner mode (DRY_RUN, SANDBOX, REVIEW_REQUIRED, ACTIVE). Localhost only."""
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Set learner mode is only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Set learner mode is only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
         payload = request.get_json(silent=True)
         payload = payload if isinstance(payload, dict) else request.form
         mode = str(payload.get("mode") or "").strip().upper()
         if mode not in LEARNER_MODES:
-            return jsonify({"ok": False, "error": f"Invalid mode. Use one of: {', '.join(LEARNER_MODES)}"}), 400
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": f"Invalid mode. Use one of: {', '.join(LEARNER_MODES)}",
+                    }
+                ),
+                400,
+            )
         remote_url = resolve_runtime_monitor_status_url()
         if remote_url:
             base = remote_url.replace("/api/dev-status", "").rstrip("/")
@@ -7466,7 +10398,13 @@ def create_app() -> Flask:
                 return jsonify({"ok": False, "error": str(e)}), 502
         ok = set_learner_mode(mode)
         clear_runtime_truth_cache()
-        return jsonify({"ok": ok, "mode": get_learner_mode(), "message": f"Mode set to {get_learner_mode()}. Refresh status to see it."})
+        return jsonify(
+            {
+                "ok": ok,
+                "mode": get_learner_mode(),
+                "message": f"Mode set to {get_learner_mode()}. Refresh status to see it.",
+            }
+        )
 
     @app.get("/api/dev/activity-feed")
     def dev_activity_feed():
@@ -7480,30 +10418,541 @@ def create_app() -> Flask:
                 with urlopen(url, timeout=8) as resp:
                     return jsonify(json.load(resp))
             except (HTTPError, URLError, OSError, ValueError):
-                return jsonify({"activity": [], "error": "Could not fetch from main runtime"}), 502
-        events = load_monitor_engine_events(status_db_path=LEARNING_STATUS_DB_PATH, limit=limit)
+                return (
+                    jsonify(
+                        {"activity": [], "error": "Could not fetch from main runtime"}
+                    ),
+                    502,
+                )
+        events = load_monitor_engine_events(
+            status_db_path=LEARNING_STATUS_DB_PATH, limit=limit
+        )
         return jsonify({"activity": events["recent_activity"]})
 
     @app.get("/api/dev/pending-approvals")
     def dev_pending_approvals():
-        """Return items in learner_review_queue (review_required). Worktree-only."""
-        items = load_pending_approvals(status_db_path=LEARNING_STATUS_DB_PATH)
-        return jsonify({"items": items})
+        """Actionable miru_review_queue pending rows plus legacy learner queue."""
+        publication: list[dict[str, Any]] = []
+        catalog_path = Path(FALLBACK_CATALOG_DB_PATH)
+        if catalog_path.is_file():
+            _pub_sql = """
+                SELECT
+                    rq.item_key,
+                    rq.target_id,
+                    rq.status,
+                    rq.approval_state,
+                    rq.readiness_state,
+                    rq.review_reason,
+                    rq.guardrail_label,
+                    rq.confidence_score,
+                    rq.risk_level,
+                    rq.recommended_next_step,
+                    rq.summary_text,
+                    rq.updated_at,
+                    rq.created_at,
+                    c.card_name,
+                    c.set_code,
+                    c.set_name
+                FROM miru_review_queue rq
+                LEFT JOIN cards c
+                    ON upper(trim(c.canonical_code)) = upper(trim(rq.target_id))
+                LEFT JOIN image_variant_analysis iv
+                    ON upper(trim(iv.canonical_code)) = upper(trim(rq.target_id))
+                WHERE rq.status = 'pending'
+                  AND (
+                        trim(coalesce(rq.approval_state, '')) = ''
+                     OR rq.approval_state = 'pending_review'
+                      )
+                  AND NOT (
+                        trim(coalesce(rq.queue_type, '')) = 'image_variant_sp'
+                        AND lower(trim(coalesce(iv.review_status, ''))) = 'reviewed_not_sp'
+                      )
+                ORDER BY
+                    CASE WHEN rq.approval_state = 'pending_review' THEN 0
+                         WHEN trim(coalesce(rq.approval_state, '')) = '' THEN 1
+                         ELSE 2
+                    END,
+                    rq.confidence_score DESC,
+                    rq.updated_at DESC
+                LIMIT ?
+            """
+            try:
+                with closing(sqlite3.connect(str(catalog_path))) as _pub_conn:
+                    _pub_conn.row_factory = sqlite3.Row
+                    _pub_rows = _pub_conn.execute(_pub_sql, (500,)).fetchall()
+            except sqlite3.Error:
+                _pub_rows = []
+            for row in _pub_rows:
+                code = str(row["target_id"] or "").strip().upper()
+                preview_src = (
+                    str(row["summary_text"] or "").strip()
+                    or str(row["review_reason"] or "").strip()
+                )
+                preview = preview_src.replace("\n", " ").strip()
+                if len(preview) > 220:
+                    preview = preview[:217] + "…"
+                try:
+                    conf = float(row["confidence_score"] or 0.0)
+                except (TypeError, ValueError):
+                    conf = 0.0
+                if conf < 0.0:
+                    conf = 0.0
+                if conf > 1.0:
+                    conf = 1.0
+                publication.append(
+                    {
+                        "queue_kind": "publication",
+                        "queue_type": "publication",
+                        "item_key": str(row["item_key"] or "").strip(),
+                        "target_id": str(row["target_id"] or "").strip(),
+                        "card_code": code,
+                        "status": str(row["status"] or "").strip(),
+                        "approval_state": str(row["approval_state"] or "").strip(),
+                        "readiness_state": str(row["readiness_state"] or "").strip(),
+                        "review_reason": str(row["review_reason"] or "").strip(),
+                        "guardrail_label": str(row["guardrail_label"] or "").strip(),
+                        "confidence_score": conf,
+                        "risk_level": str(row["risk_level"] or "").strip(),
+                        "recommended_next_step": str(
+                            row["recommended_next_step"] or ""
+                        ).strip(),
+                        "summary_text": str(row["summary_text"] or "").strip(),
+                        "updated_at": str(row["updated_at"] or "").strip(),
+                        "created_at": str(row["created_at"] or "").strip(),
+                        "card_name": str(row["card_name"] or "").strip(),
+                        "set_code": str(row["set_code"] or "").strip(),
+                        "set_name": str(row["set_name"] or "").strip(),
+                        "id": code,
+                        "insight_type": str(row["guardrail_label"] or "").strip()
+                        or "—",
+                        "confidence": conf,
+                        "insight_preview": preview or "—",
+                    }
+                )
+
+        learner = load_pending_approvals(status_db_path=LEARNING_STATUS_DB_PATH)
+
+        def _load_card_insights(card_code: str) -> list[dict[str, Any]]:
+            code = str(card_code or "").strip().upper()
+            if not code:
+                return []
+            path = Path(FALLBACK_CATALOG_DB_PATH)
+            if not path.is_file():
+                return []
+            try:
+                with closing(sqlite3.connect(str(path))) as conn:
+                    conn.row_factory = sqlite3.Row
+                    rows = conn.execute(
+                        """
+                        SELECT insight_type, insight_text, confidence, quality_tier
+                        FROM miru_card_insights
+                        WHERE card_id = ?
+                        ORDER BY confidence DESC
+                        """,
+                        (code,),
+                    ).fetchall()
+            except sqlite3.Error:
+                return []
+            out: list[dict[str, Any]] = []
+            for row in rows:
+                out.append(
+                    {
+                        "insight_type": str(row["insight_type"] or "").strip(),
+                        "insight_text": str(row["insight_text"] or "").strip(),
+                        "confidence": float(row["confidence"] or 0.0),
+                        "quality_tier": str(row["quality_tier"] or "").strip(),
+                    }
+                )
+            return out
+
+        for row in publication:
+            row["image_url"] = resolve_card_image_url(row.get("card_code", ""))
+            insights = _load_card_insights(row.get("card_code", ""))
+            row["insights"] = insights
+            row["insights_count"] = len(insights)
+            rr = str(row.get("review_reason") or "").strip().lower()
+            if rr == "legality_sensitive":
+                row["ruling_citation"] = lookup_legality_sensitive_ruling_citation(
+                    FALLBACK_CATALOG_DB_PATH, row.get("card_code", "")
+                )
+            else:
+                row["ruling_citation"] = None
+        for row in learner:
+            row["queue_kind"] = "learner"
+            row["image_url"] = resolve_card_image_url(row.get("card_code", ""))
+            insights = _load_card_insights(row.get("card_code", ""))
+            row["insights"] = insights
+            row["insights_count"] = len(insights)
+            rr = str(row.get("review_reason") or "").strip().lower()
+            if rr == "legality_sensitive":
+                row["ruling_citation"] = lookup_legality_sensitive_ruling_citation(
+                    FALLBACK_CATALOG_DB_PATH, row.get("card_code", "")
+                )
+            else:
+                row["ruling_citation"] = None
+        resp = jsonify(
+            {
+                "items": publication + learner,
+                "catalog_db_path": str(FALLBACK_CATALOG_DB_PATH),
+                "publication_count": len(publication),
+                "learner_count": len(learner),
+            }
+        )
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        resp.headers["Pragma"] = "no-cache"
+        return resp
+
+    @app.get("/api/dev/recently-published")
+    def dev_recently_published():
+        """Read-only: card_intelligence rows in publish-ready states, newest publish update first."""
+        catalog_path = Path(FALLBACK_CATALOG_DB_PATH)
+        if not catalog_path.is_file():
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": f"Catalog database not found: {catalog_path}",
+                    }
+                ),
+                500,
+            )
+        sql = """
+            SELECT
+                c.canonical_code AS card_code,
+                c.card_name AS card_name,
+                ci.publish_status,
+                ci.role_label,
+                ci.role_summary,
+                ci.deck_usage_summary,
+                ci.publication_rationale,
+                ci.coverage_gap_summary,
+                ci.publication_candidate_profile,
+                ci.confidence_score,
+                ci.publish_updated_at,
+                (
+                    SELECT v.image_path
+                    FROM card_variants v
+                    WHERE v.card_id = c.id
+                      AND COALESCE(v.is_base, 0) = 1
+                      AND trim(COALESCE(v.image_path, '')) != ''
+                      AND lower(replace(trim(v.image_path), char(92), '/')) LIKE 'thumbs/%'
+                    ORDER BY v.id ASC
+                    LIMIT 1
+                ) AS cv_thumb_path,
+                (
+                    SELECT v.image_path
+                    FROM card_variants v
+                    WHERE v.card_id = c.id
+                      AND trim(COALESCE(v.image_path, '')) != ''
+                      AND lower(replace(trim(v.image_path), char(92), '/')) NOT LIKE 'thumbs/%'
+                    ORDER BY COALESCE(v.is_base, 0) DESC, v.id ASC
+                    LIMIT 1
+                ) AS cv_set_image_path
+            FROM card_intelligence ci
+            INNER JOIN cards c ON c.id = ci.card_id
+            WHERE lower(trim(coalesce(ci.publish_status, '')))
+                IN ('publish_ready', 'approved_for_candidate')
+            ORDER BY ci.publish_updated_at DESC NULLS LAST
+        """
+        try:
+            with closing(sqlite3.connect(f"file:{catalog_path.resolve().as_posix()}?mode=ro", uri=True)) as conn:
+                conn.row_factory = sqlite3.Row
+                rows = conn.execute(sql).fetchall()
+        except sqlite3.Error as exc:
+            return (
+                jsonify({"ok": False, "error": str(exc)}),
+                500,
+            )
+        items: list[dict[str, Any]] = []
+        for row in rows:
+            role_label = str(row["role_label"] or "").strip()
+            profile = str(row["publication_candidate_profile"] or "").strip()
+            insight_type = role_label or profile or ""
+            insight_text = ""
+            for key in (
+                "role_summary",
+                "deck_usage_summary",
+                "publication_rationale",
+                "coverage_gap_summary",
+            ):
+                cand = str(row[key] or "").strip()
+                if cand:
+                    insight_text = cand
+                    break
+            try:
+                conf = float(row["confidence_score"] or 0.0)
+            except (TypeError, ValueError):
+                conf = 0.0
+            items.append(
+                {
+                    "card_code": str(row["card_code"] or "").strip().upper(),
+                    "card_name": str(row["card_name"] or "").strip(),
+                    "publish_status": str(row["publish_status"] or "").strip(),
+                    "insight_type": insight_type,
+                    "confidence": conf,
+                    "insight_text": insight_text,
+                    "published_at": str(row["publish_updated_at"] or "").strip(),
+                    "thumb_path": _catalog_image_rel_to_images_cards_url(
+                        row["cv_thumb_path"]
+                    ),
+                    "image_path": _catalog_image_rel_to_images_cards_url(
+                        row["cv_set_image_path"]
+                    ),
+                }
+            )
+        return jsonify({"ok": True, "count": len(items), "items": items})
+
+    @app.get("/api/dev/tasks")
+    def dev_get_tasks():
+        with _TASK_QUEUE_LOCK:
+            items = _read_task_queue_items()
+        items_sorted = sorted(
+            items,
+            key=lambda row: str(row.get("created_at") or row.get("timestamp") or ""),
+            reverse=True,
+        )
+        return jsonify({"ok": True, "items": items_sorted})
+
+    @app.post("/api/dev/tasks")
+    def dev_post_task():
+        payload = request.get_json(silent=True)
+        payload = payload if isinstance(payload, dict) else request.form
+        prompt = str(payload.get("prompt") or "").rstrip()
+        scope = str(payload.get("scope") or "").strip()
+        label = str(payload.get("label") or "").strip()
+        if not label:
+            return jsonify({"ok": False, "error": "Label is required."}), 400
+        if not prompt:
+            return jsonify({"ok": False, "error": "Prompt is required."}), 400
+        if not scope:
+            scope = "Port 18765"
+
+        now = datetime.now(timezone.utc).isoformat()
+        task_id = uuid.uuid4().hex
+        item: dict[str, Any] = {
+            "task_id": task_id,
+            "label": label,
+            "prompt": prompt,
+            "scope": scope,
+            "status": "queued",
+            "created_at": now,
+            "updated_at": now,
+        }
+        with _TASK_QUEUE_LOCK:
+            items = _read_task_queue_items()
+            items.append(item)
+            _write_task_queue_items(items)
+        return jsonify({"ok": True, "item": item}), 200
+
+    @app.patch("/api/dev/tasks/<task_id>")
+    def dev_patch_task(task_id: str):
+        payload = request.get_json(silent=True)
+        payload = payload if isinstance(payload, dict) else request.form
+        status = str(payload.get("status") or "").strip().lower()
+        allowed = {"queued", "in_progress", "done", "failed"}
+        if status and status not in allowed:
+            return (
+                jsonify({"ok": False, "error": "Invalid status."}),
+                400,
+            )
+        with _TASK_QUEUE_LOCK:
+            items = _read_task_queue_items()
+            updated = None
+            for row in items:
+                row_id = str(row.get("task_id") or row.get("id") or "")
+                if row_id == str(task_id):
+                    if status:
+                        row["status"] = status
+                    row["updated_at"] = datetime.now(timezone.utc).isoformat()
+                    updated = row
+                    break
+            if updated is None:
+                return jsonify({"ok": False, "error": "Task not found."}), 404
+            _write_task_queue_items(items)
+        return jsonify({"ok": True, "item": updated}), 200
+
+    @app.post("/api/dev/publish-ready-insight-sync")
+    def dev_publish_ready_insight_sync():
+        """Bounded sync: miru_card_insights for card_intelligence.publish_ready (18765 only)."""
+        if int(CURRENT_SERVER_PORT or 0) != 18765:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "publish-ready-insight-sync is only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        if not is_local_request():
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "This action is only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
+        payload = request.get_json(silent=True) or {}
+        raw_limit = payload.get("limit", 70)
+        try:
+            lim = int(raw_limit)
+        except (TypeError, ValueError):
+            lim = 70
+        lim = max(1, min(lim, 80))
+
+        result = run_publish_ready_insight_sync(
+            limit=lim,
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+        )
+
+        ensure_catalog_sync_schema(FALLBACK_CATALOG_DB_PATH)
+        with closing(connect_catalog_db(FALLBACK_CATALOG_DB_PATH)) as conn:
+            _log_action_history(
+                conn,
+                action_id="publish.storefront_mutation",
+                action_title="Apply storefront mutation",
+                category="publish",
+                target_type="project_miru_storefront",
+                target_id="publish_ready_insight_sync",
+                execution_status="executed",
+                eligibility="allowed_with_review",
+                guardrail_label="Review required",
+                risk_level="medium",
+                confidence_score=0.92,
+                rationale=(
+                    "Testing environment execution: publish_ready insights will be populated into "
+                    "card_catalog.db for 18080 test site consumption. Operator must explicitly trigger. "
+                    "This path is blocked when 8080 promotion is re-enabled."
+                ),
+                sync_reason="operator_test_env_trigger",
+                payload={
+                    "decision_source": "operator_test_env_trigger",
+                    "limit": lim,
+                    "publish_ready_codes": result.get("publish_ready_codes") or [],
+                    "sync_report_keys": list((result.get("sync_report") or {}).keys()),
+                },
+            )
+
+        return jsonify(result)
+
+    @app.post("/api/dev/publish-review/approve")
+    def dev_publish_review_approve():
+        """Set publish_status to publish_ready for one card (catalog only). Localhost only."""
+        if not is_local_request():
+            return (
+                jsonify(
+                    {"ok": False, "error": "Approve is only allowed from localhost."}
+                ),
+                403,
+            )
+        payload = request.get_json(silent=True) or {}
+        card_code = str(payload.get("card_code") or "").strip().upper()
+        if not card_code:
+            return jsonify({"ok": False, "error": "card_code is required."}), 400
+        ok = update_publication_review_status(
+            card_code,
+            "publish_ready",
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+            require_review_state=True,
+        )
+        if not ok:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": f"No publish_requires_review row for {card_code}.",
+                    }
+                ),
+                404,
+            )
+        return jsonify(
+            {"ok": True, "card_code": card_code, "publish_status": "publish_ready"}
+        )
+
+    @app.post("/api/dev/publish-review/reject")
+    def dev_publish_review_reject():
+        """Set publish_status to publish_deferred for one card (catalog only). Localhost only."""
+        if not is_local_request():
+            return (
+                jsonify(
+                    {"ok": False, "error": "Reject is only allowed from localhost."}
+                ),
+                403,
+            )
+        payload = request.get_json(silent=True) or {}
+        card_code = str(payload.get("card_code") or "").strip().upper()
+        if not card_code:
+            return jsonify({"ok": False, "error": "card_code is required."}), 400
+        ok = update_publication_review_status(
+            card_code,
+            "publish_deferred",
+            project_db_path=FALLBACK_CATALOG_DB_PATH,
+            require_review_state=True,
+        )
+        if not ok:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": f"No publish_requires_review row for {card_code}.",
+                    }
+                ),
+                404,
+            )
+        return jsonify(
+            {"ok": True, "card_code": card_code, "publish_status": "publish_deferred"}
+        )
+
+    @app.post("/api/dev/publish-review/approve-all")
+    def dev_publish_review_approve_all():
+        """Move all publish_requires_review rows to publish_ready. Localhost only."""
+        if not is_local_request():
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Approve all is only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
+        n = approve_all_publication_review(project_db_path=FALLBACK_CATALOG_DB_PATH)
+        return jsonify({"ok": True, "updated": n})
 
     @app.post("/api/dev/approve-validation")
     def dev_approve_validation():
         """Approve one item: sync to project and remove from review queue. Localhost only."""
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Approve is only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {"ok": False, "error": "Approve is only allowed from localhost."}
+                ),
+                403,
+            )
         payload = request.get_json(silent=True) or {}
         item_id = payload.get("id")
         card_code = str(payload.get("card_code") or "").strip().upper()
         source_id = str(payload.get("source_id") or "").strip().lower()
         if not card_code or not source_id:
-            return jsonify({"ok": False, "error": "card_code and source_id are required."}), 400
+            return (
+                jsonify(
+                    {"ok": False, "error": "card_code and source_id are required."}
+                ),
+                400,
+            )
         dossier_path = Path(LEARNING_DOSSIER_DB_PATH)
         if not dossier_path.is_file():
-            return jsonify({"ok": False, "error": "Dossier DB not found; cannot load source record."}), 502
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Dossier DB not found; cannot load source record.",
+                    }
+                ),
+                502,
+            )
         try:
             with closing(sqlite3.connect(dossier_path)) as conn:
                 conn.row_factory = sqlite3.Row
@@ -7520,7 +10969,15 @@ def create_app() -> Flask:
         except sqlite3.Error as e:
             return jsonify({"ok": False, "error": f"Dossier read failed: {e}"}), 502
         if not row:
-            return jsonify({"ok": False, "error": f"No source record for {card_code} from {source_id}."}), 404
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": f"No source record for {card_code} from {source_id}.",
+                    }
+                ),
+                404,
+            )
         try:
             data = json.loads(str(row["field_payload_json"] or "{}"))
         except json.JSONDecodeError as e:
@@ -7532,7 +10989,11 @@ def create_app() -> Flask:
             traits = [str(x).strip() for x in traits_raw if str(x).strip()]
         else:
             text = str(traits_raw or "")
-            traits = [p.strip() for p in text.replace("/", " ").split() if p.strip()] if text else []
+            traits = (
+                [p.strip() for p in text.replace("/", " ").split() if p.strip()]
+                if text
+                else []
+            )
         try:
             record = NormalizedSourceRecord(
                 card_code=str(data.get("card_code") or card_code).strip().upper(),
@@ -7557,7 +11018,9 @@ def create_app() -> Flask:
             )
         except (TypeError, ValueError) as e:
             return jsonify({"ok": False, "error": f"Could not build record: {e}"}), 502
-        sync = MiruProjectDbSync(project_db_path=FALLBACK_CATALOG_DB_PATH, sync_immediate=True)
+        sync = MiruProjectDbSync(
+            project_db_path=FALLBACK_CATALOG_DB_PATH, sync_immediate=True
+        )
         try:
             sync.queue_validated_record(record, task_type="verify_official_fields")
         except Exception as e:
@@ -7566,17 +11029,31 @@ def create_app() -> Flask:
         if status_path.is_file() and item_id is not None:
             try:
                 with closing(sqlite3.connect(status_path)) as conn:
-                    conn.execute("DELETE FROM learner_review_queue WHERE id = ?", (int(item_id),))
+                    conn.execute(
+                        "DELETE FROM learner_review_queue WHERE id = ?", (int(item_id),)
+                    )
                     conn.commit()
             except sqlite3.Error:
                 pass
-        return jsonify({"ok": True, "card_code": card_code, "source_id": source_id, "message": "Approved and synced."})
+        return jsonify(
+            {
+                "ok": True,
+                "card_code": card_code,
+                "source_id": source_id,
+                "message": "Approved and synced.",
+            }
+        )
 
     @app.post("/api/dev/reject-validation")
     def dev_reject_validation():
         """Remove one item from the review queue (reject). Localhost only."""
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Reject is only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {"ok": False, "error": "Reject is only allowed from localhost."}
+                ),
+                403,
+            )
         payload = request.get_json(silent=True) or {}
         item_id = payload.get("id")
         if item_id is None:
@@ -7586,28 +11063,51 @@ def create_app() -> Flask:
             return jsonify({"ok": False, "error": "Status DB not found."}), 502
         try:
             with closing(sqlite3.connect(status_path)) as conn:
-                conn.execute("DELETE FROM learner_review_queue WHERE id = ?", (int(item_id),))
+                conn.execute(
+                    "DELETE FROM learner_review_queue WHERE id = ?", (int(item_id),)
+                )
                 conn.commit()
         except sqlite3.Error as e:
             return jsonify({"ok": False, "error": str(e)}), 502
-        return jsonify({"ok": True, "id": int(item_id), "message": "Rejected and removed from queue."})
+        return jsonify(
+            {
+                "ok": True,
+                "id": int(item_id),
+                "message": "Rejected and removed from queue.",
+            }
+        )
 
-    WORKTREE_REVIEW_SNAPSHOT_PATH = PROJECT_ROOT / "data" / "snapshots" / "community_cardlist.json"
+    WORKTREE_REVIEW_SNAPSHOT_PATH = (
+        PROJECT_ROOT / "data" / "snapshots" / "community_cardlist.json"
+    )
 
     @app.post("/api/dev/seed-review-task")
     def dev_seed_review_task():
         """Seed one verify_official_fields task (same as run_worktree_review_cycle.py). Localhost only."""
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Seed review task is only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Seed review task is only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
         payload = request.get_json(silent=True) or {}
         card_code = str(payload.get("card_code") or "OP01-001").strip().upper()
         if not card_code:
             return jsonify({"ok": False, "error": "card_code is required."}), 400
         if not WORKTREE_REVIEW_SNAPSHOT_PATH.is_file():
-            return jsonify({
-                "ok": False,
-                "error": f"Snapshot not found: {WORKTREE_REVIEW_SNAPSHOT_PATH}",
-            }), 502
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": f"Snapshot not found: {WORKTREE_REVIEW_SNAPSHOT_PATH}",
+                    }
+                ),
+                502,
+            )
         try:
             parser = build_learner_parser()
             args = parser.parse_args([])
@@ -7622,28 +11122,42 @@ def create_app() -> Flask:
                 task_payload={"snapshot_path": str(WORKTREE_REVIEW_SNAPSHOT_PATH)},
             )
         except Exception as e:
-            return jsonify({
-                "ok": False,
-                "error": str(e),
-                "card_code": card_code,
-                "source_id": "community-cardlist",
-            }), 200
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": str(e),
+                        "card_code": card_code,
+                        "source_id": "community-cardlist",
+                    }
+                ),
+                200,
+            )
         sync = result.get("project_sync") or {}
         added = sync.get("added_to_review_queue", False)
         invalidate_ttl_cache("learning_engine_status")
-        return jsonify({
-            "ok": result.get("ok") is True,
-            "card_code": result.get("card_code") or card_code,
-            "source_id": result.get("source_id") or "community-cardlist",
-            "message": result.get("message") or result.get("error") or ("Added to review queue." if added else "Task completed."),
-            "added_to_review_queue": added,
-        })
+        return jsonify(
+            {
+                "ok": result.get("ok") is True,
+                "card_code": result.get("card_code") or card_code,
+                "source_id": result.get("source_id") or "community-cardlist",
+                "message": result.get("message")
+                or result.get("error")
+                or ("Added to review queue." if added else "Task completed."),
+                "added_to_review_queue": added,
+            }
+        )
 
     @app.post("/api/dev/restart")
     def dev_restart():
         """Restart the learner: stop then start. On worktree with real control: stop managed process then start it. Proxies to main if configured."""
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Restart is only allowed from localhost."}), 403
+            return (
+                jsonify(
+                    {"ok": False, "error": "Restart is only allowed from localhost."}
+                ),
+                403,
+            )
         remote_url = resolve_runtime_monitor_status_url()
         if remote_url:
             ok, body = _proxy_dev_action_to_main("/api/dev/restart")
@@ -7654,16 +11168,109 @@ def create_app() -> Flask:
             ok, message, pid = _start_worktree_learner_process()
             clear_runtime_truth_cache()
             invalidate_ttl_cache("learning_engine_status")
-            return jsonify({
-                "ok": ok,
-                "status": "restarting" if ok else "error",
-                "learner_pid": pid,
-                "message": message if ok else f"Restart failed: {message}",
-            })
-        return jsonify({
-            "ok": True,
-            "message": "This runtime does not manage the worktree learner. Use the worktree Dev page (port 18765) to restart.",
-        })
+            return jsonify(
+                {
+                    "ok": ok,
+                    "status": "restarting" if ok else "error",
+                    "learner_pid": pid,
+                    "message": message if ok else f"Restart failed: {message}",
+                }
+            )
+        return jsonify(
+            {
+                "ok": True,
+                "message": "This runtime does not manage the worktree learner. Use the worktree Dev page (port 18765) to restart.",
+            }
+        )
+
+    def _kill_processes_bound_to_port(port: int) -> list[int]:
+        """Windows netstat/taskkill cleanup for ghost listeners on a target port."""
+        if os.name != "nt":
+            return []
+        pids: set[int] = set()
+        try:
+            out = subprocess.check_output(
+                ["netstat", "-ano"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            return []
+        needle = f":{int(port)}"
+        for raw_line in (out or "").splitlines():
+            line = str(raw_line or "").strip()
+            if not line or needle not in line:
+                continue
+            parts = [p for p in line.split() if p]
+            if len(parts) < 5:
+                continue
+            pid_raw = parts[-1]
+            if pid_raw.isdigit():
+                pid = int(pid_raw)
+                if pid > 0:
+                    pids.add(pid)
+        killed: list[int] = []
+        for pid in sorted(pids):
+            try:
+                subprocess.run(
+                    ["taskkill", "/F", "/PID", str(pid), "/T"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+                killed.append(pid)
+            except Exception:
+                continue
+        if killed:
+            time.sleep(1)
+        return killed
+
+    @app.post("/api/dev/restart/<int:port>")
+    def dev_restart_port(port: int):
+        """Restart only approved service ports from /dev runtime controls."""
+        if not _is_runtime_control_allowed():
+            return (
+                jsonify(
+                    {
+                        "error": "Restart allowed only from this machine or Tailscale",
+                    }
+                ),
+                403,
+            )
+        if port not in {18765, 18080}:
+            return (
+                jsonify(
+                    {
+                        "error": "Unsupported port",
+                    }
+                ),
+                400,
+            )
+        if port == 18765:
+            _kill_processes_bound_to_port(port)
+            code, out, err = _run_worktree_script(
+                "start_miru_ai_dev.ps1", ["-Force"], wait=False
+            )
+        else:
+            result = subprocess.run(
+                ["nssm", "restart", "MiruDashboard"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            code = result.returncode
+            out = result.stdout
+            err = result.stderr
+        if code != 0:
+            return (
+                jsonify(
+                    {
+                        "error": (err or out or "Restart launch failed").strip(),
+                    }
+                ),
+                502,
+            )
+        return jsonify({"status": "restarting", "port": int(port)})
 
     @app.get("/api/dev/usage")
     def legacy_dev_usage():
@@ -7678,35 +11285,89 @@ def create_app() -> Flask:
     def dev_self_report():
         """Localhost-only: Miru operator self-report (data/miru_self_report.json). Read-only file; not on the public storefront."""
         if not is_local_request():
-            return jsonify({"ok": False, "error": "Self-report is only available from localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Self-report is only available from localhost.",
+                    }
+                ),
+                403,
+            )
         path = PROJECT_ROOT / "data" / "miru_self_report.json"
         if not path.is_file():
-            return jsonify(
-                {
-                    "ok": False,
-                    "error": "Self-report not generated yet.",
-                    "hint": "Run: python -m tools.miru_self_report or complete the sandbox cycle (Stage 9).",
-                }
-            ), 404
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Self-report not generated yet.",
+                        "hint": "Run: python -m tools.miru_self_report or complete the sandbox cycle (Stage 9).",
+                    }
+                ),
+                404,
+            )
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except Exception as exc:
-            return jsonify({"ok": False, "error": f"Failed to read self-report: {exc}"}), 500
-        return jsonify({"ok": True, "path": "data/miru_self_report.json", "report": payload})
+            return (
+                jsonify({"ok": False, "error": f"Failed to read self-report: {exc}"}),
+                500,
+            )
+        return jsonify(
+            {"ok": True, "path": "data/miru_self_report.json", "report": payload}
+        )
 
     @app.get("/api/dev/validation_insights")
     def legacy_validation_insights():
         return jsonify(build_legacy_validation_insights())
 
+    @app.post("/api/dev/fetch-missing-images")
+    def dev_fetch_missing_images():
+        if not _runtime_trusted_network_client():
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Image fetch is only allowed from this machine, private LAN, or Tailscale.",
+                    }
+                ),
+                403,
+            )
+        started = _start_fetch_missing_images_job(trigger="manual_api")
+        if not started:
+            return jsonify(
+                {
+                    "status": "started",
+                    "message": "Image fetch already running in background",
+                }
+            )
+        return jsonify(
+            {
+                "status": "started",
+                "message": "Image fetch running in background",
+            }
+        )
+
     @app.post("/api/dev/test-pushover")
     def dev_test_pushover():
         if not (app.config.get("TESTING") or is_local_request()):
-            return jsonify({"ok": False, "error": "Pushover test endpoint is limited to localhost."}), 403
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Pushover test endpoint is limited to localhost.",
+                    }
+                ),
+                403,
+            )
 
         payload = request.get_json(silent=True)
         if not isinstance(payload, dict):
             payload = request.form
-        use_learning_summary = parse_bool_flag(payload.get("use_learning_summary")) or not str(payload.get("message", "")).strip()
+        use_learning_summary = (
+            parse_bool_flag(payload.get("use_learning_summary"))
+            or not str(payload.get("message", "")).strip()
+        )
         dry_run = parse_bool_flag(payload.get("dry_run"))
         learning_preview: dict[str, Any] | None = None
         if use_learning_summary:
@@ -7736,7 +11397,15 @@ def create_app() -> Flask:
             try:
                 priority = int(priority_raw)
             except ValueError:
-                return jsonify({"ok": False, "error": f"Invalid priority value: {priority_raw}"}), 400
+                return (
+                    jsonify(
+                        {
+                            "ok": False,
+                            "error": f"Invalid priority value: {priority_raw}",
+                        }
+                    ),
+                    400,
+                )
 
         pushover_status = inspect_pushover_env()
         if dry_run:
@@ -7744,7 +11413,9 @@ def create_app() -> Flask:
                 "ok": True,
                 "enabled": bool(pushover_status.get("enabled")),
                 "configured": bool(pushover_status.get("configured")),
-                "missing_required_keys": list(pushover_status.get("missing_required_keys") or []),
+                "missing_required_keys": list(
+                    pushover_status.get("missing_required_keys") or []
+                ),
                 "endpoint": "dry-run",
                 "status_code": 200,
                 "error": "",
@@ -7789,65 +11460,31 @@ def create_app() -> Flask:
     @app.get("/api/dev/card-validation/<card_code>")
     def dev_card_validation(card_code: str):
         normalized = normalize_card_code(card_code)
-        canonical_code = (normalized["canonical_code"] or card_code or "").strip().upper()
-        audit = load_card_validation_audit(canonical_code, project_db_path=FALLBACK_CATALOG_DB_PATH)
+        canonical_code = (
+            (normalized["canonical_code"] or card_code or "").strip().upper()
+        )
+        audit = load_card_validation_audit(
+            canonical_code, project_db_path=FALLBACK_CATALOG_DB_PATH
+        )
         if audit is None:
-            return jsonify({"ok": False, "card_code": canonical_code, "error": "Validation audit not found."}), 404
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "card_code": canonical_code,
+                        "error": "Validation audit not found.",
+                    }
+                ),
+                404,
+            )
         return jsonify({"ok": True, "card_code": canonical_code, "audit": audit})
 
+    @app.get("/api/run")
+    @app.get("/api/run/")
     @app.post("/api/run")
     @app.post("/api/run/")
     def run_request():
-        payload = request.get_json(silent=True)
-        if not isinstance(payload, dict):
-            payload = request.form
-
-        requested_mode = str(payload.get("mode", MODE_CONFIGS[0]["key"])).strip().lower()
-        request_text = str(payload.get("request_text", "")).strip()
-        file_path = str(payload.get("file_path", "")).strip()
-        selected_mode = resolve_effective_mode(requested_mode, request_text)
-        cli_mode = resolve_cli_mode(selected_mode)
-        command_preview = build_command_preview(selected_mode, request_text, file_path)
-        command_summary = build_command_summary(selected_mode)
-
-        errors = validate_inputs(selected_mode, request_text, file_path)
-        if errors:
-            return jsonify(
-                {
-                    "ok": False,
-                    "command": command_preview,
-                    "command_summary": command_summary,
-                    "mode": selected_mode,
-                    "requested_mode": requested_mode,
-                    "cli_mode": cli_mode,
-                    "mode_label": format_mode_label(selected_mode),
-                    "error": " ".join(errors),
-                }
-            ), 400
-
-        note_miru_run_started(selected_mode, request_text)
-        ok = False
-        output = ""
-        try:
-            ok, output = run_miru_ai(selected_mode, request_text, file_path)
-        finally:
-            note_miru_run_finished(selected_mode, request_text, ok, output)
-        status_code = 200 if ok else 502
-        response_body = {
-            "ok": ok,
-            "command": command_preview,
-            "command_summary": command_summary,
-            "mode": selected_mode,
-            "requested_mode": requested_mode,
-            "cli_mode": cli_mode,
-            "mode_label": format_mode_label(selected_mode),
-        }
-        if ok:
-            response_body["output"] = output
-        else:
-            response_body["error"] = output
-
-        return jsonify(response_body), status_code
+        abort(404)
 
     return app
 
@@ -7856,8 +11493,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Lightweight Flask sidecar for running tools/miru_ai.py from a phone or browser."
     )
-    parser.add_argument("--host", default="0.0.0.0", help="Host to bind the Flask app to.")
-    parser.add_argument("--port", type=int, default=8765, help="Port to bind the Flask app to.")
+    parser.add_argument(
+        "--host", default="0.0.0.0", help="Host to bind the Flask app to."
+    )
+    parser.add_argument(
+        "--port", type=int, default=8765, help="Port to bind the Flask app to."
+    )
     parser.add_argument(
         "--debug",
         action="store_true",
@@ -7876,7 +11517,13 @@ def main() -> None:
     if os.name == "nt":
         os.environ.pop("WERKZEUG_SERVER_FD", None)
         os.environ.pop("WERKZEUG_RUN_MAIN", None)
-    app.run(host=args.host, port=args.port, debug=args.debug, use_reloader=False, threaded=True)
+    app.run(
+        host=args.host,
+        port=args.port,
+        debug=args.debug,
+        use_reloader=False,
+        threaded=True,
+    )
 
 
 if __name__ == "__main__":

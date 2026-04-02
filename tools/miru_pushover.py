@@ -19,8 +19,8 @@ OPERATOR_NOTIFICATION_LOCK = Lock()
 DEFAULT_OPERATOR_EVENT_COOLDOWNS = {
     "learning_worker_started": 60,
     "learning_worker_stopped": 60,
-    "learning_worker_restarted": 30,
-    "miru_ai_restarted": 30,
+    "learning_worker_restarted": 300,
+    "miru_ai_restarted": 600,
     "learning_milestone": 1800,
     "critical_learning_failure": 300,
     "test": 0,

@@ -1,0 +1,442 @@
+{
+  "category_id": 68,
+  "groups_url": "https://tcgcsv.com/tcgplayer/68/groups",
+  "total_groups_from_api": 72,
+  "fetched_success": 72,
+  "skipped_existing": 0,
+  "failed_count": 0,
+  "groups": [
+    {
+      "group_id": 24637,
+      "group_name": "Adventure on Kami's Island",
+      "folder_path": "data/tcgcsv/24637",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24638,
+      "group_name": "Adventure on Kami's Island Release Event Cards",
+      "folder_path": "data/tcgcsv/24638",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24545,
+      "group_name": "Extra Booster: One Piece Heroines Edition",
+      "folder_path": "data/tcgcsv/24545",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24575,
+      "group_name": "Starter Deck 29: Egghead",
+      "folder_path": "data/tcgcsv/24575",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24537,
+      "group_name": "The Azure Sea's Seven",
+      "folder_path": "data/tcgcsv/24537",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24579,
+      "group_name": "The Azure Sea's Seven Release Event Cards",
+      "folder_path": "data/tcgcsv/24579",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24303,
+      "group_name": "Carrying On His Will",
+      "folder_path": "data/tcgcsv/24303",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24498,
+      "group_name": "Carrying On His Will: 3rd Anniversary Tournament Cards",
+      "folder_path": "data/tcgcsv/24498",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24306,
+      "group_name": "Learn Together Deck Set",
+      "folder_path": "data/tcgcsv/24306",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24305,
+      "group_name": "Premium Booster -The Best- Vol. 2",
+      "folder_path": "data/tcgcsv/24305",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24304,
+      "group_name": "Starter Deck 22: Ace & Newgate",
+      "folder_path": "data/tcgcsv/24304",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24302,
+      "group_name": "Legacy of the Master",
+      "folder_path": "data/tcgcsv/24302",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24406,
+      "group_name": "Legacy of the Master Release Event Cards",
+      "folder_path": "data/tcgcsv/24406",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24241,
+      "group_name": "A Fist of Divine Speed",
+      "folder_path": "data/tcgcsv/24241",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24282,
+      "group_name": "Starter Deck 23: RED Shanks",
+      "folder_path": "data/tcgcsv/24282",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24283,
+      "group_name": "Starter Deck 24: GREEN Jewelry Bonney",
+      "folder_path": "data/tcgcsv/24283",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24284,
+      "group_name": "Starter Deck 25: BLUE Buggy",
+      "folder_path": "data/tcgcsv/24284",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24285,
+      "group_name": "Starter Deck 26: PURPLE/BLACK Monkey.D.Luffy",
+      "folder_path": "data/tcgcsv/24285",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24286,
+      "group_name": "Starter Deck 27: BLACK Marshall.D.Teach",
+      "folder_path": "data/tcgcsv/24286",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24287,
+      "group_name": "Starter Deck 28: GREEN/YELLOW Yamato",
+      "folder_path": "data/tcgcsv/24287",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24242,
+      "group_name": "A Fist of Divine Speed Release Event Cards",
+      "folder_path": "data/tcgcsv/24242",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23834,
+      "group_name": "Extra Booster: Anime 25th Collection",
+      "folder_path": "data/tcgcsv/23834",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23766,
+      "group_name": "Royal Blood",
+      "folder_path": "data/tcgcsv/23766",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 24068,
+      "group_name": "Royal Blood Release Event Cards",
+      "folder_path": "data/tcgcsv/24068",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23991,
+      "group_name": "Starter Deck EX: Gear 5",
+      "folder_path": "data/tcgcsv/23991",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23589,
+      "group_name": "Emperors in the New World",
+      "folder_path": "data/tcgcsv/23589",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23590,
+      "group_name": "Emperors in the New World: 2nd Anniversary Tournament Cards",
+      "folder_path": "data/tcgcsv/23590",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23907,
+      "group_name": "One Piece Demo Deck Cards",
+      "folder_path": "data/tcgcsv/23907",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23890,
+      "group_name": "Revision Pack Cards",
+      "folder_path": "data/tcgcsv/23890",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23496,
+      "group_name": "Premium Booster -The Best-",
+      "folder_path": "data/tcgcsv/23496",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23490,
+      "group_name": "Starter Deck 15: RED Edward.Newgate",
+      "folder_path": "data/tcgcsv/23490",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23491,
+      "group_name": "Starter Deck 16: GREEN Uta",
+      "folder_path": "data/tcgcsv/23491",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23492,
+      "group_name": "Starter Deck 17: BLUE Donquixote Doflamingo",
+      "folder_path": "data/tcgcsv/23492",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23493,
+      "group_name": "Starter Deck 18: PURPLE Monkey.D.Luffy",
+      "folder_path": "data/tcgcsv/23493",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23494,
+      "group_name": "Starter Deck 19: BLACK Smoker",
+      "folder_path": "data/tcgcsv/23494",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23495,
+      "group_name": "Starter Deck 20: YELLOW Charlotte Katakuri",
+      "folder_path": "data/tcgcsv/23495",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23462,
+      "group_name": "Two Legends",
+      "folder_path": "data/tcgcsv/23462",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23737,
+      "group_name": "Two Legends Pre-Release Cards",
+      "folder_path": "data/tcgcsv/23737",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23489,
+      "group_name": "Starter Deck 14: 3D2Y",
+      "folder_path": "data/tcgcsv/23489",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23387,
+      "group_name": "500 Years in the Future",
+      "folder_path": "data/tcgcsv/23387",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23512,
+      "group_name": "500 Years in the Future Pre-Release Cards",
+      "folder_path": "data/tcgcsv/23512",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23333,
+      "group_name": "Extra Booster: Memorial Collection",
+      "folder_path": "data/tcgcsv/23333",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23349,
+      "group_name": "Ultra Deck: The Three Brothers",
+      "folder_path": "data/tcgcsv/23349",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23348,
+      "group_name": "Starter Deck 12: Zoro and Sanji",
+      "folder_path": "data/tcgcsv/23348",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23272,
+      "group_name": "Wings of the Captain",
+      "folder_path": "data/tcgcsv/23272",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23424,
+      "group_name": "Wings of the Captain Pre-Release Cards",
+      "folder_path": "data/tcgcsv/23424",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23250,
+      "group_name": "Starter Deck 11: Uta",
+      "folder_path": "data/tcgcsv/23250",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23213,
+      "group_name": "Awakening of the New Era",
+      "folder_path": "data/tcgcsv/23213",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23368,
+      "group_name": "Awakening of the New Era: 1st Anniversary Tournament Cards",
+      "folder_path": "data/tcgcsv/23368",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23243,
+      "group_name": "Ultra Deck: The Three Captains",
+      "folder_path": "data/tcgcsv/23243",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23304,
+      "group_name": "One Piece Collection Sets",
+      "folder_path": "data/tcgcsv/23304",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23024,
+      "group_name": "Kingdoms of Intrigue",
+      "folder_path": "data/tcgcsv/23024",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23297,
+      "group_name": "Kingdoms of Intrigue Pre-Release Cards",
+      "folder_path": "data/tcgcsv/23297",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 22956,
+      "group_name": "Starter Deck 8: Monkey.D.Luffy",
+      "folder_path": "data/tcgcsv/22956",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 22957,
+      "group_name": "Starter Deck 9: Yamato",
+      "folder_path": "data/tcgcsv/22957",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 22890,
+      "group_name": "Pillars of Strength",
+      "folder_path": "data/tcgcsv/22890",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 23232,
+      "group_name": "Pillars of Strength Pre-Release Cards",
+      "folder_path": "data/tcgcsv/23232",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 22930,
+      "group_name": "Starter Deck 7: Big Mom Pirates",
+      "folder_path": "data/tcgcsv/22930",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 17698,
+      "group_name": "Paramount War",
+      "folder_path": "data/tcgcsv/17698",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 17699,
+      "group_name": "Starter Deck 6: Absolute Justice",
+      "folder_path": "data/tcgcsv/17699",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 22934,
+      "group_name": "Paramount War Pre-Release Cards",
+      "folder_path": "data/tcgcsv/22934",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 17687,
+      "group_name": "Starter Deck 5: Film Edition",
+      "folder_path": "data/tcgcsv/17687",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 3188,
+      "group_name": "Romance Dawn",
+      "folder_path": "data/tcgcsv/3188",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 3189,
+      "group_name": "Starter Deck 1: Straw Hat Crew",
+      "folder_path": "data/tcgcsv/3189",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 3191,
+      "group_name": "Starter Deck 2: Worst Generation",
+      "folder_path": "data/tcgcsv/3191",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 3192,
+      "group_name": "Starter Deck 3: The Seven Warlords of The Sea",
+      "folder_path": "data/tcgcsv/3192",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 3190,
+      "group_name": "Starter Deck 4: Animal Kingdom Pirates",
+      "folder_path": "data/tcgcsv/3190",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 17675,
+      "group_name": "One Piece Promotion Cards",
+      "folder_path": "data/tcgcsv/17675",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 17659,
+      "group_name": "Super Pre-Release Starter Deck 1: Straw Hat Crew",
+      "folder_path": "data/tcgcsv/17659",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 17658,
+      "group_name": "Super Pre-Release Starter Deck 2: Worst Generation",
+      "folder_path": "data/tcgcsv/17658",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 17660,
+      "group_name": "Super Pre-Release Starter Deck 3: The Seven Warlords of the Sea",
+      "folder_path": "data/tcgcsv/17660",
+      "fetch_status": "success"
+    },
+    {
+      "group_id": 17661,
+      "group_name": "Super Pre-Release Starter Deck 4: Animal Kingdom Pirates",
+      "folder_path": "data/tcgcsv/17661",
+      "fetch_status": "success"
+    }
+  ]
+}

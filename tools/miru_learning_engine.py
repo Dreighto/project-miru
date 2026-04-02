@@ -68,13 +68,6 @@ from tools.miru_pushover import send_operator_notification
 from tools.miru_ethics_gates import can_auto_intake_discovered_source
 from tools.miru_official_notice_ingest import ingest_notice_file
 from tools.miru_official_rulings_ingest import ingest_rulings_file
-try:
-    from tools.miru_mongo_client import MiruMongoClient, MiruMongoSettings
-    from tools.miru_mongo_intake import stage_source_verification
-except Exception:  # pragma: no cover - runtime optional dependency
-    MiruMongoClient = None  # type: ignore[assignment]
-    MiruMongoSettings = None  # type: ignore[assignment]
-    stage_source_verification = None  # type: ignore[assignment]
 from tools.miru_source_discovery import (
     DiscoveredSourceCandidate,
     discover_source_candidates,
@@ -605,7 +598,6 @@ class MiruLearningEngine:
         )
         self.verified_dossier_store = MiruDossierStore(self.verified_dossier_db_path)
         self._last_milestone_check = 0.0
-        self._mongo_client: MiruMongoClient | None = None
 
     def ensure_datastores(self) -> None:
         for path in (self.queue_db_path, self.status_db_path, self.dossier_db_path, self.verified_dossier_db_path, self.catalog_db_path, self.project_db_path):
@@ -10307,160 +10299,21 @@ class MiruLearningEngine:
         source_payloads = payload.get("source_payloads") if isinstance(payload.get("source_payloads"), dict) else {}
         scoped_payload = dict(source_payloads.get(source_id) or {})
         merged = {**self.resolve_default_source_task_payload(source_id), **scoped_payload}
-        for key in ("snapshot_path", "snapshot_url", "set_code", "batch_limit"):
+        for key in ("set_code", "batch_limit"):
             if key in payload and key not in merged:
                 merged[key] = payload[key]
+        # Explicit snapshot_path on the task wins when it points at an existing file (operator/runner intent).
+        sp = str(payload.get("snapshot_path") or "").strip()
+        if sp:
+            cand = Path(sp)
+            if not cand.is_absolute():
+                cand = PROJECT_ROOT / cand
+            if cand.is_file():
+                merged["snapshot_path"] = str(cand.resolve())
+        su = str(payload.get("snapshot_url") or "").strip()
+        if su:
+            merged["snapshot_url"] = su
         return merged
-
-    def _resolve_mongo_client(self) -> MiruMongoClient | None:
-        if MiruMongoClient is None or MiruMongoSettings is None:
-            return None
-        if self._mongo_client is not None:
-            return self._mongo_client
-        settings = MiruMongoSettings.from_env(default_enabled=False)
-        if not bool(settings.enabled):
-            return None
-        self._mongo_client = MiruMongoClient(settings)
-        return self._mongo_client
-
-    def _load_source_payload_for_mongo_stage(
-        self,
-        *,
-        source_id: str,
-        card_code: str,
-        set_code: str = "",
-        task_payload: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        source_entry = self.resolve_source_entry(source_id)
-        payload = dict(task_payload or {})
-        inline_payload = payload.get("payload") if isinstance(payload.get("payload"), (dict, list)) else None
-        snapshot_path = payload.get("snapshot_path") or ""
-        snapshot_url = payload.get("snapshot_url") or ""
-        adapter_key = normalize_source_execution_adapter_key(str(getattr(source_entry, "execution_adapter", "") or ""))
-
-        if adapter_key in {"", "official-cardlist"}:
-            loaded = self.official_source_adapter.load_payload(
-                source_entry=source_entry,
-                payload=inline_payload if isinstance(inline_payload, dict) else None,
-                snapshot_path=snapshot_path,
-                snapshot_url=snapshot_url,
-            )
-            return {
-                "payload": loaded,
-                "source_url": str(snapshot_url or source_entry.snapshot_url or source_entry.base_url or "").strip(),
-                "source_reference": str(card_code or "").strip().upper(),
-                "payload_kind": "official-cardlist",
-            }
-
-        if adapter_key in {
-            "official-deck-features",
-            "official-rules-faq",
-            "official-restriction-notices",
-            "official-errata-cards",
-        }:
-            loaded = self.structured_source_adapter.load_payload(
-                source_entry=source_entry,
-                payload=inline_payload if isinstance(inline_payload, dict) else None,
-                snapshot_path=snapshot_path,
-                snapshot_url=snapshot_url,
-            )
-            return {
-                "payload": loaded,
-                "source_url": str(snapshot_url or source_entry.snapshot_url or source_entry.base_url or "").strip(),
-                "source_reference": str(card_code or "").strip().upper(),
-                "payload_kind": adapter_key,
-            }
-
-        if adapter_key == "optcg-api":
-            endpoint = self.optcg_api_adapter.fetch_endpoint_payload(
-                source_entry=source_entry,
-                endpoint_family=str(payload.get("endpoint_family") or "").strip(),
-                card_code=card_code,
-                set_code=str(payload.get("set_code") or set_code or "").strip(),
-                filters=payload.get("filters") if isinstance(payload.get("filters"), dict) else None,
-                payload=inline_payload,
-                snapshot_path=snapshot_path,
-                snapshot_url=snapshot_url,
-                allow_catalog_pull=bool(payload.get("allow_catalog_pull")),
-            )
-            return {
-                "payload": endpoint.get("payload"),
-                "source_url": str(endpoint.get("request_url") or source_entry.base_url or "").strip(),
-                "source_reference": str(card_code or "").strip().upper(),
-                "payload_kind": str(endpoint.get("endpoint_family") or "optcg-api").strip(),
-                "row_count": int(endpoint.get("row_count") or 0),
-            }
-
-        if adapter_key == "community-structured":
-            loaded = self.community_structured_adapter.load_payload(
-                source_entry=source_entry,
-                payload=inline_payload,
-                snapshot_path=snapshot_path,
-                snapshot_url=snapshot_url,
-            )
-            return {
-                "payload": loaded,
-                "source_url": str(snapshot_url or source_entry.snapshot_url or source_entry.base_url or "").strip(),
-                "source_reference": str(card_code or "").strip().upper(),
-                "payload_kind": "community-structured",
-            }
-
-        raise SourceAdapterError(f"Mongo staging does not support execution adapter '{adapter_key}'.")
-
-    def maybe_stage_source_verification_to_mongo(
-        self,
-        *,
-        card_code: str,
-        source_id: str,
-        task_type: str,
-        execution_kind: str,
-        task_payload: dict[str, Any] | None = None,
-        normalized_records: Sequence[NormalizedSourceRecord] | None = None,
-        status: str = "processed",
-        extra_metadata: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        client = self._resolve_mongo_client()
-        if client is None or stage_source_verification is None:
-            return {"enabled": False, "status": "disabled"}
-        try:
-            raw_snapshot = self._load_source_payload_for_mongo_stage(
-                source_id=source_id,
-                card_code=card_code,
-                set_code=str((task_payload or {}).get("set_code") or "").strip(),
-                task_payload=task_payload,
-            )
-        except Exception as exc:
-            return {
-                "enabled": True,
-                "status": "stage_failed_closed",
-                "error": str(exc),
-            }
-        try:
-            result = stage_source_verification(
-                client=client,
-                source_id=source_id,
-                card_code=card_code,
-                source_reference=str(raw_snapshot.get("source_reference") or ""),
-                source_url=str(raw_snapshot.get("source_url") or ""),
-                task_type=task_type,
-                execution_kind=execution_kind,
-                status=status,
-                raw_payload=raw_snapshot.get("payload"),
-                normalized_records=[record.to_dict() for record in (normalized_records or ())],
-                task_payload=task_payload,
-                metadata={
-                    "payload_kind": str(raw_snapshot.get("payload_kind") or "").strip(),
-                    "row_count": int(raw_snapshot.get("row_count") or 0),
-                    **dict(extra_metadata or {}),
-                },
-            )
-        except Exception as exc:
-            return {
-                "enabled": True,
-                "status": "stage_failed_closed",
-                "error": str(exc),
-            }
-        return result
 
     def plan_approved_source_support_lanes(
         self,
@@ -10583,16 +10436,6 @@ class MiruLearningEngine:
             task_payload=payload,
         )
         if not records:
-            mongo_stage = self.maybe_stage_source_verification_to_mongo(
-                card_code=resolved_card_code,
-                source_id=source_id,
-                task_type=task_type,
-                execution_kind=execution_kind,
-                task_payload=payload,
-                normalized_records=[],
-                status="processed_no_match",
-                extra_metadata={"match_found": False},
-            )
             return {
                 "card_code": resolved_card_code,
                 "source_id": str(source_id or "").strip().lower(),
@@ -10604,7 +10447,6 @@ class MiruLearningEngine:
                 "reason": "No matching approved source record was available for this card.",
                 "governance": governance,
                 "new_source_ids": [],
-                "mongo_staging": mongo_stage,
             }
 
         record = records[0]
@@ -10635,20 +10477,6 @@ class MiruLearningEngine:
             if str(item.get("source_id") or "").strip()
         }
         new_source_ids = sorted(after_source_ids - before_source_ids)
-        mongo_stage = self.maybe_stage_source_verification_to_mongo(
-            card_code=resolved_card_code,
-            source_id=source_id,
-            task_type=task_type,
-            execution_kind=execution_kind,
-            task_payload=payload,
-            normalized_records=records,
-            status="processed_matched",
-            extra_metadata={
-                "match_found": True,
-                "stored": bool(fact_acceptance.get("stored")),
-                "new_distinct_source_added": str(record.source_id or "").strip().lower() in new_source_ids,
-            },
-        )
         return {
             "card_code": resolved_card_code,
             "source_id": str(record.source_id or "").strip().lower(),
@@ -10663,7 +10491,6 @@ class MiruLearningEngine:
             "project_sync": sync_result,
             "new_source_ids": new_source_ids,
             "new_distinct_source_added": str(record.source_id or "").strip().lower() in new_source_ids,
-            "mongo_staging": mongo_stage,
         }
 
     def store_source_record(
@@ -12957,6 +12784,58 @@ class MiruLearningEngine:
                 results.append(future.result())
         return results
 
+    def _with_catalog_sync_lock_retry(
+        self,
+        fn: Callable[[], Any],
+        *,
+        card_code: str,
+        sync_context: str,
+        failure_result: Any | None = None,
+    ) -> Any:
+        """
+        Retry card_catalog.db writes on SQLITE_BUSY / database is locked.
+        3 retries with sleeps 500ms, 1s, 2s (library sync path only).
+        """
+        backoffs = (0.5, 1.0, 2.0)
+        last_exc: sqlite3.OperationalError | None = None
+        for attempt in range(len(backoffs) + 1):
+            try:
+                return fn()
+            except sqlite3.OperationalError as exc:
+                last_exc = exc
+                msg = str(exc).lower()
+                if "locked" not in msg and "busy" not in msg:
+                    raise
+                if attempt >= len(backoffs):
+                    break
+                time.sleep(backoffs[attempt])
+        cc = str(card_code or "").strip().upper()
+        try:
+            self.append_log(
+                level="error",
+                event_type="card_sync_failed",
+                message=(
+                    f"Library sync exhausted lock retries ({sync_context}): {last_exc!s}"
+                ),
+                card_code=cc,
+                task_type="library_sync",
+            )
+        except sqlite3.OperationalError:
+            pass
+        if failure_result is not None:
+            return failure_result
+        return {
+            "outcomes": [
+                {
+                    "status": "error",
+                    "reason": "catalog_database_locked",
+                    "detail": str(last_exc) if last_exc else "",
+                    "card_code": cc,
+                }
+            ],
+            "catalog_lock_retry_exhausted": True,
+        }
+
     def queue_validated_card_for_project_sync(
         self,
         record: NormalizedSourceRecord,
@@ -12965,10 +12844,14 @@ class MiruLearningEngine:
         suppress_notifications: bool = False,
     ) -> dict[str, Any]:
         supporting_sources = self.build_registry_supporting_entries(record.card_code)
-        result = self.project_sync.queue_validated_record(
-            record,
-            task_type=task_type,
-            additional_sources=supporting_sources,
+        result = self._with_catalog_sync_lock_retry(
+            lambda: self.project_sync.queue_validated_record(
+                record,
+                task_type=task_type,
+                additional_sources=supporting_sources,
+            ),
+            card_code=str(record.card_code or ""),
+            sync_context="queue_validated_record",
         )
         if not suppress_notifications:
             self.notify_project_sync_outcomes(result)
@@ -12992,11 +12875,16 @@ class MiruLearningEngine:
                     "additional_sources": self.build_registry_supporting_entries(record.card_code),
                 }
             )
-        result = self.project_sync.queue_validated_records(
-            items,
-            task_type=task_type,
-            reason=reason,
-            progress_callback=progress_callback,
+        first_cc = str(records[0].card_code or "") if records else ""
+        result = self._with_catalog_sync_lock_retry(
+            lambda: self.project_sync.queue_validated_records(
+                items,
+                task_type=task_type,
+                reason=reason,
+                progress_callback=progress_callback,
+            ),
+            card_code=first_cc,
+            sync_context=f"bulk_queue_project_sync:{reason}",
         )
         if not suppress_notifications:
             self.notify_project_sync_outcomes(result)
@@ -13008,8 +12896,19 @@ class MiruLearningEngine:
             if status in {"synced", "pending_confirmation"}:
                 continue
 
-    def flush_pending_project_sync(self, *, reason: str) -> dict[str, int]:
-        return self.project_sync.flush_pending(reason=reason)
+    def flush_pending_project_sync(self, *, reason: str) -> dict[str, Any]:
+        return self._with_catalog_sync_lock_retry(
+            lambda: self.project_sync.flush_pending(reason=reason),
+            card_code="",
+            sync_context=f"flush_pending:{reason}",
+            failure_result={
+                "flushed": 0,
+                "failed": 1,
+                "pending": 0,
+                "outcomes": [],
+                "catalog_lock_retry_exhausted": True,
+            },
+        )
 
     def prime_work(
         self,
@@ -13385,7 +13284,7 @@ def handle_verify_official_fields(engine: MiruLearningEngine, task: LearningTask
             source_id=source_id,
             message_prefix="Deferred governed source verification",
         )
-    payload = dict(task.task_payload or {})
+    payload = engine.resolve_source_task_payload(source_id, dict(task.task_payload or {}))
     records: list[NormalizedSourceRecord] = []
     if engine.source_payload_has_adapter_input(payload):
         records = engine.fetch_official_source_records(
@@ -13995,7 +13894,12 @@ def handle_fetch_card_image(engine: MiruLearningEngine, task: LearningTask) -> d
     }
 
 
-def handle_verify_card_image(engine: MiruLearningEngine, task: LearningTask) -> dict[str, Any]:
+def handle_verify_card_image(
+    engine: MiruLearningEngine,
+    task: LearningTask,
+    *,
+    image_source_context: str | None = None,
+) -> dict[str, Any]:
     if not task.card_code:
         raise ValueError("verify_card_image requires a card_code")
     payload = dict(task.task_payload or {})
@@ -14014,6 +13918,15 @@ def handle_verify_card_image(engine: MiruLearningEngine, task: LearningTask) -> 
         path = engine.image_dest_root / path
     if not path.is_file():
         raise FileNotFoundError(f"Local image file missing: {path}")
+    # Infer image_source_context from path if not supplied by caller.
+    # miru_image_training images must skip card_code conflict checking —
+    # they are canonical reference artwork, not pipeline fetch results.
+    if image_source_context is None:
+        try:
+            if "miru_image_training" in path.parts:
+                image_source_context = "miru_image_training"
+        except Exception:
+            pass
     image_bytes = path.read_bytes()
     image_hash = hashlib.sha256(image_bytes).hexdigest()
     width, height = read_png_dimensions(image_bytes)
@@ -14053,6 +13966,7 @@ def handle_verify_card_image(engine: MiruLearningEngine, task: LearningTask) -> 
             variant_key=variant_key,
             expected_facts=expected_facts,
             source_rollup=source_rollup,
+            image_source_context=image_source_context,
         )
         engine.store_image_analysis(
             card_code=task.card_code,

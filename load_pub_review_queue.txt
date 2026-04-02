@@ -1,0 +1,37 @@
+﻿
+  
+  
+> def load_publication_review_queue(
+      *,
+      project_db_path: Path = FALLBACK_CATALOG_DB_PATH,
+      limit: int = 500,
+  ) -> list[dict[str, Any]]:
+      """
+      Cards in card_intelligence.publish_status = publish_requires_review (catalog 
+DB).
+      Enriches with best miru_card_insights row per card when available.
+      """
+      path = Path(project_db_path)
+      if not path.is_file():
+          return []
+      limit = max(int(limit), 1)
+      sql = """
+          SELECT
+              c.canonical_code AS card_code,
+              ci.publish_status,
+              ci.publish_updated_at,
+              ci.confidence_score AS catalog_confidence,
+              ci.source_summary,
+              (
+                  SELECT m.insight_type
+                  FROM miru_card_insights m
+                  WHERE m.card_id = c.canonical_code
+                  ORDER BY m.confidence DESC, m.updated_at DESC
+                  LIMIT 1
+              ) AS insight_type,
+              (
+                  SELECT m.insight_text
+                  FROM miru_card_insights m
+                  WHERE m.card_id = c.canonical_code
+
+

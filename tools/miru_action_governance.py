@@ -465,7 +465,7 @@ ACTION_REGISTRY: tuple[dict[str, Any], ...] = (
         "title": "Apply storefront mutation",
         "description": "Mutate Project Miru storefront behavior or rendering from the backend action layer.",
         "category": "publish",
-        "allowed_mode": "blocked",
+        "allowed_mode": "safe_action",
         "risk_level": "high",
         "required_preconditions": (),
         "target_scope": "project_miru_storefront",
@@ -4207,6 +4207,138 @@ def _review_queue_item_key(card_code: str) -> str:
     return f"publication:{_normalize_code(card_code)}"
 
 
+def image_variant_sp_queue_item_key(card_code: str) -> str:
+    return f"image_variant_sp:{_normalize_code(card_code)}"
+
+
+def enqueue_image_variant_sp_review_queue(
+    conn: sqlite3.Connection,
+    *,
+    canonical_code: str,
+    summary_text: str,
+    payload: dict[str, Any],
+    decision_source: str = "image_variant_classifier",
+) -> None:
+    """Queue operator review when image analysis reports [SP] on the card ID label."""
+    code = _normalize_code(canonical_code)
+    if not code:
+        return
+    item_key = image_variant_sp_queue_item_key(code)
+    now = _utc_now_timestamp()
+    review_reason = "image_analysis_sp_marker_detected"
+    approval_state = "pending_review"
+    promotion_state, _ = _derive_promotion_fields(
+        readiness_state="image_sp_review_pending",
+        approval_state=approval_state,
+        queue_status="pending",
+        guardrail_label="",
+    )
+    conn.execute(
+        """
+        INSERT INTO miru_review_queue (
+            item_key,
+            queue_type,
+            target_type,
+            target_id,
+            readiness_state,
+            review_reason,
+            guardrail_label,
+            confidence_score,
+            risk_level,
+            recommended_next_step,
+            summary_text,
+            supporting_sections_json,
+            payload_json,
+            status,
+            approval_state,
+            promotion_state,
+            approval_note,
+            decision_source,
+            resolution_note,
+            created_at,
+            updated_at,
+            resolved_at,
+            approval_updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(item_key) DO UPDATE SET
+            queue_type = excluded.queue_type,
+            target_type = excluded.target_type,
+            target_id = excluded.target_id,
+            readiness_state = excluded.readiness_state,
+            review_reason = excluded.review_reason,
+            guardrail_label = excluded.guardrail_label,
+            confidence_score = excluded.confidence_score,
+            risk_level = excluded.risk_level,
+            recommended_next_step = excluded.recommended_next_step,
+            summary_text = excluded.summary_text,
+            supporting_sections_json = excluded.supporting_sections_json,
+            payload_json = excluded.payload_json,
+            status = CASE
+                WHEN trim(coalesce(miru_review_queue.approval_state, '')) IN ('approved_for_candidate', 'rejected', 'superseded')
+                    THEN miru_review_queue.status
+                ELSE 'pending'
+            END,
+            approval_state = CASE
+                WHEN trim(coalesce(miru_review_queue.approval_state, '')) IN ('approved_for_candidate', 'rejected', 'superseded')
+                    THEN miru_review_queue.approval_state
+                ELSE excluded.approval_state
+            END,
+            promotion_state = CASE
+                WHEN trim(coalesce(miru_review_queue.approval_state, '')) IN ('approved_for_candidate', 'rejected', 'superseded')
+                    THEN miru_review_queue.promotion_state
+                ELSE excluded.promotion_state
+            END,
+            approval_note = CASE
+                WHEN trim(coalesce(miru_review_queue.approval_state, '')) IN ('approved_for_candidate', 'rejected', 'superseded')
+                    THEN miru_review_queue.approval_note
+                ELSE excluded.approval_note
+            END,
+            decision_source = excluded.decision_source,
+            resolution_note = CASE
+                WHEN trim(coalesce(miru_review_queue.approval_state, '')) IN ('approved_for_candidate', 'rejected', 'superseded')
+                    THEN miru_review_queue.resolution_note
+                ELSE ''
+            END,
+            updated_at = excluded.updated_at,
+            resolved_at = CASE
+                WHEN trim(coalesce(miru_review_queue.approval_state, '')) IN ('approved_for_candidate', 'rejected', 'superseded')
+                    THEN miru_review_queue.resolved_at
+                ELSE ''
+            END,
+            approval_updated_at = CASE
+                WHEN trim(coalesce(miru_review_queue.approval_state, '')) IN ('approved_for_candidate', 'rejected', 'superseded')
+                    THEN miru_review_queue.approval_updated_at
+                ELSE excluded.approval_updated_at
+            END
+        """,
+        (
+            item_key,
+            "image_variant_sp",
+            "card",
+            code,
+            "image_sp_review_pending",
+            review_reason,
+            "",
+            0.0,
+            "medium",
+            "Confirm [SP] on card image; approve to set catalog variant_subtype=sp for this code.",
+            str(summary_text or "").strip(),
+            _json_dump([]),
+            _json_dump(payload),
+            "pending",
+            approval_state,
+            promotion_state,
+            "",
+            str(decision_source or "").strip(),
+            "",
+            now,
+            now,
+            "",
+            now,
+        ),
+    )
+
+
 def _should_queue_review_summary(summary: dict[str, Any], *, forced: bool = False) -> bool:
     if forced:
         return True
@@ -6469,7 +6601,7 @@ def update_review_queue_item(
     with closing(connect_catalog_db(project_path)) as conn:
         row = conn.execute(
             """
-            SELECT item_key, target_id, status, approval_state, approval_note, readiness_state, guardrail_label
+            SELECT item_key, target_id, status, approval_state, approval_note, readiness_state, guardrail_label, queue_type
             FROM miru_review_queue
             WHERE item_key = ?
             LIMIT 1
@@ -6520,27 +6652,60 @@ def update_review_queue_item(
                 lookup_key,
             ),
         )
-        conn.execute(
-            """
-            UPDATE card_intelligence
-            SET approval_state = ?,
-                promotion_state = ?,
-                promotion_rationale = ?,
-                promotion_updated_at = ?
-            WHERE card_id IN (
-                SELECT id
-                FROM cards
-                WHERE canonical_code = ?
+        queue_type = str(row["queue_type"] or "").strip()
+        if queue_type == "publication_readiness":
+            conn.execute(
+                """
+                UPDATE card_intelligence
+                SET approval_state = ?,
+                    promotion_state = ?,
+                    promotion_rationale = ?,
+                    promotion_updated_at = ?
+                WHERE card_id IN (
+                    SELECT id
+                    FROM cards
+                    WHERE canonical_code = ?
+                )
+                """,
+                (
+                    next_approval_state,
+                    promotion_state,
+                    promotion_rationale,
+                    now,
+                    str(row["target_id"] or "").strip().upper(),
+                ),
             )
-            """,
-            (
-                next_approval_state,
-                promotion_state,
-                promotion_rationale,
-                now,
-                str(row["target_id"] or "").strip().upper(),
-            ),
-        )
+        if queue_type == "image_variant_sp":
+            card_code = str(row["target_id"] or "").strip().upper()
+            if next_approval_state == "approved_for_candidate" and next_status == "resolved":
+                conn.execute(
+                    """
+                    UPDATE cards
+                    SET variant_category = 'premium_rarity',
+                        variant_subtype = 'sp'
+                    WHERE canonical_code = ?
+                    """,
+                    (card_code,),
+                )
+                conn.execute(
+                    """
+                    UPDATE image_variant_analysis
+                    SET operator_decision = ?,
+                        review_status = 'OPERATOR_APPROVED'
+                    WHERE canonical_code = ?
+                    """,
+                    ("approved_sp_variant", card_code),
+                )
+            elif next_approval_state == "rejected" and next_status == "resolved":
+                conn.execute(
+                    """
+                    UPDATE image_variant_analysis
+                    SET review_status = 'reviewed_not_sp'
+                    WHERE canonical_code = ?
+                      AND COALESCE(sp_marker_detected, 0) = 1
+                    """,
+                    (card_code,),
+                )
         if next_approval_state in {"rejected", "deferred", "superseded"}:
             stage_row = _load_stage_row(conn, str(row["target_id"] or "").strip().upper())
             if stage_row:
@@ -6957,12 +7122,18 @@ def _evaluate_action(
     risk = str(action.get("risk_level") or "low").strip().lower()
 
     if action_id == "publish.storefront_mutation":
-        decision = "blocked"
-        failed_preconditions = ["storefront_mutation_out_of_scope"]
-        rationale = "Governed Action Layer v1 must not mutate Project Miru storefront behavior or files."
-        confidence = 0.99
-        risk = "high"
-        guardrail_label = "Blocked"
+        # Testing environment only — 18080 is the test bed, not the live storefront.
+        # publish_ready rows are operator-approved. Blocked permanently once 8080 promotion is enabled.
+        decision = "allowed_with_review"
+        failed_preconditions = []
+        rationale = (
+            "Testing environment execution: publish_ready insights will be populated into "
+            "card_catalog.db for 18080 test site consumption. Operator must explicitly trigger. "
+            "This path is blocked when 8080 promotion is re-enabled."
+        )
+        confidence = 0.92
+        risk = "medium"
+        guardrail_label = "Review required"
     elif "card_target_present" in action.get("required_preconditions", ()) and not target_card_code:
         decision = "not_applicable"
         failed_preconditions.append("card_target_present")

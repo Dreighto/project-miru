@@ -1,0 +1,2008 @@
+{% extends "miru_nav_shell.html" %}
+{% block data_page %}library{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block meta_description %}Project Miru card library{% endblock %}
+
+{% block body_class %}pageBody pageBody--library{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* ===========================================================
+   Library — Binder Grid + Drawer System
+   All rules scoped so they don't bleed to other pages.
+   =========================================================== */
+
+  /* Edge-to-edge grid — strip body side-padding for this page */
+  .pageBody--library {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Cards page only: hide redundant shell label (logo stays centered). */
+  body.pageBody--library .appBarPageLabel {
+    display: none;
+  }
+
+  /* ── Cards-only sub-bar — fixed so it stays put when the iOS keyboard opens ── */
+  .libSubBar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    /* Flush under the fixed app bar */
+    top: calc(70px + max(6px, env(safe-area-inset-top, 0px)));
+    z-index: 99;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: #0c0a14;
+    border-bottom: 1px solid rgba(196, 173, 255, 0.06);
+  }
+
+  /* Placeholder that reserves space for the fixed sub-bar so the grid doesn't slide under it. */
+  .libSubBarSpacer {
+    height: 52px;
+    flex-shrink: 0;
+  }
+
+  .libSubBarSearchWrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .libSubBarSearch {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 16px;
+    font-family: var(--font-ui);
+    outline: none;
+    -webkit-appearance: none;
+  }
+
+  .libSubBarSearch::placeholder {
+    color: rgba(255, 255, 255, 0.30);
+  }
+
+  .libSubBarSearch:focus {
+    border-color: rgba(184, 160, 255, 0.35);
+  }
+
+  .libSubBarSuggest {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    z-index: 60;
+    background: #211c38;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    overflow: hidden;
+    display: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.50);
+  }
+
+  .libSubBarSuggest.is-visible {
+    display: block;
+  }
+
+  .libSubBarSuggestItem {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.72);
+    font-family: var(--font-ui);
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .libSubBarSuggestItem:last-child {
+    border-bottom: none;
+  }
+
+  .libSubBarSuggestItem:active {
+    background: rgba(184, 160, 255, 0.10);
+  }
+
+  .libSubBarFilterBtn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
+    transition: border-color 0.14s, color 0.14s;
+  }
+
+  .libSubBarFilterBtn:active {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .libSubBarFilterBtn.is-active {
+    border-color: rgba(184, 160, 255, 0.40);
+    color: rgba(255, 255, 255, 0.70);
+  }
+
+  /* ── Filter modal ──────────────────────────────────────── */
+  .libFilterModal {
+    position: fixed;
+    inset: 0;
+    z-index: 250;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+
+  .libFilterModal.is-open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .libFilterModalOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(4, 2, 12, 0.75);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+
+  .libFilterModalContent {
+    position: relative;
+    z-index: 1;
+    width: min(360px, 88vw);
+    background: #1a1530;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .libFilterModalTitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.70);
+    font-family: var(--font-ui);
+    margin: 0;
+  }
+
+  .libFilterModalDone {
+    align-self: stretch;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(184, 160, 255, 0.12);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    text-align: center;
+    margin-top: 4px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .libFilterModalDone:active {
+    background: rgba(184, 160, 255, 0.20);
+  }
+
+  .libFilterRow {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .libFilterRowLabel {
+    font-size: 9px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.28);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 2px;
+    font-family: var(--font-ui);
+  }
+
+  .libFilterPill {
+    padding: 3px 9px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 10px;
+    font-weight: 500;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+
+  .libFilterPill.is-active {
+    background: rgba(184, 160, 255, 0.12);
+    border-color: rgba(184, 160, 255, 0.30);
+    color: rgba(255, 255, 255, 0.80);
+  }
+
+  .libFilterAdvToggle {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.28);
+    font-family: var(--font-ui);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    padding: 2px 0;
+  }
+
+  .libFilterAdvToggle:active {
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .libFilterAdvToggle.is-open {
+    color: rgba(255, 255, 255, 0.40);
+  }
+
+  .libFilterAdvanced {
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .libFilterAdvanced.is-open {
+    display: flex;
+  }
+
+  .libGridEmpty {
+    display: none;
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px 16px;
+    color: rgba(255, 255, 255, 0.26);
+    font-size: 13px;
+    font-family: var(--font-ui);
+  }
+
+  .libGridEmpty.is-visible {
+    display: block;
+  }
+
+  /* ── Loading state ──────────────────────────────────────── */
+  .libraryDeferredContent {
+    min-height: 60px;
+  }
+
+  .libraryDeferredState {
+    padding: 40px 16px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.26);
+    font-size: 13px;
+  }
+
+  /* ── 4-column binder grid ───────────────────────────────── */
+  .libraryGrid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 4px 4px 24px;
+    width: 100%;
+  }
+
+  /* Hide pagination — all cards in one batch */
+  .libraryPager {
+    display: none !important;
+  }
+
+  /* ── Card tile ──────────────────────────────────────────── */
+  .libraryCard {
+    position: relative;
+    cursor: pointer;
+    border-radius: 5px;
+    overflow: hidden;
+    background: #141020;
+    display: flex;
+    flex-direction: column;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.10s ease;
+    will-change: transform;
+    touch-action: manipulation;
+  }
+
+  .libraryCard:active {
+    transform: scale(0.94);
+  }
+
+
+  /* Image area — strict portrait ratio */
+  .libraryCardMedia {
+    width: 100%;
+    aspect-ratio: 63 / 88;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: linear-gradient(155deg, #1c1530 0%, #0d0b18 100%);
+  }
+
+  @keyframes libCardFoilFlash {
+    0% {
+      filter: brightness(1) saturate(1);
+    }
+
+    45% {
+      filter: brightness(1.55) saturate(1.25) drop-shadow(0 0 14px rgba(255, 215, 140, 0.55));
+    }
+
+    100% {
+      filter: brightness(1) saturate(1);
+    }
+  }
+
+  .libraryCard--flipping {
+    perspective: 1000px;
+  }
+
+  .libraryCard--flipping .libraryCardMedia {
+    transform-style: preserve-3d;
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .libraryThumb--foilFlash {
+    animation: libCardFoilFlash 0.22s ease-out both;
+  }
+
+  .libraryThumb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .libraryThumb--empty {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(155deg, #1c1530 0%, #0d0b18 100%);
+    color: transparent;
+    font-size: 0;
+  }
+
+  .libraryThumb[src=""],
+  .libraryThumb:not([src]) {
+    visibility: hidden;
+  }
+
+  /* ── Tile caption — museum-label style ─────────────────── */
+  .libraryCardBody {
+    padding: 1px 3px 1px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-top: -1px;
+  }
+
+  .libraryCardTitle {
+    order: 1;
+    font-size: 7px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.15;
+    font-family: var(--font-ui);
+  }
+
+  .libraryCardCode {
+    order: 2;
+    font-size: 6.5px;
+    color: rgba(255, 255, 255, 0.32);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.1;
+    font-family: var(--font-ui);
+  }
+
+  /* Hidden from tile, still in DOM for drawer fallback */
+  .libraryCardSubtitle {
+    display: none !important;
+  }
+
+  /* ===========================================================
+   BOTTOM DRAWER
+   Two states: preview (~47 vh) and expanded (~95 dvh).
+   =========================================================== */
+
+  .libDrawer {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    pointer-events: none;
+  }
+
+  .libDrawer.is-open {
+    pointer-events: all;
+  }
+
+  /* Dark overlay above the drawer */
+  .libDrawerOverlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(4, 2, 12, 0.70);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+  }
+
+  .libDrawer.is-open .libDrawerOverlay {
+    opacity: 1;
+  }
+
+  /* Sheet */
+  .libDrawerSheet {
+    position: relative;
+    z-index: 1;
+    background: #18132a;
+    border-radius: 18px 18px 0 0;
+    /* preview height */
+    height: 47vh;
+    overflow: hidden;
+    transform: translateY(100%);
+    transition:
+      transform 0.26s cubic-bezier(0.32, 0.72, 0, 1),
+      height 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    will-change: transform, height;
+    overscroll-behavior: contain;
+  }
+
+  .libDrawer.is-open .libDrawerSheet {
+    transform: translateY(0);
+  }
+
+  .libDrawerSheet.is-expanded {
+    height: min(95dvh, 95vh);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Drag handle */
+  .libDrawerHandle {
+    width: 36px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 2px;
+    margin: 8px auto 0;
+    flex-shrink: 0;
+  }
+
+  /* ── Preview content (two-column) ───────────────────────── */
+  .libDrawerPreview {
+    display: flex;
+    align-items: flex-start;
+    padding: 10px 14px 8px;
+    gap: 12px;
+  }
+
+  /* Left column: name + meta + action */
+  .libDrawerInfo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .libDrawerName {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin: 0;
+  }
+
+  /* One muted line: set code · rarity · color dot */
+  .libDrawerMeta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .libDrawerSetCode {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--brandPurple);
+    letter-spacing: 0.05em;
+  }
+
+  .libDrawerMetaSep {
+    color: rgba(255, 255, 255, 0.20);
+    font-size: 10px;
+  }
+
+  .libDrawerRarity {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 0.02em;
+  }
+
+  .libDrawerColorDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Color palette */
+  .cdot-red {
+    background: #e05252;
+  }
+
+  .cdot-green {
+    background: #4caf7a;
+  }
+
+  .cdot-blue {
+    background: #5b9cf6;
+  }
+
+  .cdot-purple {
+    background: #9b72f0;
+  }
+
+  .cdot-yellow {
+    background: #e5c04a;
+  }
+
+  .cdot-black {
+    background: #6b7280;
+  }
+
+  .cdot-multi {
+    background: linear-gradient(135deg, #e05252 0%, #5b9cf6 100%);
+  }
+
+  .libDrawerVarStrip {
+    display: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    white-space: nowrap;
+    gap: 6px;
+    padding: 2px 0 6px;
+    scrollbar-width: none;
+  }
+
+  .libDrawerVarStrip::-webkit-scrollbar {
+    display: none;
+  }
+
+  .libDrawerVarStrip.is-visible {
+    display: flex;
+  }
+
+  .libDrawerVarPill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+    padding: 5px 10px 5px 6px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 11px;
+    font-weight: 500;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: border-color 0.14s, background 0.14s, color 0.14s;
+  }
+
+  .libDrawerVarPill.is-active {
+    border-color: rgba(184, 160, 255, 0.55);
+    background: rgba(184, 160, 255, 0.12);
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .libDrawerVarPillThumb {
+    width: 22px;
+    height: 30px;
+    border-radius: 3px;
+    object-fit: cover;
+    display: block;
+    background: rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+  }
+
+  /* View Full Art button */
+  .libDrawerViewArt {
+    margin-top: 4px;
+    padding: 9px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.70);
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    text-align: center;
+    align-self: flex-start;
+  }
+
+  .libDrawerViewArt:active {
+    background: rgba(255, 255, 255, 0.10);
+  }
+
+  .libDrawerPrice {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .libDrawerPriceLabel {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #7a6f8a;
+  }
+
+  .libDrawerPriceValue {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #c9a84c;
+  }
+
+  .libDrawerThumb {
+    width: 88px;
+    aspect-ratio: 63 / 88;
+    border-radius: 6px;
+    object-fit: cover;
+    display: block;
+    background: linear-gradient(155deg, #1c1530 0%, #0d0b18 100%);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Variant position dots */
+  .libDrawerVarDots {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    min-height: 6px;
+  }
+
+  .libDrawerVarDot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.22);
+    transition: background 0.14s;
+  }
+
+  .libDrawerVarDot--active {
+    background: rgba(184, 160, 255, 0.85);
+  }
+
+  /* ── Expanded content ───────────────────────────────────── */
+  .libDrawerExpanded {
+    padding: 0 0 4px;
+  }
+
+  .libDrawerSection {
+    margin: 0 14px 8px;
+  }
+
+  /* Effect text */
+  .libDrawerEffectBlock {
+    padding: 11px 13px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .libDrawerEffectText {
+    font-size: 16px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.82);
+    margin: 0;
+    font-family: var(--font-ui);
+    white-space: pre-wrap;
+  }
+
+  .libDrawerTriggerText {
+    font-size: 14px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.50);
+    margin: 6px 0 0;
+    font-family: var(--font-ui);
+    white-space: pre-wrap;
+  }
+
+  /* Stats row: type · cost · power · counter */
+  .libDrawerStats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .libDrawerStat {
+    background: #1e1838;
+    padding: 7px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .libDrawerStatLabel {
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.38);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    line-height: 1;
+  }
+
+  .libDrawerStatValue {
+    font-size: 16px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.92);
+    font-family: var(--font-display);
+    line-height: 1;
+  }
+
+  .libDrawerStatValue--empty {
+    color: rgba(255, 255, 255, 0.18);
+  }
+
+  /* Miru insight placeholder — hidden until .miru-insight-block--active */
+  .miru-insight-block {
+    display: none;
+    margin: 0 14px 12px;
+    padding: 12px 14px;
+    background: rgba(184, 160, 255, 0.05);
+    border: 1px solid rgba(184, 160, 255, 0.12);
+    border-radius: 10px;
+  }
+
+  .miru-insight-block--active {
+    display: block;
+  }
+
+  /* ── Fullscreen art lightbox ────────────────────────────── */
+  .artFullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: rgba(0, 0, 0, 0.97);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.16s ease;
+    cursor: pointer;
+  }
+
+  .artFullscreen.is-open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .artFullscreen img {
+    max-width: 92vw;
+    max-height: 88vh;
+    border-radius: 10px;
+    object-fit: contain;
+    display: block;
+  }
+</style>
+{% endblock %}
+
+{% block page_body %}
+<!-- ── Cards search / filter sub-bar ─────────────────────── -->
+<div class="libSubBar" id="libSubBar">
+  <div class="libSubBarSearchWrap" id="libSubBarSearchWrap">
+    <input type="text" id="libSubBarSearchInput" class="libSubBarSearch" data-suppresses-bottom-nav="true"
+      placeholder="Search cards…" autocomplete="off" autocorrect="off" spellcheck="false">
+    <div class="libSubBarSuggest" id="libSubBarSuggest"></div>
+  </div>
+  <button type="button" class="libSubBarFilterBtn" id="libFilterBtn" aria-label="Filters">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+    </svg>
+  </button>
+</div>
+<!-- Height placeholder so the grid starts below the fixed sub-bar -->
+<div class="libSubBarSpacer" id="libSubBarSpacer" aria-hidden="true"></div>
+
+<!-- Library grid (AJAX fragment) -->
+<section class="libraryShell libraryShell--browse" id="card-library" data-library-fragment-url="{{ fragment_url }}">
+  <div id="libraryDeferredContent" class="libraryDeferredContent">
+    <div class="libraryDeferredState">Loading…</div>
+  </div>
+</section>
+
+<!-- ── Bottom Drawer ─────────────────────────────────────── -->
+<div class="libDrawer" id="libDrawer" role="dialog" aria-modal="true" aria-label="Card detail">
+  <div class="libDrawerOverlay" id="libDrawerOverlay"></div>
+
+  <div class="libDrawerSheet" id="libDrawerSheet">
+    <div class="libDrawerHandle" id="libDrawerHandle"></div>
+
+    <!-- STATE 1: Preview -->
+    <div class="libDrawerPreview" id="libDrawerPreview">
+      <!-- Left: info -->
+      <div class="libDrawerInfo">
+        <h2 class="libDrawerName" id="libDrawerName"></h2>
+        <div class="libDrawerMeta" id="libDrawerMeta">
+          <span class="libDrawerSetCode" id="libDrawerSetCode"></span>
+          <span class="libDrawerMetaSep" id="libDrawerMetaSep1" aria-hidden="true">·</span>
+          <span class="libDrawerRarity" id="libDrawerRarity"></span>
+          <span class="libDrawerColorDot" id="libDrawerColorDot"></span>
+        </div>
+        <div class="libDrawerVarStrip" id="libDrawerVarStrip"></div>
+        <button class="libDrawerViewArt" id="libDrawerViewArt" type="button">View Full Art</button>
+        <div class="libDrawerPrice" id="libDrawerPrice" style="display:none">
+          <span class="libDrawerPriceLabel">Market</span>
+          <span class="libDrawerPriceValue" id="libDrawerPriceValue"></span>
+        </div>
+      </div>
+      <!-- Right: portrait thumbnail + variant dots -->
+      <div class="libDrawerThumbCol">
+        <img class="libDrawerThumb" id="libDrawerThumb" src="" alt="" data-card-code="" decoding="async" loading="lazy">
+        <div class="libDrawerVarDots" id="libDrawerVarDots"></div>
+      </div>
+    </div>
+
+    <!-- STATE 2: Expanded (visible only when .is-expanded) -->
+    <div class="libDrawerExpanded" id="libDrawerExpanded">
+      <!-- Effect text -->
+      <div class="libDrawerSection libDrawerEffectBlock" id="libDrawerEffectBlock">
+        <p class="libDrawerEffectText" id="libDrawerEffectText"></p>
+        <p class="libDrawerTriggerText" id="libDrawerTriggerText" style="display:none"></p>
+      </div>
+
+      <!-- Stats: type · cost · power · counter -->
+      <div class="libDrawerSection libDrawerStats" id="libDrawerStats">
+        <div class="libDrawerStat">
+          <span class="libDrawerStatLabel">Type</span>
+          <span class="libDrawerStatValue" id="libDrawerStatType"></span>
+        </div>
+        <div class="libDrawerStat">
+          <span class="libDrawerStatLabel">Cost</span>
+          <span class="libDrawerStatValue" id="libDrawerStatCost"></span>
+        </div>
+        <div class="libDrawerStat">
+          <span class="libDrawerStatLabel">Power</span>
+          <span class="libDrawerStatValue" id="libDrawerStatPower"></span>
+        </div>
+        <div class="libDrawerStat">
+          <span class="libDrawerStatLabel">Counter</span>
+          <span class="libDrawerStatValue" id="libDrawerStatCounter"></span>
+        </div>
+      </div>
+
+      <!-- Miru insight placeholder — wired up externally when data is ready -->
+      <div class="miru-insight-block" id="miruInsightBlock"></div>
+    </div>
+  </div><!-- /libDrawerSheet -->
+</div><!-- /libDrawer -->
+
+<!-- Fullscreen art lightbox -->
+<div class="artFullscreen" id="artFullscreen">
+  <img id="artFullscreenImg" src="" alt="" data-card-code="">
+</div>
+
+<!-- Filter modal -->
+<div class="libFilterModal" id="libFilterModal">
+  <div class="libFilterModalOverlay" id="libFilterModalOverlay"></div>
+  <div class="libFilterModalContent" id="libFilterModalContent">
+    <p class="libFilterModalTitle">Filters</p>
+    <div class="libFilterRow" id="libFilterTypeRow">
+      <span class="libFilterRowLabel">Type</span>
+      <span class="libFilterPill is-active" data-filter-type="all">All</span>
+      <span class="libFilterPill" data-filter-type="leader">Leader</span>
+      <span class="libFilterPill" data-filter-type="character">Character</span>
+      <span class="libFilterPill" data-filter-type="event">Event</span>
+      <span class="libFilterPill" data-filter-type="stage">Stage</span>
+    </div>
+    <div class="libFilterRow" id="libFilterColorRow">
+      <span class="libFilterRowLabel">Color</span>
+      <span class="libFilterPill is-active" data-filter-color="all">All</span>
+    </div>
+    <div class="libFilterAdvToggle" id="libFilterAdvToggle">Advanced filters &#x25BE;</div>
+    <div class="libFilterAdvanced" id="libFilterAdvanced">
+      <div class="libFilterRow" id="libFilterSetRow">
+        <span class="libFilterRowLabel">Set</span>
+        <span class="libFilterPill is-active" data-filter-set="all">All</span>
+      </div>
+      <div class="libFilterRow" id="libFilterComboRow">
+        <span class="libFilterRowLabel">Multi</span>
+        <span class="libFilterPill is-active" data-filter-combo="all">All</span>
+      </div>
+      <div class="libFilterRow" id="libFilterRarityRow">
+        <span class="libFilterRowLabel">Rarity</span>
+        <span class="libFilterPill is-active" data-filter-rarity="all">All</span>
+      </div>
+    </div>
+    <button class="libFilterModalDone" id="libFilterModalDone" type="button">Done</button>
+  </div>
+</div>
+
+<script>
+  (function () {
+    "use strict";
+
+    /* ── Constants (mirror deck_builder pattern) ────────── */
+    var DOUBLE_TAP_MS = 280;  /* same as deck_builder DOUBLE_TAP_MS */
+    var SWIPE_V_DISMISS = 72;   /* px — swipe down to dismiss          */
+    var SWIPE_V_EXPAND = 72;   /* px — swipe up to expand             */
+
+    /* ── DOM refs ───────────────────────────────────────── */
+    var drawer = document.getElementById("libDrawer");
+    var drawerOverlay = document.getElementById("libDrawerOverlay");
+    var drawerSheet = document.getElementById("libDrawerSheet");
+    var dName = document.getElementById("libDrawerName");
+    var dSetCode = document.getElementById("libDrawerSetCode");
+    var dRarity = document.getElementById("libDrawerRarity");
+    var dColorDot = document.getElementById("libDrawerColorDot");
+    var dSep1 = document.getElementById("libDrawerMetaSep1");
+    var dThumb = document.getElementById("libDrawerThumb");
+    var dVarDots = document.getElementById("libDrawerVarDots");
+    var dEffectBlock = document.getElementById("libDrawerEffectBlock");
+    var dEffectText = document.getElementById("libDrawerEffectText");
+    var dTriggerText = document.getElementById("libDrawerTriggerText");
+    var dStatType = document.getElementById("libDrawerStatType");
+    var dStatCost = document.getElementById("libDrawerStatCost");
+    var dStatPower = document.getElementById("libDrawerStatPower");
+    var dStatCounter = document.getElementById("libDrawerStatCounter");
+    var artFS = document.getElementById("artFullscreen");
+    var artFSImg = document.getElementById("artFullscreenImg");
+
+    /* ── State ──────────────────────────────────────────── */
+    var gridCards = [];   /* all .libraryCard elements in DOM order */
+    var activeIndex = -1;   /* index of card currently shown in drawer */
+    var drawerIsOpen = false;
+    var drawerExpanded = false;
+    var variants = [];   /* array of img src strings for current card */
+    var variantIdx = 0;
+    var variantLabels = [];   /* human-readable labels for each variant */
+    var variantPrices = [];   /* nullable numeric price per variant */
+    var currentDrawerCardCode = "";
+    var lastThumbTap = 0;    /* for double-tap detection on thumbnail */
+    var gridVariantCache = new Map();
+    var gridTapTimes = new WeakMap();
+    var gridTapTimers = new WeakMap();
+    var gridVariantIndexes = new WeakMap();
+    var gridTouchStartX = 0;
+    var gridTouchStartY = 0;
+    var gridTouchMoved = false;
+    var gridTouchCard = null;
+    var lastGridTouchEndAt = 0;
+
+    /* Touch tracking for swipe gestures */
+    var tStartX = 0, tStartY = 0, tScrollTop = 0;
+
+    /* ── Helpers ─────────────────────────────────────────── */
+    function attr(el, name) {
+      return (el && el.getAttribute(name)) || "";
+    }
+
+    function setCodePrefix(full) {
+      var i = (full || "").indexOf("-");
+      return i > 0 ? full.substring(0, i) : (full || "");
+    }
+
+    var colorMap = {
+      red: "cdot-red", green: "cdot-green", blue: "cdot-blue",
+      purple: "cdot-purple", yellow: "cdot-yellow", black: "cdot-black"
+    };
+    function dotClass(c) {
+      if (!c) return "";
+      var lc = c.toLowerCase();
+      if (lc.indexOf("/") !== -1 || lc.indexOf("multi") !== -1) return "cdot-multi";
+      return colorMap[lc] || "";
+    }
+
+    function statVal(v) {
+      return v || "—";
+    }
+
+    function normalizeSearchTokens(text) {
+      var parts = String(text || "").toLowerCase().split(/[^a-z0-9]+/);
+      var tokens = [];
+      for (var i = 0; i < parts.length; i++) {
+        if (parts[i]) tokens.push(parts[i]);
+      }
+      return tokens;
+    }
+
+    function levenshteinWithin2(a, b) {
+      if (!a || !b) return false;
+      if (Math.abs(a.length - b.length) > 2) return false;
+      var prev = [];
+      for (var j = 0; j <= b.length; j++) prev[j] = j;
+      for (var i = 1; i <= a.length; i++) {
+        var curr = [i];
+        for (var k = 1; k <= b.length; k++) {
+          var cost = a.charCodeAt(i - 1) === b.charCodeAt(k - 1) ? 0 : 1;
+          var insertCost = curr[k - 1] + 1;
+          var deleteCost = prev[k] + 1;
+          var replaceCost = prev[k - 1] + cost;
+          curr[k] = Math.min(insertCost, deleteCost, replaceCost);
+        }
+        prev = curr;
+      }
+      return prev[b.length] <= 2;
+    }
+
+    function fuzzyWordMatch(nameWord, searchWord) {
+      if (!nameWord || !searchWord) return false;
+      if (nameWord === searchWord) return true;
+      if (nameWord.indexOf(searchWord) === 0) return true;
+      if (searchWord.indexOf(nameWord) === 0) return true;
+      return levenshteinWithin2(nameWord, searchWord);
+    }
+
+    function nameMatchesSearch(name, term) {
+      var rawTerm = String(term || "").toLowerCase().trim();
+      if (!rawTerm) return true;
+      var lowerName = String(name || "").toLowerCase();
+      if (lowerName.indexOf(rawTerm) !== -1) return true;
+      var nameWords = normalizeSearchTokens(lowerName);
+      var termWords = normalizeSearchTokens(rawTerm);
+      if (!nameWords.length || !termWords.length) return false;
+      for (var i = 0; i < termWords.length; i++) {
+        var termWord = termWords[i];
+        var found = false;
+        for (var j = 0; j < nameWords.length; j++) {
+          if (fuzzyWordMatch(nameWords[j], termWord)) {
+            found = true;
+            break;
+          }
+        }
+        if (!found) return false;
+      }
+      return true;
+    }
+
+    /* ── AJAX: load fragment ────────────────────────────── */
+    var shell = document.getElementById("card-library");
+    var content = document.getElementById("libraryDeferredContent");
+    if (shell && content) {
+      var furl = attr(shell, "data-library-fragment-url");
+      if (furl) {
+        fetch(furl, {
+          headers: { "X-Requested-With": "project-miru-fragment" },
+          credentials: "same-origin"
+        })
+          .then(function (r) {
+            if (!r.ok) throw new Error("fragment " + r.status);
+            return r.text();
+          })
+          .then(function (html) {
+            content.innerHTML = html;
+            initGrid();
+            initFilters();
+            requestAnimationFrame(function () {
+              var spacer = document.getElementById("libSubBarSpacer");
+              var subBar = document.getElementById("libSubBar");
+              if (spacer && subBar) {
+                spacer.style.height = subBar.offsetHeight + "px";
+              }
+            });
+          })
+          .catch(function () {
+            content.innerHTML =
+              '<div class="libraryDeferredState">Card library unavailable. Reload to retry.</div>';
+          });
+      }
+    }
+
+    /* ── Grid initialisation ────────────────────────────── */
+    function initGrid() {
+      /* Trim code labels to set-prefix only: "EB01-001" → "EB01" */
+      var codeEls = document.querySelectorAll(".libraryCardCode");
+      for (var i = 0; i < codeEls.length; i++) {
+        codeEls[i].textContent = setCodePrefix((codeEls[i].textContent || "").trim());
+      }
+      /* Build ordered index */
+      gridCards = Array.prototype.slice.call(document.querySelectorAll(".libraryCard"));
+      var grid = document.querySelector(".libraryGrid");
+      if (!grid || grid.getAttribute("data-tap-bound") === "1") return;
+      grid.setAttribute("data-tap-bound", "1");
+
+      grid.addEventListener("touchstart", function (e) {
+        var touch = e.changedTouches && e.changedTouches[0];
+        var card = e.target ? e.target.closest(".libraryCard") : null;
+        if (!touch || !card || !grid.contains(card)) {
+          gridTouchCard = null;
+          gridTouchMoved = false;
+          return;
+        }
+        gridTouchCard = card;
+        gridTouchMoved = false;
+        gridTouchStartX = touch.clientX;
+        gridTouchStartY = touch.clientY;
+      }, { passive: true });
+
+      grid.addEventListener("touchmove", function (e) {
+        if (!gridTouchCard) return;
+        var touch = e.changedTouches && e.changedTouches[0];
+        if (!touch) return;
+        var dx = Math.abs(touch.clientX - gridTouchStartX);
+        var dy = Math.abs(touch.clientY - gridTouchStartY);
+        if (dx > 10 || dy > 10) {
+          gridTouchMoved = true;
+        }
+      }, { passive: true });
+
+      grid.addEventListener("touchend", function (e) {
+        var card = e.target ? e.target.closest(".libraryCard") : null;
+        if (!card || !grid.contains(card)) return;
+        if (gridTouchMoved && gridTouchCard === card) {
+          gridTouchCard = null;
+          gridTouchMoved = false;
+          return;
+        }
+
+        var mediaEl = e.target ? e.target.closest(".libraryCardMedia") : null;
+        lastGridTouchEndAt = Date.now();
+
+        if (!mediaEl) {
+          var immediatePendingTimer = gridTapTimers.get(card);
+          if (immediatePendingTimer) {
+            clearTimeout(immediatePendingTimer);
+            gridTapTimers.delete(card);
+          }
+          gridTapTimes.set(card, 0);
+          openDrawerFor(card);
+          gridTouchCard = null;
+          gridTouchMoved = false;
+          return;
+        }
+
+        var now = Date.now();
+        var lastTap = gridTapTimes.get(card) || 0;
+        var pendingTimer = gridTapTimers.get(card);
+
+        if (pendingTimer) {
+          clearTimeout(pendingTimer);
+          gridTapTimers.delete(card);
+        }
+
+        if (now - lastTap <= DOUBLE_TAP_MS) {
+          gridTapTimes.set(card, 0);
+          cycleGridCardVariant(card);
+          gridTouchCard = null;
+          gridTouchMoved = false;
+          return;
+        }
+
+        gridTapTimes.set(card, now);
+        var timerId = setTimeout(function () {
+          if (gridTapTimes.get(card) === now) {
+            openDrawerFor(card);
+          }
+          gridTapTimers.delete(card);
+        }, DOUBLE_TAP_MS);
+        gridTapTimers.set(card, timerId);
+        gridTouchCard = null;
+        gridTouchMoved = false;
+      }, { passive: true });
+
+      grid.addEventListener("click", function (e) {
+        var card = e.target ? e.target.closest(".libraryCard") : null;
+        if (!card || !grid.contains(card)) return;
+        if (Date.now() - lastGridTouchEndAt < 450) return;
+        openDrawerFor(card);
+      });
+    }
+
+    /* ── Extract card data from a .libraryCard element ──── */
+    function extractData(card) {
+      var imgEl = card.querySelector(".libraryThumb");
+      var titleEl = card.querySelector(".libraryCardTitle");
+      var subEl = card.querySelector(".libraryCardSubtitle");
+      var imgSrc = (imgEl && imgEl.src && imgEl.src !== window.location.href)
+        ? imgEl.src : "";
+      return {
+        cardCode: attr(card, "data-card-code"),
+        imgSrc: imgSrc,
+        name: titleEl ? titleEl.textContent.trim() : "",
+        setCode: attr(card, "data-set-code"),
+        setName: attr(card, "data-set-name") || (subEl ? subEl.textContent.trim() : ""),
+        rarity: attr(card, "data-rarity"),
+        color: attr(card, "data-color"),
+        cardType: attr(card, "data-card-type"),
+        cost: attr(card, "data-cost"),
+        power: attr(card, "data-power"),
+        counter: attr(card, "data-counter"),
+        effect: attr(card, "data-effect"),
+        trigger: attr(card, "data-trigger")
+      };
+    }
+
+    function formatGridVariantLabel(variant) {
+      if (!variant) return "Variant";
+      var base = (variant.display_label || "Variant").trim() || "Variant";
+      return base + formatPriceLabel(variant.market_price);
+    }
+
+    function showGridVariantLabel(card, label) {
+      if (!label) return;
+      var media = card.querySelector(".libraryCardMedia");
+      if (!media) return;
+
+      var existing = media.querySelector(".variant-label");
+      if (existing) existing.remove();
+
+      var labelEl = document.createElement("div");
+      labelEl.className = "variant-label";
+      labelEl.textContent = label;
+      labelEl.style.cssText =
+        "position:absolute;bottom:0;left:0;right:0;background:rgba(13,13,15,0.85);" +
+        "color:#c9a84c;font-size:12px;text-align:center;padding:4px;opacity:0;" +
+        "transition:opacity 0.2s ease;pointer-events:none;";
+      media.appendChild(labelEl);
+
+      setTimeout(function () {
+        labelEl.style.opacity = "1";
+      }, 10);
+      setTimeout(function () {
+        labelEl.style.opacity = "0";
+        setTimeout(function () {
+          if (labelEl.parentNode) labelEl.parentNode.removeChild(labelEl);
+        }, 200);
+      }, 800);
+    }
+
+    function loadGridVariants(cardCode) {
+      if (!cardCode) return Promise.resolve([]);
+      if (gridVariantCache.has(cardCode)) {
+        return Promise.resolve(gridVariantCache.get(cardCode));
+      }
+      return fetch("/api/card-variants/" + encodeURIComponent(cardCode), {
+        credentials: "same-origin"
+      })
+        .then(function (response) {
+          if (!response.ok) throw new Error("variant fetch " + response.status);
+          return response.json();
+        })
+        .then(function (payload) {
+          var list = (payload && payload.variants && Array.isArray(payload.variants))
+            ? payload.variants : [];
+          var usable = [];
+          for (var i = 0; i < list.length; i++) {
+            var row = list[i] || {};
+            var imagePath = (row.image_path || "").trim();
+            if (!imagePath) continue;
+            usable.push({
+              image_path: imagePath,
+              display_label: (row.display_label || "Variant").trim() || "Variant",
+              market_price: row.market_price
+            });
+          }
+          gridVariantCache.set(cardCode, usable);
+          return usable;
+        })
+        .catch(function () {
+          return [];
+        });
+    }
+
+    function cycleGridCardVariant(card) {
+      var cardCode = attr(card, "data-card-code");
+      var imgEl = card.querySelector(".libraryThumb");
+      var mediaEl = card.querySelector(".libraryCardMedia");
+      if (!cardCode || !imgEl || !mediaEl) return;
+      if (card.classList.contains("libraryCard--flipping")) return;
+
+      loadGridVariants(cardCode).then(function (variantsList) {
+        if (!variantsList || variantsList.length < 2) return;
+
+        var currentIndex = gridVariantIndexes.has(card)
+          ? gridVariantIndexes.get(card)
+          : 0;
+        var nextIndex = (currentIndex + 1) % variantsList.length;
+        var nextVariant = variantsList[nextIndex];
+        card.classList.add("libraryCard--flipping");
+        mediaEl.style.willChange = "transform";
+        mediaEl.style.transition = "transform 0.3s cubic-bezier(0.42, 0, 0.58, 1)";
+        mediaEl.style.transform = "rotateY(0deg)";
+        mediaEl.offsetWidth;
+        mediaEl.style.transform = "rotateY(180deg)";
+
+        setTimeout(function () {
+          imgEl.src = nextVariant.image_path;
+          imgEl.classList.add("libraryThumb--foilFlash");
+          setTimeout(function () {
+            imgEl.classList.remove("libraryThumb--foilFlash");
+          }, 240);
+          gridVariantIndexes.set(card, nextIndex);
+          showGridVariantLabel(card, formatGridVariantLabel(nextVariant));
+        }, 150);
+
+        setTimeout(function () {
+          mediaEl.style.transition = "none";
+          mediaEl.style.transform = "rotateY(0deg)";
+          setTimeout(function () {
+            mediaEl.style.transition = "";
+            mediaEl.style.transform = "";
+            mediaEl.style.willChange = "";
+            card.classList.remove("libraryCard--flipping");
+          }, 0);
+        }, 300);
+      });
+    }
+
+    function formatPriceLabel(priceVal) {
+      if (priceVal === null || priceVal === undefined || priceVal === "") return "";
+      var num = Number(priceVal);
+      if (!isFinite(num)) return "";
+      return " $" + num.toFixed(2);
+    }
+
+    function loadDrawerVariants(cardCode, fallbackImgSrc) {
+      if (!cardCode) return Promise.resolve();
+      return fetch("/api/card-variants/" + encodeURIComponent(cardCode), {
+        credentials: "same-origin"
+      })
+        .then(function (response) {
+          if (!response.ok) throw new Error("variant fetch " + response.status);
+          return response.json();
+        })
+        .then(function (payload) {
+          if (cardCode !== currentDrawerCardCode) return;
+          var list = (payload && payload.variants && Array.isArray(payload.variants))
+            ? payload.variants : [];
+          if (!list.length) return;
+
+          var nextVariants = [];
+          var nextLabels = [];
+          var nextPrices = [];
+
+          for (var i = 0; i < list.length; i++) {
+            var row = list[i] || {};
+            var imagePath = (row.image_path || "").trim();
+            if (!imagePath) continue;
+            nextVariants.push(imagePath);
+            nextLabels.push((row.display_label || "Variant").trim() || "Variant");
+            nextPrices.push(row.market_price);
+          }
+
+          if (!nextVariants.length) {
+            if (!fallbackImgSrc) return;
+            nextVariants = [fallbackImgSrc];
+            nextLabels = ["Base"];
+            nextPrices = [null];
+          }
+
+          variants = nextVariants;
+          variantLabels = nextLabels;
+          variantPrices = nextPrices;
+          /* API returns base (is_base) first; always show first variant, not last */
+          variantIdx = 0;
+          dThumb.src = variants[0] || "";
+          updateVarDots();
+          updateVarStrip();
+        })
+        .catch(function () {
+          return;
+        });
+    }
+
+    /* ── Populate drawer content ────────────────────────── */
+    function populateDrawer(d) {
+      currentDrawerCardCode = (d.cardCode || "").trim();
+
+      /* Preview */
+      dName.textContent = d.name || "";
+      dSetCode.textContent = d.setCode || "";
+      dRarity.textContent = d.rarity || "";
+
+      /* Hide sep/rarity if missing */
+      var showRarity = !!(d.setCode && d.rarity);
+      dSep1.style.display = showRarity ? "" : "none";
+      dRarity.style.display = d.rarity ? "" : "none";
+
+      /* Color dot */
+      if (d.color) {
+        dColorDot.className = "libDrawerColorDot " + dotClass(d.color);
+        dColorDot.title = d.color;
+        dColorDot.style.display = "";
+      } else {
+        dColorDot.style.display = "none";
+      }
+
+      /* Thumbnail */
+      variants = d.imgSrc ? [d.imgSrc] : [""];
+      variantLabels = ["Base"];
+      variantPrices = [null];
+      variantIdx = 0;
+      var priceEl = document.getElementById("libDrawerPrice");
+      if (priceEl) priceEl.style.display = "none";
+      dThumb.src = variants[0];
+      dThumb.alt = d.name || "";
+      dThumb.setAttribute("data-card-code", currentDrawerCardCode);
+      artFSImg.setAttribute("data-card-code", currentDrawerCardCode);
+      updateVarDots();
+      updateVarStrip();
+      loadDrawerVariants(currentDrawerCardCode, d.imgSrc);
+
+      /* Expanded — effect */
+      var hasEffect = !!(d.effect || d.trigger);
+      dEffectBlock.style.display = hasEffect ? "" : "none";
+      dEffectText.textContent = d.effect || "";
+      if (d.trigger) {
+        dTriggerText.textContent = "[ Trigger ] " + d.trigger;
+        dTriggerText.style.display = "";
+      } else {
+        dTriggerText.style.display = "none";
+      }
+
+      /* Expanded — stats */
+      dStatType.textContent = statVal(d.cardType);
+      dStatType.className = "libDrawerStatValue" + (d.cardType ? "" : " libDrawerStatValue--empty");
+      dStatCost.textContent = statVal(d.cost);
+      dStatCost.className = "libDrawerStatValue" + (d.cost ? "" : " libDrawerStatValue--empty");
+      dStatPower.textContent = statVal(d.power);
+      dStatPower.className = "libDrawerStatValue" + (d.power ? "" : " libDrawerStatValue--empty");
+      dStatCounter.textContent = statVal(d.counter);
+      dStatCounter.className = "libDrawerStatValue" + (d.counter ? "" : " libDrawerStatValue--empty");
+    }
+
+    /* ── Variant dots ────────────────────────────────────── */
+    function updateVarDots() {
+      dVarDots.innerHTML = "";
+      if (variants.length <= 1) return;
+      for (var i = 0; i < variants.length; i++) {
+        var dot = document.createElement("span");
+        dot.className = "libDrawerVarDot" + (i === variantIdx ? " libDrawerVarDot--active" : "");
+        dVarDots.appendChild(dot);
+      }
+    }
+
+    function selectVariant(idx) {
+      if (!variants || variants.length <= 1) return;
+      variantIdx = idx;
+
+      // Flip animation on the drawer thumbnail
+      var thumbCol = dThumb ? dThumb.parentNode : null;
+      if (thumbCol && dThumb) {
+        thumbCol.style.perspective = "600px";
+        dThumb.style.transition = "transform 0.3s cubic-bezier(0.42, 0, 0.58, 1)";
+        dThumb.style.transform = "rotateY(0deg)";
+        dThumb.offsetWidth; // force reflow
+        dThumb.style.transform = "rotateY(180deg)";
+        setTimeout(function () {
+          dThumb.src = variants[variantIdx] || "";
+          dThumb.classList.add("libraryThumb--foilFlash");
+          setTimeout(function () {
+            dThumb.classList.remove("libraryThumb--foilFlash");
+          }, 240);
+        }, 150);
+        setTimeout(function () {
+          dThumb.style.transition = "none";
+          dThumb.style.transform = "rotateY(0deg)";
+          dThumb.offsetWidth;
+          dThumb.style.transition = "";
+          dThumb.style.transform = "";
+          thumbCol.style.perspective = "";
+        }, 300);
+      } else if (dThumb) {
+        dThumb.src = variants[variantIdx] || "";
+      }
+
+      // Update dots
+      var dots = dVarDots.querySelectorAll(".libDrawerVarDot");
+      for (var j = 0; j < dots.length; j++) {
+        dots[j].classList.toggle("libDrawerVarDot--active", j === variantIdx);
+      }
+
+      updateVarStrip();
+    }
+
+    function cycleVariant() {
+      if (variants.length <= 1) return;
+      selectVariant((variantIdx + 1) % variants.length);
+    }
+
+    function updateVarStrip() {
+      var strip = document.getElementById("libDrawerVarStrip");
+      if (!strip) return;
+      strip.innerHTML = "";
+      if (!variants || variants.length <= 1) {
+        strip.classList.remove("is-visible");
+        return;
+      }
+      strip.classList.add("is-visible");
+      for (var i = 0; i < variants.length; i++) {
+        (function (idx) {
+          var pill = document.createElement("div");
+          pill.className = "libDrawerVarPill" + (idx === variantIdx ? " is-active" : "");
+          var thumb = document.createElement("img");
+          thumb.className = "libDrawerVarPillThumb";
+          thumb.src = variants[idx] || "";
+          thumb.alt = variantLabels[idx] || "";
+          thumb.decoding = "async";
+          thumb.loading = "lazy";
+          var label = document.createElement("span");
+          label.textContent = variantLabels[idx] || ("Variant " + (idx + 1));
+          pill.appendChild(thumb);
+          pill.appendChild(label);
+          pill.addEventListener("click", function (e) {
+            e.stopPropagation();
+            selectVariant(idx);
+          });
+          strip.appendChild(pill);
+        })(i);
+      }
+
+      /* Update price display for current variant */
+      var priceEl = document.getElementById("libDrawerPrice");
+      var priceVal = document.getElementById("libDrawerPriceValue");
+      if (priceEl && priceVal) {
+        var p = variantPrices[variantIdx];
+        var label = formatPriceLabel(p);
+        if (label) {
+          priceVal.textContent = label;
+          priceEl.style.display = "";
+        } else {
+          priceEl.style.display = "none";
+        }
+      }
+    }
+
+    function openDrawerFor(card) {
+      if (filterModalOpen) closeFilterModal();
+      gridVariantIndexes.delete(card);
+      activeIndex = gridCards.indexOf(card);
+      populateDrawer(extractData(card));
+      drawerIsOpen = true;
+      drawer.classList.add("is-open");
+      document.documentElement.style.overflow = "hidden";
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeDrawer() {
+    drawerIsOpen = false;
+    drawerExpanded = false;
+    drawer.classList.remove("is-open");
+    drawerSheet.classList.remove("is-expanded");
+    document.documentElement.style.overflow = "";
+    document.body.style.overflow = "";
+    document.body.style.touchAction = "";
+  }
+
+  function expandDrawer() {
+    drawerExpanded = true;
+    drawerSheet.classList.add("is-expanded");
+  }
+
+  function collapseDrawer() {
+    drawerExpanded = false;
+    drawerSheet.classList.remove("is-expanded");
+    /* Scroll sheet back to top */
+    drawerSheet.scrollTop = 0;
+  }
+
+  /* ── Overlay tap → close ─────────────────────────────── */
+  drawerOverlay.addEventListener("click", closeDrawer);
+
+  /* ── Double-tap thumbnail → cycle variant ────────────── */
+  /* Pattern: track time between taps (same as deck_builder DOUBLE_TAP_MS) */
+  dThumb.addEventListener("click", function (e) {
+    var now = Date.now();
+    if (now - lastThumbTap < DOUBLE_TAP_MS) {
+      /* Double-tap */
+      e.stopPropagation();
+      lastThumbTap = 0;
+      cycleVariant();
+    } else {
+      lastThumbTap = now;
+    }
+  });
+
+  /* ── View Full Art ───────────────────────────────────── */
+  document.getElementById("libDrawerViewArt").addEventListener("click", function () {
+    if (!dThumb.src || dThumb.src === window.location.href) return;
+    artFSImg.src = dThumb.src;
+    artFSImg.alt = dName.textContent;
+    artFS.classList.add("is-open");
+  });
+  artFS.addEventListener("click", function () {
+    artFS.classList.remove("is-open");
+  });
+
+  /* ── Keyboard ─────────────────────────────────────────── */
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") {
+      if (artFS.classList.contains("is-open")) {
+        artFS.classList.remove("is-open");
+      } else if (filterModalOpen) {
+        closeFilterModal();
+      } else if (drawerExpanded) {
+        collapseDrawer();
+      } else if (drawerIsOpen) {
+        closeDrawer();
+      }
+    }
+  });
+
+  /* ── Sub-bar: search input + filter button (static HTML) ── */
+  var headerSearch = document.getElementById("libSubBarSearchInput");
+  var headerSuggest = document.getElementById("libSubBarSuggest");
+  var headerSearchWrap = document.getElementById("libSubBarSearchWrap");
+  var filterBtn = document.getElementById("libFilterBtn");
+
+  /* ── Filter modal ─────────────────────────────────────── */
+  var filterModal = document.getElementById("libFilterModal");
+  var filterModalOv = document.getElementById("libFilterModalOverlay");
+  var filterModalContent = document.getElementById("libFilterModalContent");
+  var filterTypeRow = document.getElementById("libFilterTypeRow");
+  var filterColorRow = document.getElementById("libFilterColorRow");
+  var filterSetRow = document.getElementById("libFilterSetRow");
+  var filterComboRow = document.getElementById("libFilterComboRow");
+  var filterRarityRow = document.getElementById("libFilterRarityRow");
+  var filterAdvToggle = document.getElementById("libFilterAdvToggle");
+  var filterAdvanced = document.getElementById("libFilterAdvanced");
+  var filterDoneBtn = document.getElementById("libFilterModalDone");
+  var filterModalOpen = false;
+  var activeTypeFilters = [];
+  var activeColorFilters = [];
+  var activeSetFilters = [];
+  var activeComboFilters = [];
+  var activeRarityFilters = [];
+  var searchTerm = "";
+  var allCardNames = [];
+  var PRIMARY_COLORS = ["red", "blue", "green", "purple", "black", "yellow"];
+
+  function openFilterModal() {
+    if (drawerIsOpen) return; /* never open both */
+    filterModalOpen = true;
+    filterModal.classList.add("is-open");
+    filterBtn.classList.add("is-active");
+    /* Collapse advanced section each time */
+    filterAdvanced.classList.remove("is-open");
+    filterAdvToggle.classList.remove("is-open");
+  }
+  function closeFilterModal() {
+    filterModalOpen = false;
+    filterModal.classList.remove("is-open");
+    filterBtn.classList.remove("is-active");
+  }
+
+  filterBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (filterModalOpen) closeFilterModal(); else openFilterModal();
+  });
+  filterModalOv.addEventListener("click", closeFilterModal);
+  filterDoneBtn.addEventListener("click", closeFilterModal);
+
+  /* Advanced toggle */
+  filterAdvToggle.addEventListener("click", function (e) {
+    e.stopPropagation();
+    filterAdvanced.classList.toggle("is-open");
+    filterAdvToggle.classList.toggle("is-open");
+  });
+
+  function initFilters() {
+    var sets = {}, combos = {}, rarities = {};
+    for (var i = 0; i < gridCards.length; i++) {
+      var card = gridCards[i];
+      var sc = setCodePrefix(attr(card, "data-set-code"));
+      var co = (attr(card, "data-color") || "").toLowerCase();
+      var ra = (attr(card, "data-rarity") || "").trim();
+      if (sc) sets[sc] = true;
+      if (ra) rarities[ra] = true;
+      if (co && co.indexOf("/") !== -1) combos[co] = true;
+      var tEl = card.querySelector(".libraryCardTitle");
+      if (tEl) allCardNames.push(tEl.textContent.trim());
+    }
+
+    /* Build primary color pills */
+    for (var p = 0; p < PRIMARY_COLORS.length; p++) {
+      var cpill = document.createElement("span");
+      cpill.className = "libFilterPill";
+      cpill.setAttribute("data-filter-color", PRIMARY_COLORS[p]);
+      cpill.textContent = PRIMARY_COLORS[p].charAt(0).toUpperCase() + PRIMARY_COLORS[p].slice(1);
+      filterColorRow.appendChild(cpill);
+    }
+
+    /* Build set pills (advanced) */
+    var setKeys = Object.keys(sets).sort();
+    for (var s = 0; s < setKeys.length; s++) {
+      var spill = document.createElement("span");
+      spill.className = "libFilterPill";
+      spill.setAttribute("data-filter-set", setKeys[s]);
+      spill.textContent = setKeys[s];
+      filterSetRow.appendChild(spill);
+    }
+
+    /* Build combo color pills (advanced) */
+    var comboKeys = Object.keys(combos).sort();
+    for (var m = 0; m < comboKeys.length; m++) {
+      var mpill = document.createElement("span");
+      mpill.className = "libFilterPill";
+      mpill.setAttribute("data-filter-combo", comboKeys[m]);
+      mpill.textContent = comboKeys[m].split("/").map(function (w) {
+        return w.charAt(0).toUpperCase() + w.slice(1);
+      }).join("/");
+      filterComboRow.appendChild(mpill);
+    }
+    if (comboKeys.length === 0) filterComboRow.style.display = "none";
+
+    /* Build rarity pills (advanced) */
+    var rarKeys = Object.keys(rarities).sort();
+    for (var r = 0; r < rarKeys.length; r++) {
+      var rpill = document.createElement("span");
+      rpill.className = "libFilterPill";
+      rpill.setAttribute("data-filter-rarity", rarKeys[r]);
+      rpill.textContent = rarKeys[r];
+      filterRarityRow.appendChild(rpill);
+    }
+    if (rarKeys.length === 0) filterRarityRow.style.display = "none";
+
+    /* Add empty state element to the grid */
+    var grid = document.querySelector(".libraryGrid");
+    if (grid) {
+      var emptyEl = document.createElement("div");
+      emptyEl.className = "libGridEmpty";
+      emptyEl.id = "libGridEmpty";
+      emptyEl.textContent = "No cards found";
+      grid.appendChild(emptyEl);
+    }
+
+    /* Generic pill toggle helper */
+    function togglePillRow(pill, dataAttr, activeArr) {
+      var val = pill.getAttribute(dataAttr);
+      if (val === "all") {
+        activeArr.length = 0;
+        filterModalContent.querySelectorAll("[" + dataAttr + "]").forEach(function (p) {
+          p.classList.toggle("is-active", p.getAttribute(dataAttr) === "all");
+        });
+      } else if (val) {
+        pill.classList.toggle("is-active");
+        filterModalContent.querySelector("[" + dataAttr + "='all']").classList.remove("is-active");
+        activeArr.length = 0;
+        filterModalContent.querySelectorAll("[" + dataAttr + "].is-active").forEach(function (p) {
+          var v = p.getAttribute(dataAttr);
+          if (v !== "all") activeArr.push(v);
+        });
+        if (activeArr.length === 0) {
+          filterModalContent.querySelector("[" + dataAttr + "='all']").classList.add("is-active");
+        }
+      }
+    }
+
+    /* Pill click delegation on modal */
+    filterModalContent.addEventListener("click", function (e) {
+      var pill = e.target.closest(".libFilterPill");
+      if (!pill) return;
+      if (pill.hasAttribute("data-filter-type"))
+        togglePillRow(pill, "data-filter-type", activeTypeFilters);
+      if (pill.hasAttribute("data-filter-color"))
+        togglePillRow(pill, "data-filter-color", activeColorFilters);
+      if (pill.hasAttribute("data-filter-set"))
+        togglePillRow(pill, "data-filter-set", activeSetFilters);
+      if (pill.hasAttribute("data-filter-combo"))
+        togglePillRow(pill, "data-filter-combo", activeComboFilters);
+      if (pill.hasAttribute("data-filter-rarity"))
+        togglePillRow(pill, "data-filter-rarity", activeRarityFilters);
+      applyFilters();
+    });
+
+    /* Header search input */
+    headerSearch.addEventListener("input", function () {
+      searchTerm = headerSearch.value.trim().toLowerCase();
+      updateSuggestions();
+      applyFilters();
+    });
+
+    headerSearch.addEventListener("blur", function () {
+      setTimeout(function () {
+        headerSuggest.classList.remove("is-visible");
+      }, 150);
+    });
+
+    /* Fix 1: explicitly ensure all cards are visible after init */
+    for (var v = 0; v < gridCards.length; v++) {
+      gridCards[v].style.display = "";
+    }
+  }
+
+  function updateSuggestions() {
+    headerSuggest.innerHTML = "";
+    if (!searchTerm || searchTerm.length < 1) {
+      headerSuggest.classList.remove("is-visible");
+      return;
+    }
+    var matches = [], seen = {};
+    for (var i = 0; i < allCardNames.length && matches.length < 5; i++) {
+      var n = allCardNames[i];
+      var nl = n.toLowerCase();
+      if (nameMatchesSearch(n, searchTerm) && !seen[nl]) {
+        seen[nl] = true;
+        matches.push(n);
+      }
+    }
+    if (matches.length === 0) {
+      headerSuggest.classList.remove("is-visible");
+      return;
+    }
+    for (var j = 0; j < matches.length; j++) {
+      var item = document.createElement("div");
+      item.className = "libSubBarSuggestItem";
+      item.textContent = matches[j];
+      (function (name) {
+        item.addEventListener("click", function (e) {
+          e.stopPropagation();
+          headerSearch.value = name;
+          searchTerm = name.toLowerCase();
+          applyFilters();
+          headerSuggest.classList.remove("is-visible");
+        });
+      })(matches[j]);
+      headerSuggest.appendChild(item);
+    }
+    headerSuggest.classList.add("is-visible");
+  }
+
+  /* Close suggestions on outside tap */
+  document.addEventListener("click", function (e) {
+    if (!headerSearchWrap.contains(e.target)) {
+      headerSuggest.classList.remove("is-visible");
+    }
+  });
+
+  function applyFilters() {
+    var visibleCount = 0;
+    for (var i = 0; i < gridCards.length; i++) {
+      var card = gridCards[i];
+      var show = true;
+
+      if (searchTerm) {
+        var titleEl = card.querySelector(".libraryCardTitle");
+        var name = titleEl ? titleEl.textContent.trim().toLowerCase() : "";
+        var setCode = (attr(card, "data-set-code") || "").toLowerCase();
+        var cardCode = (attr(card, "data-card-code") || "").toLowerCase();
+        if (!nameMatchesSearch(name, searchTerm) && setCode.indexOf(searchTerm) === -1 && cardCode.indexOf(searchTerm) === -1) show = false;
+      }
+      if (show && activeTypeFilters.length > 0) {
+        var ct = (attr(card, "data-card-type") || "").toLowerCase();
+        if (activeTypeFilters.indexOf(ct) === -1) show = false;
+      }
+      if (show && activeColorFilters.length > 0) {
+        var co = (attr(card, "data-color") || "").toLowerCase();
+        var colorMatch = false;
+        for (var c = 0; c < activeColorFilters.length; c++) {
+          if (co.indexOf(activeColorFilters[c]) !== -1) { colorMatch = true; break; }
+        }
+        if (!colorMatch) show = false;
+      }
+      if (show && activeSetFilters.length > 0) {
+        var sc = setCodePrefix(attr(card, "data-set-code"));
+        if (activeSetFilters.indexOf(sc) === -1) show = false;
+      }
+      if (show && activeComboFilters.length > 0) {
+        var cco = (attr(card, "data-color") || "").toLowerCase();
+        if (activeComboFilters.indexOf(cco) === -1) show = false;
+      }
+      if (show && activeRarityFilters.length > 0) {
+        var ra = (attr(card, "data-rarity") || "").trim();
+        if (activeRarityFilters.indexOf(ra) === -1) show = false;
+      }
+
+      card.style.display = show ? "" : "none";
+      if (show) visibleCount++;
+    }
+
+    var emptyEl = document.getElementById("libGridEmpty");
+    if (emptyEl) emptyEl.classList.toggle("is-visible", visibleCount === 0);
+  }
+
+  /* ── Touch gestures on the drawer sheet ─────────────── */
+  /*
+   * Two gestures:
+   *   Vertical down in handle zone (top ~80px) → dismiss drawer
+   *   Vertical up (!expanded) → expand drawer
+   *
+   * Swipe-down preventDefault blocks page scroll only when the touch
+   * starts in the drag-handle zone and direction is clearly downward.
+   */
+  var tInHandleZone = false;
+  var tDismissLocked = false; /* true once we commit to dismiss gesture */
+
+  drawerSheet.addEventListener("touchstart", function (e) {
+    var t = e.touches[0];
+    tStartX = t.clientX;
+    tStartY = t.clientY;
+    tScrollTop = drawerSheet.scrollTop;
+    tDismissLocked = false;
+
+    /* Determine if touch started in drag-handle zone (top 80px of sheet) */
+    var sheetRect = drawerSheet.getBoundingClientRect();
+    tInHandleZone = (t.clientY - sheetRect.top) < 80;
+  }, { passive: true });
+
+  drawerSheet.addEventListener("touchmove", function (e) {
+    if (!drawerIsOpen) return;
+    var t = e.touches[0];
+    var dy = t.clientY - tStartY;
+    var dx = t.clientX - tStartX;
+
+    /* Only intercept downward drags that started in handle zone */
+    if (tInHandleZone && dy > 0 && Math.abs(dy) > Math.abs(dx)) {
+      tDismissLocked = true;
+      if (e.cancelable) e.preventDefault();
+    }
+  }, { passive: false });
+
+  drawerSheet.addEventListener("touchend", function (e) {
+    if (!drawerIsOpen) return;
+    var t = e.changedTouches[0];
+    var dy = t.clientY - tStartY;
+
+    if (tDismissLocked && dy > 80) {
+      /* Swipe down in handle zone → dismiss */
+      closeDrawer();
+      return;
+    }
+
+    if (!tDismissLocked && dy < -SWIPE_V_EXPAND && !drawerExpanded) {
+      /* Swipe up → expand */
+      expandDrawer();
+    }
+  }, { passive: true });
+
+          }) ();
+</script>
+{% endblock %}

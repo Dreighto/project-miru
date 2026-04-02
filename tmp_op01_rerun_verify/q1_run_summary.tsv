@@ -1,0 +1,5 @@
+mapping_confidence	mapping_method	count
+HIGH	exact_code_plus_base_flag	121
+MEDIUM	exact_code_set_fallback	21
+HIGH	exact_code_plus_set_match	5
+HIGH	exact_code_plus_variant_flag	1

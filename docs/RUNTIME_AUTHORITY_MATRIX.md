@@ -9,8 +9,8 @@ Use this file first before editing launchers, ports, or Dev controls.
 
 | Surface | Authoritative repo | Canonical launcher / start path | Runtime entry point | Canonical ports |
 |---|---|---|---|---|
-| Main stable Project Miru site | `D:\docker\tcg-watcher` | Main repo startup flow (`windows/start_op_miru.ps1`) | `dashboard` Docker service from main repo | `8080` |
-| Main Miru AI | `D:\docker\tcg-watcher` | Main repo startup flow (`windows/start_op_miru.ps1` or equivalent) | `tools/miru_ai_server.py` (main repo) | `8765` |
+| Main stable Project Miru site | `D:\docker\tcg-watcher` | RETIRED — do not use. Legacy NAS stack (D:\docker) is dead. | `dashboard` Docker service from main repo | `8080` |
+| Main Miru AI | `D:\docker\tcg-watcher` | RETIRED — do not use. Legacy NAS stack (D:\docker) is dead. | `tools/miru_ai_server.py` (main repo) | `8765` |
 | Worktree Project Miru test site | `C:\Users\andre\.codex\worktrees\0814\tcg-watcher` | `windows/start_op_miru_worktree.ps1` | `dashboard/app.py` (native) or `docker-compose.worktree.yml` | `18080` |
 | Worktree Miru AI / Dev control surface | `C:\Users\andre\.codex\worktrees\0814\tcg-watcher` | `windows/start_op_miru_worktree.ps1` | `tools/miru_ai_server.py` (worktree) | `18765` |
 

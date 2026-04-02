@@ -6129,6 +6129,26 @@ class MiruDossierStore:
                 "market": len([item for item in sources if item.get("section") == "market"]),
             },
         }
+        limitless_marker = "Limitless tournament corpus:"
+        llu_facts = learning_facts.get("limitless_leader_usage")
+        if isinstance(llu_facts, dict):
+            app_l = _safe_int(llu_facts.get("appearances"))
+            top8_l = _safe_int(llu_facts.get("top8"))
+            wins_l = _safe_int(llu_facts.get("wins"))
+            if app_l > 0 or top8_l > 0 or wins_l > 0:
+                du_cur = _clean_text(deck_usage_summary)
+                if limitless_marker not in du_cur:
+                    sig_l = app_l + 2 * top8_l + 8 * wins_l
+                    boost_l = min(0.98, max(0.26, 0.26 + min(0.72, sig_l / 400.0)))
+                    try:
+                        cur_ml = float(meta_relevance_score) if meta_relevance_score not in (None, "") else 0.0
+                    except (TypeError, ValueError):
+                        cur_ml = 0.0
+                    meta_relevance_score = round(max(cur_ml, boost_l), 3)
+                    deck_usage_summary = (
+                        (du_cur + " ") if du_cur else ""
+                    ) + f"{limitless_marker} {app_l} appearances, {top8_l} top-8, {wins_l} wins."
+
         return {
             "builder_path": "MiruDossierStore.build_card_dossier",
             "available": any(
@@ -6146,6 +6166,7 @@ class MiruDossierStore:
             ),
             "card_id": resolved,
             "card_code": resolved,
+            "basic_facts": learning_facts,
             "name": _clean_text(name),
             "set_code": _clean_text(set_code),
             "set_name": _clean_text(set_name),
@@ -6256,40 +6277,69 @@ class MiruDossierStore:
                 "builder_path": "MiruDossierStore.generate_card_insight",
             }
 
-        top_leaders = list(dossier.get("top_leaders_used_in") or [])
+        d_work = dict(dossier)
+        limitless_marker = "Limitless tournament corpus:"
+        basic_facts = dict(d_work.get("basic_facts") or {})
+        if not isinstance(basic_facts.get("limitless_leader_usage"), dict):
+            learn_bf = dict(self._read_learning_dossier_bundle(resolved, None).get("basic_facts") or {})
+            for key in ("limitless_leader_usage", "limitless_fetched_at"):
+                if key in learn_bf and key not in basic_facts:
+                    basic_facts[key] = learn_bf[key]
+        llu = basic_facts.get("limitless_leader_usage")
+        if isinstance(llu, dict):
+            appearances = _safe_int(llu.get("appearances"))
+            top8 = _safe_int(llu.get("top8"))
+            wins = _safe_int(llu.get("wins"))
+            if appearances > 0 or top8 > 0 or wins > 0:
+                basic_facts = {**basic_facts, "limitless_leader_usage": llu}
+                d_work["basic_facts"] = basic_facts
+                du0 = _clean_text(d_work.get("deck_usage_summary"))
+                if limitless_marker not in du0:
+                    signal = appearances + 2 * top8 + 8 * wins
+                    boost = min(0.98, max(0.26, 0.26 + min(0.72, signal / 400.0)))
+                    cur_meta = d_work.get("meta_relevance_score")
+                    try:
+                        cur_m = float(cur_meta) if cur_meta not in (None, "") else 0.0
+                    except (TypeError, ValueError):
+                        cur_m = 0.0
+                    d_work["meta_relevance_score"] = round(max(cur_m, boost), 3)
+                    limitless_line = f"{limitless_marker} {appearances} appearances, {top8} top-8, {wins} wins."
+                    d_work["deck_usage_summary"] = (du0 + " " if du0 else "") + limitless_line
+
+        top_leaders = list(d_work.get("top_leaders_used_in") or [])
         if build_single_voice_insight:
-            picked = build_single_voice_insight(dossier)
+            picked = build_single_voice_insight(d_work)
             if picked:
                 text, used_sections = picked
                 ordered_sections = list(dict.fromkeys(item for item in used_sections if item))
                 return {
                     "card_id": resolved,
                     "text": text,
-                    "confidence": round(_safe_float(dossier.get("confidence_score")), 3),
+                    "confidence": round(_safe_float(d_work.get("confidence_score")), 3),
                     "used_sections": ordered_sections,
-                    "provenance": list(dossier.get("sources") or []),
+                    "provenance": list(d_work.get("sources") or []),
                     "builder_path": "MiruDossierStore.generate_card_insight",
                     "leader_code": _clean_text((top_leaders[0] if top_leaders else {}).get("leader_code")).upper(),
                     "source_ref": "|".join(
                         sorted(
                             {
                                 str(item.get("source_id") or "").strip().lower()
-                                for item in list(dossier.get("sources") or [])
+                                for item in list(d_work.get("sources") or [])
                                 if str(item.get("source_id") or "").strip()
                             }
                         )
                     ),
-                    "dossier": dossier,
+                    "dossier": d_work,
                 }
 
         return {
             "card_id": resolved,
             "text": "Not enough verified data yet.",
-            "confidence": round(_safe_float(dossier.get("confidence_score")), 3),
+            "confidence": round(_safe_float(d_work.get("confidence_score")), 3),
             "used_sections": [],
-            "provenance": list(dossier.get("sources") or []),
+            "provenance": list(d_work.get("sources") or []),
             "builder_path": "MiruDossierStore.generate_card_insight",
-            "dossier": dossier,
+            "dossier": d_work,
         }
 
     def generate_card_insight(

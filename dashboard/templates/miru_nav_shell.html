@@ -1,99 +1,28 @@
 <!doctype html>
 <html lang="en" data-page="{% block data_page %}miru-shell{% endblock %}">
+
 <head>
+  <meta name='impact-site-verification' value='997abe74-28bd-48dc-a44e-8df18d6fb375' />
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#08060f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="description" content="{% block meta_description %}Project Miru{% endblock %}">
   <title>{% block title %}Miru{% endblock %} — Miru</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/miru-base.css">
   <style>
-    :root {
-      --bg: #08060f;
-      --muted: rgba(255, 255, 255, 0.55);
-      --textSoft: rgba(237, 243, 255, 0.88);
-      --font-display: 'Geist', system-ui, sans-serif;
-      --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
-    }
-    *, *::before, *::after { box-sizing: border-box; }
-    :root { --bottom-nav-height: 56px; }
-    html { overflow-x: hidden; }
-    body {
-      background:
-        radial-gradient(1200px 800px at 50% -10%, rgba(165, 118, 255, 0.12), transparent 55%),
-        var(--bg);
-      color: white;
-      font-family: var(--font-ui);
-      margin: 0;
-      padding: 0 14px calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    .appBarPageLabel {
       font-size: 13px;
-      overflow-x: clip;
-      max-width: 100vw;
-      -webkit-font-smoothing: antialiased;
-      overscroll-behavior-y: contain;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      color: rgba(255, 255, 255, 0.58);
+      margin: 0;
     }
-    .appBar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      width: 100%;
-      z-index: 50;
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      min-height: 64px;
-      padding: 6px 12px;
-      padding-top: max(6px, env(safe-area-inset-top, 0px));
-      background: #0c0a14;
-      border-bottom: 1px solid rgba(196, 173, 255, 0.06);
-      contain: layout style;
-      transform: translateZ(0);
-      -webkit-backface-visibility: hidden;
-      backface-visibility: hidden;
-    }
-    .appBarLeft { display: flex; align-items: center; min-width: 0; justify-self: start; }
-    .appBarPageLabel { font-size: 13px; font-weight: 500; letter-spacing: 0.02em; color: rgba(255, 255, 255, 0.58); margin: 0; }
-    .appBarRight { min-width: 0; justify-self: end; }
-    .appBarLogoWrap { grid-column: 2; justify-self: center; display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; flex-shrink: 0; text-decoration: none; color: inherit; }
-    .appBarLogo { position: relative; width: 64px; height: 64px; flex-shrink: 0; transform-origin: center center; transition: transform 0.26s ease; }
-    .appBar.appBar--compact .appBarLogoWrap .appBarLogo { transform: scale(0.75); }
-    .appBarLogo .brandLogoCompass { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0.94; animation: miruCompassWheel 48s linear infinite; }
-    .appBarLogo .brandLogoFruitWrap { position: absolute; width: 50%; left: 49.27%; top: 50.08%; transform: translate(-50%, -50%); z-index: 2; animation: miruFruitPulse 1.4s ease-out infinite; }
-    .appBarLogo .brandLogoFruit { width: 100%; height: auto; display: block; object-fit: contain; }
-    .appBarSpacer { height: calc(76px + max(0px, env(safe-area-inset-top, 0px) - 6px)); flex-shrink: 0; margin-bottom: 6px; }
-    .bottomNav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      width: 100%;
-      z-index: 60;
-      min-height: var(--bottom-nav-height);
-      padding-bottom: env(safe-area-inset-bottom, 0);
-      background: rgba(10, 9, 18, 0.97);
-      border-top: 1px solid rgba(196, 173, 255, 0.06);
-      box-shadow: 0 -1px 0 rgba(0,0,0,0.2);
-      -webkit-backface-visibility: hidden;
-      backface-visibility: hidden;
-    }
-    .bottomNavDock { display: flex; align-items: stretch; justify-content: space-around; min-height: var(--bottom-nav-height); width: 100%; }
-    .bottomNavItem { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 2px 9px; text-decoration: none; color: rgba(255, 255, 255, 0.5); transition: color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease; border-radius: 10px; margin: 3px 2px; min-width: 0; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-    .bottomNavItem:hover, .bottomNavItem:focus-visible { color: rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.04); outline: none; }
-    .bottomNavItem--current { color: rgba(244, 208, 120, 0.98); background: rgba(244, 208, 120, 0.11); box-shadow: inset 0 0 0 1px rgba(244, 208, 120, 0.16); font-weight: 600; }
-    .bottomNavItem--current .bottomNavLabel { font-weight: 600; }
-    .bottomNavIcon.navIconWrap { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; }
-    .bottomNavIcon .navIcon { width: 24px; height: 24px; object-fit: contain; object-position: center; display: block; flex-shrink: 0; opacity: 1; filter: brightness(0) invert(1); transition: opacity 0.2s ease, transform 0.2s ease, filter 0.22s ease; }
-    .bottomNavIcon .navIcon--home,
-    .bottomNavIcon .navIcon--leaders { width: 27px; height: 27px; }
-    .bottomNavItem:not(.bottomNavItem--current) .bottomNavIcon .navIcon { opacity: 0.56; filter: brightness(0) invert(1); }
-    .bottomNavItem:hover:not(.bottomNavItem--current) .bottomNavIcon .navIcon { opacity: 0.8; }
-    .navButton.active .bottomNavIcon .navIcon,
-    .bottomNavItem--current .bottomNavIcon .navIcon { opacity: 1; transform: scale(1.05); filter: brightness(0) saturate(100%) invert(90%) sepia(22%) saturate(420%) hue-rotate(356deg) brightness(1.07) contrast(1.02) drop-shadow(0 0 7px rgba(244, 208, 120, 0.34)); }
-    .bottomNavLabel { font-size: 10px; font-weight: 500; letter-spacing: 0.02em; font-family: var(--font-ui); text-align: center; line-height: 1.15; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
     /* Match index.html: main column + readable line length for shell pages */
     .appFrame {
       width: min(1040px, 100%);
@@ -101,7 +30,12 @@
       margin: 0 auto;
       overflow-x: hidden;
     }
-    .miruShellPageBody { width: min(780px, 100%); margin: 0 auto; }
+
+    .miruShellPageBody {
+      width: min(780px, 100%);
+      margin: 0 auto;
+    }
+
     .miruShellPageTitle {
       font-family: var(--font-display);
       font-size: clamp(19px, 4.6vw, 25px);
@@ -111,69 +45,116 @@
       margin: 8px 0 6px;
       color: white;
     }
-    @keyframes miruCompassWheel { 0% { transform: scale(1.08) rotate(0deg); } 100% { transform: scale(1.08) rotate(360deg); } }
-    @keyframes miruFruitPulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; filter: brightness(1); } 22% { transform: translate(-50%, -50%) scale(1.026); opacity: 0.98; filter: brightness(1.04); } }
-    @media (prefers-reduced-motion: reduce) {
-      .appBarLogo .brandLogoCompass, .appBarLogo .brandLogoFruitWrap { animation: none; }
-      .appBarLogo { transition: none; }
-      .bottomNavIcon .navIcon { transition: opacity 0.12s ease, filter 0.12s ease; }
-      .navButton.active .bottomNavIcon .navIcon,
-      .bottomNavItem--current .bottomNavIcon .navIcon { transform: none; }
+
+    .bottomNav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
     }
+
+    /*
+     * Opt-in bottom-nav suppression: mark a focusable with data-suppresses-bottom-nav="true".
+     * While focused (including during scroll), body gets .miru-bottom-nav-suppressed — see shell script.
+     */
+    body.miru-bottom-nav-suppressed #bottomNav {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* Reserve space for fixed bottom nav (~64px row + home indicator safe area). */
+    body {
+      padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+
   </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body>
-<header class="appBar" id="appBar" aria-label="App bar">
-  <div class="appBarLeft">
-    <span class="appBarPageLabel" aria-hidden="true">{{ app_bar_page_label }}</span>
-  </div>
-  <a href="/" class="appBarLogoWrap" aria-label="Project Miru home">
-    <div class="appBarLogo" aria-hidden="true">
-      <img class="brandLogoCompass" src="/static/icons/project_miru_compass.png" alt="" width="64" height="64" decoding="async" fetchpriority="high">
-      <span class="brandLogoFruitWrap">
-        <img class="brandLogoFruit" src="/static/icons/project_miru_fruit.png" alt="Miru" width="64" height="64" decoding="async">
-      </span>
+
+<body class="{% block body_class %}{% endblock %}">
+  <header class="appBar" id="appBar" aria-label="App bar">
+    <div class="appBarLeft">
+      <span class="appBarPageLabel" aria-hidden="true">{{ app_bar_page_label }}</span>
     </div>
-  </a>
-  <div class="appBarRight" aria-hidden="true"></div>
-</header>
-<div class="appBarSpacer" aria-hidden="true"></div>
+    <a href="/" class="appBarLogoWrap" id="appBarLogoWrap" aria-label="Project Miru home">
+      <div class="appBarLogo" aria-hidden="true">
+        <img class="brandLogoCompass" src="{{ url_for('static', filename='icons/pm_compass.png') }}" alt="" width="64"
+          height="64" decoding="async" fetchpriority="high">
+        <span class="brandLogoFruitWrap">
+          <img class="brandLogoFruit" src="{{ url_for('static', filename='icons/pm_fruit.png') }}" alt="Miru" width="64"
+            height="64" decoding="async">
+        </span>
+      </div>
+    </a>
+    <div class="appBarRight" aria-hidden="true"></div>
+  </header>
+  <div class="appBarSpacer" aria-hidden="true"></div>
 
-{# Same order as index.html / leaders: fixed bottom nav in DOM before scrollable main #}
-<nav class="bottomNav" id="bottomNav" aria-label="Main navigation">
-  <div class="bottomNavDock">
-    {{ bottom_nav_html | safe }}
-  </div>
-</nav>
+  {# Same order as index.html / leaders: fixed bottom nav in DOM before scrollable main #}
+  <nav class="bottomNav" id="bottomNav" aria-label="Main navigation">
+    <div class="bottomNavDock">
+      {{ bottom_nav_html | safe }}
+    </div>
+  </nav>
 
-<main class="appFrame" id="mainContent">
-{% block page_body %}{% endblock %}
-</main>
-<script>
-(function () {
-  var appBar = document.getElementById("appBar");
-  if (!appBar) return;
-  var COMPACT_THRESHOLD = 100;
-  var ticking = false;
-  var lastCompact = null;
-  function applyCompact() {
-    ticking = false;
-    var compact = (window.scrollY || 0) > COMPACT_THRESHOLD;
-    if (compact === lastCompact) return;
-    lastCompact = compact;
-    if (compact) appBar.classList.add("appBar--compact");
-    else appBar.classList.remove("appBar--compact");
-  }
-  function onScroll() {
-    if (!ticking) {
-      ticking = true;
-      requestAnimationFrame(applyCompact);
-    }
-  }
-  window.addEventListener("scroll", onScroll, { passive: true });
-  applyCompact();
-})();
-</script>
+  <main class="appFrame" id="mainContent">
+    {% block page_body %}{% endblock %}
+  </main>
+  <script>
+    (function () {
+      var appBar = document.getElementById("appBar");
+      if (!appBar) return;
+      var COMPACT_THRESHOLD = 100;
+      var ticking = false;
+      var lastCompact = null;
+      function applyCompact() {
+        ticking = false;
+        var compact = (window.scrollY || 0) > COMPACT_THRESHOLD;
+        if (compact === lastCompact) return;
+        lastCompact = compact;
+        if (compact) appBar.classList.add("appBar--compact");
+        else appBar.classList.remove("appBar--compact");
+      }
+      function onScroll() {
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(applyCompact);
+        }
+      }
+      window.addEventListener("scroll", onScroll, { passive: true });
+      applyCompact();
+    })();
+
+    /* Opt-in: hide #bottomNav while any [data-suppresses-bottom-nav="true"] is focused — no viewport math. */
+    (function () {
+      var SEL = "[data-suppresses-bottom-nav=\"true\"]";
+      var CLASS = "miru-bottom-nav-suppressed";
+      function matchesSuppressing(el) {
+        return !!(el && el.matches && el.matches(SEL));
+      }
+      document.addEventListener(
+        "focusin",
+        function (e) {
+          if (matchesSuppressing(e.target)) {
+            document.body.classList.add(CLASS);
+          }
+        },
+        true
+      );
+      document.addEventListener(
+        "focusout",
+        function () {
+          window.setTimeout(function () {
+            var ae = document.activeElement;
+            if (matchesSuppressing(ae)) return;
+            document.body.classList.remove(CLASS);
+          }, 0);
+        },
+        true
+      );
+    })();
+
+  </script>
 </body>
+
 </html>

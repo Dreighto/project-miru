@@ -1,0 +1,87 @@
+distribution_product_key	count	variant_keys_used
+PRB01	314	r1,parallel 3,parallel 4,parallel 5,parallel 2,r2,parallel 6,parallel 7,parallel 8
+PRB02	271	parallel 1,r1,parallel 5,parallel 3,parallel 2,r2,parallel 4,parallel 8,parallel 6
+_unclassified	121	parallel 2,parallel 3,parallel 4,parallel 5,parallel 6,parallel 7,parallel 1,r1
+EB02	27	parallel 2,parallel 4
+OP13	16	parallel 1,parallel 2,parallel 5,parallel 6,parallel 3,parallel 4
+GC01	13	parallel 2,parallel 3,parallel 5,parallel 4,parallel 1
+SWBS01	12	parallel 2,parallel 1,parallel 4,parallel 5,parallel 3
+PCCFR	12	parallel 1,parallel 2
+EB01	12	parallel 1,parallel 2
+CS2526CP	12	parallel 1,parallel 4,parallel 6,parallel 2,parallel 3
+BCV5	12	parallel 1,parallel 2
+BCV4	12	parallel 1,parallel 2,parallel 3
+OP09	11	parallel 2,parallel 4,parallel 6,parallel 3,parallel 1
+BCV3	11	parallel 4,parallel 2,parallel 1
+BCV1	11	parallel 4,parallel 1,parallel 2,parallel 6,parallel 5
+ST28	10	parallel 3,r2,r1,parallel 1
+ST27	10	parallel 2,r1
+ST24	10	parallel 3,r1,parallel 1
+ST23	10	parallel 2,r1
+ST20	10	parallel 2,r1
+ST19	10	parallel 2,r1
+ST18	10	parallel 3,r1,parallel 1
+ST17	10	parallel 2,r1
+ST16	10	r1,parallel 1,parallel 2
+ST15	10	parallel 2,r1
+ST11	10	parallel 1,parallel 2
+PCC25	10	parallel 2,parallel 1,parallel 3
+EB04	10	parallel 1,parallel 2,parallel 4,parallel 5
+EB03	10	parallel 2
+ANN3JP	10	parallel 3,parallel 4,parallel 2,parallel 1
+ST26	9	r1,r2,parallel 2,parallel 1
+ST25	9	parallel 2,r1
+PCCLA1	9	parallel 1,parallel 4
+OP12	9	parallel 2,parallel 4,parallel 5,parallel 1
+OP11	9	parallel 2,parallel 7,parallel 8,parallel 1
+ANN2JP	9	parallel 1,parallel 5,parallel 2,parallel 4
+ANN1EN	9	parallel 1,parallel 4,parallel 2,parallel 3
+CS2526EP	8	parallel 5,parallel 4,parallel 1
+OP10	7	parallel 2,parallel 1
+OP08	7	parallel 3,parallel 4,parallel 2,parallel 1
+OP07	7	parallel 2,parallel 1,parallel 3
+OP06	7	parallel 1,parallel 2,parallel 3
+OP05	7	parallel 4,parallel 2,parallel 3
+ST1520RE	6	parallel 1,parallel 2,parallel 3
+ORP01	6	parallel 1
+ORFC2025V2	6	sp,parallel 3,alt_art,parallel 1
+CS2526TP1	6	parallel 1,parallel 3
+OP04	5	parallel 2
+CS2526TP2	5	parallel 2,parallel 1,parallel 4
+TP2025V4	4	parallel 1
+TP2025V3	4	parallel 1
+TP2024OD	4	parallel 3,parallel 1
+TP07	4	parallel 1
+TP06	4	parallel 1
+TP05	4	parallel 4,parallel 1,parallel 2
+TP04	4	parallel 1,parallel 2
+TP03	4	parallel 2,parallel 1
+TK2025V2	4	parallel 1,parallel 2
+ORP2024V3	4	parallel 1
+ORP2024V2	4	parallel 5,parallel 1,parallel 3
+ORP2024V1	4	parallel 1
+ORFC2526S1	4	parallel 2,parallel 3,parallel 1
+OP03	4	parallel 2,parallel 1
+TP02	3	parallel 2,parallel 1
+TC2025FEB	3	parallel 2,parallel 1
+ST11BP	3	parallel 1
+REG2526S1	3	parallel 2,parallel 1
+REG2024W3	3	parallel 2,parallel 1,parallel 3
+REG2024W1	3	parallel 1
+ORP2025V1	3	parallel 1
+OP01	3	parallel 3,parallel 2
+HBWP01	3	parallel 1
+EP02	3	parallel 1
+CS2526ORS2	3	parallel 4,parallel 2,parallel 1
+ANN1JP	3	parallel 1,parallel 2
+SPRRE	2	parallel 1,parallel 2
+OP12RE	2	parallel 1,parallel 2
+EP03	2	parallel 1,parallel 2
+S2ON2	1	parallel 1
+PREP03	1	parallel 1
+OPDALLAS	1	parallel 1
+OP14RE	1	parallel 1
+OP14	1	parallel 5
+OP11RE	1	parallel 1
+OP02	1	parallel 2
+BCGF2526	1	parallel 1

@@ -34,9 +34,8 @@
                 </span>
             </a>
             <div class="navLinks">
-                {% for item in nav_items %}
-                <a class="navLink{% if item.active %} isActive{% endif %}" href="{{ item.href }}">{{ item.label }}</a>
-                {% endfor %}
+                <a class="navLink{% if request.path.rstrip('/') == '/dev' %} isActive{% endif %}" href="/dev">Dev</a>
+                <a class="navLink{% if request.path.startswith('/dev/monitor') %} isActive{% endif %}" href="/dev/monitor">Dev · Full</a>
             </div>
         </nav>
 

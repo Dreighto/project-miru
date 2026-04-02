@@ -1,10 +1,11 @@
 @echo off
 setlocal
 cd /d "%~dp0.."
-REM First argument "worktree" = start worktree stack (18080 + 18765). Otherwise legacy main stack (8080 + 8765).
+REM worktree  = full worktree stack (18080 dashboard + 18765 Miru AI) via start_op_miru_worktree.ps1
+REM (no arg)  = scheduled startup: Miru AI Dev on 18765 only (worktree intelligence layer)
 if /i "%1"=="worktree" (
     powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0start_op_miru_worktree.ps1" -Native
 ) else (
-    powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0start_op_miru.ps1" -Watchdog
+    powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0start_miru_ai_dev.ps1" -Force
 )
 exit /b %errorlevel%

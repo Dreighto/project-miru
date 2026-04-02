@@ -105,24 +105,35 @@ def can_auto_fetch(
     allowed_access: str,
     *,
     source_id: str = "",
+    interaction: str = "live",
 ) -> tuple[bool, str]:
     """
-    Gate: no automatic live fetch from snapshot-only or manual-only sources.
-    fetch_mode in ("live", "snapshot", "manual_only") and allowed_access in ("public_page", "permitted_api", "manual_only").
+    Gate: no automatic **live HTTP** fetch from snapshot-only or manual-only sources.
+
+    Reading an existing on-disk snapshot file is **not** a live auto-fetch; callers that are
+    about to perform only a local file read must pass ``interaction="local_file"`` (or
+    ``local_snapshot``) so this gate does not record a spurious block.
+
+    ``fetch_mode`` values ``snapshot`` and ``manual_only`` (exact) block automated URL fetches.
+    Registry ``snapshot-json`` lanes are not the same as ``snapshot`` and remain eligible for
+    governed URL fetch paths unless ``allowed_access`` is ``manual_only``.
     Returns (allowed, reason). If not allowed, records block for audit.
     """
+    inter = (interaction or "").strip().lower()
+    if inter in {"local_file", "local_snapshot", "local_disk"}:
+        return True, ""
     if (fetch_mode or "").strip().lower() in ("snapshot", "manual_only"):
         _record_block(
             "can_auto_fetch",
             "Auto fetch refused: source is snapshot-only or manual-only.",
-            {"source_id": source_id, "fetch_mode": fetch_mode},
+            {"source_id": source_id, "fetch_mode": fetch_mode, "interaction": interaction},
         )
         return False, "Auto fetch refused: source is snapshot-only or manual-only."
     if (allowed_access or "").strip().lower() == "manual_only":
         _record_block(
             "can_auto_fetch",
             "Auto fetch refused: source is manual-only.",
-            {"source_id": source_id, "allowed_access": allowed_access},
+            {"source_id": source_id, "allowed_access": allowed_access, "interaction": interaction},
         )
         return False, "Auto fetch refused: source is manual-only."
     return True, ""

@@ -1,0 +1,1455 @@
+{
+  "success": true,
+  "errors": [],
+  "results": [
+    {
+      "productId": 515077,
+      "lowPrice": 8.94,
+      "midPrice": 9.99,
+      "highPrice": 12.99,
+      "marketPrice": 9.39,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 515080,
+      "lowPrice": 345.87,
+      "midPrice": 388.88,
+      "highPrice": 590.0,
+      "marketPrice": 334.48,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 515081,
+      "lowPrice": 3999.99,
+      "midPrice": 4799.99,
+      "highPrice": 7689.99,
+      "marketPrice": 2878.78,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 539277,
+      "lowPrice": 0.09,
+      "midPrice": 0.25,
+      "highPrice": 10.22,
+      "marketPrice": 0.21,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539278,
+      "lowPrice": 10.0,
+      "midPrice": 16.57,
+      "highPrice": 98.0,
+      "marketPrice": 11.77,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539279,
+      "lowPrice": 2.24,
+      "midPrice": 4.81,
+      "highPrice": 67.95,
+      "marketPrice": 3.19,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539280,
+      "lowPrice": 0.05,
+      "midPrice": 0.5,
+      "highPrice": 25.0,
+      "marketPrice": 0.36,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539282,
+      "lowPrice": 0.44,
+      "midPrice": 3.49,
+      "highPrice": 25.0,
+      "marketPrice": 3.01,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539283,
+      "lowPrice": 20.0,
+      "midPrice": 27.99,
+      "highPrice": 100.0,
+      "marketPrice": 26.67,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539285,
+      "lowPrice": 35.0,
+      "midPrice": 44.99,
+      "highPrice": 500.0,
+      "marketPrice": 37.88,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539287,
+      "lowPrice": 0.02,
+      "midPrice": 0.2,
+      "highPrice": 5.0,
+      "marketPrice": 0.17,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 539290,
+      "lowPrice": 0.01,
+      "midPrice": 0.16,
+      "highPrice": 8.49,
+      "marketPrice": 0.1,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539292,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 5.0,
+      "marketPrice": 0.09,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539489,
+      "lowPrice": 0.08,
+      "midPrice": 0.23,
+      "highPrice": 5.0,
+      "marketPrice": 0.18,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 539490,
+      "lowPrice": 82.75,
+      "midPrice": 99.18,
+      "highPrice": 700.0,
+      "marketPrice": 88.73,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539491,
+      "lowPrice": 0.85,
+      "midPrice": 1.68,
+      "highPrice": 25.0,
+      "marketPrice": 1.47,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539492,
+      "lowPrice": 18.95,
+      "midPrice": 28.95,
+      "highPrice": 149.0,
+      "marketPrice": 22.02,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539499,
+      "lowPrice": 0.2,
+      "midPrice": 0.74,
+      "highPrice": 25.0,
+      "marketPrice": 0.53,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539500,
+      "lowPrice": 6.2,
+      "midPrice": 8.06,
+      "highPrice": 50.0,
+      "marketPrice": 6.91,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539501,
+      "lowPrice": 6.2,
+      "midPrice": 11.53,
+      "highPrice": 25.0,
+      "marketPrice": 7.78,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539502,
+      "lowPrice": 42.0,
+      "midPrice": 53.8,
+      "highPrice": 104.21,
+      "marketPrice": 49.21,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539503,
+      "lowPrice": 1.0,
+      "midPrice": 2.76,
+      "highPrice": 10.0,
+      "marketPrice": 1.84,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539504,
+      "lowPrice": 1.6,
+      "midPrice": 3.86,
+      "highPrice": 10.0,
+      "marketPrice": 2.55,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539505,
+      "lowPrice": 0.01,
+      "midPrice": 0.23,
+      "highPrice": 10.18,
+      "marketPrice": 0.16,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539767,
+      "lowPrice": 0.01,
+      "midPrice": 0.16,
+      "highPrice": 5.0,
+      "marketPrice": 0.16,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 539768,
+      "lowPrice": 10.82,
+      "midPrice": 14.07,
+      "highPrice": 69.99,
+      "marketPrice": 13.11,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539770,
+      "lowPrice": 11.65,
+      "midPrice": 16.0,
+      "highPrice": 80.0,
+      "marketPrice": 12.62,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539772,
+      "lowPrice": 3.67,
+      "midPrice": 6.42,
+      "highPrice": 25.0,
+      "marketPrice": 4.97,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539775,
+      "lowPrice": 0.02,
+      "midPrice": 0.2,
+      "highPrice": 4.5,
+      "marketPrice": 0.15,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539782,
+      "lowPrice": 0.05,
+      "midPrice": 0.29,
+      "highPrice": 10.23,
+      "marketPrice": 0.29,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539787,
+      "lowPrice": 0.05,
+      "midPrice": 0.25,
+      "highPrice": 5.0,
+      "marketPrice": 0.22,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 539789,
+      "lowPrice": 3.4,
+      "midPrice": 5.74,
+      "highPrice": 50.0,
+      "marketPrice": 4.51,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541006,
+      "lowPrice": 0.02,
+      "midPrice": 0.2,
+      "highPrice": 5.0,
+      "marketPrice": 0.19,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541007,
+      "lowPrice": 37.0,
+      "midPrice": 48.0,
+      "highPrice": 149.99,
+      "marketPrice": 41.57,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541043,
+      "lowPrice": 0.01,
+      "midPrice": 0.2,
+      "highPrice": 5.0,
+      "marketPrice": 0.17,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541044,
+      "lowPrice": 69.0,
+      "midPrice": 73.0,
+      "highPrice": 420.69,
+      "marketPrice": 71.96,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541045,
+      "lowPrice": 0.02,
+      "midPrice": 0.2,
+      "highPrice": 4.5,
+      "marketPrice": 0.16,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541046,
+      "lowPrice": 0.01,
+      "midPrice": 0.22,
+      "highPrice": 25.0,
+      "marketPrice": 0.22,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541047,
+      "lowPrice": 0.25,
+      "midPrice": 3.0,
+      "highPrice": 10.0,
+      "marketPrice": 0.61,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541048,
+      "lowPrice": 0.1,
+      "midPrice": 0.61,
+      "highPrice": 25.0,
+      "marketPrice": 0.46,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541049,
+      "lowPrice": 3.25,
+      "midPrice": 5.3,
+      "highPrice": 50.0,
+      "marketPrice": 3.43,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541050,
+      "lowPrice": 0.1,
+      "midPrice": 0.5,
+      "highPrice": 10.44,
+      "marketPrice": 0.43,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541051,
+      "lowPrice": 14.96,
+      "midPrice": 17.8,
+      "highPrice": 60.0,
+      "marketPrice": 15.16,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541052,
+      "lowPrice": 0.2,
+      "midPrice": 0.5,
+      "highPrice": 10.45,
+      "marketPrice": 0.36,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541053,
+      "lowPrice": 0.01,
+      "midPrice": 0.23,
+      "highPrice": 10.18,
+      "marketPrice": 0.21,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541054,
+      "lowPrice": 13.98,
+      "midPrice": 19.42,
+      "highPrice": 126.98,
+      "marketPrice": 14.03,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541055,
+      "lowPrice": 0.29,
+      "midPrice": 1.0,
+      "highPrice": 50.0,
+      "marketPrice": 0.83,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541056,
+      "lowPrice": 21.0,
+      "midPrice": 33.95,
+      "highPrice": 99.0,
+      "marketPrice": 23.61,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541057,
+      "lowPrice": 0.05,
+      "midPrice": 0.2,
+      "highPrice": 10.14,
+      "marketPrice": 0.13,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541058,
+      "lowPrice": 1.99,
+      "midPrice": 3.49,
+      "highPrice": 50.0,
+      "marketPrice": 3.03,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541059,
+      "lowPrice": 0.23,
+      "midPrice": 3.1,
+      "highPrice": 31.17,
+      "marketPrice": 2.68,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541060,
+      "lowPrice": 32.82,
+      "midPrice": 40.16,
+      "highPrice": 128.99,
+      "marketPrice": 34.86,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541061,
+      "lowPrice": 0.1,
+      "midPrice": 0.5,
+      "highPrice": 25.0,
+      "marketPrice": 0.31,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541062,
+      "lowPrice": 1.79,
+      "midPrice": 4.87,
+      "highPrice": 25.0,
+      "marketPrice": 2.48,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541063,
+      "lowPrice": 0.25,
+      "midPrice": 0.99,
+      "highPrice": 49.0,
+      "marketPrice": 0.55,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541064,
+      "lowPrice": 16.99,
+      "midPrice": 25.0,
+      "highPrice": 199.0,
+      "marketPrice": 20.7,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541065,
+      "lowPrice": 0.01,
+      "midPrice": 0.18,
+      "highPrice": 5.0,
+      "marketPrice": 0.11,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541066,
+      "lowPrice": 0.1,
+      "midPrice": 0.42,
+      "highPrice": 10.27,
+      "marketPrice": 0.39,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541067,
+      "lowPrice": 0.01,
+      "midPrice": 0.25,
+      "highPrice": 5.0,
+      "marketPrice": 0.23,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541068,
+      "lowPrice": 0.07,
+      "midPrice": 0.25,
+      "highPrice": 10.17,
+      "marketPrice": 0.2,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541069,
+      "lowPrice": 7.0,
+      "midPrice": 8.92,
+      "highPrice": 45.0,
+      "marketPrice": 7.92,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541070,
+      "lowPrice": 0.01,
+      "midPrice": 0.2,
+      "highPrice": 10.11,
+      "marketPrice": 0.1,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541071,
+      "lowPrice": 0.01,
+      "midPrice": 0.18,
+      "highPrice": 10.1,
+      "marketPrice": 0.1,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541072,
+      "lowPrice": 0.02,
+      "midPrice": 0.25,
+      "highPrice": 10.21,
+      "marketPrice": 0.2,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541073,
+      "lowPrice": 2.5,
+      "midPrice": 3.88,
+      "highPrice": 11.62,
+      "marketPrice": 3.42,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541074,
+      "lowPrice": 0.01,
+      "midPrice": 0.24,
+      "highPrice": 10.11,
+      "marketPrice": 0.16,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541075,
+      "lowPrice": 0.03,
+      "midPrice": 0.25,
+      "highPrice": 10.18,
+      "marketPrice": 0.2,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541542,
+      "lowPrice": 68.98,
+      "midPrice": 79.99,
+      "highPrice": 100.0,
+      "marketPrice": 56.13,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541543,
+      "lowPrice": 449.9,
+      "midPrice": 459.99,
+      "highPrice": 499.67,
+      "marketPrice": 234.33,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541565,
+      "lowPrice": 0.01,
+      "midPrice": 0.14,
+      "highPrice": 1.98,
+      "marketPrice": 0.12,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541567,
+      "lowPrice": 0.05,
+      "midPrice": 0.24,
+      "highPrice": 20.0,
+      "marketPrice": 0.17,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541569,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.03,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541570,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.03,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541571,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.06,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541572,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.02,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541579,
+      "lowPrice": 0.01,
+      "midPrice": 0.12,
+      "highPrice": 1.58,
+      "marketPrice": 0.06,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541583,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.03,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541587,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.97,
+      "marketPrice": 0.05,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541591,
+      "lowPrice": 0.01,
+      "midPrice": 0.25,
+      "highPrice": 6.99,
+      "marketPrice": 0.18,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541593,
+      "lowPrice": 0.01,
+      "midPrice": 0.11,
+      "highPrice": 1.58,
+      "marketPrice": 0.1,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541594,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.07,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541595,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.05,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541597,
+      "lowPrice": 0.01,
+      "midPrice": 0.12,
+      "highPrice": 1.58,
+      "marketPrice": 0.06,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541598,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.03,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541599,
+      "lowPrice": 0.01,
+      "midPrice": 0.12,
+      "highPrice": 1.58,
+      "marketPrice": 0.05,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541600,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.05,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541601,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.04,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541602,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.09,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541603,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.03,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541604,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.06,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541605,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.02,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541606,
+      "lowPrice": 0.05,
+      "midPrice": 0.2,
+      "highPrice": 2.0,
+      "marketPrice": 0.15,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541607,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.04,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541608,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.13,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541609,
+      "lowPrice": 0.01,
+      "midPrice": 0.21,
+      "highPrice": 1.98,
+      "marketPrice": 0.14,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541610,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.08,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541611,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.04,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541612,
+      "lowPrice": 0.01,
+      "midPrice": 0.14,
+      "highPrice": 1.58,
+      "marketPrice": 0.06,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541613,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.04,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541614,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.02,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541615,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.04,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541616,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.15,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541617,
+      "lowPrice": 0.01,
+      "midPrice": 0.11,
+      "highPrice": 1.58,
+      "marketPrice": 0.09,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541618,
+      "lowPrice": 0.01,
+      "midPrice": 0.12,
+      "highPrice": 1.52,
+      "marketPrice": 0.07,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541619,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.06,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541620,
+      "lowPrice": 0.01,
+      "midPrice": 0.2,
+      "highPrice": 1.98,
+      "marketPrice": 0.1,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541621,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.5,
+      "marketPrice": 0.08,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541622,
+      "lowPrice": 0.02,
+      "midPrice": 0.21,
+      "highPrice": 2.0,
+      "marketPrice": 0.13,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541623,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.06,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541624,
+      "lowPrice": 0.01,
+      "midPrice": 0.12,
+      "highPrice": 2.5,
+      "marketPrice": 0.05,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541625,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 5.0,
+      "marketPrice": 0.13,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541626,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.03,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541627,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 2.03,
+      "marketPrice": 0.1,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541628,
+      "lowPrice": 0.01,
+      "midPrice": 0.12,
+      "highPrice": 1.58,
+      "marketPrice": 0.06,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541629,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.09,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541630,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.03,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541631,
+      "lowPrice": 0.01,
+      "midPrice": 0.25,
+      "highPrice": 2.99,
+      "marketPrice": 0.1,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541632,
+      "lowPrice": 0.01,
+      "midPrice": 0.2,
+      "highPrice": 1.98,
+      "marketPrice": 0.11,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541633,
+      "lowPrice": 0.01,
+      "midPrice": 0.12,
+      "highPrice": 15.0,
+      "marketPrice": 0.06,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541634,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.98,
+      "marketPrice": 0.08,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541635,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.15,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541636,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.05,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541637,
+      "lowPrice": 0.02,
+      "midPrice": 0.15,
+      "highPrice": 1.6,
+      "marketPrice": 0.12,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541638,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.61,
+      "marketPrice": 0.11,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541639,
+      "lowPrice": 0.01,
+      "midPrice": 0.13,
+      "highPrice": 1.58,
+      "marketPrice": 0.06,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541640,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.05,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541641,
+      "lowPrice": 0.08,
+      "midPrice": 0.24,
+      "highPrice": 1.98,
+      "marketPrice": 0.17,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541642,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.05,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541643,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.1,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541644,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.09,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541645,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.07,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541646,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.06,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541647,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.07,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541648,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.03,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541649,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 2.9,
+      "marketPrice": 0.05,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541650,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.04,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541651,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.05,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541652,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.07,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541653,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.07,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541654,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.09,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541655,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 20.0,
+      "marketPrice": 0.04,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541656,
+      "lowPrice": 0.01,
+      "midPrice": 0.12,
+      "highPrice": 1.58,
+      "marketPrice": 0.07,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541657,
+      "lowPrice": 0.01,
+      "midPrice": 0.15,
+      "highPrice": 1.58,
+      "marketPrice": 0.1,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541658,
+      "lowPrice": 0.01,
+      "midPrice": 0.1,
+      "highPrice": 1.58,
+      "marketPrice": 0.04,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 541659,
+      "lowPrice": 89.98,
+      "midPrice": 99.99,
+      "highPrice": 250.0,
+      "marketPrice": 94.9,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541660,
+      "lowPrice": 2000.0,
+      "midPrice": 9999.99,
+      "highPrice": 52068.05,
+      "marketPrice": 1875.75,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541661,
+      "lowPrice": 6.0,
+      "midPrice": 13.99,
+      "highPrice": 60.0,
+      "marketPrice": 9.46,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541662,
+      "lowPrice": 3.99,
+      "midPrice": 7.04,
+      "highPrice": 100.0,
+      "marketPrice": 4.96,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541663,
+      "lowPrice": 24.72,
+      "midPrice": 48.98,
+      "highPrice": 120.0,
+      "marketPrice": 28.21,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541664,
+      "lowPrice": 152.63,
+      "midPrice": 214.0,
+      "highPrice": 500.0,
+      "marketPrice": 219.13,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541665,
+      "lowPrice": 149.99,
+      "midPrice": 180.0,
+      "highPrice": 550.0,
+      "marketPrice": 175.72,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541666,
+      "lowPrice": 55.0,
+      "midPrice": 78.25,
+      "highPrice": 150.0,
+      "marketPrice": 75.86,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541667,
+      "lowPrice": 72.98,
+      "midPrice": 90.63,
+      "highPrice": 249.99,
+      "marketPrice": 91.45,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541668,
+      "lowPrice": 299.01,
+      "midPrice": 360.0,
+      "highPrice": 1050.69,
+      "marketPrice": 344.77,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541669,
+      "lowPrice": 43.0,
+      "midPrice": 54.69,
+      "highPrice": 200.0,
+      "marketPrice": 48.18,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541670,
+      "lowPrice": 95.0,
+      "midPrice": 136.15,
+      "highPrice": 300.0,
+      "marketPrice": 125.17,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 541671,
+      "lowPrice": 0.19,
+      "midPrice": 0.55,
+      "highPrice": 10.55,
+      "marketPrice": 0.45,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 542683,
+      "lowPrice": 3.25,
+      "midPrice": 5.49,
+      "highPrice": 27.99,
+      "marketPrice": 4.18,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 542684,
+      "lowPrice": 1.5,
+      "midPrice": 2.27,
+      "highPrice": 4.99,
+      "marketPrice": 2.14,
+      "directLowPrice": null,
+      "subTypeName": "Foil"
+    },
+    {
+      "productId": 543371,
+      "lowPrice": 19.49,
+      "midPrice": 22.49,
+      "highPrice": 39.99,
+      "marketPrice": 21.69,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    },
+    {
+      "productId": 543906,
+      "lowPrice": 1.0,
+      "midPrice": 3.56,
+      "highPrice": 6.0,
+      "marketPrice": 3.88,
+      "directLowPrice": null,
+      "subTypeName": "Normal"
+    }
+  ]
+}

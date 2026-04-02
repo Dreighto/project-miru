@@ -1,0 +1,14 @@
+{
+  "merge_committed": true,
+  "merge_error": null,
+  "merge_step_rowcounts": {
+    "step1_copy_image_path": 2229,
+    "step2_copy_image_url": 0
+  },
+  "delete_committed": true,
+  "delete_error": null,
+  "delete_rowcount": 2431,
+  "stopped_before_delete": false,
+  "stop_reason": null,
+  "pre_guard_rows_with_any_source_data": 2345
+}

@@ -87,8 +87,22 @@ def meta_bearing_codes(catalog_path: Path) -> set[str]:
         return set()
 
 
+def _norm_snapshot_code(raw: Any) -> str:
+    code = str(raw or "").strip().upper()
+    return code
+
+
 def snapshot_codes(snapshot_path: Path) -> set[str]:
-    """Card codes present in the snapshot JSON (cards[].card_code)."""
+    """
+    Card codes present in a worktree snapshot JSON.
+
+    Supported shapes:
+    - Card-list snapshots: top-level ``cards[]`` with ``card_code`` (community_cardlist,
+      onepiece_cardgame_dev, etc.).
+    - Limitless tournament snapshot: ``meta_summary.leader_usage`` keys (leader card codes)
+      and ``tournaments[].results[].leader_code`` (non-empty values only).
+    All sources are merged and deduplicated.
+    """
     if not snapshot_path.is_file():
         return set()
     try:
@@ -96,8 +110,45 @@ def snapshot_codes(snapshot_path: Path) -> set[str]:
             data = json.load(f)
     except Exception:
         return set()
+    if not isinstance(data, dict):
+        return set()
+
+    out: set[str] = set()
+
     cards = data.get("cards") or []
-    return {str(c.get("card_code") or "").strip().upper() for c in cards if c.get("card_code")}
+    if isinstance(cards, list):
+        for c in cards:
+            if not isinstance(c, dict):
+                continue
+            code = _norm_snapshot_code(c.get("card_code"))
+            if code:
+                out.add(code)
+
+    meta = data.get("meta_summary")
+    if isinstance(meta, dict):
+        leader_usage = meta.get("leader_usage")
+        if isinstance(leader_usage, dict):
+            for key in leader_usage.keys():
+                code = _norm_snapshot_code(key)
+                if code:
+                    out.add(code)
+
+    tournaments = data.get("tournaments")
+    if isinstance(tournaments, list):
+        for t in tournaments:
+            if not isinstance(t, dict):
+                continue
+            results = t.get("results") or []
+            if not isinstance(results, list):
+                continue
+            for row in results:
+                if not isinstance(row, dict):
+                    continue
+                code = _norm_snapshot_code(row.get("leader_code"))
+                if code:
+                    out.add(code)
+
+    return out
 
 
 def compute_overlap(

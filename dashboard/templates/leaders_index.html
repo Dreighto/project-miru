@@ -1,115 +1,26 @@
 <!doctype html>
 <html lang="en" data-page="leaders-index">
+
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#08060f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="description" content="Leaders — Miru One Piece Intelligence">
   <title>Leaders — Miru</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/miru-base.css">
   <link rel="stylesheet" href="/static/leaders_hub.css">
   <style>
-    :root {
-      --bg:          #08060f;
-      --stroke:      rgba(255, 255, 255, 0.10);
-      --strokeBrand: rgba(201, 176, 255, 0.18);
-      --brandPurple: rgba(184, 160, 255, 0.96);
-      --muted:       rgba(255, 255, 255, 0.55);
-      --muted2:      rgba(255, 255, 255, 0.30);
-      --textSoft:    rgba(237, 243, 255, 0.88);
-      --font-display: 'Geist', system-ui, sans-serif;
-      --font-ui:      'Inter', system-ui, -apple-system, sans-serif;
-      /* Leader color identity (OP TCG) */
-      --leaderRed:    #c93a3a;
-      --leaderGreen:  #2d9d5f;
-      --leaderBlue:   #3a7bc8;
-      --leaderPurple: #8b5cf6;
-      --leaderYellow: #d4a012;
-      --leaderBlack:  #4b5563;
+    .leaderShell {
+      width: min(780px, 100%);
+      margin: 0 auto;
     }
-    *, *::before, *::after { box-sizing: border-box; }
-    :root { --bottom-nav-height: 56px; }
-    html { overflow-x: hidden; }
-    body {
-      background:
-        radial-gradient(1200px 800px at 50% -10%, rgba(165, 118, 255, 0.12), transparent 55%),
-        var(--bg);
-      color: white;
-      font-family: var(--font-ui);
-      margin: 0;
-      padding: 0 14px calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
-      font-size: 13px;
-      overflow-x: clip;
-      max-width: 100vw;
-      -webkit-font-smoothing: antialiased;
-      overscroll-behavior-y: contain;
-    }
-    .leaderShell { width: min(780px, 100%); margin: 0 auto; }
-    /* App bar: solid app surface; stable alignment */
-    .appBar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      width: 100%;
-      z-index: 50;
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      min-height: 64px;
-      padding: 6px 12px;
-      padding-top: max(6px, env(safe-area-inset-top, 0px));
-      background: #0c0a14;
-      border-bottom: 1px solid rgba(196, 173, 255, 0.06);
-      contain: layout style;
-      -webkit-transform: translateZ(0);
-      transform: translateZ(0);
-    }
-    .appBarLeft { display: flex; align-items: center; min-width: 0; justify-self: start; }
-    .appBarPageLabel { font-size: 13px; font-weight: 500; letter-spacing: 0.02em; color: rgba(255, 255, 255, 0.58); margin: 0; }
-    .appBarRight { min-width: 0; justify-self: end; }
-    .appBarLogoWrap { grid-column: 2; justify-self: center; display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; flex-shrink: 0; text-decoration: none; color: inherit; }
-    .appBarLogo { position: relative; width: 64px; height: 64px; flex-shrink: 0; transform-origin: center center; transition: transform 0.26s ease; }
-    .appBar.appBar--compact .appBarLogoWrap .appBarLogo { transform: scale(0.75); }
-    .appBarLogo .brandLogoCompass { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0.94; animation: miruCompassWheel 48s linear infinite; }
-    .appBarLogo .brandLogoFruitWrap { position: absolute; width: 50%; left: 49.27%; top: 50.08%; transform: translate(-50%, -50%); z-index: 2; animation: miruFruitPulse 1.4s ease-out infinite; }
-    .appBarLogo .brandLogoFruit { width: 100%; height: auto; display: block; object-fit: contain; }
-    .appBarSpacer { height: calc(76px + max(0px, env(safe-area-inset-top, 0px) - 6px)); flex-shrink: 0; margin-bottom: 6px; }
-    /* Bottom nav: same structure as main app for consistent dock across all pages */
-    .bottomNav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 45;
-      min-height: var(--bottom-nav-height);
-      padding-bottom: env(safe-area-inset-bottom, 0);
-      background: rgba(10, 9, 18, 0.97);
-      border-top: 1px solid rgba(196, 173, 255, 0.06);
-      box-shadow: 0 -1px 0 rgba(0,0,0,0.2);
-      contain: layout style;
-      transform: translateZ(0);
-      -webkit-backface-visibility: hidden;
-      backface-visibility: hidden;
-    }
-    .bottomNavDock { display: flex; align-items: stretch; justify-content: space-around; min-height: var(--bottom-nav-height); width: 100%; }
-    .bottomNavItem { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 2px 9px; text-decoration: none; color: rgba(255, 255, 255, 0.5); transition: color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease; border-radius: 10px; margin: 3px 1px; min-width: 0; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-    .bottomNavItem:hover, .bottomNavItem:focus-visible { color: rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.04); outline: none; }
-    .bottomNavItem--current { color: rgba(244, 208, 120, 0.98); background: rgba(244, 208, 120, 0.11); box-shadow: inset 0 0 0 1px rgba(244, 208, 120, 0.16); font-weight: 600; }
-    .bottomNavItem--current .bottomNavLabel { font-weight: 600; }
-    .bottomNavIcon.navIconWrap { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; }
-    .bottomNavIcon .navIcon { width: 24px; height: 24px; object-fit: contain; object-position: center; display: block; flex-shrink: 0; opacity: 1; filter: brightness(0) invert(1); transition: opacity 0.2s ease, transform 0.2s ease, filter 0.22s ease; }
-    .bottomNavIcon .navIcon--home,
-    .bottomNavIcon .navIcon--leaders { width: 27px; height: 27px; }
-    .bottomNavItem:not(.bottomNavItem--current) .bottomNavIcon .navIcon { opacity: 0.56; filter: brightness(0) invert(1); }
-    .bottomNavItem:hover:not(.bottomNavItem--current) .bottomNavIcon .navIcon { opacity: 0.8; }
-    .navButton.active .bottomNavIcon .navIcon,
-    .bottomNavItem--current .bottomNavIcon .navIcon { opacity: 1; transform: scale(1.05); filter: brightness(0) saturate(100%) invert(90%) sepia(22%) saturate(420%) hue-rotate(356deg) brightness(1.07) contrast(1.02) drop-shadow(0 0 7px rgba(244, 208, 120, 0.34)); }
-    .bottomNavLabel { font-size: 10px; font-weight: 500; letter-spacing: 0.02em; font-family: var(--font-ui); text-align: center; line-height: 1.15; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .leaderShell > .leadersIndexTitle { margin-top: 8px; }
+
     .leadersIndexTitle {
       font-family: var(--font-display);
       font-size: clamp(19px, 4.6vw, 25px);
@@ -119,98 +30,366 @@
       margin: 0 0 6px;
       color: white;
     }
+
     .leadersIndexSub {
       font-size: 12px;
       color: var(--muted);
       margin: 0 0 16px;
       letter-spacing: 0.02em;
     }
-    @keyframes miruCompassWheel { 0% { transform: scale(1.08) rotate(0deg); } 100% { transform: scale(1.08) rotate(360deg); } }
-    @keyframes miruFruitPulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; filter: brightness(1); } 22% { transform: translate(-50%, -50%) scale(1.026); opacity: 0.98; filter: brightness(1.04); } }
-    @media (prefers-reduced-motion: reduce) {
-      .appBarLogo .brandLogoCompass, .appBarLogo .brandLogoFruitWrap { animation: none; }
-      .bottomNavIcon .navIcon { transition: opacity 0.12s ease, filter 0.12s ease; }
-      .navButton.active .bottomNavIcon .navIcon,
-      .bottomNavItem--current .bottomNavIcon .navIcon { transform: none; }
-    }
   </style>
 </head>
+
 <body>
-<header class="appBar" id="appBar" aria-label="App bar">
-  <div class="appBarLeft">
-    <span class="appBarPageLabel" aria-hidden="true">Leaders</span>
-  </div>
-  <a href="/" class="appBarLogoWrap" aria-label="Project Miru home">
-    <div class="appBarLogo" aria-hidden="true">
-      <img class="brandLogoCompass" src="/static/icons/project_miru_compass.png" alt="" width="64" height="64" decoding="async" fetchpriority="high">
-      <span class="brandLogoFruitWrap">
-        <img class="brandLogoFruit" src="/static/icons/project_miru_fruit.png" alt="Miru" width="64" height="64" decoding="async">
-      </span>
+  <header class="appBar" id="appBar" aria-label="App bar">
+    <div class="appBarLeft">
+      <span class="appBarPageLabel" aria-hidden="true">Leaders</span>
     </div>
-  </a>
-  <div class="appBarRight" aria-hidden="true"></div>
-</header>
-<div class="appBarSpacer" aria-hidden="true"></div>
+    <a href="/" class="appBarLogoWrap" id="appBarLogoWrap" aria-label="Project Miru home">
+      <div class="appBarLogo" aria-hidden="true">
+        <img class="brandLogoCompass" src="{{ url_for('static', filename='icons/pm_compass.png') }}" alt="" width="64"
+          height="64" decoding="async" fetchpriority="high">
+        <span class="brandLogoFruitWrap">
+          <img class="brandLogoFruit" src="{{ url_for('static', filename='icons/pm_fruit.png') }}" alt="Miru" width="64"
+            height="64" decoding="async">
+        </span>
+      </div>
+    </a>
+    <div class="appBarRight" aria-hidden="true"></div>
+  </header>
+  <div class="appBarSpacer" aria-hidden="true"></div>
 
-<nav class="bottomNav" id="bottomNav" aria-label="Main navigation">
-  <div class="bottomNavDock">
-    {{ bottom_nav_html | safe }}
-  </div>
-</nav>
+  <nav class="bottomNav" id="bottomNav" aria-label="Main navigation">
+    <div class="bottomNavDock">
+      {{ bottom_nav_html | safe }}
+    </div>
+  </nav>
 
-<div class="leaderShell">
-  <div class="leadersHubIntro">
-    <h1 class="leadersIndexTitle">Leaders</h1>
-    <p class="leadersIndexSub">Choose a leader to open the deck hub — stats, text, and Miru insight.</p>
+  <div class="leaderShell">
+    <div class="leadersHubIntro">
+      <h1 class="leadersIndexTitle">Leaders</h1>
+      <p class="leadersIndexSub">Tap a leader to view stats, card text, and Miru insight.</p>
+    </div>
+    {% if leader_list %}
+    <ul class="leadersBannerList">
+      {% for leader in leader_list %}
+      <li>
+        <button class="leaderBanner" type="button" data-color="{{ leader.color }}" data-leader='{{ leader | tojson }}'
+          aria-label="{{ leader.name or leader.code }}, {{ leader.code }}">
+          <div class="leaderBannerArt" aria-hidden="true">
+            {% if leader.thumb_src %}
+            <img class="leaderBannerImg" src="{{ leader.thumb_src }}" loading="lazy" decoding="async" alt=""
+              onerror="this.style.display='none'">
+            {% endif %}
+          </div>
+          <div class="leaderBannerScrim" aria-hidden="true"></div>
+          <div class="leaderBannerBody">
+            <span class="leaderBannerName">{{ leader.name or leader.code }}</span>
+            <span class="leaderBannerCode">{{ leader.code }}</span>
+            <span class="leaderBannerMeta">{{ leader.sort_reason }}</span>
+          </div>
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="leadersEmpty">No leaders in the catalog yet. Add leader cards to the catalog to see them here.</p>
+    {% endif %}
   </div>
-  {% if leader_list %}
-  <ul class="leadersBannerList">
-    {% for leader in leader_list %}
-    <li>
-      <a class="leaderBanner" href="/leader/{{ leader.code }}" data-color="{{ leader.color }}" aria-label="{{ leader.name or leader.code }}, {{ leader.code }}">
-        <div class="leaderBannerArt" aria-hidden="true">
-          {% if leader.thumb_src %}
-          <img class="leaderBannerImg" src="{{ leader.thumb_src }}" loading="lazy" decoding="async" alt="" width="200" height="72" sizes="(max-width: 780px) 36vw, 118px">
-          {% endif %}
+
+  <!-- Leader detail modal — slides up from bottom -->
+  <div class="ldrModal" id="ldrModal" role="dialog" aria-modal="true" aria-labelledby="ldrModalHeroName" hidden>
+    <div class="ldrModalBackdrop" id="ldrModalBackdrop"></div>
+    <div class="ldrModalSheet" id="ldrModalSheet">
+      <header class="ldrModalHeader">
+        <button class="ldrModalClose" id="ldrModalClose" type="button" aria-label="Back to Leaders">
+          <span aria-hidden="true">←</span> Leaders
+        </button>
+        <span class="ldrModalHeaderTitle" id="ldrModalHeaderTitle" aria-hidden="true"></span>
+      </header>
+      <div class="ldrModalBody" id="ldrModalBody">
+
+        <!-- Hero block -->
+        <div class="ldrModalHero" id="ldrModalHero">
+          <img class="ldrModalHeroImg" id="ldrModalHeroImg" src="" alt="" loading="lazy"
+            onerror="this.style.display='none'">
+          <div class="ldrModalHeroScrim" aria-hidden="true"></div>
+          <div class="ldrModalHeroContent">
+            <div class="ldrModalHeroCode" id="ldrModalHeroCode"></div>
+            <h2 class="ldrModalHeroName" id="ldrModalHeroName"></h2>
+            <div class="ldrModalHeroBadges" id="ldrModalHeroBadges"></div>
+          </div>
         </div>
-        <div class="leaderBannerBody">
-          <span class="leaderBannerName">{{ leader.name or leader.code }}</span>
-          <span class="leaderBannerCode">{{ leader.code }}</span>
-          <span class="leaderBannerMeta">{{ leader.sort_reason }}</span>
-          <span class="leaderBannerCue" aria-hidden="true"></span>
+
+        <!-- Miru Insight -->
+        <div class="ldrModalSection">
+          <div class="ldrModalSectionTitle">Miru Insight</div>
+          <p class="ldrModalInsightPlaceholder" id="ldrModalInsightPlaceholder">Loading…</p>
+          <p class="ldrModalInsightText ldrHidden" id="ldrModalInsightText"></p>
+          <div id="ldrModalInsightAdditional" style="display:none"></div>
         </div>
-      </a>
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p class="leadersEmpty">No leaders in the catalog yet. Add leader cards to the catalog to see them here.</p>
-  {% endif %}
-</div>
-<script>
-(function () {
-  var appBar = document.getElementById("appBar");
-  if (!appBar) return;
-  var COMPACT_THRESHOLD = 100;
-  var ticking = false;
-  var lastCompact = null;
-  function applyCompact() {
-    ticking = false;
-    var compact = (window.scrollY || 0) > COMPACT_THRESHOLD;
-    if (compact === lastCompact) return;
-    lastCompact = compact;
-    if (compact) appBar.classList.add("appBar--compact");
-    else appBar.classList.remove("appBar--compact");
-  }
-  function onScroll() {
-    if (!ticking) {
-      ticking = true;
-      requestAnimationFrame(applyCompact);
-    }
-  }
-  window.addEventListener("scroll", onScroll, { passive: true });
-  applyCompact();
-})();
-</script>
+
+        <!-- Overview -->
+        <div class="ldrModalSection">
+          <div class="ldrModalSectionTitle">Overview</div>
+          <div id="ldrModalOverviewBody"></div>
+        </div>
+
+        <!-- Deck Tiers -->
+        <div class="ldrModalSection">
+          <div class="ldrModalSectionTitle">Deck Tiers</div>
+          <div class="ldrModalTabs" role="tablist" aria-label="Deck tier tabs">
+            <button class="ldrModalTab ldrModalTab--active" role="tab" aria-selected="true" data-tab="competitive"
+              type="button">Competitive</button>
+            <button class="ldrModalTab" role="tab" aria-selected="false" data-tab="balanced"
+              type="button">Balanced</button>
+            <button class="ldrModalTab" role="tab" aria-selected="false" data-tab="wildcard" type="button">Wild
+              Card</button>
+          </div>
+          <div class="ldrModalTabPanel" id="ldrTabCompetitive" role="tabpanel">
+            <p class="ldrModalPlaceholder">Tournament tier data coming soon.</p>
+          </div>
+          <div class="ldrModalTabPanel ldrHidden" id="ldrTabBalanced" role="tabpanel">
+            <p class="ldrModalPlaceholder">Balanced play data coming soon.</p>
+          </div>
+          <div class="ldrModalTabPanel ldrHidden" id="ldrTabWildcard" role="tabpanel">
+            <p class="ldrModalPlaceholder">Wild card builds coming soon.</p>
+          </div>
+        </div>
+
+        <!-- Budget Build -->
+        <div class="ldrModalSection ldrModalSection--last">
+          <div class="ldrModalSectionTitle">Budget Build</div>
+          <p class="ldrModalPlaceholder">Budget shell coming soon.</p>
+        </div>
+
+      </div><!-- /ldrModalBody -->
+    </div><!-- /ldrModalSheet -->
+  </div><!-- /ldrModal -->
+
+  <script>
+    (function () {
+      'use strict';
+
+      /* ── App bar compact on scroll ── */
+      var appBar = document.getElementById('appBar');
+      if (appBar) {
+        var COMPACT = 100, ticking = false, lastCompact = null;
+        function applyCompact() {
+          ticking = false;
+          var c = (window.scrollY || 0) > COMPACT;
+          if (c === lastCompact) return;
+          lastCompact = c;
+          appBar.classList.toggle('appBar--compact', c);
+        }
+        window.addEventListener('scroll', function () {
+          if (!ticking) { ticking = true; requestAnimationFrame(applyCompact); }
+        }, { passive: true });
+        applyCompact();
+      }
+
+      /* ── Leader Modal ── */
+      var modal = document.getElementById('ldrModal');
+      var backdrop = document.getElementById('ldrModalBackdrop');
+      var sheet = document.getElementById('ldrModalSheet');
+      var closeBtn = document.getElementById('ldrModalClose');
+      var headerTitle = document.getElementById('ldrModalHeaderTitle');
+      var heroImg = document.getElementById('ldrModalHeroImg');
+      var heroCode = document.getElementById('ldrModalHeroCode');
+      var heroName = document.getElementById('ldrModalHeroName');
+      var heroBadges = document.getElementById('ldrModalHeroBadges');
+      var insightPh = document.getElementById('ldrModalInsightPlaceholder');
+      var insightTxt = document.getElementById('ldrModalInsightText');
+      var insightAdd = document.getElementById('ldrModalInsightAdditional');
+      var overviewBody = document.getElementById('ldrModalOverviewBody');
+      var tabBtns = modal ? Array.prototype.slice.call(modal.querySelectorAll('.ldrModalTab')) : [];
+      var tabPanels = {
+        competitive: document.getElementById('ldrTabCompetitive'),
+        balanced: document.getElementById('ldrTabBalanced'),
+        wildcard: document.getElementById('ldrTabWildcard'),
+      };
+
+      var modalOpen = false;
+      var currentCode = null;
+
+      function esc(s) {
+        return String(s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      function activateTab(tabId) {
+        tabBtns.forEach(function (btn) {
+          var active = btn.getAttribute('data-tab') === tabId;
+          btn.classList.toggle('ldrModalTab--active', active);
+          btn.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        Object.keys(tabPanels).forEach(function (key) {
+          var p = tabPanels[key];
+          if (!p) return;
+          p.classList.toggle('ldrHidden', key !== tabId);
+        });
+      }
+
+      function fetchInsight(code) {
+        fetch('/api/miru/insight/' + encodeURIComponent(code))
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (code !== currentCode) return;
+            var primary = data && (data.primary || (data.insight ? { insight: data.insight } : null));
+            var text = primary && (primary.insight || primary.insight_text);
+            if (!text || !String(text).trim()) {
+              if (insightPh) insightPh.textContent = 'No Miru insight for this leader yet.';
+              return;
+            }
+            if (insightPh) insightPh.classList.add('ldrHidden');
+            if (insightTxt) {
+              insightTxt.textContent = String(text).trim();
+              insightTxt.classList.remove('ldrHidden');
+            }
+            var additional = (data.additional && data.additional.length) ? data.additional : [];
+            if (additional.length && insightAdd) {
+              insightAdd.style.display = 'block';
+              insightAdd.innerHTML = additional.map(function (a) {
+                var t = (a.insight || '').trim();
+                return t ? '<div class="ldrModalInsightAdditionalItem">' + esc(t) + '</div>' : '';
+              }).join('');
+            }
+          })
+          .catch(function () {
+            if (code !== currentCode) return;
+            if (insightPh) insightPh.textContent = 'Insight unavailable.';
+          });
+      }
+
+      function openModal(leader) {
+        if (!modal || !leader) return;
+        currentCode = leader.code || '';
+
+        /* populate hero */
+        if (heroCode) heroCode.textContent = leader.code || '';
+        if (heroName) heroName.textContent = leader.name || leader.code || '';
+        if (headerTitle) headerTitle.textContent = leader.name || leader.code || '';
+
+        if (heroImg) {
+          heroImg.style.display = '';
+          heroImg.src = leader.thumb_src || '';
+          heroImg.alt = leader.name || '';
+        }
+
+        /* badges */
+        if (heroBadges) {
+          var bh = '';
+          if (leader.set_name) {
+            bh += '<span class="ldrModalBadge ldrModalBadge--set">' + esc(leader.set_name) + '</span>';
+          }
+          var ct = leader.color_tags || [];
+          for (var ci = 0; ci < ct.length; ci++) {
+            bh += '<span class="ldrModalBadge ldrModalBadge--color">' + esc(ct[ci]) + '</span>';
+          }
+          if (leader.power) {
+            bh += '<span class="ldrModalBadge">Power ' + esc(leader.power) + '</span>';
+          }
+          if (leader.attribute) {
+            bh += '<span class="ldrModalBadge">' + esc(leader.attribute) + '</span>';
+          }
+          var tp = leader.trait_pills || [];
+          for (var ti = 0; ti < tp.length; ti++) {
+            bh += '<span class="ldrModalBadge">' + esc(tp[ti]) + '</span>';
+          }
+          heroBadges.innerHTML = bh;
+        }
+
+        /* overview */
+        if (overviewBody) {
+          var ov = '';
+          if (leader.effect_text) {
+            ov += '<div class="ldrModalFieldRow">'
+              + '<div class="ldrModalFieldLabel">Effect</div>'
+              + '<div class="ldrModalFieldValue">' + esc(leader.effect_text) + '</div>'
+              + '</div>';
+          }
+          if (leader.trigger_text) {
+            ov += '<div class="ldrModalFieldRow">'
+              + '<div class="ldrModalFieldLabel">Trigger</div>'
+              + '<div class="ldrModalFieldValue">' + esc(leader.trigger_text) + '</div>'
+              + '</div>';
+          }
+          if (!leader.effect_text && !leader.trigger_text) {
+            ov = '<p class="ldrModalEmpty">No card text available in catalog.</p>';
+          }
+          overviewBody.innerHTML = ov;
+        }
+
+        /* reset insight */
+        if (insightPh) { insightPh.textContent = 'Loading\u2026'; insightPh.classList.remove('ldrHidden'); }
+        if (insightTxt) { insightTxt.textContent = ''; insightTxt.classList.add('ldrHidden'); }
+        if (insightAdd) { insightAdd.innerHTML = ''; insightAdd.style.display = 'none'; }
+
+        /* reset tabs */
+        activateTab('competitive');
+
+        /* show */
+        modal.removeAttribute('hidden');
+        requestAnimationFrame(function () {
+          modal.classList.add('ldrModal--open');
+        });
+        modalOpen = true;
+        document.body.style.overflow = 'hidden';
+
+        /* history */
+        history.pushState({ ldrModal: currentCode }, '');
+
+        /* focus */
+        if (closeBtn) setTimeout(function () { closeBtn.focus(); }, 80);
+
+        /* insight fetch */
+        fetchInsight(currentCode);
+      }
+
+      function closeModal(skipHistory) {
+        if (!modal || !modalOpen) return;
+        modal.classList.remove('ldrModal--open');
+        modalOpen = false;
+        document.body.style.overflow = '';
+        if (!skipHistory) history.back();
+        /* hide after transition */
+        var done = false;
+        function hide() {
+          if (done) return; done = true;
+          if (!modalOpen) modal.setAttribute('hidden', '');
+        }
+        sheet.addEventListener('transitionend', hide, { once: true });
+        setTimeout(hide, 400);
+      }
+
+      /* tab clicks */
+      tabBtns.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          activateTab(btn.getAttribute('data-tab'));
+        });
+      });
+
+      /* banner clicks */
+      var banners = document.querySelectorAll('.leaderBanner[data-leader]');
+      banners.forEach(function (banner) {
+        banner.addEventListener('click', function () {
+          try { openModal(JSON.parse(banner.getAttribute('data-leader'))); } catch (e) { /* ignore */ }
+        });
+      });
+
+      /* close */
+      if (closeBtn) closeBtn.addEventListener('click', function () { closeModal(false); });
+      if (backdrop) backdrop.addEventListener('click', function () { closeModal(false); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modalOpen) closeModal(false);
+      });
+      window.addEventListener('popstate', function () {
+        if (modalOpen) closeModal(true);
+      });
+
+    })();
+  </script>
 </body>
+
 </html>

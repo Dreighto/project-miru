@@ -1,0 +1,870 @@
+{
+  "ok": true,
+  "snapshot_path": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\snapshots\\limitless.json",
+  "overlap_count": 60,
+  "overlap_codes": [
+    "OP01-001",
+    "OP01-002",
+    "OP01-060",
+    "OP02-049",
+    "OP04-019",
+    "OP04-058",
+    "OP05-001",
+    "OP05-002",
+    "OP05-041",
+    "OP05-060",
+    "OP05-098",
+    "OP06-021",
+    "OP06-022",
+    "OP06-042",
+    "OP06-080",
+    "OP07-019",
+    "OP07-038",
+    "OP07-059",
+    "OP07-079",
+    "OP07-097",
+    "OP08-001",
+    "OP08-002",
+    "OP08-021",
+    "OP08-057",
+    "OP08-058",
+    "OP08-098",
+    "OP09-022",
+    "OP09-042",
+    "OP09-061",
+    "OP09-062",
+    "OP09-081",
+    "OP10-001",
+    "OP10-003",
+    "OP10-022",
+    "OP10-099",
+    "OP11-001",
+    "OP11-021",
+    "OP11-022",
+    "OP11-040",
+    "OP11-041",
+    "OP11-062",
+    "OP12-001",
+    "OP12-020",
+    "OP12-040",
+    "OP12-041",
+    "OP12-061",
+    "OP12-081",
+    "OP13-001",
+    "OP13-002",
+    "OP13-003",
+    "OP13-004",
+    "OP13-079",
+    "OP13-100",
+    "OP14-001",
+    "OP14-020",
+    "OP14-040",
+    "OP14-041",
+    "OP14-060",
+    "OP14-079",
+    "OP14-080"
+  ],
+  "enrichment": {
+    "overlap_codes": 60,
+    "learning_dossier_sources_upserts": 2765,
+    "learning_dossiers_basic_facts_merged": 60,
+    "tournament_source_rows_total": 2705
+  },
+  "insight_sync_mode": "overlap_allowlist_incremental",
+  "sync_report": {
+    "project_db_path": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\card_catalog.db",
+    "runtime_dossier_db_path": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\miru_learning_dossiers.db",
+    "prices_path": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\prices.json",
+    "deck_intel_path": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\miru_deck_intel.db",
+    "dossier_status": {
+      "runtime_path_exists": true,
+      "learning_dossiers_table_exists": true,
+      "verified_count": 20,
+      "source_backed_count": 1300
+    },
+    "catalog_schema_ensured": true,
+    "miru_card_insights_exists": true,
+    "enrichment": {
+      "cards_enriched": 96,
+      "cards_skipped_no_catalog": 0,
+      "deck_intel_cards": 96,
+      "ok": true,
+      "deck_intel_present": true
+    },
+    "sync_result": {
+      "ok": true,
+      "sync_mode": "publish_eligible_allowlist",
+      "candidate_count": 60,
+      "remaining_count": 0,
+      "limit_applied": 60,
+      "selected_card_count": 60,
+      "selected_reason_counts": {
+        "publish_eligible_allowlist": 60
+      },
+      "selected_priority_bucket_counts": {
+        "high": 60
+      },
+      "top_selected_candidates": [
+        {
+          "card_code": "OP01-001",
+          "reason": "publish_eligible_allowlist",
+          "priority_score": 800.0,
+          "priority_bucket": "high",
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "sections": []
+        },
+        {
+          "card_code": "OP01-002",
+          "reason": "publish_eligible_allowlist",
+          "priority_score": 800.0,
+          "priority_bucket": "high",
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "sections": []
+        },
+        {
+          "card_code": "OP01-060",
+          "reason": "publish_eligible_allowlist",
+          "priority_score": 800.0,
+          "priority_bucket": "high",
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "sections": []
+        },
+        {
+          "card_code": "OP02-049",
+          "reason": "publish_eligible_allowlist",
+          "priority_score": 800.0,
+          "priority_bucket": "high",
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "sections": []
+        },
+        {
+          "card_code": "OP04-019",
+          "reason": "publish_eligible_allowlist",
+          "priority_score": 800.0,
+          "priority_bucket": "high",
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "sections": []
+        },
+        {
+          "card_code": "OP04-058",
+          "reason": "publish_eligible_allowlist",
+          "priority_score": 800.0,
+          "priority_bucket": "high",
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "sections": []
+        },
+        {
+          "card_code": "OP05-001",
+          "reason": "publish_eligible_allowlist",
+          "priority_score": 800.0,
+          "priority_bucket": "high",
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "sections": []
+        },
+        {
+          "card_code": "OP05-002",
+          "reason": "publish_eligible_allowlist",
+          "priority_score": 800.0,
+          "priority_bucket": "high",
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "sections": []
+        },
+        {
+          "card_code": "OP05-041",
+          "reason": "publish_eligible_allowlist",
+          "priority_score": 800.0,
+          "priority_bucket": "high",
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "sections": []
+        },
+        {
+          "card_code": "OP05-060",
+          "reason": "publish_eligible_allowlist",
+          "priority_score": 800.0,
+          "priority_bucket": "high",
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "sections": []
+        }
+      ],
+      "synced_cards": 4,
+      "written_insights": 0,
+      "inserted_insights": 0,
+      "replaced_insights": 0,
+      "preserved_insights": 4,
+      "skipped_cards": 56,
+      "projected_cards": 60,
+      "purged_legacy_insights": 0,
+      "deleted_before_rebuild": 0,
+      "by_type": {},
+      "status": {
+        "connected": true,
+        "sync_running": false,
+        "last_sync_time": "2026-03-22T07:11:46Z",
+        "insight_count": 121,
+        "sync_mode": "publish_eligible_allowlist",
+        "remaining_candidate_count": 0,
+        "pending_reason_counts": {},
+        "pending_priority_bucket_counts": {},
+        "last_selected_reason_counts": {
+          "publish_eligible_allowlist": 60
+        },
+        "last_selected_priority_bucket_counts": {
+          "high": 60
+        },
+        "top_pending_candidates": [],
+        "top_selected_candidates": [
+          {
+            "card_code": "OP01-001",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP01-002",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP01-060",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP02-049",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP04-019",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP04-058",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP05-001",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP05-002",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP05-041",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP05-060",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          }
+        ],
+        "last_prioritized_sync_reason": "publish_eligible_allowlist",
+        "last_sync_summary": {
+          "candidate_count": 60,
+          "inserted_insights": 0,
+          "limit_applied": 60,
+          "preserved_insights": 4,
+          "priority_bucket_counts": {
+            "high": 60
+          },
+          "processed_reason_counts": {
+            "publish_eligible_allowlist": 60
+          },
+          "projected_cards": 60,
+          "reason_counts": {
+            "publish_eligible_allowlist": 60
+          },
+          "remaining_count": 0,
+          "remaining_priority_bucket_counts": {},
+          "remaining_reason_counts": {},
+          "replaced_insights": 0,
+          "selected_card_count": 60,
+          "selected_card_sample": [
+            "OP01-001",
+            "OP01-002",
+            "OP01-060",
+            "OP02-049",
+            "OP04-019",
+            "OP04-058",
+            "OP05-001",
+            "OP05-002",
+            "OP05-041",
+            "OP05-060",
+            "OP05-098",
+            "OP06-021"
+          ],
+          "selected_priority_bucket_counts": {
+            "high": 60
+          },
+          "selected_reason_counts": {
+            "publish_eligible_allowlist": 60
+          },
+          "skipped_cards": 56,
+          "sync_mode": "publish_eligible_allowlist",
+          "synced_cards": 4,
+          "top_pending_candidates": [],
+          "top_remaining_candidates": [],
+          "top_selected_candidates": [
+            {
+              "card_code": "OP01-001",
+              "priority_bucket": "high",
+              "priority_score": 800.0,
+              "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+              "reason": "publish_eligible_allowlist",
+              "sections": []
+            },
+            {
+              "card_code": "OP01-002",
+              "priority_bucket": "high",
+              "priority_score": 800.0,
+              "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+              "reason": "publish_eligible_allowlist",
+              "sections": []
+            },
+            {
+              "card_code": "OP01-060",
+              "priority_bucket": "high",
+              "priority_score": 800.0,
+              "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+              "reason": "publish_eligible_allowlist",
+              "sections": []
+            },
+            {
+              "card_code": "OP02-049",
+              "priority_bucket": "high",
+              "priority_score": 800.0,
+              "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+              "reason": "publish_eligible_allowlist",
+              "sections": []
+            },
+            {
+              "card_code": "OP04-019",
+              "priority_bucket": "high",
+              "priority_score": 800.0,
+              "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+              "reason": "publish_eligible_allowlist",
+              "sections": []
+            },
+            {
+              "card_code": "OP04-058",
+              "priority_bucket": "high",
+              "priority_score": 800.0,
+              "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+              "reason": "publish_eligible_allowlist",
+              "sections": []
+            },
+            {
+              "card_code": "OP05-001",
+              "priority_bucket": "high",
+              "priority_score": 800.0,
+              "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+              "reason": "publish_eligible_allowlist",
+              "sections": []
+            },
+            {
+              "card_code": "OP05-002",
+              "priority_bucket": "high",
+              "priority_score": 800.0,
+              "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+              "reason": "publish_eligible_allowlist",
+              "sections": []
+            },
+            {
+              "card_code": "OP05-041",
+              "priority_bucket": "high",
+              "priority_score": 800.0,
+              "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+              "reason": "publish_eligible_allowlist",
+              "sections": []
+            },
+            {
+              "card_code": "OP05-060",
+              "priority_bucket": "high",
+              "priority_score": 800.0,
+              "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+              "reason": "publish_eligible_allowlist",
+              "sections": []
+            }
+          ],
+          "updated_at": "2026-03-22T07:11:46Z",
+          "written_insights": 0
+        },
+        "db_health": {
+          "project_catalog_writable": true,
+          "runtime_dossier_readable": true
+        }
+      }
+    },
+    "insight_count_after": 121,
+    "only_card_codes": [
+      "OP01-001",
+      "OP01-002",
+      "OP01-060",
+      "OP02-049",
+      "OP04-019",
+      "OP04-058",
+      "OP05-001",
+      "OP05-002",
+      "OP05-041",
+      "OP05-060",
+      "OP05-098",
+      "OP06-021",
+      "OP06-022",
+      "OP06-042",
+      "OP06-080",
+      "OP07-019",
+      "OP07-038",
+      "OP07-059",
+      "OP07-079",
+      "OP07-097",
+      "OP08-001",
+      "OP08-002",
+      "OP08-021",
+      "OP08-057",
+      "OP08-058",
+      "OP08-098",
+      "OP09-022",
+      "OP09-042",
+      "OP09-061",
+      "OP09-062",
+      "OP09-081",
+      "OP10-001",
+      "OP10-003",
+      "OP10-022",
+      "OP10-099",
+      "OP11-001",
+      "OP11-021",
+      "OP11-022",
+      "OP11-040",
+      "OP11-041",
+      "OP11-062",
+      "OP12-001",
+      "OP12-020",
+      "OP12-040",
+      "OP12-041",
+      "OP12-061",
+      "OP12-081",
+      "OP13-001",
+      "OP13-002",
+      "OP13-003",
+      "OP13-004",
+      "OP13-079",
+      "OP13-100",
+      "OP14-001",
+      "OP14-020",
+      "OP14-040",
+      "OP14-041",
+      "OP14-060",
+      "OP14-079",
+      "OP14-080"
+    ]
+  },
+  "sync_result": {
+    "ok": true,
+    "sync_mode": "publish_eligible_allowlist",
+    "candidate_count": 60,
+    "remaining_count": 0,
+    "limit_applied": 60,
+    "selected_card_count": 60,
+    "selected_reason_counts": {
+      "publish_eligible_allowlist": 60
+    },
+    "selected_priority_bucket_counts": {
+      "high": 60
+    },
+    "top_selected_candidates": [
+      {
+        "card_code": "OP01-001",
+        "reason": "publish_eligible_allowlist",
+        "priority_score": 800.0,
+        "priority_bucket": "high",
+        "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+        "sections": []
+      },
+      {
+        "card_code": "OP01-002",
+        "reason": "publish_eligible_allowlist",
+        "priority_score": 800.0,
+        "priority_bucket": "high",
+        "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+        "sections": []
+      },
+      {
+        "card_code": "OP01-060",
+        "reason": "publish_eligible_allowlist",
+        "priority_score": 800.0,
+        "priority_bucket": "high",
+        "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+        "sections": []
+      },
+      {
+        "card_code": "OP02-049",
+        "reason": "publish_eligible_allowlist",
+        "priority_score": 800.0,
+        "priority_bucket": "high",
+        "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+        "sections": []
+      },
+      {
+        "card_code": "OP04-019",
+        "reason": "publish_eligible_allowlist",
+        "priority_score": 800.0,
+        "priority_bucket": "high",
+        "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+        "sections": []
+      },
+      {
+        "card_code": "OP04-058",
+        "reason": "publish_eligible_allowlist",
+        "priority_score": 800.0,
+        "priority_bucket": "high",
+        "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+        "sections": []
+      },
+      {
+        "card_code": "OP05-001",
+        "reason": "publish_eligible_allowlist",
+        "priority_score": 800.0,
+        "priority_bucket": "high",
+        "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+        "sections": []
+      },
+      {
+        "card_code": "OP05-002",
+        "reason": "publish_eligible_allowlist",
+        "priority_score": 800.0,
+        "priority_bucket": "high",
+        "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+        "sections": []
+      },
+      {
+        "card_code": "OP05-041",
+        "reason": "publish_eligible_allowlist",
+        "priority_score": 800.0,
+        "priority_bucket": "high",
+        "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+        "sections": []
+      },
+      {
+        "card_code": "OP05-060",
+        "reason": "publish_eligible_allowlist",
+        "priority_score": 800.0,
+        "priority_bucket": "high",
+        "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+        "sections": []
+      }
+    ],
+    "synced_cards": 4,
+    "written_insights": 0,
+    "inserted_insights": 0,
+    "replaced_insights": 0,
+    "preserved_insights": 4,
+    "skipped_cards": 56,
+    "projected_cards": 60,
+    "purged_legacy_insights": 0,
+    "deleted_before_rebuild": 0,
+    "by_type": {},
+    "status": {
+      "connected": true,
+      "sync_running": false,
+      "last_sync_time": "2026-03-22T07:11:46Z",
+      "insight_count": 121,
+      "sync_mode": "publish_eligible_allowlist",
+      "remaining_candidate_count": 0,
+      "pending_reason_counts": {},
+      "pending_priority_bucket_counts": {},
+      "last_selected_reason_counts": {
+        "publish_eligible_allowlist": 60
+      },
+      "last_selected_priority_bucket_counts": {
+        "high": 60
+      },
+      "top_pending_candidates": [],
+      "top_selected_candidates": [
+        {
+          "card_code": "OP01-001",
+          "priority_bucket": "high",
+          "priority_score": 800.0,
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "reason": "publish_eligible_allowlist",
+          "sections": []
+        },
+        {
+          "card_code": "OP01-002",
+          "priority_bucket": "high",
+          "priority_score": 800.0,
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "reason": "publish_eligible_allowlist",
+          "sections": []
+        },
+        {
+          "card_code": "OP01-060",
+          "priority_bucket": "high",
+          "priority_score": 800.0,
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "reason": "publish_eligible_allowlist",
+          "sections": []
+        },
+        {
+          "card_code": "OP02-049",
+          "priority_bucket": "high",
+          "priority_score": 800.0,
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "reason": "publish_eligible_allowlist",
+          "sections": []
+        },
+        {
+          "card_code": "OP04-019",
+          "priority_bucket": "high",
+          "priority_score": 800.0,
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "reason": "publish_eligible_allowlist",
+          "sections": []
+        },
+        {
+          "card_code": "OP04-058",
+          "priority_bucket": "high",
+          "priority_score": 800.0,
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "reason": "publish_eligible_allowlist",
+          "sections": []
+        },
+        {
+          "card_code": "OP05-001",
+          "priority_bucket": "high",
+          "priority_score": 800.0,
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "reason": "publish_eligible_allowlist",
+          "sections": []
+        },
+        {
+          "card_code": "OP05-002",
+          "priority_bucket": "high",
+          "priority_score": 800.0,
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "reason": "publish_eligible_allowlist",
+          "sections": []
+        },
+        {
+          "card_code": "OP05-041",
+          "priority_bucket": "high",
+          "priority_score": 800.0,
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "reason": "publish_eligible_allowlist",
+          "sections": []
+        },
+        {
+          "card_code": "OP05-060",
+          "priority_bucket": "high",
+          "priority_score": 800.0,
+          "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+          "reason": "publish_eligible_allowlist",
+          "sections": []
+        }
+      ],
+      "last_prioritized_sync_reason": "publish_eligible_allowlist",
+      "last_sync_summary": {
+        "candidate_count": 60,
+        "inserted_insights": 0,
+        "limit_applied": 60,
+        "preserved_insights": 4,
+        "priority_bucket_counts": {
+          "high": 60
+        },
+        "processed_reason_counts": {
+          "publish_eligible_allowlist": 60
+        },
+        "projected_cards": 60,
+        "reason_counts": {
+          "publish_eligible_allowlist": 60
+        },
+        "remaining_count": 0,
+        "remaining_priority_bucket_counts": {},
+        "remaining_reason_counts": {},
+        "replaced_insights": 0,
+        "selected_card_count": 60,
+        "selected_card_sample": [
+          "OP01-001",
+          "OP01-002",
+          "OP01-060",
+          "OP02-049",
+          "OP04-019",
+          "OP04-058",
+          "OP05-001",
+          "OP05-002",
+          "OP05-041",
+          "OP05-060",
+          "OP05-098",
+          "OP06-021"
+        ],
+        "selected_priority_bucket_counts": {
+          "high": 60
+        },
+        "selected_reason_counts": {
+          "publish_eligible_allowlist": 60
+        },
+        "skipped_cards": 56,
+        "sync_mode": "publish_eligible_allowlist",
+        "synced_cards": 4,
+        "top_pending_candidates": [],
+        "top_remaining_candidates": [],
+        "top_selected_candidates": [
+          {
+            "card_code": "OP01-001",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP01-002",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP01-060",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP02-049",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP04-019",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP04-058",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP05-001",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP05-002",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP05-041",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          },
+          {
+            "card_code": "OP05-060",
+            "priority_bucket": "high",
+            "priority_score": 800.0,
+            "priority_summary": "Bounded allowlist sync: explicit card codes only.",
+            "reason": "publish_eligible_allowlist",
+            "sections": []
+          }
+        ],
+        "updated_at": "2026-03-22T07:11:46Z",
+        "written_insights": 0
+      },
+      "db_health": {
+        "project_catalog_writable": true,
+        "runtime_dossier_readable": true
+      }
+    }
+  },
+  "meta_insights": 0,
+  "by_type": {},
+  "insight_count_after": 121,
+  "miru_card_insights_row_count_before": 121,
+  "miru_card_insights_row_count_after": 121,
+  "insight_stats_delta": {
+    "row_delta": 0
+  },
+  "cards_newly_with_insights": [],
+  "learner_mode": "REVIEW_REQUIRED",
+  "learner_mode_review_required": true,
+  "learner_review_queue_count_before": 0,
+  "learner_review_queue_count_after": 0,
+  "sample_op13_002": {
+    "card_code": "OP13-002",
+    "basic_facts_limitless_keys": {
+      "limitless_fetched_at": "2026-03-22T04:57:17Z",
+      "limitless_leader_usage": {
+        "appearances": 274,
+        "top8": 172,
+        "wins": 13
+      }
+    },
+    "learning_dossier_sources_meta_payload": {
+      "leader_usage": {
+        "appearances": 274,
+        "top8": 172,
+        "wins": 13
+      },
+      "snapshot_fetched_at": "2026-03-22T04:57:17Z"
+    }
+  }
+}

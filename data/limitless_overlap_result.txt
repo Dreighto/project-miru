@@ -1,0 +1,47 @@
+﻿=== overlap_growth preflight ===
+{
+  "snapshot": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\snapshots\\limitless.json",
+  "sources": [
+    "onepiece-cardgame-dev",
+    "official-cardlist"
+  ],
+  "insight_stats_before": {
+    "catalog_cards_total": 2527,
+    "distinct_cards_with_insights": 121,
+    "insight_rows_total": 121,
+    "insight_coverage_pct": 4.7883
+  }
+}
+{
+  "meta_bearing_count": 2527,
+  "snapshot_card_count": 0,
+  "overlap_count": 0,
+  "overlap_codes": [],
+  "snapshot_path": "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher\\data\\snapshots\\limitless.json",
+  "blocker": "Snapshot does not contain any of the meta-bearing catalog codes.",
+  "snapshot_gap": "The current snapshot has only the cards listed in snapshot_card_count. The meta-bearing codes (from card_intelligence / deck-intel enrichment) are not in this file.",
+  "sample_meta_bearing_codes": [
+    "EB01-001",
+    "EB01-002",
+    "EB01-003",
+    "EB01-004",
+    "EB01-005",
+    "EB01-006",
+    "EB01-007",
+    "EB01-008",
+    "EB01-009",
+    "EB01-010",
+    "EB01-011",
+    "EB01-012",
+    "EB01-013",
+    "EB01-014",
+    "EB01-015",
+    "EB01-016",
+    "EB01-017",
+    "EB01-018",
+    "EB01-019",
+    "EB01-020"
+  ],
+  "exact_snapshot_needed": "A card-list JSON (same schema as community_cardlist) that includes at least some of sample_meta_bearing_codes (e.g. OP01-002, OP01-004, ...). Place it at data/snapshots/community_cardlist.json (replace/expand) or data/snapshots/official_cardlist.json, then re-run this script.",
+  "next_step": "Add or replace snapshot with one that contains meta-bearing codes; re-run overlap growth."
+}

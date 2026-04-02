@@ -1,4 +1,0 @@
-card_code,name,set_code,set_name,rarity,color,card_type,cost,attribute,power,counter,life,effect_text
-EB04-001,Jewelry Bonney,EB04,-ADVENTURE ON KAMI'S ISLAND- [OP15-EB04],L,Red/Yellow,LEADER,,Special,5000,-,4,"[Opponent's Turn] If you have 1 or less Life cards, this Leader gains +2000 power."
-EB04-002,Jewelry Bonney,EB04,-ADVENTURE ON KAMI'S ISLAND- [OP15-EB04],R,Red,CHARACTER,1,Special,2000,1000,,"[On Play] Look at 4 cards from the top of your deck; reveal up to 1 {Egghead} or {Straw Hat Crew} type card other than [Jewelry Bonney] and add it to your hand. Then, place the rest at the bottom of your deck in any order."
-EB04-003,Smoker & Tashigi,EB04,-ADVENTURE ON KAMI'S ISLAND- [OP15-EB04],R,Red,CHARACTER,8,Slash/Special,8000,-,,"[Rush] (This card can attack on the turn in which it is played.) [Opponent's Turn] Your {Navy} type Leader's base power becomes 7000."

@@ -4,7 +4,8 @@
     "reason": "Auto fetch refused: source is manual-only.",
     "context": {
       "source_id": "manual-review",
-      "allowed_access": "manual_only"
+      "allowed_access": "manual_only",
+      "interaction": "live"
     }
   }
 }

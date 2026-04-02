@@ -29,6 +29,7 @@ services:
       - F:/OPTCG_Images:/images:ro
       - D:/docker/tcg-watcher/data:/runtime-data:ro
     environment:
+      PORT: "8080"
       TZ: America/Los_Angeles
       MIRU_RUNTIME_DOSSIER_DB_PATH: /runtime-data/miru_learning_dossiers.db
       MIRU_RUNTIME_IMAGES_ROOT: /runtime-data/miru_images

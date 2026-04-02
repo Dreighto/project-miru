@@ -1,0 +1,9 @@
+{
+  "migration_committed": true,
+  "error": null,
+  "step_rowcounts": {
+    "step1_insert_market_products": 154,
+    "step2_insert_market_prices": 154,
+    "step3_clear_op01_card_variants": 419
+  }
+}

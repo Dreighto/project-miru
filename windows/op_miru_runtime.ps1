@@ -115,14 +115,14 @@ function Get-MiruAiDevPidRecord {
 function Set-MiruAiDevPidRecord {
     param(
         [Parameter(Mandatory = $true)][string]$RepoRoot,
-        [Parameter(Mandatory = $true)][int]$Pid,
+        [Parameter(Mandatory = $true)][int]$MiruPid,
         [int]$Port = $script:MiruAiDevPort
     )
     $path = Get-MiruAiDevPidFilePath -RepoRoot $RepoRoot
     $dir = Split-Path -Parent $path
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
     [pscustomobject]@{
-        pid = $Pid
+        pid = $MiruPid
         miru_ai_port = $Port
         started_at = (Get-Date).ToString("s")
         repo_root = $RepoRoot
@@ -148,7 +148,7 @@ function Repair-MiruAiDevPidState {
     $entry = Get-MiruProcessOnPort -Port $Port
     if ($entry -and (Test-MiruProcessIsMiruAiDev -ProcessId $entry.Pid -RepoRoot $RepoRoot -ExpectedPort $Port)) {
         if ($null -eq $record -or [int]$record.pid -ne [int]$entry.Pid) {
-            Set-MiruAiDevPidRecord -RepoRoot $RepoRoot -Pid ([int]$entry.Pid) -Port $Port
+            Set-MiruAiDevPidRecord -RepoRoot $RepoRoot -MiruPid ([int]$entry.Pid) -Port $Port
             return [pscustomobject]@{ State = "Refreshed"; Pid = [int]$entry.Pid }
         }
         return [pscustomobject]@{ State = "Current"; Pid = [int]$entry.Pid }

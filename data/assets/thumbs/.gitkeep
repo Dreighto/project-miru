@@ -1,0 +1,2 @@
+# Production SSD path (18080 default): D:\Miru_Assets — see dashboard/app.py CLEAN_THUMB_ROOT.
+# Optional repo-local copies: OP01-001.webp or OP01/OP01-001.png under this folder if env overrides path.

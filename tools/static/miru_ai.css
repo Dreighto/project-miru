@@ -9,9 +9,8 @@
      Layer 4: Page-scoped (all under .pageBody--<page>; do not add page-specific
                selectors without scoping under a page root class)
    Page-scoping convention:
-     Any selector that applies to only one page MUST live under .pageBody--dev,
-     .pageBody--leaderHub, or .pageBody--cardPage. Truly reusable primitives
-     may remain global. This prevents new page work from breaking other surfaces.
+     Page-specific selectors should live under a page root (e.g. .pageBody--dev).
+     Truly reusable primitives may remain global.
    Governing doc: docs/UI-CONSTITUTION.md
    ============================================================================= */
 
@@ -23,28 +22,29 @@
 :root {
     color-scheme: dark;
     /* Colors */
-    --bg: #08050f;
-    --bg-soft: rgba(19, 12, 31, 0.9);
-    --panel-top: rgba(28, 18, 44, 0.95);
-    --panel-bottom: rgba(11, 8, 19, 0.98);
-    --panel-alt: rgba(16, 11, 26, 0.92);
-    --stroke: rgba(192, 167, 255, 0.18);
-    --stroke-strong: rgba(216, 204, 255, 0.42);
+    --bg: #0a0a0f;
+    --bg-soft: rgba(13, 13, 20, 0.9);
+    --panel-top: rgba(18, 18, 26, 0.95);
+    --panel-bottom: rgba(10, 10, 16, 0.98);
+    --panel-alt: rgba(14, 14, 22, 0.92);
+    --stroke: rgba(240, 165, 0, 0.18);
+    --stroke-strong: rgba(240, 165, 0, 0.42);
     --text: #faf7ff;
     --text-soft: #dbd2ef;
     --text-faint: #aa9fc7;
-    --purple: #c4adff;
-    --purple-strong: #8b5cf6;
-    --yellow: #facc15;
-    --yellow-soft: rgba(250, 204, 21, 0.12);
+    --purple: #f0a500;
+    --purple-strong: #f0a500;
+    --yellow: #f0a500;
+    --yellow-soft: rgba(240, 165, 0, 0.12);
     --danger: #fda4af;
     --danger-bg: rgba(66, 17, 31, 0.9);
-    --good: #86efac;
-    --good-bg: rgba(22, 101, 52, 0.18);
-    --neutral-bg: rgba(124, 58, 237, 0.14);
-    --cyan: #67e8f9;
-    --cyan-strong: #22d3ee;
-    --sea-bg: rgba(34, 211, 238, 0.12);
+    --good: #f0a500;
+    --good-bg: rgba(240, 165, 0, 0.18);
+    --neutral-bg: rgba(240, 165, 0, 0.14);
+    --cyan: #f0a500;
+    --cyan-strong: #f0a500;
+    --sea-bg: rgba(240, 165, 0, 0.12);
+    --accent: #f0a500;
     /* Radius */
     --radius-lg: 24px;
     --radius-md: 18px;
@@ -100,11 +100,7 @@ body {
 }
 
 body {
-    background:
-        radial-gradient(circle at top left, rgba(139, 92, 246, 0.24), transparent 34%),
-        radial-gradient(circle at top right, rgba(250, 204, 21, 0.08), transparent 24%),
-        radial-gradient(circle at bottom center, rgba(139, 92, 246, 0.09), transparent 30%),
-        linear-gradient(180deg, #07040c 0%, #0d0916 52%, #140d21 100%);
+    background: #0a0a0f;
     color: var(--text);
     font-family: "Avenir Next", "SF Pro Display", ui-rounded, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -138,20 +134,20 @@ button {
     width: min(100%, 760px);
     margin: 0 auto;
     padding:
-        max(1rem, calc(env(safe-area-inset-top) + 0.86rem))
-        0.92rem
-        calc(env(safe-area-inset-bottom) + 1.5rem);
+        max(1rem, calc(env(safe-area-inset-top) + 0.86rem)) 0.92rem calc(env(safe-area-inset-bottom) + 1.5rem);
 }
 
 /* ---------------------------------------------------------------------------
-   Layer 4: Page-scoped
-   All selectors below are scoped under .pageBody--dev, .pageBody--leaderHub,
-   or .pageBody--cardPage. Do not add page-specific styles without a page root.
+   Layer 4: Page-scoped (primarily .pageBody--dev for Miru AI surfaces)
    --------------------------------------------------------------------------- */
 
 /* Dev page: aggressive top compression + flat visual language */
 .pageBody--dev .appShell {
     padding-top: max(0.3rem, calc(env(safe-area-inset-top) + 0.2rem));
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    box-sizing: border-box;
 }
 
 .pageBody--dev .topNav {
@@ -220,9 +216,7 @@ button {
     position: relative;
     overflow: hidden;
     border-radius: var(--radius-lg);
-    background:
-        linear-gradient(180deg, var(--panel-top), var(--panel-bottom)),
-        linear-gradient(135deg, rgba(182, 156, 255, 0.09), rgba(250, 204, 21, 0.05));
+    background: rgba(18, 18, 26, 0.95);
 }
 
 .topNav {
@@ -268,16 +262,13 @@ button {
     height: 96px;
 }
 
-.heroLogo--home {
-    height: 96px;
-}
-
 .heroLogo--glow {
     animation: miruFruitGlow 4s ease-in-out infinite;
     will-change: filter;
 }
 
 @keyframes miruFruitGlow {
+
     0%,
     100% {
         filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.28)) brightness(1) saturate(1);
@@ -285,10 +276,7 @@ button {
 
     50% {
         filter:
-            drop-shadow(0 14px 28px rgba(0, 0, 0, 0.28))
-            drop-shadow(0 0 10px rgba(196, 173, 255, 0.16))
-            brightness(1.05)
-            saturate(1.08);
+            drop-shadow(0 14px 28px rgba(0, 0, 0, 0.28)) drop-shadow(0 0 10px rgba(196, 173, 255, 0.16)) brightness(1.05) saturate(1.08);
     }
 }
 
@@ -340,9 +328,9 @@ button {
 }
 
 .navLink.isActive {
-    border-color: var(--stroke-strong);
-    background: rgba(32, 21, 51, 0.94);
-    color: var(--text);
+    border-color: rgba(240, 165, 0, 0.42);
+    background: rgba(240, 165, 0, 0.1);
+    color: #f0a500;
 }
 
 .heroCard,
@@ -371,37 +359,20 @@ button {
     pointer-events: none;
 }
 
-.pageBody--home .heroCard--home {
-    grid-template-columns: 104px minmax(0, 1fr);
-}
-
-.pageBody--home .heroCard--homeAsk {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    text-align: center;
-    gap: 0.9rem;
-    padding: 1.35rem 1.15rem 1.15rem;
-}
-
 .heroCopy,
 .sectionCopy {
     position: relative;
     z-index: 1;
 }
 
-.pageBody--home .heroCopy--homeAsk {
-    display: grid;
-    justify-items: center;
-}
-
 .heroEyebrow,
 .sectionEyebrow,
 .resultLabel {
     text-transform: uppercase;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     font-size: 0.74rem;
     font-weight: 700;
-    color: var(--purple);
+    color: #f0a500;
 }
 
 .heroCopy h1,
@@ -442,59 +413,6 @@ button {
     font-size: 0.96rem;
 }
 
-.pageBody--home .homeAskCard {
-    gap: 1rem;
-    max-width: 640px;
-    margin-left: auto;
-    margin-right: auto;
-    padding: 1.2rem;
-}
-
-.pageBody--home .homeAskIntro {
-    display: grid;
-    gap: 0.25rem;
-    text-align: center;
-}
-
-.pageBody--home .homeAskFieldBlock {
-    gap: 0.55rem;
-}
-
-.pageBody--home .homeActionRow {
-    gap: 0.72rem;
-}
-
-.pageBody--home .homeExamples {
-    display: grid;
-    gap: 0.7rem;
-    text-align: center;
-}
-
-.pageBody--home .homeQuickLinks {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 0.7rem;
-}
-
-.pageBody--home .homeExamples h2 {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.25;
-    color: var(--text-soft);
-    font-weight: 650;
-}
-
-.pageBody--home .presetGrid--home {
-    gap: 0.7rem;
-}
-
-.pageBody--home .homeModeInput {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-}
-
 .srOnly {
     position: absolute;
     width: 1px;
@@ -519,9 +437,7 @@ button {
 .clearButton,
 .copyButton,
 .utilityButton,
-.presetButton,
-.pageBody--ask .modeCard,
-.miniRouteCard {
+.presetButton {
     border-radius: var(--radius-md);
     border: 1px solid var(--stroke);
     transition:
@@ -553,8 +469,7 @@ button {
 .ctaButton--secondary,
 .clearButton,
 .copyButton,
-.utilityButton,
-.miniRouteCard {
+.utilityButton {
     background: rgba(16, 11, 26, 0.92);
     color: var(--text-soft);
 }
@@ -562,20 +477,13 @@ button {
 .overviewGrid,
 .presetGrid,
 .formCard,
-.pageBody--ask .modeGrid,
-.noticeStack,
-.pageBody--training .roadmapGrid,
-.miniRouteGrid {
+.noticeStack {
     display: grid;
 }
 
 .overviewGrid {
     gap: 0.82rem;
     margin-bottom: 1rem;
-}
-
-.pageBody--home .overviewGrid--home {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .infoCard {
@@ -622,27 +530,6 @@ button {
     line-height: 1.52;
 }
 
-.miniRouteGrid {
-    gap: 0.7rem;
-}
-
-.miniRouteCard {
-    display: grid;
-    gap: 0.25rem;
-    padding: 0.92rem 0.96rem;
-    box-shadow: var(--shadow-sm);
-}
-
-.miniRouteCard strong {
-    font-size: 1rem;
-    color: var(--text);
-}
-
-.miniRouteCard span {
-    color: var(--text-soft);
-    line-height: 1.46;
-}
-
 .presetGrid {
     gap: 0.66rem;
 }
@@ -666,51 +553,6 @@ button {
     display: block;
 }
 
-.pageBody--ask .modeGrid {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    gap: 0.65rem;
-}
-
-.pageBody--ask .modeCard {
-    display: block;
-    cursor: pointer;
-    background: rgba(23, 16, 37, 0.84);
-}
-
-.pageBody--ask .modeCard input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-}
-
-.pageBody--ask .modeBody {
-    display: flex;
-    flex-direction: column;
-    gap: 0.22rem;
-    min-height: 92px;
-    padding: 0.92rem 0.98rem;
-}
-
-.pageBody--ask .modeBody strong {
-    font-size: 1rem;
-    line-height: 1.2;
-}
-
-.pageBody--ask .modeBody span {
-    color: var(--text-soft);
-    line-height: 1.42;
-}
-
-.pageBody--ask .modeCard input:checked + .modeBody {
-    background:
-        linear-gradient(180deg, rgba(37, 24, 60, 0.98), rgba(19, 12, 31, 0.99)),
-        linear-gradient(135deg, rgba(182, 156, 255, 0.1), rgba(250, 204, 21, 0.06));
-    border-radius: inherit;
-    box-shadow: inset 0 0 0 1px var(--stroke-strong);
-}
-
 .modeHint {
     padding: 0.82rem 0.92rem;
     border-radius: var(--radius-md);
@@ -723,16 +565,6 @@ button {
     display: block;
     margin-bottom: 0.12rem;
     color: var(--text);
-}
-
-.pageBody--ask .modeHintRow {
-    margin-top: 0.28rem;
-}
-
-.pageBody--ask .modeHintLabel {
-    color: var(--yellow);
-    font-weight: 700;
-    margin-right: 0.3rem;
 }
 
 .fieldBlock {
@@ -891,7 +723,7 @@ textarea::placeholder {
     width: 1.1rem;
     height: 1.1rem;
     border: 2px solid rgba(191, 208, 232, 0.22);
-    border-top-color: var(--purple);
+    border-top-color: #f0a500;
     border-radius: 999px;
     animation: spin 0.95s linear infinite;
 }
@@ -1006,1225 +838,6 @@ textarea::placeholder {
     margin-bottom: 1rem;
 }
 
-.pageBody--training .trainingProgressCard {
-    background:
-        linear-gradient(180deg, rgba(20, 13, 31, 0.96), rgba(11, 8, 18, 0.99)),
-        linear-gradient(135deg, rgba(182, 156, 255, 0.1), rgba(250, 204, 21, 0.05));
-}
-
-.pageBody--training .trainingProgressIntro {
-    display: grid;
-    gap: 1rem;
-    align-items: end;
-    margin-bottom: 1rem;
-}
-
-.pageBody--training .trainingProgressMeta {
-    display: grid;
-    gap: 0.35rem;
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(216, 204, 255, 0.18);
-    background: rgba(17, 12, 27, 0.86);
-    box-shadow: var(--shadow-sm);
-}
-
-.pageBody--training .trainingProgressMeta p,
-.pageBody--training .trainingProgressNote,
-.pageBody--training .trainingStatCard p,
-.pageBody--training .trainingRingCopy p,
-.pageBody--training .trainingStage p {
-    margin: 0;
-    color: var(--text-soft);
-    line-height: 1.45;
-}
-
-.pageBody--training .trainingProgressPercent {
-    font-size: clamp(2.2rem, 7vw, 3.6rem);
-    line-height: 0.95;
-    font-weight: 800;
-    color: var(--text);
-}
-
-.pageBody--training .trainingProgressBar {
-    width: 100%;
-    height: 1rem;
-    border-radius: 999px;
-    overflow: hidden;
-    border: 1px solid rgba(216, 204, 255, 0.18);
-    background: rgba(11, 8, 18, 0.94);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.pageBody--training .trainingProgressBar span {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background:
-        linear-gradient(90deg, rgba(196, 173, 255, 0.94), rgba(139, 92, 246, 0.98) 65%, rgba(250, 204, 21, 0.88));
-    box-shadow: 0 0 18px rgba(139, 92, 246, 0.24);
-}
-
-.pageBody--training .trainingProgressNote {
-    margin-top: 0.7rem;
-}
-
-.pageBody--training .trainingStatGrid,
-.pageBody--training .trainingRingGrid,
-.pageBody--training .trainingStageRow {
-    display: grid;
-    gap: 0.78rem;
-}
-
-.pageBody--training .trainingStatGrid {
-    margin-top: 1rem;
-}
-
-.pageBody--training .trainingStatCard,
-.pageBody--training .trainingRingCard,
-.pageBody--training .trainingStage {
-    border: 1px solid rgba(192, 167, 255, 0.14);
-    border-radius: var(--radius-md);
-    background: rgba(17, 12, 27, 0.88);
-    box-shadow: var(--shadow-sm);
-}
-
-.pageBody--training .trainingStatCard {
-    padding: 0.95rem 1rem;
-}
-
-.pageBody--training .trainingStatLabel,
-.pageBody--training .trainingStageState {
-    display: inline-flex;
-    align-items: center;
-    width: fit-content;
-    min-height: 1.9rem;
-    padding: 0.2rem 0.65rem;
-    border-radius: 999px;
-    border: 1px solid rgba(216, 204, 255, 0.14);
-    background: rgba(124, 58, 237, 0.14);
-    color: var(--purple);
-    font-size: 0.83rem;
-    line-height: 1.2;
-    letter-spacing: 0.01em;
-}
-
-.pageBody--training .trainingStatCard strong {
-    display: block;
-    margin-top: 0.72rem;
-    font-size: 1.8rem;
-    line-height: 1;
-}
-
-.pageBody--training .trainingRingGrid {
-    margin-top: 1rem;
-}
-
-.pageBody--training .trainingRingCard {
-    display: grid;
-    gap: 1rem;
-    padding: 1rem;
-    align-items: center;
-}
-
-.pageBody--training .trainingRing {
-    --ring-progress: 0%;
-    width: 132px;
-    height: 132px;
-    border-radius: 50%;
-    background:
-        conic-gradient(from -90deg, rgba(196, 173, 255, 0.96) 0 var(--ring-progress), rgba(250, 204, 21, 0.9) var(--ring-progress), rgba(30, 20, 44, 0.96) 0);
-    display: grid;
-    place-items: center;
-    margin: 0 auto;
-    box-shadow: inset 0 0 0 1px rgba(216, 204, 255, 0.08), 0 14px 24px rgba(8, 5, 15, 0.18);
-}
-
-.pageBody--training .trainingRingInner {
-    width: 96px;
-    height: 96px;
-    border-radius: 50%;
-    background: linear-gradient(180deg, rgba(17, 12, 27, 0.98), rgba(10, 8, 18, 0.98));
-    border: 1px solid rgba(216, 204, 255, 0.12);
-    display: grid;
-    place-items: center;
-    text-align: center;
-    padding: 0.6rem;
-}
-
-.pageBody--training .trainingRingInner strong {
-    display: block;
-    font-size: 1.15rem;
-    line-height: 1;
-}
-
-.pageBody--training .trainingRingInner span {
-    display: block;
-    margin-top: 0.28rem;
-    font-size: 0.78rem;
-    line-height: 1.3;
-    color: var(--text-soft);
-}
-
-.pageBody--training .trainingRingCopy h3,
-.pageBody--training .trainingStage h3 {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.25;
-}
-
-.pageBody--training .trainingRingCopy span {
-    display: inline-block;
-    margin-top: 0.6rem;
-    color: var(--yellow);
-    font-weight: 700;
-}
-
-.pageBody--training .trainingStageRow {
-    margin-top: 1rem;
-}
-
-.pageBody--training .trainingStage {
-    padding: 0.9rem 0.95rem;
-}
-
-.pageBody--training .trainingStage h3 {
-    margin-top: 0.7rem;
-}
-
-.pageBody--training .trainingStage p {
-    margin-top: 0.48rem;
-}
-
-.pageBody--training .trainingStage--complete {
-    border-color: rgba(134, 239, 172, 0.26);
-}
-
-.pageBody--training .trainingStage--complete .trainingStageState {
-    background: rgba(22, 101, 52, 0.18);
-    color: var(--good);
-}
-
-.pageBody--training .trainingStage--active {
-    border-color: rgba(250, 204, 21, 0.28);
-    box-shadow: 0 18px 34px rgba(58, 35, 8, 0.16);
-}
-
-.pageBody--training .trainingStage--active .trainingStageState {
-    background: rgba(120, 53, 15, 0.22);
-    color: var(--yellow);
-}
-
-.pageBody--training .trainingStage--upcoming .trainingStageState {
-    background: rgba(124, 58, 237, 0.12);
-    color: var(--text-faint);
-}
-
-.intelligenceProgressCard {
-    margin-top: 1rem;
-    background:
-        linear-gradient(180deg, rgba(16, 13, 27, 0.97), rgba(9, 8, 17, 0.99)),
-        linear-gradient(135deg, rgba(34, 211, 238, 0.06), rgba(139, 92, 246, 0.1), rgba(250, 204, 21, 0.05));
-}
-
-.intelligenceProgressIntro,
-.intelligenceListGrid,
-.intelligenceStageGrid {
-    display: grid;
-    gap: 0.85rem;
-}
-
-.intelligenceStageHero {
-    display: grid;
-    gap: 0.45rem;
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(216, 204, 255, 0.18);
-    background: rgba(17, 12, 27, 0.86);
-    box-shadow: var(--shadow-sm);
-}
-
-.intelligenceStageHero strong {
-    font-size: 1.25rem;
-    line-height: 1.2;
-}
-
-.intelligenceStageHero p,
-.intelligenceVoyageArc {
-    margin: 0;
-    color: var(--text-soft);
-    line-height: 1.45;
-}
-
-.intelligenceMeaningCard,
-.intelligenceSummaryGrid,
-.intelligenceListGrid,
-.intelligenceStageGrid {
-    margin-top: 1rem;
-}
-
-.intelligenceVoyageStrip {
-    margin-top: 1rem;
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(192, 167, 255, 0.14);
-    background:
-        linear-gradient(180deg, rgba(14, 16, 28, 0.95), rgba(10, 11, 20, 0.98)),
-        linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(139, 92, 246, 0.08));
-    box-shadow: var(--shadow-sm);
-}
-
-.intelligenceVoyageStripHeader h3 {
-    margin: 0.68rem 0 0;
-    font-size: 1rem;
-    line-height: 1.25;
-}
-
-.intelligenceVoyageStripHeader p {
-    margin: 0.45rem 0 0;
-    color: var(--text-soft);
-    line-height: 1.45;
-}
-
-.intelligenceVoyageTrack {
-    display: grid;
-    gap: 0.72rem;
-    margin-top: 0.95rem;
-}
-
-.intelligenceVoyageNode {
-    position: relative;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 0.75rem;
-    align-items: center;
-    padding: 0.85rem 0.9rem;
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(216, 204, 255, 0.12);
-    background: rgba(16, 13, 25, 0.84);
-    overflow: hidden;
-}
-
-.intelligenceVoyageNode::after {
-    content: "";
-    position: absolute;
-    left: 1.65rem;
-    bottom: -0.72rem;
-    width: 2px;
-    height: 0.72rem;
-    background: linear-gradient(180deg, rgba(196, 173, 255, 0.34), rgba(196, 173, 255, 0));
-}
-
-.intelligenceVoyageNode:last-child::after {
-    display: none;
-}
-
-.intelligenceVoyageNodeMarker {
-    display: grid;
-    place-items: center;
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    border: 1px solid rgba(216, 204, 255, 0.16);
-    background: rgba(27, 20, 41, 0.95);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    flex-shrink: 0;
-}
-
-.intelligenceVoyageNodeMarker img {
-    width: 28px;
-    height: 28px;
-    object-fit: contain;
-    filter: drop-shadow(0 8px 16px rgba(8, 10, 18, 0.42));
-}
-
-.intelligenceVoyageNodeCopy {
-    min-width: 0;
-}
-
-.intelligenceVoyageNodeCopy strong {
-    display: block;
-    margin-top: 0.6rem;
-    font-size: 1rem;
-    line-height: 1.2;
-}
-
-.intelligenceVoyageNodeCopy p {
-    margin: 0.35rem 0 0;
-    color: var(--text-soft);
-    line-height: 1.4;
-}
-
-.intelligenceVoyageNode--complete {
-    border-color: rgba(134, 239, 172, 0.2);
-    background: linear-gradient(180deg, rgba(14, 23, 18, 0.6), rgba(14, 16, 24, 0.9));
-}
-
-.intelligenceVoyageNode--complete .trainingStageState {
-    background: rgba(22, 101, 52, 0.18);
-    color: var(--good);
-}
-
-.intelligenceVoyageNode--complete .intelligenceVoyageNodeMarker {
-    border-color: rgba(134, 239, 172, 0.22);
-    background: rgba(17, 37, 27, 0.92);
-}
-
-.intelligenceVoyageNode--active {
-    border-color: rgba(250, 204, 21, 0.34);
-    background:
-        radial-gradient(circle at top right, rgba(250, 204, 21, 0.12), transparent 36%),
-        linear-gradient(180deg, rgba(39, 24, 7, 0.55), rgba(17, 13, 25, 0.94));
-    box-shadow: 0 18px 34px rgba(58, 35, 8, 0.2);
-}
-
-.intelligenceVoyageNode--active .trainingStageState {
-    background: rgba(120, 53, 15, 0.22);
-    color: var(--yellow);
-}
-
-.intelligenceVoyageNode--active .intelligenceVoyageNodeMarker {
-    border-color: rgba(250, 204, 21, 0.3);
-    background: rgba(46, 28, 6, 0.92);
-}
-
-.intelligenceVoyageNode--upcoming {
-    opacity: 0.82;
-    background: linear-gradient(180deg, rgba(14, 13, 23, 0.86), rgba(11, 10, 19, 0.95));
-}
-
-.intelligenceVoyageNode--upcoming .trainingStageState {
-    background: rgba(124, 58, 237, 0.12);
-    color: var(--text-faint);
-}
-
-.intelligenceVoyageNode--upcoming .intelligenceVoyageNodeMarker {
-    border-color: rgba(124, 58, 237, 0.16);
-    background: rgba(20, 16, 31, 0.92);
-}
-
-.intelligenceListGrid .trainingStage {
-    min-height: 100%;
-}
-
-.intelligenceListGrid .roadmapList {
-    margin-top: 0.8rem;
-}
-
-.intelligenceStageGrid .trainingStage h3 {
-    margin-top: 0.7rem;
-}
-
-.intelligenceStageGrid .trainingStage .intelligenceVoyageArc {
-    margin-top: 0.55rem;
-    color: var(--yellow);
-}
-
-.voyagePanel,
-.pageBody--dev .devVoyagePanel {
-    background:
-        linear-gradient(180deg, rgba(18, 16, 31, 0.97), rgba(8, 10, 18, 0.99)),
-        linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(139, 92, 246, 0.1), rgba(250, 204, 21, 0.05));
-}
-
-.voyageHeader,
-.voyageScene,
-.voyageFocusGrid,
-.voyageRouteStrip,
-.pageBody--dev .devVoyageHero,
-.pageBody--dev .devVoyageStatGrid,
-.pageBody--dev .devVoyageSupportGrid {
-    display: grid;
-    gap: 0.85rem;
-}
-
-.voyageSummaryCard,
-.voyageShipCard,
-.voyageFocusCard,
-.voyageProgressCard,
-.voyageLogCard,
-.pageBody--dev .devVoyageStatCard,
-.voyageBossCard,
-.voyageCelebrationCard {
-    border: 1px solid rgba(192, 167, 255, 0.14);
-    border-radius: var(--radius-md);
-    background: rgba(15, 14, 26, 0.9);
-    box-shadow: var(--shadow-sm);
-}
-
-.voyageSummaryCard,
-.voyageShipCard,
-.voyageProgressCard,
-.voyageLogCard,
-.pageBody--dev .devVoyageStatCard,
-.voyageBossCard,
-.voyageCelebrationCard {
-    padding: 0.95rem 1rem;
-}
-
-.voyageSummaryEyebrow,
-.voyageStatLabel {
-    display: inline-flex;
-    align-items: center;
-    width: fit-content;
-    min-height: 1.8rem;
-    padding: 0.18rem 0.64rem;
-    border-radius: 999px;
-    border: 1px solid rgba(103, 232, 249, 0.18);
-    background: rgba(34, 211, 238, 0.12);
-    color: var(--cyan);
-    font-size: 0.8rem;
-    font-weight: 700;
-}
-
-.voyageSummaryCard strong,
-.voyageShipCopy strong,
-.voyageFocusCard strong,
-.voyageProgressHead strong,
-.voyageLogHeader strong,
-.pageBody--dev .devVoyageHeadline strong,
-.pageBody--dev .devVoyageStatCard strong,
-.voyageBossCard strong,
-.voyageCelebrationBody strong {
-    display: block;
-    margin-top: 0.62rem;
-    font-size: 1.15rem;
-    line-height: 1.15;
-}
-
-.voyageSummaryCard p,
-.voyageShipCopy p,
-.voyageFocusCard p,
-.voyageProgressCard p,
-.voyageLogEntry span,
-.pageBody--dev .devVoyageHeadline p,
-.pageBody--dev .devVoyageStatCard p,
-.voyageBossCard p,
-.voyageCelebrationBody p {
-    margin: 0.45rem 0 0;
-    color: var(--text-soft);
-    line-height: 1.45;
-}
-
-.voyageScene {
-    margin-top: 1rem;
-}
-
-.voyageShipCard {
-    display: grid;
-    gap: 0.9rem;
-    align-items: center;
-}
-
-.voyageShipVisual {
-    position: relative;
-    min-height: 140px;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    background:
-        radial-gradient(circle at top left, rgba(103, 232, 249, 0.12), transparent 34%),
-        linear-gradient(180deg, rgba(7, 16, 35, 0.98), rgba(11, 18, 33, 0.95) 56%, rgba(8, 10, 18, 0.98));
-}
-
-.voyageShipSprite,
-.voyageWakeSprite,
-.voyageFocusSprite,
-.voyageRouteMarker,
-.voyageRouteIsland,
-.voyageLogEntry img,
-.pageBody--dev .devVoyageIslandSprite,
-.pageBody--dev .devVoyageShipSprite,
-.pageBody--dev .devVoyageTravelSprite,
-.pageBody--dev .devVoyageWakeSprite,
-.pageBody--dev .devVoyageSpark,
-.voyageBossAlert,
-.voyageBossSprite,
-.voyageCelebrationEffect,
-.voyageCelebrationSprite,
-.voyageLogIcon {
-    display: block;
-    user-select: none;
-}
-
-.voyageShipSprite {
-    position: absolute;
-    left: 50%;
-    bottom: 2.5rem;
-    width: min(180px, 68%);
-    transform: translateX(-50%);
-    animation: voyageShipBob 3.6s ease-in-out infinite;
-}
-
-.voyageWakeSprite {
-    position: absolute;
-    opacity: 0.85;
-    filter: drop-shadow(0 8px 16px rgba(34, 211, 238, 0.16));
-}
-
-.voyageWakeSprite--primary {
-    left: 12%;
-    bottom: 0.95rem;
-    width: 42%;
-    animation: voyageWakeDrift 4s ease-in-out infinite;
-}
-
-.voyageWakeSprite--secondary {
-    right: 10%;
-    bottom: 0.4rem;
-    width: 34%;
-    animation: voyageWakeDrift 4.8s ease-in-out infinite reverse;
-}
-
-.voyageFocusGrid {
-    align-items: stretch;
-}
-
-.voyageFocusCard {
-    padding: 0.9rem 0.95rem;
-}
-
-.voyageFocusBody,
-.voyageLogHeader,
-.voyageBossCardHeader,
-.voyageBossCardBody,
-.voyageCelebrationBody {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-}
-
-.voyageFocusBody {
-    margin-top: 0.75rem;
-}
-
-.voyageFocusSprite {
-    width: 72px;
-    height: 72px;
-    object-fit: contain;
-    filter: drop-shadow(0 12px 20px rgba(8, 12, 22, 0.38));
-}
-
-.voyageFocusSprite--boss,
-.voyageBossSprite {
-    width: 88px;
-    height: 88px;
-}
-
-.voyageProgressCard {
-    margin-top: 1rem;
-}
-
-.voyageProgressHead {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 0.8rem;
-}
-
-.voyageProgressTrack {
-    position: relative;
-    width: 100%;
-    height: 1rem;
-    margin-top: 0.8rem;
-    border-radius: 999px;
-    overflow: hidden;
-    background: rgba(8, 10, 18, 0.96);
-    border: 1px solid rgba(103, 232, 249, 0.16);
-}
-
-.voyageProgressTrack span {
-    display: block;
-    position: relative;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, rgba(103, 232, 249, 0.94), rgba(139, 92, 246, 0.94) 60%, rgba(250, 204, 21, 0.88));
-    box-shadow: 0 0 18px rgba(34, 211, 238, 0.22);
-    overflow: hidden;
-}
-
-.voyageProgressTrack span::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.34), transparent);
-    animation: devShimmer 2.4s linear infinite;
-}
-
-.voyageRouteStrip,
-.pageBody--dev .devVoyageRouteStrip {
-    margin-top: 1rem;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(94px, 1fr);
-    overflow-x: auto;
-    padding-bottom: 0.15rem;
-}
-
-.voyageRouteNode {
-    display: grid;
-    gap: 0.5rem;
-    justify-items: center;
-    min-width: 0;
-    padding: 0.76rem 0.6rem;
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(192, 167, 255, 0.12);
-    background: rgba(13, 14, 24, 0.88);
-    text-align: center;
-}
-
-.voyageRouteNode strong {
-    font-size: 0.84rem;
-    line-height: 1.25;
-}
-
-.voyageRouteNode--current {
-    border-color: rgba(103, 232, 249, 0.42);
-    box-shadow: 0 12px 26px rgba(10, 31, 40, 0.22);
-}
-
-.voyageRouteNode--next {
-    border-color: rgba(250, 204, 21, 0.28);
-}
-
-.voyageRouteNode--completed {
-    border-color: rgba(34, 197, 94, 0.22);
-}
-
-.voyageRouteMarker {
-    width: 28px;
-    height: 28px;
-    object-fit: contain;
-}
-
-.voyageRouteIsland {
-    width: 54px;
-    height: 54px;
-    object-fit: contain;
-}
-
-.voyageLogCard {
-    margin-top: 1rem;
-}
-
-.voyageLogIcon {
-    width: 44px;
-    height: 44px;
-    object-fit: contain;
-}
-
-.voyageLogList {
-    margin: 0.9rem 0 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 0.6rem;
-}
-
-.voyageLogEntry {
-    display: flex;
-    align-items: center;
-    gap: 0.68rem;
-    padding: 0.65rem 0.7rem;
-    border-radius: var(--radius-sm);
-    background: rgba(12, 15, 27, 0.8);
-    border: 1px solid rgba(216, 204, 255, 0.1);
-}
-
-.voyageLogEntry img {
-    width: 28px;
-    height: 28px;
-    object-fit: contain;
-}
-
-.voyageLogEntry--victory {
-    border-color: rgba(250, 204, 21, 0.24);
-    background: linear-gradient(180deg, rgba(46, 28, 6, 0.4), rgba(12, 15, 27, 0.86));
-}
-
-.voyageLogEntry--planned {
-    border-color: rgba(139, 92, 246, 0.18);
-}
-
-.pageBody--dev .devVoyagePanel {
-    margin-top: 1rem;
-}
-
-.voyageSummaryCard--dev strong {
-    font-size: 1.35rem;
-}
-
-.pageBody--dev .devVoyageHero {
-    margin-top: 1rem;
-    align-items: stretch;
-}
-
-.pageBody--dev .devVoyageScene {
-    position: relative;
-    min-height: 270px;
-    border-radius: var(--radius-lg);
-    overflow: hidden;
-    border: 1px solid rgba(103, 232, 249, 0.14);
-    background:
-        radial-gradient(circle at top left, rgba(103, 232, 249, 0.18), transparent 28%),
-        radial-gradient(circle at top right, rgba(250, 204, 21, 0.14), transparent 24%),
-        linear-gradient(180deg, rgba(8, 18, 36, 0.98), rgba(7, 12, 24, 0.98) 46%, rgba(10, 9, 18, 0.99));
-}
-
-.pageBody--dev .devVoyageIslandSprite,
-.pageBody--dev .devVoyageShipSprite,
-.pageBody--dev .devVoyageTravelSprite,
-.pageBody--dev .devVoyageWakeSprite,
-.pageBody--dev .devVoyageSpark {
-    position: absolute;
-}
-
-.pageBody--dev .devVoyageIslandSprite {
-    width: 112px;
-    height: 112px;
-    object-fit: contain;
-    filter: drop-shadow(0 16px 22px rgba(7, 10, 19, 0.5));
-}
-
-.pageBody--dev .devVoyageIslandSprite--current {
-    left: 1rem;
-    bottom: 1rem;
-}
-
-.pageBody--dev .devVoyageIslandSprite--next {
-    right: 1rem;
-    top: 1.2rem;
-    opacity: 0.78;
-}
-
-.pageBody--dev .devVoyageShipSprite {
-    left: 50%;
-    bottom: 3rem;
-    width: min(210px, 58%);
-    transform: translateX(-50%);
-    animation: voyageShipBob 3.4s ease-in-out infinite;
-}
-
-.pageBody--dev .devVoyageTravelSprite {
-    left: 50%;
-    bottom: 1.6rem;
-    width: min(160px, 46%);
-    transform: translateX(-50%);
-    opacity: 0.75;
-}
-
-.pageBody--dev .devVoyageWakeSprite--one {
-    left: 12%;
-    bottom: 0.6rem;
-    width: 42%;
-    animation: voyageWakeDrift 3.6s ease-in-out infinite;
-}
-
-.pageBody--dev .devVoyageWakeSprite--two {
-    right: 14%;
-    bottom: 1rem;
-    width: 34%;
-    animation: voyageWakeDrift 4.3s ease-in-out infinite reverse;
-}
-
-.pageBody--dev .devVoyageSpark {
-    width: 42px;
-    height: 42px;
-    opacity: 0.76;
-    animation: voyageSparkle 2.2s ease-in-out infinite;
-}
-
-.pageBody--dev .devVoyageSpark--one {
-    left: 28%;
-    top: 1rem;
-}
-
-.pageBody--dev .devVoyageSpark--two {
-    right: 26%;
-    top: 3.1rem;
-    animation-delay: 0.7s;
-}
-
-.pageBody--dev .devVoyageHeroCopy,
-.pageBody--dev .devVoyageHeadline {
-    display: grid;
-    gap: 0.8rem;
-}
-
-.pageBody--dev .devVoyageStatGrid {
-    margin-top: 0.2rem;
-}
-
-.pageBody--dev .devVoyageStatCard {
-    min-height: 100%;
-}
-
-.pageBody--dev .devVoyageSupportGrid {
-    margin-top: 1rem;
-}
-
-.voyageBossAlert {
-    width: 44px;
-    height: 44px;
-    object-fit: contain;
-}
-
-.voyageBossCardBody {
-    margin-top: 0.8rem;
-    align-items: flex-start;
-}
-
-.voyageCelebrationCard {
-    position: relative;
-    overflow: hidden;
-}
-
-.voyageCelebrationBackdrop {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-}
-
-.voyageCelebrationEffect {
-    position: absolute;
-    right: 0.7rem;
-    top: 0.7rem;
-    width: 64px;
-    height: 64px;
-    object-fit: contain;
-    opacity: 0.46;
-    animation: voyageSparkle 2.8s ease-in-out infinite;
-}
-
-.voyageCelebrationEffect--sparkle {
-    left: 0.8rem;
-    right: auto;
-    top: auto;
-    bottom: 0.8rem;
-    width: 48px;
-    height: 48px;
-    animation-delay: 0.8s;
-}
-
-.voyageCelebrationSprite {
-    width: 92px;
-    height: 92px;
-    object-fit: contain;
-    animation: voyageBuddyBounce 2.8s ease-in-out infinite;
-}
-
-.voyageCelebrationCard--victory {
-    border-color: rgba(250, 204, 21, 0.26);
-    background: linear-gradient(180deg, rgba(48, 29, 7, 0.42), rgba(15, 14, 26, 0.94));
-}
-
-.voyageCelebrationCard--victory .voyageCelebrationEffect {
-    opacity: 0.72;
-}
-
-.voyageCelebrationCard--voyage .voyageCelebrationSprite {
-    animation-duration: 3.8s;
-}
-
-.voyagePanelIntro {
-    display: grid;
-    gap: 0.7rem;
-}
-
-.voyageMap {
-    margin-top: 1rem;
-}
-
-.voyageMapCanvas {
-    position: relative;
-    min-height: 330px;
-    overflow: hidden;
-    border-radius: calc(var(--radius-lg) + 2px);
-    border: 1px solid rgba(103, 232, 249, 0.16);
-    background:
-        radial-gradient(circle at top left, rgba(103, 232, 249, 0.16), transparent 28%),
-        radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.18), transparent 34%),
-        linear-gradient(180deg, rgba(8, 16, 32, 0.98), rgba(10, 12, 24, 0.99) 52%, rgba(16, 10, 28, 0.98));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 18px 34px rgba(6, 9, 20, 0.28);
-}
-
-.voyageMapCanvas--dev {
-    min-height: 470px;
-}
-
-.voyageMapRouteSvg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-}
-
-.voyageMapRouteGlow,
-.voyageMapRouteLine {
-    fill: none;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.voyageMapRouteGlow {
-    stroke: rgba(103, 232, 249, 0.24);
-    stroke-width: 3.2;
-    filter: drop-shadow(0 0 10px rgba(103, 232, 249, 0.36));
-}
-
-.voyageMapRouteLine {
-    stroke: rgba(216, 204, 255, 0.86);
-    stroke-width: 1.1;
-    stroke-dasharray: 3 2.2;
-}
-
-.voyageMapNode,
-.voyageShipToken,
-.voyageMapOverlay,
-.voyageMapSpark {
-    position: absolute;
-}
-
-.voyageMapNode {
-    width: 86px;
-    transform: translate(-50%, -50%);
-    display: grid;
-    gap: 0.18rem;
-    justify-items: center;
-    text-align: center;
-}
-
-.voyageMapMarker {
-    width: 26px;
-    height: 26px;
-    object-fit: contain;
-}
-
-.voyageMapIsland {
-    width: 62px;
-    height: 62px;
-    object-fit: contain;
-    filter: drop-shadow(0 14px 18px rgba(5, 7, 16, 0.45));
-}
-
-.voyageMapLabel {
-    font-size: 0.75rem;
-    line-height: 1.2;
-    text-shadow: 0 2px 10px rgba(4, 6, 12, 0.82);
-}
-
-.voyageMapNode--current .voyageMapIsland {
-    filter: drop-shadow(0 0 18px rgba(103, 232, 249, 0.5)) drop-shadow(0 14px 18px rgba(5, 7, 16, 0.45));
-}
-
-.voyageMapNode--next .voyageMapIsland {
-    filter: drop-shadow(0 0 16px rgba(250, 204, 21, 0.42)) drop-shadow(0 14px 18px rgba(5, 7, 16, 0.45));
-}
-
-.voyageMapNode--completed .voyageMapLabel {
-    color: rgba(190, 255, 214, 0.92);
-}
-
-.voyageBossCluster {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.12rem;
-    margin-top: 0.1rem;
-    padding: 0.16rem 0.28rem;
-    border-radius: 999px;
-    background: rgba(9, 10, 18, 0.76);
-    border: 1px solid rgba(216, 204, 255, 0.12);
-}
-
-.voyageBossBadge {
-    width: 18px;
-    height: 18px;
-    object-fit: contain;
-    border-radius: 50%;
-    background: rgba(12, 11, 22, 0.9);
-}
-
-.voyageBossBadge--completed {
-    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.38);
-}
-
-.voyageBossBadge--next {
-    box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.48), 0 0 10px rgba(250, 204, 21, 0.22);
-}
-
-.voyageBossCount {
-    font-size: 0.68rem;
-    font-weight: 800;
-    color: var(--yellow);
-}
-
-.voyageShipToken {
-    width: 120px;
-    transform: translate(-50%, -58%);
-    pointer-events: none;
-}
-
-.voyageShipToken--dev {
-    width: 148px;
-}
-
-.voyageShipWake,
-.voyageShipBody {
-    position: absolute;
-    left: 50%;
-    display: block;
-    transform: translateX(-50%);
-}
-
-.voyageShipBody {
-    bottom: 10px;
-    width: 82px;
-    animation: voyageShipBob 3.5s ease-in-out infinite;
-    filter: drop-shadow(0 12px 16px rgba(5, 9, 18, 0.5));
-}
-
-.voyageShipToken--dev .voyageShipBody {
-    width: 100px;
-}
-
-.voyageShipWake {
-    bottom: -2px;
-    opacity: 0.86;
-}
-
-.voyageShipWake--primary {
-    width: 92px;
-    animation: voyageWakeDrift 3.8s ease-in-out infinite;
-}
-
-.voyageShipWake--secondary {
-    width: 72px;
-    bottom: 8px;
-    animation: voyageWakeDrift 4.6s ease-in-out infinite reverse;
-}
-
-.voyageMapOverlay {
-    z-index: 2;
-}
-
-.voyageMapOverlay img {
-    display: block;
-    object-fit: contain;
-}
-
-.voyageMapOverlay--compass {
-    right: 1rem;
-    top: 0.8rem;
-}
-
-.voyageMapOverlay--compass img {
-    width: 52px;
-    height: 52px;
-    opacity: 0.85;
-}
-
-.voyageMapOverlay--barto {
-    left: 1rem;
-    bottom: 0.8rem;
-}
-
-.voyageMapOverlay--barto img {
-    width: 88px;
-    height: 88px;
-    animation: voyageBuddyBounce 3.2s ease-in-out infinite;
-}
-
-.voyageMapOverlay--victory img {
-    filter: drop-shadow(0 0 18px rgba(250, 204, 21, 0.34));
-}
-
-.voyageMapSpark {
-    width: 34px;
-    height: 34px;
-    opacity: 0.75;
-    animation: voyageSparkle 2.4s ease-in-out infinite;
-}
-
-.voyageMapSpark--one {
-    top: 18%;
-    left: 32%;
-}
-
-.voyageMapSpark--two {
-    top: 40%;
-    right: 18%;
-    animation-delay: 0.8s;
-}
-
-.voyageMiniStats {
-    display: grid;
-    gap: 0.72rem;
-    margin-top: 1rem;
-}
-
-.voyageMiniStat {
-    padding: 0.9rem 0.95rem;
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(192, 167, 255, 0.14);
-    background: rgba(15, 14, 26, 0.9);
-    box-shadow: var(--shadow-sm);
-}
-
-.voyageMiniStat strong {
-    display: block;
-    margin-top: 0.62rem;
-    font-size: 1.08rem;
-    line-height: 1.15;
-}
-
-.voyageMiniStat p {
-    margin: 0.38rem 0 0;
-    color: var(--text-soft);
-    line-height: 1.4;
-}
-
-.pageBody--training .roadmapCard {
-    background:
-        linear-gradient(180deg, rgba(20, 13, 31, 0.94), rgba(12, 8, 19, 0.98)),
-        linear-gradient(135deg, rgba(182, 156, 255, 0.08), rgba(250, 204, 21, 0.04));
-}
-
-.pageBody--training .roadmapGrid {
-    gap: 0.72rem;
-}
-
-.pageBody--training .roadmapBlock {
-    border: 1px solid rgba(192, 167, 255, 0.14);
-    border-radius: var(--radius-md);
-    background: rgba(17, 12, 27, 0.88);
-    padding: 0.9rem 0.95rem;
-    box-shadow: var(--shadow-sm);
-}
-
-.pageBody--training .roadmapBlock h3 {
-    margin: 0;
-    font-size: 0.96rem;
-    line-height: 1.25;
-    color: var(--text);
-}
-
-.pageBody--training .roadmapList {
-    margin-top: 0.62rem;
-    color: var(--text-soft);
-}
-
-.pageBody--status .statusInfoCard {
-    box-shadow: var(--shadow-sm);
-}
-
-.pageBody--status .statusHeadingRow {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.7rem;
-}
-
 .statusPill {
     border: 1px solid var(--stroke);
 }
@@ -2241,44 +854,50 @@ textarea::placeholder {
 
 .statusPill--neutral {
     background: var(--neutral-bg);
-    color: var(--purple);
+    color: #f0a500;
 }
 
 /* Shared primitives: optional classes for new pages. Use under a page root. */
 .ui-section-container {
     margin-bottom: var(--space-2xl);
 }
+
 .ui-panel-header {
     margin: 0 0 var(--space-sm);
     font-size: var(--text-sm);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--purple);
+    color: #f0a500;
 }
+
 .ui-panel-body {
     margin: 0;
     color: var(--text-soft);
     line-height: 1.5;
 }
+
 .ui-action-bar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-md);
 }
+
 .ui-empty-state {
     padding: var(--space-2xl) var(--space-lg);
     text-align: center;
     color: var(--text-faint);
     font-size: var(--text-sm);
 }
+
 .ui-loading-state {
     padding: var(--space-lg);
     text-align: center;
     color: var(--text-soft);
     font-size: var(--text-sm);
 }
+
 .ui-modal-overlay {
     position: fixed;
     inset: 0;
@@ -2289,6 +908,7 @@ textarea::placeholder {
     background: rgba(3, 5, 11, 0.76);
     backdrop-filter: blur(8px);
 }
+
 .ui-modal-shell {
     position: relative;
     z-index: var(--z-modal-content);
@@ -2300,17 +920,11 @@ textarea::placeholder {
 }
 
 .pageBody--dev {
-    background:
-        radial-gradient(circle at top left, rgba(34, 211, 238, 0.18), transparent 32%),
-        radial-gradient(circle at top right, rgba(250, 204, 21, 0.1), transparent 26%),
-        radial-gradient(circle at bottom center, rgba(139, 92, 246, 0.12), transparent 30%),
-        linear-gradient(180deg, #06050c 0%, #0b1020 48%, #120c21 100%);
+    background: #0a0a0f;
 }
 
 .pageBody--dev .devHeroCard {
-    background:
-        linear-gradient(180deg, rgba(15, 18, 32, 0.96), rgba(9, 10, 18, 0.98)),
-        linear-gradient(135deg, rgba(34, 211, 238, 0.14), rgba(139, 92, 246, 0.08));
+    background: #12121a;
 }
 
 .pageBody--dev .devTruthSource {
@@ -2361,8 +975,8 @@ textarea::placeholder {
 .pageBody--dev .devStatusStripItem {
     padding: 0.22rem 0.4rem;
     border-radius: 4px;
-    border: 1px solid rgba(224, 207, 255, 0.07);
-    background: rgba(14, 12, 24, 0.72);
+    border: 1px solid rgba(240, 165, 0, 0.07);
+    background: #12121a;
 }
 
 .pageBody--dev .devStatusStripLabel {
@@ -2392,17 +1006,21 @@ textarea::placeholder {
     border: 1px solid var(--stroke);
     background: var(--panel-alt);
 }
+
 .pageBody--dev .devGovernedCardInner {
     max-width: 100%;
 }
+
 .pageBody--dev .devGovernedCardHeader {
     margin-bottom: var(--space-sm);
 }
+
 .pageBody--dev .devGovernedSummary {
     font-size: var(--text-sm);
     color: var(--text-soft);
     margin: 0 0 var(--space-md);
 }
+
 .pageBody--dev .devGovernedList {
     list-style: none;
     padding: 0;
@@ -2410,49 +1028,60 @@ textarea::placeholder {
     font-size: var(--text-sm);
     line-height: 1.5;
 }
+
 .pageBody--dev .devGovernedList li {
     padding: var(--space-xs) 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
 .pageBody--dev .devGovernedList li:last-child {
     border-bottom: 0;
 }
+
 .pageBody--dev .devGovernedWarn {
     color: var(--yellow);
 }
+
 .pageBody--dev .devGovernedReviewWrap {
     margin-top: var(--space-md);
     padding-top: var(--space-md);
     border-top: 1px solid var(--stroke);
 }
+
 .pageBody--dev .devGovernedReviewTitle {
     font-size: var(--text-sm);
     font-weight: 600;
     margin: 0 0 var(--space-xs);
     color: var(--text-soft);
 }
+
 .pageBody--dev .devGovernedReviewHint {
     font-size: var(--text-xs);
     color: var(--text-faint);
     margin: 0 0 var(--space-sm);
 }
+
 .pageBody--dev .devGovernedReviewList {
     list-style: none;
     padding: 0;
     margin: 0;
     font-size: var(--text-sm);
 }
+
 .pageBody--dev .devGovernedReviewItem {
     padding: 0;
     word-break: break-word;
     border-bottom: 1px solid var(--stroke);
 }
+
 .pageBody--dev .devGovernedReviewItem:last-child {
     border-bottom: 0;
 }
+
 .pageBody--dev .devGovernedReviewDetails {
     list-style: none;
 }
+
 .pageBody--dev .devGovernedReviewDetails summary {
     list-style: none;
     cursor: pointer;
@@ -2464,9 +1093,11 @@ textarea::placeholder {
     gap: 0.25rem 0.5rem;
     -webkit-tap-highlight-color: transparent;
 }
+
 .pageBody--dev .devGovernedReviewDetails summary::-webkit-details-marker {
     display: none;
 }
+
 .pageBody--dev .devGovernedReviewDetails summary::before {
     content: "▶";
     font-size: 0.7em;
@@ -2474,51 +1105,63 @@ textarea::placeholder {
     margin-right: 0.25rem;
     transition: transform 0.15s ease;
 }
+
 .pageBody--dev .devGovernedReviewDetails[open] summary::before {
     transform: rotate(90deg);
 }
+
 .pageBody--dev .devGovernedReviewSummaryLabel {
     font-weight: 600;
     color: var(--text-soft);
 }
+
 .pageBody--dev .devGovernedReviewSummaryMeta {
     font-size: var(--text-xs);
     color: var(--text-faint);
 }
+
 .pageBody--dev .devGovernedReviewSummaryTitle {
     flex: 1 1 100%;
     color: var(--text);
 }
+
 .pageBody--dev .devGovernedReviewDetailBody {
     padding: 0 0 var(--space-md) 1.2em;
     margin-top: -0.25rem;
 }
+
 .pageBody--dev .devGovernedReviewDetailP {
     font-size: var(--text-sm);
     margin: 0 0 var(--space-sm);
     line-height: 1.45;
     color: var(--text);
 }
+
 .pageBody--dev .devGovernedReviewDetailP strong {
     color: var(--text-soft);
     font-weight: 600;
 }
+
 .pageBody--dev .devGovernedReviewAction {
     margin-bottom: 0;
 }
+
 .pageBody--dev .devGovernedReviewDetailMeta {
     font-size: var(--text-xs);
     color: var(--text-faint);
     margin: var(--space-sm) 0 0;
 }
+
 .pageBody--dev .devGovernedAllClearWrap {
     margin: var(--space-md) 0 0;
 }
+
 .pageBody--dev .devGovernedAllClear {
     font-size: var(--text-sm);
     color: var(--text-faint);
     margin: 0 0 var(--space-xs);
 }
+
 .pageBody--dev .devGovernedAllClearSub {
     font-size: var(--text-xs);
     color: var(--text-faint);
@@ -2534,6 +1177,7 @@ textarea::placeholder {
     background: rgba(14, 12, 24, 0.72);
     border: 1px solid rgba(224, 207, 255, 0.08);
 }
+
 .pageBody--dev .devCaptainSummaryTitle {
     font-size: 0.6rem;
     font-weight: 700;
@@ -2542,20 +1186,24 @@ textarea::placeholder {
     color: var(--text-faint);
     margin: 0 0 0.2rem;
 }
+
 .pageBody--dev .devCaptainSummaryList {
     list-style: none;
     padding: 0;
     margin: 0;
 }
+
 .pageBody--dev .devCaptainSummaryItem {
     font-size: 0.8rem;
     line-height: 1.4;
     margin: 0 0 0.15rem;
     color: var(--text);
 }
+
 .pageBody--dev .devCaptainSummaryItem:last-child {
     margin-bottom: 0;
 }
+
 .pageBody--dev .devCaptainSummaryItem strong {
     color: var(--text-soft);
     font-weight: 600;
@@ -2572,13 +1220,16 @@ textarea::placeholder {
     margin: 0 0 0.2rem;
     padding: 0.1rem 0;
 }
+
 .pageBody--dev .devAchievementItem {
     font-weight: 600;
     color: var(--text-soft);
 }
+
 .pageBody--dev .devAchievementItem--milestone {
     color: rgba(94, 234, 212, 0.85);
 }
+
 .pageBody--dev .devAchievementSep {
     opacity: 0.5;
 }
@@ -2589,6 +1240,7 @@ textarea::placeholder {
     padding-top: 0.3rem;
     border-top: 1px solid var(--stroke);
 }
+
 .pageBody--dev .devNeedsAttentionBlock summary.devNeedsAttentionTitle {
     list-style: none;
     cursor: pointer;
@@ -2599,9 +1251,11 @@ textarea::placeholder {
     padding: 0.15rem 0;
     -webkit-tap-highlight-color: transparent;
 }
+
 .pageBody--dev .devNeedsAttentionBlock summary.devNeedsAttentionTitle::-webkit-details-marker {
     display: none;
 }
+
 .pageBody--dev .devNeedsAttentionBlock summary.devNeedsAttentionTitle::before {
     content: "▶";
     font-size: 0.65em;
@@ -2610,9 +1264,11 @@ textarea::placeholder {
     transition: transform 0.15s ease;
     display: inline-block;
 }
+
 .pageBody--dev .devNeedsAttentionBlock[open] summary.devNeedsAttentionTitle::before {
     transform: rotate(90deg);
 }
+
 .pageBody--dev .devNeedsAttentionTitle {
     font-size: 0.8rem;
     font-weight: 700;
@@ -2627,9 +1283,11 @@ textarea::placeholder {
     border: none;
     background: transparent;
 }
+
 .pageBody--dev .devGovernedCard--collapsed .devGovernedCardInner {
     padding: 0.25rem 0;
 }
+
 .pageBody--dev .devGovernedCardSummary {
     font-size: 0.72rem;
     font-weight: 600;
@@ -2638,6 +1296,7 @@ textarea::placeholder {
     color: var(--text-faint);
     list-style: none;
 }
+
 .pageBody--dev .devGovernedCardSummary::-webkit-details-marker {
     display: none;
 }
@@ -2648,6 +1307,7 @@ textarea::placeholder {
     padding-top: 0.3rem;
     border-top: 1px solid rgba(224, 207, 255, 0.06);
 }
+
 .pageBody--dev .devControlDeckSummary {
     font-size: 0.72rem;
     font-weight: 600;
@@ -2656,9 +1316,11 @@ textarea::placeholder {
     color: var(--text-faint);
     list-style: none;
 }
+
 .pageBody--dev .devControlDeckSummary::-webkit-details-marker {
     display: none;
 }
+
 .pageBody--dev .devControlDeckWrap .devControlDeck {
     margin-top: 0.2rem;
 }
@@ -2715,10 +1377,12 @@ textarea::placeholder {
         0 0 12px rgba(99, 102, 241, 0.4);
     position: relative;
 }
+
 .pageBody--dev .devControlButton.devControlButton--active::before {
     content: "\2713 ";
     margin-right: 0.2rem;
 }
+
 .pageBody--dev .devControlButton.devControlButton--active::after {
     content: "";
     position: absolute;
@@ -2794,20 +1458,32 @@ textarea::placeholder {
     font-size: 0.85rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
+
 .pageBody--dev .devActivityFeedItem:last-child {
     border-bottom: none;
 }
-.pageBody--dev .devActivityFeedItem--good { opacity: 1; }
-.pageBody--dev .devActivityFeedItem--warn { color: var(--colorWarn, #f59e0b); }
-.pageBody--dev .devActivityFeedItem--neutral { opacity: 0.9; }
+
+.pageBody--dev .devActivityFeedItem--good {
+    opacity: 1;
+}
+
+.pageBody--dev .devActivityFeedItem--warn {
+    color: var(--colorWarn, #f59e0b);
+}
+
+.pageBody--dev .devActivityFeedItem--neutral {
+    opacity: 0.9;
+}
 
 .pageBody--dev .devActivityFeedTitleText {
     font-weight: 600;
 }
+
 .pageBody--dev .devActivityFeedDetail {
     margin-left: 0.35rem;
     opacity: 0.9;
 }
+
 .pageBody--dev .devActivityFeedTime {
     display: block;
     font-size: 0.75rem;
@@ -2829,6 +1505,7 @@ textarea::placeholder {
 .pageBody--dev .devExpandable {
     margin: 0.5rem 0;
 }
+
 .pageBody--dev .devExpandableSummary {
     cursor: pointer;
     font-size: 0.9rem;
@@ -2842,6 +1519,7 @@ textarea::placeholder {
     border-radius: 0.6rem;
     background: rgba(19, 15, 32, 0.4);
 }
+
 .pageBody--dev .devCollapseSummary {
     cursor: pointer;
     font-size: 0.88rem;
@@ -2850,21 +1528,26 @@ textarea::placeholder {
     list-style: none;
     color: rgba(220, 210, 239, 0.85);
 }
+
 .pageBody--dev .devCollapseSummary::-webkit-details-marker {
     display: none;
 }
+
 .pageBody--dev .devCollapseSummary::marker {
     display: none;
 }
+
 .pageBody--dev .devCollapseBody {
     padding: 0 0.75rem 0.75rem;
     border-top: 1px solid rgba(224, 207, 255, 0.06);
 }
+
 .pageBody--dev .devCollapseBody .devQuickLinks,
 .pageBody--dev .devCollapseBody .devEnvStrip,
 .pageBody--dev .devCollapseBody .devSurfaceStatus {
     margin-top: 0.6rem;
 }
+
 .pageBody--dev .devRuntimeControl {
     margin-top: 0.6rem;
     padding: 0.5rem 0.5rem 0.6rem;
@@ -2872,6 +1555,7 @@ textarea::placeholder {
     border-radius: 6px;
     background: rgba(18, 12, 28, 0.4);
 }
+
 .pageBody--dev .devRuntimeControlStatus {
     display: flex;
     flex-wrap: wrap;
@@ -2879,48 +1563,59 @@ textarea::placeholder {
     gap: 0.35rem 0.6rem;
     margin-bottom: 0.5rem;
 }
+
 .pageBody--dev .devRuntimeControlStatus .devStatusStripLabel {
     margin-right: 0.15rem;
 }
+
 .pageBody--dev .devRuntimeControlChecked {
     font-size: 0.65rem;
     color: var(--text-faint);
     margin-left: auto;
 }
+
 .pageBody--dev .devRuntimeControlActions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
 }
+
 .pageBody--dev .devRuntimeBtn {
     font-size: 0.72rem;
     padding: 0.35rem 0.5rem;
 }
+
 .pageBody--dev .devRuntimeControlFeedback {
     margin-top: 0.4rem;
     margin-bottom: 0;
     font-size: 0.72rem;
     min-height: 1.2em;
 }
+
 .pageBody--dev .devRuntimeControlFeedback--error {
     color: var(--text-warn, #e8b84a);
 }
+
 .pageBody--dev .devRuntimeRestartHint {
     margin-top: 0.35rem;
     margin-bottom: 0;
     font-size: 0.7rem;
     color: var(--text-faint);
 }
+
 .pageBody--dev .devRuntimeRestartHint--allowed {
     color: rgba(180, 220, 180, 0.85);
 }
+
 .pageBody--dev .devRuntimeRestartHint--restricted {
     color: var(--text-faint);
 }
+
 /* Control deck layout: At a Glance first, then status, then Sites & runtime */
 .pageBody--dev .devDeckBlock {
     margin-top: 0.5rem;
 }
+
 .pageBody--dev .devCaptainSummary.devDeckBlock {
     margin-top: 0.35rem;
     padding: 0.45rem 0.5rem;
@@ -2928,21 +1623,25 @@ textarea::placeholder {
     border: 1px solid rgba(224, 207, 255, 0.08);
     background: rgba(18, 14, 28, 0.5);
 }
+
 .pageBody--dev .devCaptainSummaryTitle {
     font-size: 0.8rem;
     font-weight: 600;
     margin: 0 0 0.35rem;
     color: var(--text-soft);
 }
+
 .pageBody--dev .devCaptainSummaryList {
     margin: 0;
     padding-left: 1.1rem;
     font-size: 0.78rem;
     line-height: 1.45;
 }
+
 .pageBody--dev .devCaptainSummaryItem {
     margin-bottom: 0.2rem;
 }
+
 .pageBody--dev .devCurrentStatusWrap.devDeckRow {
     display: flex;
     flex-wrap: wrap;
@@ -2950,26 +1649,31 @@ textarea::placeholder {
     gap: 0.4rem 0.75rem;
     margin-top: 0.4rem;
 }
+
 .pageBody--dev .devCurrentStatusWrap.devDeckRow .devCurrentStatusLine {
     margin: 0;
     font-size: 0.78rem;
     font-weight: 600;
 }
+
 .pageBody--dev .devCurrentStatusWrap.devDeckRow .devAchievementStrip {
     margin: 0;
     font-size: 0.7rem;
     opacity: 0.9;
 }
+
 .pageBody--dev .devCollapse--sites.devDeckBlock {
     margin-top: 0.5rem;
     border: 1px solid rgba(224, 207, 255, 0.1);
     border-radius: 8px;
     background: rgba(18, 12, 28, 0.4);
 }
+
 .pageBody--dev .devCollapse--sites .devCollapseSummary {
     font-weight: 600;
     font-size: 0.82rem;
 }
+
 .pageBody--dev .devRuntimeHealthRow {
     display: flex;
     flex-wrap: wrap;
@@ -2977,6 +1681,7 @@ textarea::placeholder {
     gap: 0.35rem 0.6rem;
     margin-bottom: 0.5rem;
 }
+
 .pageBody--dev .devSnapshotStrip {
     display: flex;
     flex-wrap: wrap;
@@ -2990,9 +1695,11 @@ textarea::placeholder {
     font-size: 0.72rem;
     line-height: 1.35;
 }
+
 .pageBody--dev .devSnapshotStrip.isHidden {
     display: none;
 }
+
 .pageBody--dev .devSnapshotStripLabel {
     font-size: 0.65rem;
     font-weight: 600;
@@ -3000,22 +1707,27 @@ textarea::placeholder {
     letter-spacing: 0.06em;
     opacity: 0.85;
 }
+
 .pageBody--dev .devSnapshotStripSummary {
     flex: 1 1 140px;
     min-width: 0;
     opacity: 0.92;
 }
+
 .pageBody--dev .devSnapshotStrip--good {
     border-color: rgba(96, 200, 140, 0.2);
 }
+
 .pageBody--dev .devSnapshotStrip--warn {
     border-color: rgba(244, 180, 96, 0.35);
     background: rgba(40, 28, 0, 0.25);
 }
+
 .pageBody--dev .devSnapshotStrip--bad {
     border-color: rgba(244, 96, 96, 0.35);
     background: rgba(40, 12, 12, 0.28);
 }
+
 .pageBody--dev .devRuntimeHealthLabel {
     font-size: 0.68rem;
     font-weight: 600;
@@ -3023,35 +1735,42 @@ textarea::placeholder {
     letter-spacing: 0.05em;
     opacity: 0.8;
 }
+
 .pageBody--dev .devQuickLinksGrid.devDeckActions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.35rem;
     margin-bottom: 0.5rem;
 }
+
 .pageBody--dev .devQuickLinksGrid.devDeckActions .devBtn {
     font-size: 0.75rem;
     padding: 0.4rem 0.65rem;
 }
+
 .pageBody--dev .devStatusDetailsWrap {
     margin-top: 0.45rem;
     border: 1px solid rgba(224, 207, 255, 0.06);
     border-radius: 6px;
 }
+
 .pageBody--dev .devStatusDetailsSummary {
     font-size: 0.78rem;
     font-weight: 600;
     padding: 0.35rem 0.5rem;
     cursor: pointer;
 }
+
 .pageBody--dev .devStatusDetailsBody {
     padding: 0.35rem 0.5rem 0.5rem;
     border-top: 1px solid rgba(224, 207, 255, 0.05);
 }
+
 .pageBody--dev .devEnvStrip--compact {
     margin-top: 0.5rem;
     font-size: 0.7rem;
 }
+
 .pageBody--dev .devCollapseBody .devActivityFeed {
     margin-top: 0.75rem;
 }
@@ -3064,25 +1783,30 @@ textarea::placeholder {
     border-radius: var(--radius-sm);
     background: var(--panel-alt);
 }
+
 .pageBody--dev .devRulingsTest--compact .devRulingsTestTitle {
     font-size: 0.82rem;
     margin: 0 0 0.15rem;
 }
+
 .pageBody--dev .devRulingsTest--compact .devRulingsTestHint {
     font-size: 0.72rem;
     margin: 0 0 0.35rem;
 }
+
 .pageBody--dev .devRulingsTestTitle {
     font-size: 0.9rem;
     font-weight: 600;
     margin: 0 0 0.25rem;
     color: var(--text-soft);
 }
+
 .pageBody--dev .devRulingsTestHint {
     font-size: 0.78rem;
     color: var(--text-faint);
     margin: 0 0 0.5rem;
 }
+
 .pageBody--dev .devRulingsTestForm {
     display: grid;
     gap: 0.35rem 0.5rem;
@@ -3090,15 +1814,18 @@ textarea::placeholder {
     align-items: center;
     margin-bottom: 0.5rem;
 }
+
 @media (max-width: 480px) {
     .pageBody--dev .devRulingsTestForm {
         grid-template-columns: 1fr;
     }
 }
+
 .pageBody--dev .devRulingsTestLabel {
     font-size: 0.8rem;
     color: var(--text-faint);
 }
+
 .pageBody--dev .devRulingsTestInput {
     padding: 0.4rem 0.5rem;
     font-size: 0.88rem;
@@ -3108,42 +1835,50 @@ textarea::placeholder {
     color: var(--text);
     min-width: 0;
 }
+
 .pageBody--dev .devRulingsTestBtn {
     grid-column: 1 / -1;
     justify-self: start;
     margin-top: 0.25rem;
 }
+
 .pageBody--dev .devRulingsTestResult {
     margin-top: 0.5rem;
     padding-top: 0.5rem;
     border-top: 1px solid var(--stroke);
 }
+
 .pageBody--dev .devRulingsTestEmptyText {
     font-size: 0.88rem;
     color: var(--text-faint);
     margin: 0;
 }
+
 .pageBody--dev .devRulingsTestQuestion {
     font-size: 0.82rem;
     color: var(--text-faint);
     margin: 0 0 0.35rem;
     font-style: italic;
 }
+
 .pageBody--dev .devRulingsTestAnswer {
     font-size: 0.9rem;
     color: var(--text-soft);
     margin: 0 0 0.35rem;
     line-height: 1.4;
 }
+
 .pageBody--dev .devRulingsTestSummary {
     font-size: 0.85rem;
     color: var(--text-faint);
     margin: 0 0 0.5rem;
 }
+
 .pageBody--dev .devRulingsTestSummaryLabel {
     font-weight: 600;
     color: var(--text-soft);
 }
+
 .pageBody--dev .devRulingsTestCitation {
     font-size: 0.78rem;
     color: var(--text-faint);
@@ -3152,31 +1887,38 @@ textarea::placeholder {
     background: rgba(0, 0, 0, 0.2);
     border-radius: var(--radius-xs);
 }
+
 .pageBody--dev .devRulingsTestCitation a {
     color: var(--cyan);
     text-decoration: none;
 }
+
 .pageBody--dev .devRulingsTestCitation a:hover {
     text-decoration: underline;
 }
+
 .pageBody--dev .devRulingsTestMoreWrap {
     margin-top: 0.5rem;
     font-size: 0.85rem;
 }
+
 .pageBody--dev .devRulingsTestMoreSummary {
     cursor: pointer;
     color: var(--text-soft);
 }
+
 .pageBody--dev .devRulingsTestMoreList {
     margin: 0.35rem 0 0;
     padding-left: 1rem;
     list-style: disc;
 }
+
 .pageBody--dev .devRulingsTestMoreList li {
     margin-bottom: 0.35rem;
     font-size: 0.82rem;
     color: var(--text-faint);
 }
+
 .pageBody--dev .devRulingsTestLoading {
     font-size: 0.88rem;
     color: var(--text-faint);
@@ -3186,12 +1928,14 @@ textarea::placeholder {
 .pageBody--dev .devAttentionCta {
     margin-top: 0.75rem;
 }
+
 .pageBody--dev .devReviewApprovalsBtn {
     min-height: 2.75rem;
     padding: 0.5rem 1rem;
     font-weight: 600;
     touch-action: manipulation;
 }
+
 .pageBody--dev .devControlFeedback {
     min-height: 1.5rem;
     display: block;
@@ -3449,6 +2193,7 @@ textarea::placeholder {
 }
 
 @keyframes devRefreshBusy {
+
     0%,
     100% {
         opacity: 0.45;
@@ -3462,50 +2207,6 @@ textarea::placeholder {
 @media (prefers-reduced-motion: reduce) {
     .pageBody--dev .devRefreshButton--mini.is-loading {
         animation: none;
-    }
-}
-
-/* Dev Full monitor — slightly calmer density */
-.pageBody--devMonitor .devMonitorFold {
-    border: 1px solid rgba(224, 207, 255, 0.09);
-    border-radius: var(--radius-md);
-    padding: 0.4rem 0.85rem 0.85rem;
-    margin: 0 0 0.75rem;
-    background: rgba(10, 9, 18, 0.42);
-}
-
-.pageBody--devMonitor .devMonitorFoldSummary {
-    cursor: pointer;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: rgba(218, 206, 239, 0.72);
-    list-style: none;
-}
-
-.pageBody--devMonitor .devMonitorFoldSummary::-webkit-details-marker {
-    display: none;
-}
-
-.pageBody--devMonitor .devCaptainSummary--inFold {
-    margin: 0.45rem 0 0;
-    padding: 0;
-    border: none;
-    background: transparent;
-}
-
-.pageBody--devMonitor .devControlLayer {
-    padding: 0.9rem 1rem;
-}
-
-.pageBody--devMonitor .devControlLayerGrid {
-    gap: 0.7rem;
-}
-
-@media (max-width: 720px) {
-    .pageBody--devMonitor .devJudgmentGrid {
-        grid-template-columns: 1fr;
     }
 }
 
@@ -3624,6 +2325,7 @@ textarea::placeholder {
     padding: 0.2rem 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
 .pageBody--dev .devWorktreeUpdateListItem:last-child {
     border-bottom: none;
 }
@@ -3750,6 +2452,7 @@ textarea::placeholder {
     letter-spacing: 0.01em;
     opacity: 0.7;
 }
+
 .pageBody--dev .devInlineLinks--top {
     margin-bottom: 0.25rem;
     padding-bottom: 0.2rem;
@@ -3801,10 +2504,7 @@ textarea::placeholder {
 .pageBody--dev .devOverviewLower,
 .pageBody--dev .devOverviewSidebar,
 .pageBody--dev .devConsoleLinkGrid,
-.pageBody--dev .devActionGrid,
-.pageBody--dev .devVoyageSimpleGrid,
-.pageBody--dev .devVoyageMiniGrid,
-.pageBody--dev .devVoyageRouteList {
+.pageBody--dev .devActionGrid {
     display: grid;
     gap: clamp(0.95rem, 1.6vw, 1.3rem);
 }
@@ -3917,14 +2617,6 @@ textarea::placeholder {
         0 16px 30px rgba(34, 14, 60, 0.24);
 }
 
-/* Voyage section deferred: hidden from Dev page until needed */
-.devVoyageTab--deferred {
-    display: none;
-}
-.pageBody--dev .devVoyageTab--deferred {
-    display: none !important;
-}
-
 .pageBody--dev .devConsolePanel {
     display: grid;
     gap: clamp(1rem, 2vw, 1.5rem);
@@ -3938,8 +2630,7 @@ textarea::placeholder {
     text-align: left;
 }
 
-.pageBody--dev .devSurfaceCard,
-.pageBody--dev .devVoyageSummaryCard {
+.pageBody--dev .devSurfaceCard {
     position: relative;
     overflow: hidden;
     border: 1px solid rgba(224, 207, 255, 0.06);
@@ -3960,8 +2651,7 @@ textarea::placeholder {
     box-shadow: none;
 }
 
-.pageBody--dev .devSurfaceCard,
-.pageBody--dev .devVoyageSummaryCard {
+.pageBody--dev .devSurfaceCard {
     padding: clamp(1rem, 1.8vw, 1.25rem);
 }
 
@@ -3994,17 +2684,14 @@ textarea::placeholder {
 }
 
 .pageBody--dev .devLeadSummary,
-.pageBody--dev .devVoyageMeaning p,
 .pageBody--dev .devAttentionList,
-.pageBody--dev .devActionButton,
-.pageBody--dev .devVoyageRouteStep p {
+.pageBody--dev .devActionButton {
     color: rgba(232, 224, 247, 0.84);
 }
 
 .pageBody--dev .devConsoleShell .sectionCopy h2,
 .pageBody--dev .devQuickPanel .sectionCopy h2,
 .pageBody--dev .devLearningPanel .sectionCopy h2,
-.pageBody--dev .devVoyagePanel .sectionCopy h2,
 .pageBody--dev .devValidationPanel .sectionCopy h2,
 .pageBody--dev .devResourcePanel .sectionCopy h2,
 .pageBody--dev .devActivityPanel .sectionCopy h2,
@@ -4018,7 +2705,6 @@ textarea::placeholder {
 .pageBody--dev .devConsoleShell .sectionCopy p,
 .pageBody--dev .devQuickPanel .sectionCopy p,
 .pageBody--dev .devLearningPanel .sectionCopy p,
-.pageBody--dev .devVoyagePanel .sectionCopy p,
 .pageBody--dev .devValidationPanel .sectionCopy p,
 .pageBody--dev .devResourcePanel .sectionCopy p,
 .pageBody--dev .devActivityPanel .sectionCopy p,
@@ -4033,7 +2719,6 @@ textarea::placeholder {
 .pageBody--dev .devConsoleShell .sectionEyebrow,
 .pageBody--dev .devQuickPanel .sectionEyebrow,
 .pageBody--dev .devLearningPanel .sectionEyebrow,
-.pageBody--dev .devVoyagePanel .sectionEyebrow,
 .pageBody--dev .devValidationPanel .sectionEyebrow,
 .pageBody--dev .devResourcePanel .sectionEyebrow,
 .pageBody--dev .devActivityPanel .sectionEyebrow,
@@ -4045,16 +2730,12 @@ textarea::placeholder {
 
 .pageBody--dev .devLeadCard .sectionEyebrow,
 .pageBody--dev .devProgressCard .sectionEyebrow,
-.pageBody--dev .devVoyageSummaryCard .sectionEyebrow,
-.pageBody--dev .devVoyageMapCard .sectionEyebrow,
-.pageBody--dev .devLeadCard .devMetricLabel,
-.pageBody--dev .devVoyageMeaning .devMetricLabel {
+.pageBody--dev .devLeadCard .devMetricLabel {
     color: rgba(250, 220, 126, 0.92);
 }
 
 .pageBody--dev .devLeadCard::before,
-.pageBody--dev .devProgressCard::before,
-.pageBody--dev .devVoyageMapCard::before {
+.pageBody--dev .devProgressCard::before {
     content: "";
     position: absolute;
     inset: auto auto -20% -8%;
@@ -4065,8 +2746,7 @@ textarea::placeholder {
     pointer-events: none;
 }
 
-.pageBody--dev .devLeadCard::after,
-.pageBody--dev .devVoyageMapCard::after {
+.pageBody--dev .devLeadCard::after {
     content: "";
     position: absolute;
     top: -3.5rem;
@@ -4212,7 +2892,8 @@ textarea::placeholder {
     margin-top: 0.25rem;
 }
 
-.pageBody--dev .devPendingApprovalBtn {
+.pageBody--dev .devPendingApprovalBtn,
+.pageBody--dev a.devPendingApprovalBtn {
     flex: 1 1 0;
     min-width: 0;
     min-height: 2.75rem;
@@ -4221,6 +2902,12 @@ textarea::placeholder {
     font-weight: 600;
     touch-action: manipulation;
     border-radius: 0.5rem;
+    text-decoration: none;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
 .pageBody--dev .devPendingApprovalBtn--approve {
@@ -4242,6 +2929,7 @@ textarea::placeholder {
     .pageBody--dev .devPendingApprovalActions {
         flex-wrap: nowrap;
     }
+
     .pageBody--dev .devPendingApprovalBtn {
         flex: 0 1 auto;
         min-width: 5rem;
@@ -4286,409 +2974,6 @@ textarea::placeholder {
     letter-spacing: -0.01em;
     box-shadow: 0 12px 24px rgba(5, 4, 12, 0.16);
     cursor: pointer;
-}
-
-.pageBody--dev .devVoyageSimpleGrid,
-.pageBody--dev .devVoyageMiniGrid {
-    margin-bottom: 0;
-}
-
-.pageBody--dev .devVoyageSimpleGrid {
-    grid-template-columns: 1fr;
-    gap: clamp(1.1rem, 2vw, 1.45rem);
-    align-items: start;
-}
-
-.pageBody--dev .devVoyageMiniCard,
-.pageBody--dev .devVoyageMapCard {
-    padding: clamp(0.95rem, 1.55vw, 1.1rem);
-    border-radius: var(--radius-md);
-    border: 1px solid rgba(224, 207, 255, 0.06);
-    background:
-        radial-gradient(circle at top right, rgba(250, 204, 21, 0.03), transparent 24%),
-        linear-gradient(180deg, rgba(20, 16, 33, 0.92), rgba(10, 10, 20, 0.95));
-    box-shadow:
-        0 12px 24px rgba(5, 4, 12, 0.16),
-        inset 0 1px 0 rgba(255, 255, 255, 0.03);
-}
-
-.pageBody--dev .devVoyageMiniCard strong {
-    display: block;
-    margin-top: 0.6rem;
-    font-size: 1.08rem;
-    line-height: 1.14;
-    letter-spacing: -0.02em;
-}
-
-.pageBody--dev .devVoyageMiniCard p,
-.pageBody--dev .devVoyageMapCardCopy,
-.pageBody--dev .devVoyageMapHint {
-    margin: 0.36rem 0 0;
-    line-height: 1.42;
-    color: rgba(228, 219, 245, 0.74);
-}
-
-.pageBody--dev .devVoyageMiniGrid--summary {
-    grid-template-columns: 1fr;
-    gap: 0.68rem;
-}
-
-.pageBody--dev .devVoyageMeaning {
-    display: grid;
-    gap: 0.55rem;
-    margin-top: 1.2rem;
-    padding-top: 1.05rem;
-    border-top: 1px solid rgba(224, 207, 255, 0.08);
-}
-
-.pageBody--dev .devVoyageMapCard {
-    display: grid;
-    gap: 0.76rem;
-}
-
-.pageBody--dev .devVoyageSummaryCard {
-    display: grid;
-    align-content: start;
-    gap: 0.22rem;
-}
-
-.pageBody--dev .devVoyageMapMeta {
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-.pageBody--dev .devVoyageMapViewport {
-    position: relative;
-    overflow: hidden;
-    border-radius: calc(var(--radius-lg) + 2px);
-    border: 1px solid rgba(225, 210, 255, 0.07);
-    background:
-        radial-gradient(circle at top left, rgba(103, 232, 249, 0.12), transparent 28%),
-        radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.16), transparent 34%),
-        radial-gradient(circle at top right, rgba(250, 204, 21, 0.08), transparent 22%),
-        linear-gradient(180deg, rgba(8, 16, 32, 0.98), rgba(10, 12, 24, 0.99) 52%, rgba(16, 10, 28, 0.98));
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.04),
-        0 22px 44px rgba(6, 9, 20, 0.3);
-    min-height: 320px;
-}
-
-.pageBody--dev .devVoyageMapViewport[data-mode="focused"] {
-    min-height: 280px;
-}
-
-.pageBody--dev .devVoyageMapViewport--expanded {
-    min-height: min(78vh, 880px);
-}
-
-.pageBody--dev .devVoyageMapStage {
-    position: relative;
-    width: 100%;
-    min-height: inherit;
-    height: 100%;
-    overflow: hidden;
-    background:
-        linear-gradient(180deg, rgba(5, 16, 34, 0.96), rgba(8, 12, 23, 0.98)),
-        linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(139, 92, 246, 0.08));
-}
-
-.pageBody--dev .devVoyageMapStage::before,
-.pageBody--dev .devVoyageMapStage::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-}
-
-.pageBody--dev .devVoyageMapStage::before {
-    background-image:
-        var(--voyage-map-image, none),
-        radial-gradient(circle at 15% 20%, rgba(103, 232, 249, 0.12), transparent 20%),
-        linear-gradient(180deg, rgba(7, 21, 44, 0.96), rgba(11, 17, 33, 0.98));
-    background-size: cover, auto, auto;
-    background-position: center;
-    background-repeat: no-repeat;
-    opacity: 0.9;
-    transform: translate(var(--voyage-pan-x, 0%), var(--voyage-pan-y, 0%)) scale(var(--voyage-map-scale, 1));
-    transform-origin: center center;
-    transition: transform 220ms ease;
-}
-
-.pageBody--dev .devVoyageMapStage::after {
-    background:
-        linear-gradient(transparent 95%, rgba(255, 255, 255, 0.05) 96%),
-        linear-gradient(90deg, transparent 95%, rgba(255, 255, 255, 0.04) 96%);
-    background-size: 72px 72px;
-    mix-blend-mode: soft-light;
-    opacity: 0.28;
-}
-
-.pageBody--dev .devVoyageMapStage[data-has-map="true"] .devVoyageMapPlaceholderCopy {
-    opacity: 0;
-}
-
-.pageBody--dev .devVoyageMapPlaceholderCopy {
-    position: absolute;
-    left: 1rem;
-    top: 1rem;
-    z-index: 1;
-    max-width: 15rem;
-    padding: 0.72rem 0.8rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(224, 207, 255, 0.08);
-    background: rgba(10, 12, 22, 0.62);
-    backdrop-filter: blur(10px);
-}
-
-.pageBody--dev .devVoyageMapPlaceholderCopy strong {
-    display: block;
-}
-
-.pageBody--dev .devVoyageMapPlaceholderCopy p {
-    margin: 0.3rem 0 0;
-    color: var(--text-soft);
-}
-
-.pageBody--dev .devVoyageMapSurface {
-    position: absolute;
-    inset: 0;
-    transform: translate(var(--voyage-pan-x, 0%), var(--voyage-pan-y, 0%)) scale(var(--voyage-map-scale, 1));
-    transform-origin: center center;
-    transition: transform 220ms ease;
-}
-
-.pageBody--dev .devVoyageMapViewport[data-mode="full"] .devVoyageMapSurface,
-.pageBody--dev .devVoyageMapViewport[data-mode="full"] .devVoyageMapStage::before {
-    --voyage-map-scale: 1;
-    --voyage-pan-x: 0%;
-    --voyage-pan-y: 0%;
-}
-
-.pageBody--dev .devVoyageMapNode,
-.pageBody--dev .devVoyagePolarTang {
-    position: absolute;
-    transform: translate(-50%, -50%);
-    z-index: 2;
-}
-
-.pageBody--dev .devVoyageMapNode {
-    display: grid;
-    gap: 0.35rem;
-    justify-items: center;
-    text-align: center;
-}
-
-.pageBody--dev .devVoyageMapNodeDot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: rgba(216, 204, 255, 0.96);
-    box-shadow: 0 0 0 6px rgba(103, 232, 249, 0.12);
-}
-
-.pageBody--dev .devVoyageMapNode--current .devVoyageMapNodeDot {
-    background: rgba(103, 232, 249, 0.98);
-    box-shadow: 0 0 0 8px rgba(103, 232, 249, 0.18);
-}
-
-.pageBody--dev .devVoyageMapNode--next .devVoyageMapNodeDot {
-    background: rgba(250, 204, 21, 0.94);
-    box-shadow: 0 0 0 8px rgba(250, 204, 21, 0.16);
-}
-
-.pageBody--dev .devVoyageMapNodeLabel {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.18rem 0.5rem;
-    border-radius: 999px;
-    background: rgba(8, 11, 20, 0.72);
-    border: 1px solid rgba(192, 167, 255, 0.14);
-    font-size: 0.72rem;
-    line-height: 1.2;
-    color: var(--text);
-    white-space: nowrap;
-}
-
-.pageBody--dev .devVoyagePolarTang {
-    display: grid;
-    gap: 0.28rem;
-    justify-items: center;
-}
-
-.pageBody--dev .devVoyagePolarTangPulse {
-    position: absolute;
-    inset: auto;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: rgba(103, 232, 249, 0.22);
-    animation: devPulse 2.2s ease-in-out infinite;
-}
-
-.pageBody--dev .devVoyagePolarTangDot {
-    position: relative;
-    z-index: 1;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: rgba(103, 232, 249, 0.96);
-    border: 3px solid rgba(8, 11, 20, 0.88);
-    box-shadow: 0 0 0 8px rgba(103, 232, 249, 0.16);
-}
-
-.pageBody--dev .devVoyagePolarTangLabel {
-    position: relative;
-    z-index: 1;
-    padding: 0.2rem 0.55rem;
-    border-radius: 999px;
-    background: rgba(8, 11, 20, 0.76);
-    border: 1px solid rgba(103, 232, 249, 0.18);
-    font-size: 0.75rem;
-    font-weight: 800;
-    color: var(--text);
-}
-
-.pageBody--dev .devVoyageRoadmapPreview {
-    display: grid;
-    gap: 0.9rem;
-}
-
-.voyageMiniStats--dev {
-    display: none !important;
-}
-
-.pageBody--dev .devVoyageRoadmapCard {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 0.85rem;
-    align-items: center;
-    padding: 0.95rem 1rem;
-    border-radius: 1.15rem;
-    border: 1px solid rgba(224, 207, 255, 0.08);
-    background:
-        linear-gradient(180deg, rgba(18, 14, 31, 0.84), rgba(11, 10, 20, 0.92)),
-        linear-gradient(135deg, rgba(139, 92, 246, 0.06), rgba(250, 204, 21, 0.03));
-    box-shadow: 0 14px 28px rgba(5, 4, 12, 0.16);
-}
-
-.pageBody--dev .devVoyageRoadmapCard--current {
-    border-color: rgba(250, 204, 21, 0.12);
-    background:
-        radial-gradient(circle at top right, rgba(250, 204, 21, 0.08), transparent 26%),
-        linear-gradient(180deg, rgba(22, 17, 34, 0.88), rgba(11, 10, 20, 0.94)),
-        linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(250, 204, 21, 0.05));
-}
-
-.pageBody--dev .devVoyageRoadmapArt {
-    width: 4.4rem;
-    height: 4.4rem;
-    border-radius: 1rem;
-    display: grid;
-    place-items: center;
-    background:
-        radial-gradient(circle at top right, rgba(250, 204, 21, 0.12), transparent 30%),
-        radial-gradient(circle at bottom left, rgba(139, 92, 246, 0.18), transparent 40%),
-        rgba(8, 11, 20, 0.78);
-    border: 1px solid rgba(224, 207, 255, 0.08);
-}
-
-.pageBody--dev .devVoyageRoadmapArt img {
-    width: 3.4rem;
-    height: 3.4rem;
-    object-fit: contain;
-    filter: drop-shadow(0 12px 20px rgba(5, 9, 18, 0.28));
-}
-
-.pageBody--dev .devVoyageRoadmapCopy {
-    display: grid;
-    gap: 0.28rem;
-    min-width: 0;
-}
-
-.pageBody--dev .devVoyageRoadmapCopy strong {
-    font-size: 1rem;
-    line-height: 1.12;
-    letter-spacing: -0.02em;
-}
-
-.pageBody--dev .devVoyageRoadmapCopy p {
-    margin: 0;
-    color: rgba(228, 219, 245, 0.72);
-    line-height: 1.48;
-}
-
-.pageBody--dev .devVoyageMapDialog {
-    position: fixed;
-    inset: 0;
-    z-index: var(--z-modal);
-    display: grid;
-    place-items: center;
-    padding: 1rem;
-}
-
-.pageBody--dev .devVoyageMapBackdrop {
-    position: absolute;
-    inset: 0;
-    border: 0;
-    background: rgba(3, 5, 11, 0.76);
-    backdrop-filter: blur(8px);
-    cursor: pointer;
-}
-
-.pageBody--dev .devVoyageMapDialogCard {
-    position: relative;
-    z-index: var(--z-modal-content);
-    width: min(100%, 1100px);
-    display: grid;
-    gap: 0.85rem;
-    padding: 1rem;
-    border-radius: calc(var(--radius-lg) + 4px);
-    border: 1px solid rgba(192, 167, 255, 0.16);
-    background:
-        linear-gradient(180deg, rgba(17, 15, 28, 0.98), rgba(8, 9, 18, 0.99)),
-        linear-gradient(135deg, rgba(34, 211, 238, 0.1), rgba(139, 92, 246, 0.08));
-    box-shadow: 0 30px 60px rgba(3, 5, 11, 0.46);
-}
-
-.pageBody--dev .devVoyageCloseChip {
-    position: absolute;
-    top: 0.9rem;
-    right: 0.9rem;
-    z-index: 3;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    min-height: 2.9rem;
-    padding: 0.7rem 0.95rem;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: rgba(7, 10, 18, 0.88);
-    color: var(--text);
-    box-shadow: 0 14px 28px rgba(3, 5, 11, 0.34);
-    backdrop-filter: blur(10px);
-    font-weight: 800;
-    cursor: pointer;
-}
-
-.pageBody--dev .devVoyageCloseChip span[aria-hidden="true"] {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    border-radius: 999px;
-    background: rgba(248, 113, 113, 0.18);
-    color: #ffe4e8;
-    font-size: 1rem;
-    line-height: 1;
-}
-
-body.hasVoyageMapDialog {
-    overflow: hidden;
 }
 
 .pageBody--dev .devQuickPanel,
@@ -4854,9 +3139,11 @@ body.hasVoyageMapDialog {
     font-size: 0.88rem;
     line-height: 1.5;
 }
+
 .pageBody--dev .devLearnerStatusList li {
     margin: 0.2rem 0;
 }
+
 .pageBody--dev .devProgressDetail,
 .pageBody--dev .devMetricCard p,
 .pageBody--dev .devResourceCard p,
@@ -5822,6 +4109,7 @@ body.hasVoyageMapDialog {
 }
 
 @keyframes devPulse {
+
     0%,
     100% {
         transform: scale(0.92);
@@ -5845,6 +4133,7 @@ body.hasVoyageMapDialog {
 }
 
 @keyframes devNeedle {
+
     0%,
     100% {
         transform: rotate(-32deg);
@@ -5856,6 +4145,7 @@ body.hasVoyageMapDialog {
 }
 
 @keyframes devWave {
+
     0%,
     100% {
         transform: translateY(8px) scaleX(0.96);
@@ -5878,66 +4168,17 @@ body.hasVoyageMapDialog {
     }
 }
 
-@keyframes voyageShipBob {
-    0%,
-    100% {
-        transform: translateX(-50%) translateY(0);
-    }
-
-    50% {
-        transform: translateX(-50%) translateY(-7px);
-    }
-}
-
-@keyframes voyageWakeDrift {
-    0%,
-    100% {
-        transform: translateY(4px) scaleX(0.96);
-        opacity: 0.54;
-    }
-
-    50% {
-        transform: translateY(-3px) scaleX(1.04);
-        opacity: 0.9;
-    }
-}
-
-@keyframes voyageSparkle {
-    0%,
-    100% {
-        transform: scale(0.88);
-        opacity: 0.36;
-    }
-
-    50% {
-        transform: scale(1.12);
-        opacity: 0.92;
-    }
-}
-
-@keyframes voyageBuddyBounce {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-6px);
-    }
-}
-
 .isHidden {
     display: none !important;
 }
 
 @media (hover: hover) {
+
     .navLink:hover,
     .presetButton:hover,
-    .pageBody--ask .modeCard:hover,
     .copyButton:hover,
     .clearButton:hover,
     .utilityButton:hover,
-    .miniRouteCard:hover,
     .ctaButton--secondary:hover {
         border-color: var(--stroke-strong);
         background: rgba(31, 21, 48, 0.94);
@@ -5951,7 +4192,6 @@ body.hasVoyageMapDialog {
         box-shadow: 0 18px 30px rgba(52, 21, 107, 0.42);
     }
 
-    .pageBody--dev .devVoyageCloseChip:hover,
     .pageBody--dev .devConsoleTab:hover,
     .pageBody--dev .devActionButton:hover,
     .pageBody--dev .devLearningEvent:hover,
@@ -5974,28 +4214,18 @@ textarea:focus,
 .clearButton:focus-visible,
 .copyButton:focus-visible,
 .utilityButton:focus-visible,
-.pageBody--dev .devVoyageCloseChip:focus-visible,
 .pageBody--dev .devConsoleTab:focus-visible,
 .pageBody--dev .devActionButton:focus-visible,
 .pageBody--dev .devLearningEvent:focus-visible,
 .pageBody--dev .devLaunchpadTile:focus-visible,
 .ctaButton:focus-visible,
-.navLink:focus-visible,
-.pageBody--ask .modeCard input:focus-visible + .modeBody {
+.navLink:focus-visible {
     border-color: rgba(191, 169, 255, 0.6);
     box-shadow: 0 0 0 1px rgba(191, 169, 255, 0.3);
     outline: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .pageBody--training .trainingProgressIntro {
-        grid-template-columns: 1fr;
-    }
-
-    .pageBody--training .trainingRingCard {
-        justify-items: center;
-        text-align: center;
-    }
 
     .heroCard,
     .panelCard,
@@ -6007,7 +4237,6 @@ textarea:focus,
     .clearButton,
     .copyButton,
     .utilityButton,
-    .pageBody--ask .modeCard,
     .ctaButton,
     .navLink,
     textarea,
@@ -6019,32 +4248,10 @@ textarea:focus,
     .statusSpinner {
         animation: none;
     }
-
-    .voyageShipSprite,
-    .voyageWakeSprite,
-    .voyageShipBody,
-    .voyageShipWake,
-    .pageBody--dev .devVoyageShipSprite,
-    .pageBody--dev .devVoyageWakeSprite,
-    .pageBody--dev .devVoyageSpark,
-    .voyageMapSpark,
-    .voyageMapOverlay--barto img,
-    .voyageCelebrationEffect,
-    .voyageCelebrationSprite {
-        animation: none;
-    }
 }
 
 @media (max-width: 720px) {
-    .pageBody--home .overviewGrid--home,
-    .pageBody--training .roadmapGrid,
-    .pageBody--training .trainingStatGrid,
-    .pageBody--training .trainingRingGrid,
-    .pageBody--training .trainingStageRow,
-    .voyageHeader,
-    .voyageScene,
-    .voyageFocusGrid,
-    .voyageMiniStats,
+
     .pageBody--dev .devQuickGrid,
     .pageBody--dev .devStateGrid,
     .pageBody--dev .devMetricGrid,
@@ -6052,14 +4259,7 @@ textarea:focus,
     .pageBody--dev .devValidationCanonicalGrid,
     .pageBody--dev .devValidationEvidenceGrid,
     .pageBody--dev .devResourceGrid,
-    .pageBody--dev .devIssueGrid,
-    .pageBody--dev .devVoyageHero,
-    .pageBody--dev .devVoyageStatGrid,
-    .pageBody--dev .devVoyageSupportGrid {
-        grid-template-columns: 1fr;
-    }
-
-    .pageBody--home .presetGrid--home {
+    .pageBody--dev .devIssueGrid {
         grid-template-columns: 1fr;
     }
 }
@@ -6078,22 +4278,16 @@ textarea:focus,
         width: 100%;
     }
 
-    .heroCard,
-    .pageBody--home .heroCard--home {
+    .heroCard {
         grid-template-columns: 1fr;
         justify-items: center;
         text-align: center;
         padding: 0.98rem 0.94rem;
     }
 
-    .heroLogo,
-    .pageBody--home .heroLogo--home {
+    .heroLogo {
         width: 84px;
         height: 84px;
-    }
-
-    .pageBody--home .homeAskCard {
-        padding: 1rem 0.92rem;
     }
 
     .heroCopy h1 {
@@ -6105,10 +4299,6 @@ textarea:focus,
         padding: 0.92rem;
     }
 
-    .pageBody--ask .modeBody {
-        min-height: 86px;
-    }
-
     .tipPill,
     .statusPill {
         width: 100%;
@@ -6117,11 +4307,9 @@ textarea:focus,
     .fieldHeaderRow,
     .copyRow,
     .heroActions,
-    .pageBody--status .statusHeadingRow,
     .pageBody--dev .devSectionHeader,
     .pageBody--dev .devValidationDetailHeader,
     .pageBody--dev .devActivityHero,
-    .voyageProgressHead,
     .pageBody--dev .devRefreshStack,
     .pageBody--dev .devResourceHead {
         align-items: stretch;
@@ -6133,109 +4321,138 @@ textarea:focus,
     .pageBody--dev .devControlButton {
         width: 100%;
     }
+
     .pageBody--dev .devControlButton {
         min-width: unset;
     }
+
     /* devDeckBtn must never stretch full-width on mobile */
     .pageBody--dev .devDeckBtn.devControlButton {
         width: auto;
         min-width: 0;
     }
+
     .pageBody--dev .devControlDeckRow--actions {
         justify-content: flex-start;
         gap: 0.4rem;
         align-items: center;
     }
+
     .pageBody--dev .devControlDeck .devControlFeedback {
         width: 100%;
         margin-left: 0;
         margin-top: 0.2rem;
     }
+
     .pageBody--dev .devEnvStrip {
         padding: 0.2rem 0;
         gap: 0.4rem 0.75rem;
     }
+
     .pageBody--dev .devEnvStripItem strong {
         word-break: break-word;
     }
+
     .pageBody--dev .devStatusStrip {
         gap: 0.14rem;
         margin: 0.12rem 0;
     }
+
     .pageBody--dev .devStatusStripItem {
         min-width: 0;
         padding: 0.18rem 0.32rem;
     }
+
     .pageBody--dev .devStatusStripLabel {
         font-size: 0.52rem;
     }
+
     .pageBody--dev .devStatusStripValue {
         font-size: 0.68rem;
     }
+
     .pageBody--dev .devMiniHeader {
         flex-wrap: wrap;
         padding: 0.08rem 0 0.1rem;
     }
+
     .pageBody--dev .devConsoleShell {
         padding: 0.45rem 0.55rem;
     }
+
     .pageBody--dev .devInlineLinks--top {
         margin-bottom: 0.2rem;
         padding-bottom: 0.15rem;
     }
+
     .pageBody--dev .devCurrentStatusWrap {
         margin: 0.15rem 0 0.1rem;
         padding: 0.2rem 0.28rem;
     }
+
     .pageBody--dev .devCurrentStatusLine {
         font-size: 0.76rem;
     }
+
     .pageBody--dev .devCaptainSummary {
         margin: 0.28rem 0;
         padding: 0.28rem 0.4rem;
     }
+
     .pageBody--dev .devCaptainSummaryItem {
         font-size: 0.76rem;
     }
+
     .pageBody--dev .devAchievementStrip {
         margin: 0 0 0.28rem;
         padding: 0.1rem 0;
         font-size: 0.64rem;
     }
+
     .pageBody--dev .devNeedsAttentionBlock {
         margin: 0 0 0.4rem;
         padding-top: 0.25rem;
     }
+
     .pageBody--dev .devNeedsAttentionTitle {
         font-size: 0.76rem;
     }
+
     .pageBody--dev .devGovernedReviewHint {
         margin: 0 0 0.2rem;
     }
+
     .pageBody--dev .devWorkerLastRunWrap {
         margin: 0.12rem 0;
         padding: 0.2rem 0.35rem;
     }
+
     .pageBody--dev .devWorkerLastRunWrap .devStatusStripLabel,
     .pageBody--dev .devWorkerLastRunWrap .devStatusStripValue {
         font-size: 0.68rem;
     }
+
     .pageBody--dev .devMiniHeaderMeta .devUpdatedAt {
         max-width: 12ch;
     }
+
     .pageBody--dev .devWorktreeUpdate {
         padding: 0.5rem 0.6rem;
         margin: 0.4rem 0;
     }
+
     .pageBody--dev .devWorktreeUpdateHeader {
         flex-wrap: wrap;
     }
+
     .pageBody--dev .devWorktreeUpdateCounts {
         gap: 0.35rem 0.5rem;
     }
+
     .pageBody--dev .devWorktreeUpdateListItem {
         word-break: break-word;
     }
+
     .pageBody--dev .devControlButton.devControlButton--active {
         border-width: 2px;
         border-color: rgba(139, 92, 246, 0.85);
@@ -6244,11 +4461,13 @@ textarea:focus,
             0 0 0 2px rgba(139, 92, 246, 0.5),
             0 0 14px rgba(99, 102, 241, 0.5);
     }
+
     .pageBody--dev .devControlRoomBar,
     .pageBody--dev .devModeBadgeWrap,
     .pageBody--dev .devControls {
         min-width: 0;
     }
+
     .pageBody--dev .devModeBadge,
     .pageBody--dev .devStartLearnerHint {
         word-break: break-word;
@@ -6258,51 +4477,10 @@ textarea:focus,
         grid-template-columns: 1fr;
     }
 
-    .voyageMapCanvas {
-        min-height: 360px;
-    }
-
-    .voyageMapCanvas--dev {
-        min-height: 420px;
-    }
-
-    .voyageMapNode {
-        width: 76px;
-    }
-
-    .voyageMapIsland {
-        width: 52px;
-        height: 52px;
-    }
-
-    .voyageMapLabel {
-        font-size: 0.68rem;
-    }
-
-    .voyageShipToken {
-        width: 102px;
-    }
-
-    .pageBody--dev .devVoyageMapDialog {
-        padding: 0.75rem;
-    }
-
-    .pageBody--dev .devVoyageMapDialogCard {
-        padding: 1rem 0.85rem 0.85rem;
-    }
-
-    .pageBody--dev .devVoyageCloseChip {
-        top: 0.7rem;
-        right: 0.7rem;
-        min-height: 3.05rem;
-        padding: 0.78rem 1rem;
-    }
-
     .pageBody--dev .devConsoleShell,
     .pageBody--dev .devQuickPanel,
     .pageBody--dev .devActivityPanel,
     .pageBody--dev .devLearningPanel,
-    .pageBody--dev .devVoyagePanel,
     .pageBody--dev .devValidationPanel,
     .pageBody--dev .devImageCoveragePanel,
     .pageBody--dev .devLimitsDock,
@@ -6311,8 +4489,6 @@ textarea:focus,
     }
 
     .pageBody--dev .devSurfaceCard,
-    .pageBody--dev .devVoyageSummaryCard,
-    .pageBody--dev .devVoyageMapCard,
     .pageBody--dev .devMetricCard,
     .pageBody--dev .devResourceCard,
     .pageBody--dev .devLimitsCard,
@@ -6362,103 +4538,8 @@ textarea:focus,
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .pageBody--dev .devVoyageSimpleGrid {
-        grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.9fr);
-    }
-
-    .pageBody--dev .devVoyageMiniGrid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .pageBody--dev .devVoyageMiniGrid--summary {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .pageBody--dev .devVoyageRoadmapPreview,
     .pageBody--dev .devCoverageSummaryGrid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .pageBody--training .roadmapGrid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .pageBody--training .trainingProgressIntro {
-        grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.7fr);
-    }
-
-    .pageBody--training .trainingStatGrid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .intelligenceProgressIntro {
-        grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.75fr);
-        align-items: end;
-    }
-
-    .intelligenceVoyageTrack {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .intelligenceVoyageNode {
-        grid-template-columns: 1fr;
-        align-items: start;
-    }
-
-    .intelligenceVoyageNode::after {
-        left: auto;
-        top: 50%;
-        right: -0.4rem;
-        bottom: auto;
-        width: 0.8rem;
-        height: 2px;
-        background: linear-gradient(90deg, rgba(196, 173, 255, 0.34), rgba(196, 173, 255, 0));
-        transform: translateY(-50%);
-    }
-
-    .intelligenceListGrid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .intelligenceStageGrid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .pageBody--training .trainingRingGrid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .pageBody--training .trainingRingCard {
-        grid-template-columns: auto minmax(0, 1fr);
-    }
-
-    .pageBody--training .trainingStageRow {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-
-    .voyageHeader {
-        grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.7fr);
-        align-items: end;
-    }
-
-    .voyageScene--training {
-        grid-template-columns: minmax(240px, 0.95fr) minmax(0, 1.2fr);
-    }
-
-    .voyageFocusGrid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .voyageMiniStats {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .pageBody--home .presetGrid--home {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .miniRouteGrid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .pageBody--dev .devQuickGrid {
@@ -6478,19 +4559,6 @@ textarea:focus,
 
     .pageBody--dev .devActivityHero {
         grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
-    }
-
-    .pageBody--dev .devVoyageHero {
-        grid-template-columns: minmax(260px, 0.92fr) minmax(0, 1.2fr);
-    }
-
-    .pageBody--dev .devVoyageStatGrid,
-    .pageBody--dev .devVoyageSupportGrid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .voyageMiniStats--dev {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }
 
@@ -6522,385 +4590,6 @@ textarea:focus,
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-/* ---------------------------------------------------------------------------
-   Leader Hub page (scoped: only /leader/<leader_code>)
-   --------------------------------------------------------------------------- */
-
-.pageBody--leaderHub .appShell {
-    /* Standalone page layout; avoid inheriting modal/detail/watchlist patterns */
-    display: block;
-}
-
-.pageBody--leaderHub .leaderHubContent {
-    display: block;
-    padding-top: 0.5rem;
-}
-
-.pageBody--leaderHub .leaderHubHeader {
-    margin-bottom: 1.25rem;
-    padding: 1.25rem 1.5rem;
-}
-
-.pageBody--leaderHub .leaderHubTitle {
-    margin: 0 0 0.35rem;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.pageBody--leaderHub .leaderHubMeta {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--text-soft);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem 1.25rem;
-}
-
-.pageBody--leaderHub .leaderHubCode {
-    font-family: ui-monospace, monospace;
-    color: var(--purple);
-}
-
-.pageBody--leaderHub .leaderHubConfidence {
-    text-transform: capitalize;
-}
-
-.pageBody--leaderHub .leaderHubConfidence.confidence--low {
-    color: var(--text-faint);
-}
-
-.pageBody--leaderHub .leaderHubConfidence.confidence--medium {
-    color: var(--cyan);
-}
-
-.pageBody--leaderHub .leaderHubConfidence.confidence--strong {
-    color: var(--good);
-}
-
-.pageBody--leaderHub .leaderHubSection {
-    margin-bottom: 1.5rem;
-}
-
-.pageBody--leaderHub .leaderHubSectionTitle {
-    margin: 0 0 0.75rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-soft);
-}
-
-.pageBody--leaderHub .leaderHubArchetypeGrid {
-    display: grid;
-    gap: 0.75rem;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-}
-
-.pageBody--leaderHub .leaderHubArchetypeCard {
-    padding: 1rem 1.25rem;
-}
-
-.pageBody--leaderHub .leaderHubArchetypeName {
-    margin: 0 0 0.35rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.pageBody--leaderHub .leaderHubArchetypeMeta {
-    margin: 0 0 0.5rem;
-    font-size: 0.85rem;
-    color: var(--text-faint);
-}
-
-.pageBody--leaderHub .leaderHubArchetypeDesc {
-    margin: 0;
-    font-size: 0.8rem;
-    color: var(--text-faint);
-}
-
-.pageBody--leaderHub .leaderHubCardGrid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-}
-
-.pageBody--leaderHub .leaderHubCardChip,
-.pageBody--cardPage .leaderHubCardChip {
-    display: inline-block;
-    padding: 0.25rem 0.6rem;
-    font-size: 0.8rem;
-    font-family: ui-monospace, monospace;
-    background: var(--panel-alt);
-    border: 1px solid var(--stroke);
-    border-radius: var(--radius-sm);
-    color: var(--text-soft);
-}
-
-.pageBody--leaderHub .leaderHubCardChip.role--core,
-.pageBody--cardPage .leaderHubCardChip.role--core {
-    border-color: var(--purple);
-    color: var(--purple);
-}
-
-.pageBody--leaderHub .leaderHubCardChip.role--flex,
-.pageBody--cardPage .leaderHubCardChip.role--flex {
-    border-color: var(--cyan);
-    color: var(--cyan-strong);
-}
-
-.pageBody--leaderHub .leaderHubVariantBlock {
-    margin-bottom: 0.75rem;
-    padding: 1rem 1.25rem;
-}
-
-.pageBody--leaderHub .leaderHubVariantArchName {
-    margin: 0 0 0.5rem;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.pageBody--leaderHub .leaderHubVariantList {
-    margin: 0;
-    padding-left: 1.25rem;
-    list-style: none;
-}
-
-.pageBody--leaderHub .leaderHubVariantList li {
-    margin-bottom: 0.25rem;
-    font-size: 0.9rem;
-}
-
-.pageBody--leaderHub .leaderHubRoleLabel {
-    margin-left: 0.35rem;
-    font-size: 0.8rem;
-    color: var(--text-faint);
-    text-transform: capitalize;
-}
-
-.pageBody--leaderHub .leaderHubCostGrid {
-    display: grid;
-    gap: 0.5rem;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-}
-
-.pageBody--leaderHub .leaderHubCostCard {
-    padding: 0.75rem 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.pageBody--leaderHub .leaderHubCostArch {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.pageBody--leaderHub .leaderHubCostAvg {
-    font-size: 0.85rem;
-    color: var(--text-faint);
-}
-
-.pageBody--leaderHub .leaderHubEmpty {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--text-faint);
-}
-
-/* ---------------------------------------------------------------------------
-   Miru Insight component (only on Leader Hub and Card Page)
-   --------------------------------------------------------------------------- */
-
-.pageBody--leaderHub .miru_insight_card,
-.pageBody--cardPage .miru_insight_card {
-    margin-bottom: 1.25rem;
-    padding: 0;
-    overflow: hidden;
-}
-
-.pageBody--leaderHub .miru_insight_card__toggle,
-.pageBody--cardPage .miru_insight_card__toggle {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    text-align: left;
-    background: transparent;
-    border: 1px solid var(--stroke);
-    border-radius: var(--radius-sm);
-    color: var(--text-soft);
-    font-size: 0.9rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.pageBody--leaderHub .miru_insight_card__toggle:hover,
-.pageBody--cardPage .miru_insight_card__toggle:hover {
-    border-color: var(--stroke-strong);
-    color: var(--text);
-}
-
-.pageBody--leaderHub .miru_insight_card__indicator,
-.pageBody--cardPage .miru_insight_card__indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.pageBody--leaderHub .miru_insight_card__dot,
-.pageBody--cardPage .miru_insight_card__dot {
-    color: var(--purple);
-    font-size: 0.65rem;
-    animation: miru_insight_glow 2.5s ease-in-out infinite;
-}
-
-@keyframes miru_insight_glow {
-    0%,
-    100% {
-        opacity: 0.85;
-        text-shadow: 0 0 6px rgba(139, 92, 246, 0.35);
-    }
-    50% {
-        opacity: 1;
-        text-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
-    }
-}
-
-.pageBody--leaderHub .miru_insight_card__panel,
-.pageBody--cardPage .miru_insight_card__panel {
-    padding: 1rem 1.25rem;
-    border: 1px solid var(--stroke);
-    border-top: 0;
-    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-    background: var(--panel-alt);
-}
-
-.pageBody--leaderHub .miru_insight_card__panel.isCollapsed,
-.pageBody--cardPage .miru_insight_card__panel.isCollapsed {
-    display: none;
-}
-
-.pageBody--leaderHub .miru_insight_card__panel[hidden],
-.pageBody--cardPage .miru_insight_card__panel[hidden] {
-    display: none;
-}
-
-.pageBody--leaderHub .miru_insight_card__panel:not(.isCollapsed):not([hidden]),
-.pageBody--cardPage .miru_insight_card__panel:not(.isCollapsed):not([hidden]) {
-    display: block;
-}
-
-.pageBody--leaderHub .miru_insight_card__category,
-.pageBody--cardPage .miru_insight_card__category {
-    margin: 0 0 0.35rem;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--purple);
-}
-
-.pageBody--leaderHub .miru_insight_card__text,
-.pageBody--cardPage .miru_insight_card__text {
-    margin: 0 0 0.5rem;
-    font-size: 0.9rem;
-    color: var(--text-soft);
-    line-height: 1.45;
-}
-
-.pageBody--leaderHub .miru_insight_card__footer,
-.pageBody--cardPage .miru_insight_card__footer {
-    margin: 0;
-    font-size: 0.8rem;
-    color: var(--text-faint);
-}
-
-/* ---------------------------------------------------------------------------
-   Card Page (scoped: only /card/<card_code>)
-   --------------------------------------------------------------------------- */
-
-.pageBody--cardPage .appShell {
-    display: block;
-}
-
-.pageBody--cardPage .cardPageContent {
-    display: block;
-    padding-top: 0.5rem;
-}
-
-.pageBody--cardPage .cardHeader {
-    margin-bottom: 1.25rem;
-    padding: 1.25rem 1.5rem;
-}
-
-.pageBody--cardPage .cardPageTitle {
-    margin: 0 0 0.35rem;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.pageBody--cardPage .cardPageMeta {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--text-soft);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem 1.25rem;
-}
-
-.pageBody--cardPage .cardPageCode {
-    font-family: ui-monospace, monospace;
-    color: var(--purple);
-}
-
-.pageBody--cardPage .cardImageSection {
-    margin-bottom: 1.25rem;
-    padding: 1rem;
-    text-align: center;
-}
-
-.pageBody--cardPage .cardImage {
-    max-width: 100%;
-    height: auto;
-    border-radius: var(--radius-sm);
-}
-
-.pageBody--cardPage .cardUsage {
-    margin-bottom: 1.25rem;
-    padding: 1.25rem 1.5rem;
-}
-
-.pageBody--cardPage .cardSectionTitle {
-    margin: 0 0 0.75rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-soft);
-}
-
-.pageBody--cardPage .cardUsageLine {
-    margin: 0 0 0.5rem;
-    font-size: 0.9rem;
-    color: var(--text);
-}
-
-.pageBody--cardPage .cardUsageRoles {
-    margin: 0.5rem 0 0;
-    padding-left: 1.25rem;
-    list-style: none;
-}
-
-.pageBody--cardPage .cardUsageRoles li {
-    margin-bottom: 0.25rem;
-    font-size: 0.9rem;
-}
-
-.pageBody--cardPage .leaderHubEmpty {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--text-faint);
 }
 
 .pageBody--dev .devControlLayer {
@@ -7111,8 +4800,10 @@ textarea:focus,
 /* --- Dev cockpit (compact /dev landing) --- */
 .pageBody--dev .devCockpit {
     padding: 0.85rem 1rem 1rem;
-    max-width: 720px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    box-sizing: border-box;
 }
 
 .pageBody--dev .devCockpitHeader {
@@ -7137,7 +4828,7 @@ textarea:focus,
 }
 
 .pageBody--dev .devCockpitFullLink {
-    color: var(--accent, #c9b6ff);
+    color: #f0a500;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -7162,10 +4853,13 @@ textarea:focus,
 }
 
 .pageBody--dev .devCockpitCard {
-    border: 1px solid rgba(224, 207, 255, 0.1);
+    border: 1px solid rgba(240, 165, 0, 0.15);
     border-radius: 12px;
     padding: 0.65rem 0.7rem;
-    background: rgba(12, 11, 21, 0.55);
+    background: #12121a;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .pageBody--dev .devCockpitCardTop {
@@ -7208,6 +4902,13 @@ textarea:focus,
     min-width: 0;
     font-size: 0.78rem;
     padding: 0.38rem 0.5rem;
+}
+
+.pageBody--dev .devBtn,
+.pageBody--dev #miruApprovalsRefresh,
+.pageBody--dev .miruApproveBtn,
+.pageBody--dev .miruRejectBtn {
+    min-height: 44px;
 }
 
 .pageBody--dev .devCockpitQuick {
@@ -7263,8 +4964,8 @@ textarea:focus,
     margin: 0 0 1rem;
     padding: 0.65rem 0.75rem;
     border-radius: 10px;
-    border: 1px solid rgba(224, 207, 255, 0.14);
-    background: linear-gradient(145deg, rgba(48, 32, 72, 0.55), rgba(24, 18, 40, 0.45));
+    border: 1px solid rgba(240, 165, 0, 0.15);
+    background: #12121a;
 }
 
 .pageBody--dev .devIntelCardTop {
@@ -7289,8 +4990,8 @@ textarea:focus,
     font-weight: 700;
     padding: 0.12rem 0.45rem;
     border-radius: 999px;
-    background: rgba(120, 200, 255, 0.12);
-    color: var(--text-bright, #e8e4ff);
+    background: rgba(240, 165, 0, 0.2);
+    color: #f0a500;
 }
 
 .pageBody--dev .devIntelCardCounts,
@@ -7310,6 +5011,93 @@ textarea:focus,
 .pageBody--dev .devIntelCardLink a {
     color: var(--accent, #b8a0ff);
     font-weight: 600;
+}
+
+.pageBody--dev .devIntelCard--snapshot .devSnapshotCovRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.pageBody--dev .devSnapshotCovTrack {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    margin: 0 0 0.5rem;
+}
+
+.pageBody--dev .devSnapshotCovFill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: #f0a500;
+    min-width: 2px;
+    transition: width 0.35s ease;
+}
+
+.pageBody--dev .devCockpitGuardState--compact {
+    margin: 0.5rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-soft);
+}
+
+.pageBody--dev .devPendingApprovalsToolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.45rem;
+}
+
+.pageBody--dev .devPendingApprovalsScroll {
+    max-height: 600px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-top: 0.15rem;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(180, 170, 220, 0.45) rgba(12, 11, 21, 0.85);
+}
+
+.pageBody--dev .devPendingApprovalsScroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.pageBody--dev .devPendingApprovalsScroll::-webkit-scrollbar-track {
+    background: rgba(12, 11, 21, 0.7);
+    border-radius: 4px;
+}
+
+.pageBody--dev .devPendingApprovalsScroll::-webkit-scrollbar-thumb {
+    background: rgba(200, 190, 240, 0.35);
+    border-radius: 4px;
+}
+
+.pageBody--dev .devPendingApprovalsScroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(200, 190, 240, 0.5);
+}
+
+.pageBody--dev .devCockpitRecentList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pageBody--dev .devCockpitRecentItem,
+.pageBody--dev .devCockpitRecentPlaceholder {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--text-soft);
+    padding: 0.35rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.pageBody--dev .devCockpitRecentPlaceholder {
+    color: var(--text-faint);
+    font-style: italic;
+    border-bottom: none;
 }
 
 /* Full intelligence breakdown (/dev/monitor) */
@@ -7391,19 +5179,487 @@ textarea:focus,
     margin: 0.85rem 0 0.45rem;
     font-size: 0.78rem;
     font-weight: 700;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--text-faint);
+    color: #f0a500;
 }
 
 .pageBody--dev .devCockpitSectionTitle:first-of-type {
     margin-top: 0.15rem;
 }
 
-.pageBody--dev .devCockpitMuted {
-    margin: 0 0 0.5rem;
+.pageBody--dev .devCockpitSectionTitle--intelPrimary {
+    margin-top: 0.85rem;
+    font-size: 0.88rem;
+    color: #f0a500;
+    letter-spacing: 0.08em;
+}
+
+.pageBody--dev .devServiceStatusDetails {
+    margin: 0 0 0.25rem;
+}
+
+.pageBody--dev .devServiceStatusSummary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.45rem 0.75rem;
+    padding: 0.3rem 0.1rem 0.35rem 0;
+    font-size: 0.84rem;
+    line-height: 1.35;
+    color: var(--text-soft);
+    user-select: none;
+}
+
+.pageBody--dev .devServiceStatusSummary::-webkit-details-marker {
+    display: none;
+}
+
+.pageBody--dev .devServiceStatusSummaryLine {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.15rem 0.35rem;
+}
+
+.pageBody--dev .devServiceStatusSummaryServices {
+    margin-right: 0.05rem;
+}
+
+.pageBody--dev .devServiceDot {
+    font-size: 0.78rem;
+    line-height: 1;
+}
+
+.pageBody--dev .devServiceDot--good {
+    color: #f0a500;
+}
+
+.pageBody--dev .devServiceDot--bad {
+    color: #ef4444;
+}
+
+.pageBody--dev .devServiceDot--neutral {
+    color: #6b7280;
+}
+
+.pageBody--dev .devServiceStatusToggle {
+    font-size: 0.74rem;
+    color: #f0a500;
+    font-weight: 600;
+}
+
+.pageBody--dev .devServiceStatusToggleExpanded {
+    display: none;
+}
+
+.pageBody--dev details.devServiceStatusDetails[open] .devServiceStatusToggleCollapsed {
+    display: none;
+}
+
+.pageBody--dev details.devServiceStatusDetails[open] .devServiceStatusToggleExpanded {
+    display: inline;
+}
+
+.pageBody--dev .devServiceStatusExpanded {
+    padding-top: 0.2rem;
+}
+
+.pageBody--dev .devTaskQueueDetails {
+    margin: 0 0 0.25rem;
+}
+
+.pageBody--dev .devTaskQueueSummary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.45rem 0.75rem;
+    padding: 0.3rem 0.1rem 0.35rem 0;
+    font-size: 0.84rem;
+    line-height: 1.35;
+    color: var(--text-soft);
+    user-select: none;
+}
+
+.pageBody--dev .devTaskQueueSummary::-webkit-details-marker {
+    display: none;
+}
+
+.pageBody--dev .devTaskQueueToggle {
+    font-size: 0.74rem;
+    color: #f0a500;
+    font-weight: 600;
+}
+
+.pageBody--dev .devTaskQueueToggleExpanded {
+    display: none;
+}
+
+.pageBody--dev details.devTaskQueueDetails[open] .devTaskQueueToggleCollapsed {
+    display: none;
+}
+
+.pageBody--dev details.devTaskQueueDetails[open] .devTaskQueueToggleExpanded {
+    display: inline;
+}
+
+.pageBody--dev .devTaskQueueExpanded {
+    padding-top: 0.35rem;
+}
+
+.pageBody--dev .devTaskQueueForm {
+    display: grid;
+    gap: 0.45rem;
+    margin-bottom: 0.75rem;
+}
+
+.pageBody--dev .devTaskQueueFieldLabel {
+    margin: 0.35rem 0 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devTaskQueueTextInput,
+.pageBody--dev .devTaskQueueSelect,
+.pageBody--dev .devTaskQueueTextarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.65rem 0.7rem;
+    font-size: 0.9rem;
+    line-height: 1.35;
+    color: var(--text-soft);
+    background: rgba(8, 10, 18, 0.55);
+    border: 1px solid rgba(224, 207, 255, 0.12);
+    border-radius: 10px;
+}
+
+.pageBody--dev .devTaskQueueTextarea {
+    min-height: 10rem;
+    resize: vertical;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.pageBody--dev .devTaskQueueSubmit {
+    min-height: 44px;
+    padding: 0.65rem 0.85rem;
+}
+
+.pageBody--dev .devTaskQueueFeedback {
+    margin: 0.15rem 0 0;
+    font-size: 0.8rem;
+    color: var(--text-faint);
+    min-height: 1.1rem;
+}
+
+.pageBody--dev .devTaskQueueList {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.pageBody--dev .devTaskQueueEmpty {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-faint);
+}
+
+.pageBody--dev .devTaskQueueItem {
+    border: 1px solid rgba(224, 207, 255, 0.1);
+    border-radius: 14px;
+    background: rgba(12, 11, 21, 0.5);
+    padding: 0.7rem 0.75rem;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.pageBody--dev .devTaskQueueItem:focus {
+    outline: 2px solid rgba(224, 169, 59, 0.55);
+    outline-offset: 2px;
+}
+
+.pageBody--dev .devTaskQueueItemTop {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.6rem;
+}
+
+.pageBody--dev .devTaskQueueItemLabel {
+    flex: 1;
+    min-width: 0;
+    font-weight: 700;
+    color: rgba(224, 169, 59, 0.95);
+    word-break: break-word;
+}
+
+.pageBody--dev .devTaskQueueItemMeta {
+    margin-top: 0.35rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.6rem;
     font-size: 0.78rem;
     color: var(--text-faint);
+}
+
+.pageBody--dev .devTaskQueueItemScope {
+    font-weight: 600;
+}
+
+.pageBody--dev .devIntelCard--snapshotPrimary {
+    margin: 0 0 1.15rem;
+    padding: 0.9rem 1rem 1rem;
+    border-color: rgba(240, 165, 0, 0.28);
+    box-shadow: 0 0 0 1px rgba(240, 165, 0, 0.08), 0 8px 28px rgba(0, 0, 0, 0.25);
+}
+
+.pageBody--dev .devIntelCard--snapshotPrimary .devSnapshotCovTrack {
+    height: 12px;
+    margin: 0 0 0.65rem;
+}
+
+.pageBody--dev .devIntelCard--snapshotPrimary .devIntelCardCovPill {
+    font-size: 0.9rem;
+    padding: 0.18rem 0.55rem;
+}
+
+.pageBody--dev .devIntelCard--snapshotPrimary .devIntelCardKicker {
+    font-size: 0.78rem;
+}
+
+.pageBody--dev .devPendingApprovalRow--compact {
+    border-bottom: 1px solid rgba(240, 165, 0, 0.1);
+    padding: 0.65rem 0;
+    max-width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    --miru-swipe-x: 0px;
+    --miru-swipe-opacity: 0;
+    transform: translateX(var(--miru-swipe-x));
+    transition: transform 180ms ease;
+}
+
+.pageBody--dev .devPendingApprovalRow--compact::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: linear-gradient(90deg,
+            rgba(34, 197, 94, 0.28),
+            rgba(34, 197, 94, 0.12));
+    opacity: var(--miru-swipe-opacity);
+    pointer-events: none;
+    transition: opacity 180ms ease;
+}
+
+.pageBody--dev .devPendingApprovalRow--compact[data-swipe-dir="left"]::before {
+    background: linear-gradient(90deg,
+            rgba(239, 68, 68, 0.12),
+            rgba(239, 68, 68, 0.28));
+}
+
+.pageBody--dev .devPendingApprovalRow--compact.devPendingApprovalRow--swiping {
+    transition: none;
+}
+
+.pageBody--dev .devPendingApprovalRow--compact.devPendingApprovalRow--committed {
+    transition: transform 220ms ease;
+}
+
+.pageBody--dev .devPendingApprovalRow--compact.devPendingApprovalRow--animateOut {
+    opacity: 0;
+    transform: translateX(calc(var(--miru-swipe-x) * 1.1));
+    transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.pageBody--dev .devPendingApprovalRowMain {
+    display: flex;
+    gap: 0.65rem;
+    align-items: flex-start;
+    position: relative;
+    z-index: 1;
+}
+
+.pageBody--dev .devPendingApprovalThumb {
+    flex: 0 0 80px;
+    width: 80px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #12121a;
+    border: 1px solid rgba(240, 165, 0, 0.12);
+}
+
+.pageBody--dev .devPendingApprovalThumb img {
+    display: block;
+    width: 100%;
+    height: auto;
+    vertical-align: top;
+}
+
+.pageBody--dev .devPendingApprovalBody {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+.pageBody--dev .devPendingApprovalTitleRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.5rem;
+    margin-bottom: 0.2rem;
+}
+
+.pageBody--dev .devPendingApprovalTitleRow strong {
+    color: #f0a500;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.pageBody--dev .devPendingApprovalCode {
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+    color: var(--text-faint);
+    letter-spacing: 0.04em;
+}
+
+.pageBody--dev .devPendingApprovalSummary {
+    margin: 0 0 0.35rem;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    color: var(--text-soft);
+    word-break: break-word;
+}
+
+.pageBody--dev .devPendingApprovalInsightLine {
+    margin: 0 0 0.35rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: var(--text-faint, rgba(200, 195, 220, 0.62));
+    cursor: pointer;
+    user-select: none;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    min-width: 0;
+}
+
+.pageBody--dev .devPendingApprovalInsightLine.isExpanded {
+    cursor: default;
+    user-select: text;
+    overflow: visible;
+    display: block;
+    -webkit-line-clamp: unset;
+    white-space: normal;
+}
+
+.pageBody--dev a.devPendingApprovalSourceLink {
+    display: inline-block;
+    margin: 0 0 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #f0a500;
+    word-break: break-word;
+}
+
+.pageBody--dev .devPendingApprovalActions {
+    display: flex;
+    gap: 0.45rem;
+    justify-content: space-between;
+    margin-top: 0.35rem;
+    width: 100%;
+    position: relative;
+    z-index: 2;
+    touch-action: manipulation;
+}
+
+.pageBody--dev .devPendingApprovalsFlash {
+    margin: 0 0 0.65rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.35;
+    background: rgba(34, 197, 94, 0.12);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    color: #bbf7d0;
+}
+
+.pageBody--dev .devPendingApprovalsFlash--reject {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.32);
+    color: #fecaca;
+}
+
+.pageBody--dev .devPendingApprovalActions .devPendingApprovalBtn--approve,
+.pageBody--dev .devPendingApprovalActions .devPendingApprovalBtn--reject,
+.pageBody--dev .devPendingApprovalActions a.devPendingApprovalBtn--approve,
+.pageBody--dev .devPendingApprovalActions a.devPendingApprovalBtn--reject {
+    flex: 1 1 0;
+    min-height: 40px;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.12);
+    pointer-events: auto;
+    text-decoration: none;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+@media (max-width: 560px) {
+    .pageBody--dev .devPendingApprovalsScroll {
+        max-height: none;
+        padding-right: 0;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .pageBody--dev .devPendingApprovalRowMain {
+        gap: 0.55rem;
+    }
+
+    .pageBody--dev .devPendingApprovalInsightLine {
+        -webkit-line-clamp: 3;
+    }
+}
+
+.pageBody--dev .devPendingApprovalActions .devPendingApprovalBtn--approve {
+    background: #2e7d32;
+    color: #fff;
+}
+
+.pageBody--dev .devPendingApprovalActions .devPendingApprovalBtn--reject {
+    background: #c62828;
+    color: #fff;
+}
+
+.pageBody--dev .devCockpitMuted {
+    margin: 0 0 0.35rem;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.55);
 }
 
 .pageBody--dev .devCockpitSafetyList--compact {
@@ -7415,8 +5671,8 @@ textarea:focus,
     margin: 0 0 0.5rem;
     padding: 0.65rem 0.75rem;
     border-radius: 10px;
-    border: 1px solid rgba(160, 220, 255, 0.14);
-    background: rgba(20, 36, 48, 0.35);
+    border: 1px solid rgba(240, 165, 0, 0.14);
+    background: #12121a;
 }
 
 .pageBody--dev .devHandoffTop {
@@ -7486,4 +5742,547 @@ textarea:focus,
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
+}
+
+#miruApprovals {
+    margin-top: 0.8rem;
+    padding: 0.9rem 0.95rem;
+    border-radius: 10px;
+    border: 1px solid rgba(240, 165, 0, 0.16);
+    background: #0f1017;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+#miruApprovals h2 {
+    margin: 0 0 0.4rem;
+    font-size: 1em;
+    color: #f0a500;
+    letter-spacing: 0.12em;
+}
+
+#miruApprovalsCount {
+    margin: 0 0 0.55rem;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.62);
+}
+
+#miruApprovalsRefresh {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0.28rem 0.65rem;
+    border-radius: 6px;
+    border: 1px solid rgba(240, 165, 0, 0.6);
+    background: transparent;
+    color: #f0a500;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+#miruApprovalsList {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.miruApprovalCard {
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(240, 165, 0, 0.12);
+    border-left: 3px solid #f0a500;
+    background: #111118;
+    cursor: pointer;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.miruApprovalMain {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.miruApprovalImageWrap {
+    width: 80px;
+    flex: 0 0 80px;
+}
+
+.miruApprovalImage {
+    display: block;
+    width: 80px;
+    height: auto;
+    border-radius: 4px;
+    margin-right: 12px;
+    object-fit: contain;
+    background: #0a0a0f;
+}
+
+.miruApprovalContent {
+    flex: 1;
+    min-width: 0;
+}
+
+.miruApprovalTitleRow {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 0.28rem;
+}
+
+.miruApprovalName {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1em;
+}
+
+.miruApprovalCode {
+    color: #f0a500;
+    font-size: 0.85em;
+    margin-left: 8px;
+}
+
+.miruApprovalInsight {
+    margin: 6px 0;
+    color: rgba(232, 232, 238, 0.88);
+    font-size: 0.88em;
+    line-height: 1.42;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    text-overflow: ellipsis;
+}
+
+.miruApprovalMeta {
+    color: rgba(255, 255, 255, 0.56);
+    font-size: 0.78em;
+    line-height: 1.35;
+}
+
+.miruApprovalActions {
+    margin-top: 8px;
+    display: flex;
+    gap: 8px;
+}
+
+.miruApproveBtn,
+.miruRejectBtn {
+    min-height: 44px;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.miruApproveBtn {
+    border: 1px solid #f0a500;
+    background: #f0a500;
+    color: #121212;
+}
+
+.miruRejectBtn {
+    border: 1px solid #f0a500;
+    background: transparent;
+    color: #f0a500;
+}
+
+.miruModalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.75);
+    z-index: 9999;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+}
+
+.miruModalOverlay[hidden] {
+    display: none !important;
+}
+
+.miruModalBox {
+    position: relative;
+    background: #111118;
+    border: 1px solid #f0a500;
+    border-radius: 12px;
+    padding: 20px 16px 24px;
+    width: 100%;
+    max-width: 100%;
+    max-height: 88vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-sizing: border-box;
+}
+
+.miruModalClose {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(240, 165, 0, 0.7);
+    border-radius: 10px;
+    background: rgba(16, 16, 24, 0.92);
+    color: #f0a500;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.miruModalImageWrap {
+    display: flex;
+    justify-content: center;
+}
+
+.miruModalImage {
+    max-height: 200px;
+    width: auto;
+    display: block;
+    margin: 0 auto;
+    object-fit: contain;
+}
+
+.miruModalCardTitle {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+}
+
+.miruModalName {
+    color: #ffffff;
+    font-size: 1.1em;
+    font-weight: 700;
+}
+
+.miruModalCode {
+    color: #f0a500;
+    font-size: 0.9em;
+    margin-left: 8px;
+}
+
+.miruModalInsight {
+    color: #ccccdd;
+    font-size: 1rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow: visible;
+    display: block;
+    max-height: none;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+}
+
+.miruModalMeta {
+    color: #9999aa;
+    font-size: 0.8em;
+}
+
+.miruModalActions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* Approval Cards - Mobile-First Inline Expand */
+.miruApprovalFilters {
+    margin: 16px 0;
+    padding: 12px;
+    background: rgba(11, 10, 20, 0.6);
+    border-radius: 12px;
+    border: 1px solid rgba(224, 207, 255, 0.08);
+}
+
+.miruFilterRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.miruFilterRow:last-child {
+    margin-bottom: 0;
+}
+
+.miruFilterPill {
+    background: transparent;
+    border: 1px solid #f0a500;
+    color: #f0a500;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 140ms ease;
+    min-height: 32px;
+}
+
+.miruFilterPill:hover {
+    background: rgba(240, 165, 0, 0.1);
+}
+
+.miruFilterPill--active {
+    background: #f0a500;
+    color: #111118;
+}
+
+.miruApprovalProgress {
+    margin: 12px 0;
+    padding: 12px;
+    background: rgba(11, 10, 20, 0.4);
+    border-radius: 8px;
+    border: 1px solid rgba(224, 207, 255, 0.06);
+}
+
+.miruProgressText {
+    font-size: 0.85rem;
+    color: var(--text-soft);
+    margin-bottom: 8px;
+}
+
+.miruProgressBar {
+    height: 4px;
+    background: rgba(240, 165, 0, 0.2);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.miruProgressFill {
+    height: 100%;
+    background: #f0a500;
+    transition: width 300ms ease;
+    border-radius: 2px;
+}
+
+.miruApprovalCard {
+    background: rgba(11, 10, 20, 0.8);
+    border: 1px solid rgba(224, 207, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 140ms ease;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.miruApprovalCard:hover {
+    border-color: rgba(240, 165, 0, 0.3);
+    background: rgba(11, 10, 20, 0.95);
+}
+
+.miruApprovalCard--expanded {
+    border-color: rgba(240, 165, 0, 0.5);
+    background: rgba(11, 10, 20, 1);
+}
+
+.miruApprovalImageWrap {
+    flex-shrink: 0;
+    width: 60px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(224, 207, 255, 0.04);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.miruApprovalImage {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.miruApprovalContent {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.miruApprovalTitleRow {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.miruApprovalName {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1.2;
+}
+
+.miruApprovalCode {
+    color: #f0a500;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.miruApprovalMetaRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.miruApprovalTypeBadge {
+    background: transparent;
+    border: 1px solid #f0a500;
+    color: #f0a500;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.miruApprovalConfidence {
+    color: var(--text-soft);
+    font-size: 0.75rem;
+}
+
+.miruApprovalInsight {
+    color: #9999aa;
+    font-size: 0.85rem;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.miruApprovalCard--expanded .miruApprovalInsight {
+    white-space: normal;
+    overflow: visible;
+    color: #ccccdd;
+}
+
+.miruApprovalExpanded {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(224, 207, 255, 0.08);
+    display: none;
+}
+
+.miruApprovalCard--expanded .miruApprovalExpanded {
+    display: block;
+}
+
+.miruApprovalExpandedDetail {
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.miruApprovalExpandedLabel {
+    color: #f0a500;
+    font-weight: 500;
+    margin-right: 6px;
+}
+
+.miruApprovalExpandedValue {
+    color: #ccccdd;
+}
+
+.miruApprovalActions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.miruApproveBtn {
+    background: #f0a500;
+    color: #111118;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 140ms ease;
+    min-height: 44px;
+    flex: 1;
+}
+
+.miruApproveBtn:hover {
+    background: #f5b528;
+}
+
+.miruApproveBtn:disabled {
+    background: rgba(240, 165, 0, 0.3);
+    color: rgba(17, 17, 24, 0.5);
+    cursor: not-allowed;
+}
+
+.miruRejectBtn {
+    background: transparent;
+    color: #f0a500;
+    border: 1px solid #f0a500;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 140ms ease;
+    min-height: 44px;
+    flex: 1;
+}
+
+.miruRejectBtn:hover {
+    background: rgba(240, 165, 0, 0.1);
+}
+
+.miruRejectBtn:disabled {
+    border-color: rgba(240, 165, 0, 0.3);
+    color: rgba(240, 165, 0, 0.3);
+    cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+    .miruApprovalCard {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .miruApprovalImageWrap {
+        width: 50px;
+        height: 70px;
+    }
+
+    .miruApprovalName {
+        font-size: 0.9rem;
+    }
+
+    .miruApprovalCode {
+        font-size: 0.75rem;
+    }
+
+    .miruApprovalInsight {
+        font-size: 0.8rem;
+    }
+
+    .miruFilterPill {
+        font-size: 0.75rem;
+        padding: 5px 12px;
+    }
 }

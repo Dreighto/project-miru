@@ -173,17 +173,41 @@ function Test-OpMiruHttp {
     )
 
     try {
-        $response = Invoke-WebRequest -UseBasicParsing -Uri $Url -TimeoutSec $TimeoutSeconds
-        $content = [string]$response.Content
-        $contentMatches = [string]::IsNullOrWhiteSpace($MustContain) -or $content.Contains($MustContain)
+        $req = [System.Net.HttpWebRequest]::Create($Url)
+        $req.Proxy = $null
+        $req.AllowAutoRedirect = $true
+        $req.Method = "GET"
+        $req.Timeout = [Math]::Max(1000, $TimeoutSeconds * 1000)
 
-        [pscustomobject]@{
-            Ok            = ($response.StatusCode -ge 200 -and $response.StatusCode -lt 400 -and $contentMatches)
-            StatusCode    = [int]$response.StatusCode
-            ContentLength = $content.Length
-            Content       = $content
-            Error         = $null
-            Url           = $Url
+        $resp = $req.GetResponse()
+        try {
+            $code = [int]$resp.StatusCode
+            $stream = $resp.GetResponseStream()
+            $content = ""
+            $reader = $null
+            try {
+                $reader = New-Object System.IO.StreamReader($stream)
+                $content = $reader.ReadToEnd()
+            }
+            finally {
+                if ($null -ne $reader) {
+                    $reader.Dispose()
+                }
+            }
+            $contentMatches = [string]::IsNullOrWhiteSpace($MustContain) -or $content.Contains($MustContain)
+            $ok = ($code -ge 200 -and $code -lt 400 -and $contentMatches)
+
+            [pscustomobject]@{
+                Ok            = $ok
+                StatusCode    = $code
+                ContentLength = $content.Length
+                Content       = $content
+                Error         = $null
+                Url           = $Url
+            }
+        }
+        finally {
+            $resp.Close()
         }
     }
     catch {
@@ -209,7 +233,18 @@ function Wait-OpMiruHttp {
 
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
     do {
-        $result = Test-OpMiruHttp -Url $Url -TimeoutSeconds ([Math]::Min($RetryDelaySeconds, 10)) -MustContain $MustContain
+        # Per-attempt HTTP timeout must not use RetryDelaySeconds alone: sleep between retries
+        # is unrelated to cold Flask import + first full GET / (worktree dashboard has been
+        # observed at ~38s to listen and ~35s+ for the first HTML response; sub-60s caused false failures.)
+        # JSON /api/* probes stay shorter so a dead stack does not burn 3 minutes per attempt.
+        $isLikelyTinyResponse = $Url -match '/api/'
+        $httpTimeout = if ($isLikelyTinyResponse) {
+            [Math]::Min(90, [Math]::Max(20, $RetryDelaySeconds * 3))
+        }
+        else {
+            [Math]::Min(300, [Math]::Max(180, $RetryDelaySeconds * 6))
+        }
+        $result = Test-OpMiruHttp -Url $Url -TimeoutSeconds $httpTimeout -MustContain $MustContain
         if ($result.Ok) {
             return $result
         }
