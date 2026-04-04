@@ -1,0 +1,60 @@
+cv_id,canonical_code,card_name,variant_family,source,tcgplayer_product_id,total_local_mp_rows_found,strong_signal_mp_ids,strong_signal_mp_names,weak_signal_mp_ids,weak_signal_mp_names,local_catalog_classification,next_lane_tag,notes
+582,EB04-001,Jewelry Bonney,alt,local-catalog,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+584,EB04-002,Jewelry Bonney,alt,local-catalog,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+586,EB04-003,Smoker & Tashigi,sp,local-catalog,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+591,EB04-007,Roronoa Zoro,alt,local-catalog,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+678,EB04-043,Kaku,alt,local-catalog,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+680,EB04-044,Koby,alt,local-catalog,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+686,EB04-048,Rob Lucci,alt,local-catalog,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+691,EB04-052,Sanji,alt,local-catalog,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+698,EB04-058,Borsalino,alt,local-catalog,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+702,EB04-061,Monkey.D.Luffy,alt,local-catalog,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+6149,OP15-001,Krieg,alt,local-catalog,,2,5455,Krieg (OP15-001) (Alternate Art),5454,Krieg (OP15-001),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6160,OP15-008,Krieg,alt,local-catalog,,2,5466,Krieg (OP15-008) (Alternate Art),5465,Krieg (OP15-008),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6175,OP15-022,Brook,alt,local-catalog,,2,5481,Brook (OP15-022) (Alternate Art),5480,Brook (OP15-022),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6187,OP15-032,Brook,alt,local-catalog,,2,5493,Brook (OP15-032) (Alternate Art),5492,Brook (OP15-032),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6195,OP15-039,Rebecca,alt,local-catalog,,2,5501,Rebecca (OP15-039) (Alternate Art),5500,Rebecca (OP15-039),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6205,OP15-047,Sanji,alt,local-catalog,,2,5511,Sanji (OP15-047) (Alternate Art),5510,Sanji (OP15-047),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6212,OP15-053,Rebecca,alt,local-catalog,,2,5518,Rebecca (OP15-053) (Alternate Art),5517,Rebecca (OP15-053),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6218,OP15-058,Enel,alt,local-catalog,,2,5524,Enel (OP15-058) (Alternate Art),5523,Enel (OP15-058),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6221,OP15-060,Enel,alt,local-catalog,,2,5527,Enel (OP15-060) (Alternate Art),5526,Enel (OP15-060),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6251,OP15-086,Nami,alt,local-catalog,,2,5557,Nami (OP15-086) (Alternate Art),5556,Nami (OP15-086),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6258,OP15-092,Monkey.D.Luffy,alt,local-catalog,,2,5564,Monkey.D.Luffy (OP15-092) (Alternate Art),5563,Monkey.D.Luffy (OP15-092),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6265,OP15-098,Monkey.D.Luffy,alt,local-catalog,,2,5571,Monkey.D.Luffy (OP15-098) (Alternate Art),5570,Monkey.D.Luffy (OP15-098),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6277,OP15-109,Nico Robin,alt,local-catalog,,2,5583,Nico Robin (OP15-109) (Alternate Art),5582,Nico Robin (OP15-109),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6282,OP15-113,Roronoa Zoro,alt,local-catalog,,2,5588,Roronoa Zoro (OP15-113) (Alternate Art),5587,Roronoa Zoro (OP15-113),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6290,OP15-118,Enel,alt,local-catalog,,3,5596;5597,Enel (OP15-118) (Alternate Art) || Enel (OP15-118) (Manga),5595,Enel (OP15-118),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+6293,OP15-119,Monkey.D.Luffy,alt,local-catalog,,2,5599,Monkey.D.Luffy (OP15-119) (Alternate Art),5598,Monkey.D.Luffy (OP15-119),STRONG_TREATMENT_PRODUCT_EXISTS,READY_FOR_19_10_TARGETED_CANDIDATE_PASS,At least one STRONG-signal sibling exists with backing market_prices rows.
+7263,ST10-001,Trafalgar Law,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7265,ST10-002,Monkey.D.Luffy,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7267,ST10-003,"Eustass""Captain""Kid",base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7269,ST10-004,Sanji,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7285,ST10-007,Killer,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7293,ST10-009,Jean Bart,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7305,ST10-011,Heat,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7307,ST10-012,Bepo,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7315,ST10-014,Wire,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7317,ST10-015,Gum-Gum Giant Sumo Slap,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7319,ST10-016,Gum-Gum Kong Gatling,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7321,ST10-017,Punk Vise,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7403,ST13-005,Emporio.Ivankov,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7407,ST13-006,Curly.Dadan,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7417,ST13-008,Sabo,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7421,ST13-009,Shanks,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7443,ST13-013,Monkey.D.Garp,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7464,ST13-017,Flame Dragon King,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7466,ST13-018,Gum-Gum Jet Spear,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7635,ST21-001,Monkey.D.Luffy,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7642,ST21-002,Usopp,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7651,ST21-004,Jewelry Bonney,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7655,ST21-005,Jinbe,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7658,ST21-006,Stussy,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7661,ST21-007,Sentomaru,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7665,ST21-008,Tony Tony.Chopper,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7670,ST21-009,Nami,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7673,ST21-010,Nico Robin,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7676,ST21-011,Franky,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7679,ST21-012,Brook,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7682,ST21-013,Vegapunk,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7691,ST21-015,Roronoa Zoro,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.
+7699,ST21-016,Gum-Gum Dawn Whip,base,official-cardlist,,0,,,,,NOT_IN_LOCAL_CATALOG,HOLD_NOT_IN_CATALOG,No plausible local market_products identity shell found.

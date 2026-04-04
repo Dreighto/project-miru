@@ -1,0 +1,4 @@
+card_code,format,legality_state,effective_date,source_id,source_reference,last_checked_at,notes,updated_at
+OP01-001,standard,legal,2025-01-15,official,https://example.com/op-format,,,2026-03-17 19:46:42
+OP01-002,standard,banned,2025-01-15,official,https://example.com/op-format,,Banned for balance,2026-03-17 19:46:50
+OP02-010,standard,legal,2025-01-15,official,https://example.com/op-format,,,2026-03-17 19:46:50

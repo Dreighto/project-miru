@@ -1,0 +1,201 @@
+card_id,role,role_confidence,evidence,classification_source,status,created_at,updated_at
+EB01-002,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-002,tempo_piece,high,rested DON!! to Leader or Character,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-002,hand_control,high,trash from opponent hand context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-003,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-003,life_manipulation,medium,Life card text with manipulation context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-006,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-006,tempo_piece,medium,DON!! tempo manipulation,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-007,tempo_piece,high,rested DON!! to Leader or Character,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-008,removal,medium,K.O. on character (opponent implied),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-009,extender,low,play up to / put into play pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-010,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-012,tempo_piece,high,active DON!! / set DON!! as active,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-013,removal,medium,K.O. on character (opponent implied),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-013,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-014,tempo_piece,high,rested DON!! to Leader or Character,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-016,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-017,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-019,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-020,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-021,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-021,tempo_piece,high,active DON!! / set DON!! as active,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-021,don_acceleration,high,DON!! deck adds DON!!,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-021,don_reduction,medium,return DON!! to DON!! deck,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-022,value_engine,high,draw effect with repeatable/when/at trigger,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-028,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-029,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-031,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-031,recursion_piece,high,from trash to hand/field/play pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-031,don_acceleration,high,DON!! deck adds DON!!,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-031,don_reduction,medium,return DON!! to DON!! deck,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-033,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-033,don_reduction,medium,return DON!! to DON!! deck,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-034,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-034,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-034,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-034,tempo_piece,high,active DON!! / set DON!! as active,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-034,don_acceleration,high,DON!! deck adds DON!!,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-034,don_reduction,medium,return DON!! to DON!! deck,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-035,don_reduction,medium,return DON!! to DON!! deck,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-036,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-036,tempo_piece,medium,DON!! tempo manipulation,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-036,don_acceleration,high,DON!! deck adds DON!!,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-037,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-037,don_reduction,medium,return DON!! to DON!! deck,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-038,don_reduction,medium,return DON!! to DON!! deck,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-039,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-039,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-039,tempo_piece,high,active DON!! / set DON!! as active,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-039,don_acceleration,high,DON!! deck adds DON!!,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-039,don_reduction,medium,return DON!! to DON!! deck,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-040,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-040,stabilizer,medium,references your Life cards defensively,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-040,life_manipulation,medium,Life card text with manipulation context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-042,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-042,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-042,hand_control,high,trash from opponent hand context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-043,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-043,recursion_piece,high,from trash to hand/field/play pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-045,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-046,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-047,removal,medium,K.O. on character (opponent implied),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-047,value_engine,high,draw effect with repeatable/when/at trigger,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-049,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-050,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-050,stabilizer,medium,add to Life / Life cards (defensive stabilization),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-050,life_manipulation,high,Life card(s) move/add/remove pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-051,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-052,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-052,stabilizer,medium,references your Life cards defensively,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-052,life_manipulation,high,Life card(s) move/add/remove pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-053,life_manipulation,high,Life card(s) move/add/remove pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-054,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-054,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-054,life_manipulation,medium,Life card text with manipulation context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-056,stabilizer,medium,add to Life / Life cards (defensive stabilization),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-056,life_manipulation,high,Life card(s) move/add/remove pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-057,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-057,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-057,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-057,stabilizer,medium,add to Life / Life cards (defensive stabilization),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-057,life_manipulation,high,Life card(s) move/add/remove pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-058,life_manipulation,medium,Life card text with manipulation context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-059,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-059,stabilizer,medium,references your Life cards defensively,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-059,life_manipulation,medium,Life card text with manipulation context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-060,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-060,stabilizer,medium,references your Life cards defensively,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-060,life_manipulation,medium,Life card text with manipulation context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-061,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-061,tempo_piece,high,active DON!! / set DON!! as active,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB01-061,don_acceleration,high,DON!! deck adds DON!!,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-003,tempo_piece,high,rested DON!! to Leader or Character,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-004,finisher,low,cost >= 8 (cost=8),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-006,finisher,medium,effect_text contains Rush and cost >= 6 (cost=6),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-006,tempo_piece,high,rested DON!! to Leader or Character,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-007,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-008,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-009,tempo_piece,medium,DON!! tempo manipulation,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-010,tempo_piece,high,active DON!! / set DON!! as active,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-011,tempo_piece,high,rested DON!! to Leader or Character,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-012,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-013,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-013,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-013,tempo_piece,medium,DON!! tempo manipulation,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-013,don_acceleration,medium,add DON!! to field/Leader/Character,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-014,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-015,tempo_piece,high,active DON!! / set DON!! as active,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-016,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-017,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-020,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-022,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-023,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-025,extender,low,play up to / put into play pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-025,tempo_piece,medium,DON!! tempo manipulation,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-028,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-028,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-030,removal,medium,K.O. on character (opponent implied),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-031,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-032,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-032,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-032,tempo_piece,medium,DON!! tempo manipulation,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-032,don_acceleration,medium,add DON!! to field/Leader/Character,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-033,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-035,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-035,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-035,value_engine,high,draw effect with repeatable/when/at trigger,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-035,tempo_piece,high,active DON!! / set DON!! as active,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-035,don_acceleration,high,DON!! deck adds DON!!,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-035,don_reduction,medium,return DON!! to DON!! deck,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-036,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-036,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-036,tempo_piece,medium,DON!! tempo manipulation,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-037,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-037,tempo_piece,medium,DON!! tempo manipulation,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-037,don_acceleration,high,DON!! deck adds DON!!,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-038,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-039,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-039,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-039,recursion_piece,high,from trash to hand/field/play pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-039,hand_control,high,trash from opponent hand context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-040,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-041,tempo_piece,medium,DON!! tempo manipulation,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-044,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-044,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-044,recursion_piece,high,from trash to hand/field/play pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-045,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-045,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-045,recursion_piece,high,from trash to hand/field/play pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-045,hand_control,high,trash from opponent hand context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-046,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-047,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-047,recursion_piece,high,from trash to hand/field/play pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-048,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-048,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-048,recursion_piece,high,from trash to hand/field/play pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-049,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-049,tempo_piece,high,rested DON!! to Leader or Character,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-050,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-051,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-052,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-052,finisher,low,cost >= 8 (cost=10),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-052,stabilizer,medium,add to Life / Life cards (defensive stabilization),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-052,life_manipulation,high,Life card(s) move/add/remove pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-053,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-053,life_manipulation,high,Life card(s) move/add/remove pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-054,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-054,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-054,life_manipulation,medium,Life card text with manipulation context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-054,hand_control,high,trash from opponent hand context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-055,life_manipulation,medium,Life card text with manipulation context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-056,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-056,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-056,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-056,hand_control,high,trash from opponent hand context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-057,searcher,high,deck/top access pattern (look at the top / add up to),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-057,stabilizer,medium,add to Life / Life cards (defensive stabilization),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-057,life_manipulation,high,Life card(s) move/add/remove pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-058,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-059,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-059,life_manipulation,medium,Life card text with manipulation context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-060,stabilizer,medium,references your Life cards defensively,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-060,life_manipulation,medium,Life card text with manipulation context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-061,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-061,finisher,medium,effect_text contains Rush and cost >= 6 (cost=6),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-061,stabilizer,medium,add to Life / Life cards (defensive stabilization),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-061,tempo_piece,high,active DON!! / set DON!! as active,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-061,life_manipulation,high,Life card(s) move/add/remove pattern,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-061,don_acceleration,high,DON!! deck adds DON!!,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB02-061,don_reduction,medium,return DON!! to DON!! deck,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB03-001,removal,high,K.O./return/trash pattern targeting opponent context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB03-001,hand_control,high,trash from opponent hand context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB03-003,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB03-004,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB03-005,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB03-006,value_engine,high,draw effect with repeatable/when/at trigger,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB03-007,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB03-007,removal,medium,K.O. on character (opponent implied),text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB03-007,extender,low,play up to / put into play from hand or trash,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB03-010,blocker,high,block_icon set; Blocker-type card,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35
+EB03-010,searcher,medium,effect_text contains reveal with add/play/hand/field context,text_analysis,inferred,2026-03-25 05:26:35,2026-03-25 05:26:35

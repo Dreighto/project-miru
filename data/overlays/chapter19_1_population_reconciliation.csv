@@ -1,0 +1,15 @@
+bucket,row_count,exact_counting_rule,representative_example_ids,explanation
+COUNT_LEGACY_PM_VISIBLE,5413,PM-visible := all rows in card_variants (no image_assets gate).,"1,3,4,5,7,9,10,11,12,13,14,15",Recovered legacy Chapter 18 counting universe aligns to full card_variants table.
+COUNT_LEGACY_NO_MAP_ROW,3099,Legacy no-map := card_variants.id with NOT EXISTS printing_market_map.printing_id=cv.id.,"3,4,9,10,11,12,13,14,15,16,23,24",Matches locked 3099 when PM-visible is full card_variants.
+COUNT_CURRENT_PM_VISIBLE,2382,Current PM-visible := EXISTS image_assets where image_assets.printing_id=cv.id.,"1,5,7,17,19,21,29,32,34,38,40,42",This is the Chapter 19 mandated PM-visible filter.
+COUNT_CURRENT_NO_MAP_ROW,68,Current no-map := current PM-visible AND NOT EXISTS printing_market_map.printing_id=cv.id.,"582,584,586,591,678,680,686,691,698,702,6149,6151",Matches live Chapter 19 recount (68).
+DELTA_PM_VISIBLE,3031,legacy PM-visible minus current PM-visible,"3,4,9,10,11,12,13,14,15,16,23,24",Mirrored delta to NO_MAP_ROW; rows excluded by image_assets gate.
+DELTA_NO_MAP_ROW,3031,legacy NO_MAP_ROW minus current NO_MAP_ROW,"3,4,9,10,11,12,13,14,15,16,23,24",Same mirrored drop: 3099 -> 68.
+BUCKET_missing_image_assets_legacy_gate_only,3031,id in legacy NO_MAP_ROW and id has NO image_assets row (NOT EXISTS image_assets.printing_id=id).,"3,4,9,10,11,12,13,14,15,16,23,24","Primary cause: rows were counted before, then removed by the current image_assets PM-visible gate."
+BUCKET_now_mapped,0,id in legacy NO_MAP_ROW but now has printing_market_map row.,,No evidence in current live DB for this delta component.
+BUCKET_absent_from_current_db,0,id in legacy NO_MAP_ROW but id not present in current card_variants table.,,No evidence in current live DB for this delta component.
+BUCKET_filtered_by_source_restriction,0,id removed solely by source filter change.,,Current Chapter 19 gate does not apply source restriction; not a driver of the 3031 delta.
+BUCKET_duplicate_collapse_or_dedupe_difference,0,id removed by duplicate collapse between legacy and current counting method.,,"Both universes counted by distinct card_variants.id, so no dedupe-driven delta."
+SUBBUCKET_missing_image_assets_by_source::official-cardlist,1798,"Within BUCKET_missing_image_assets_legacy_gate_only, grouped by card_variants.source.","3,4,11,12,13,15,25,26,27,28,31,36",Source composition detail for the primary bucket.
+SUBBUCKET_missing_image_assets_by_source::local-catalog,1232,"Within BUCKET_missing_image_assets_legacy_gate_only, grouped by card_variants.source.","9,10,16,23,24,44,45,51,55,59,65,81",Source composition detail for the primary bucket.
+SUBBUCKET_missing_image_assets_by_source::image-review-reclassify,1,"Within BUCKET_missing_image_assets_legacy_gate_only, grouped by card_variants.source.",14,Source composition detail for the primary bucket.

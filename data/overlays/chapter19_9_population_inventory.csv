@@ -1,0 +1,60 @@
+cv_id,canonical_code,card_name,variant_family,source,tcgplayer_product_id,set_code,card_number,set_family,name_duplicate_in_unresolved,is_tricky_family
+582,EB04-001,Jewelry Bonney,alt,local-catalog,,EB04,001,EB04,1,1
+584,EB04-002,Jewelry Bonney,alt,local-catalog,,EB04,002,EB04,1,1
+586,EB04-003,Smoker & Tashigi,sp,local-catalog,,EB04,003,EB04,0,1
+591,EB04-007,Roronoa Zoro,alt,local-catalog,,EB04,007,EB04,1,1
+678,EB04-043,Kaku,alt,local-catalog,,EB04,043,EB04,0,1
+680,EB04-044,Koby,alt,local-catalog,,EB04,044,EB04,0,1
+686,EB04-048,Rob Lucci,alt,local-catalog,,EB04,048,EB04,0,1
+691,EB04-052,Sanji,alt,local-catalog,,EB04,052,EB04,1,1
+698,EB04-058,Borsalino,alt,local-catalog,,EB04,058,EB04,0,1
+702,EB04-061,Monkey.D.Luffy,alt,local-catalog,,EB04,061,EB04,1,1
+6149,OP15-001,Krieg,alt,local-catalog,,OP15,001,OP15,1,0
+6160,OP15-008,Krieg,alt,local-catalog,,OP15,008,OP15,1,0
+6175,OP15-022,Brook,alt,local-catalog,,OP15,022,OP15,1,0
+6187,OP15-032,Brook,alt,local-catalog,,OP15,032,OP15,1,0
+6195,OP15-039,Rebecca,alt,local-catalog,,OP15,039,OP15,1,0
+6205,OP15-047,Sanji,alt,local-catalog,,OP15,047,OP15,1,0
+6212,OP15-053,Rebecca,alt,local-catalog,,OP15,053,OP15,1,0
+6218,OP15-058,Enel,alt,local-catalog,,OP15,058,OP15,1,0
+6221,OP15-060,Enel,alt,local-catalog,,OP15,060,OP15,1,0
+6251,OP15-086,Nami,alt,local-catalog,,OP15,086,OP15,1,0
+6258,OP15-092,Monkey.D.Luffy,alt,local-catalog,,OP15,092,OP15,1,0
+6265,OP15-098,Monkey.D.Luffy,alt,local-catalog,,OP15,098,OP15,1,0
+6277,OP15-109,Nico Robin,alt,local-catalog,,OP15,109,OP15,1,0
+6282,OP15-113,Roronoa Zoro,alt,local-catalog,,OP15,113,OP15,1,0
+6290,OP15-118,Enel,alt,local-catalog,,OP15,118,OP15,1,0
+6293,OP15-119,Monkey.D.Luffy,alt,local-catalog,,OP15,119,OP15,1,0
+7263,ST10-001,Trafalgar Law,base,official-cardlist,,ST10,001,ST10,0,0
+7265,ST10-002,Monkey.D.Luffy,base,official-cardlist,,ST10,002,ST10,1,0
+7267,ST10-003,"Eustass""Captain""Kid",base,official-cardlist,,ST10,003,ST10,0,0
+7269,ST10-004,Sanji,base,official-cardlist,,ST10,004,ST10,1,0
+7285,ST10-007,Killer,base,official-cardlist,,ST10,007,ST10,0,0
+7293,ST10-009,Jean Bart,base,official-cardlist,,ST10,009,ST10,0,0
+7305,ST10-011,Heat,base,official-cardlist,,ST10,011,ST10,0,0
+7307,ST10-012,Bepo,base,official-cardlist,,ST10,012,ST10,0,0
+7315,ST10-014,Wire,base,official-cardlist,,ST10,014,ST10,0,0
+7317,ST10-015,Gum-Gum Giant Sumo Slap,base,official-cardlist,,ST10,015,ST10,0,0
+7319,ST10-016,Gum-Gum Kong Gatling,base,official-cardlist,,ST10,016,ST10,0,0
+7321,ST10-017,Punk Vise,base,official-cardlist,,ST10,017,ST10,0,0
+7403,ST13-005,Emporio.Ivankov,base,official-cardlist,,ST13,005,ST13,0,0
+7407,ST13-006,Curly.Dadan,base,official-cardlist,,ST13,006,ST13,0,0
+7417,ST13-008,Sabo,base,official-cardlist,,ST13,008,ST13,0,0
+7421,ST13-009,Shanks,base,official-cardlist,,ST13,009,ST13,0,0
+7443,ST13-013,Monkey.D.Garp,base,official-cardlist,,ST13,013,ST13,0,0
+7464,ST13-017,Flame Dragon King,base,official-cardlist,,ST13,017,ST13,0,0
+7466,ST13-018,Gum-Gum Jet Spear,base,official-cardlist,,ST13,018,ST13,0,0
+7635,ST21-001,Monkey.D.Luffy,base,official-cardlist,,ST21,001,ST21,1,0
+7642,ST21-002,Usopp,base,official-cardlist,,ST21,002,ST21,0,0
+7651,ST21-004,Jewelry Bonney,base,official-cardlist,,ST21,004,ST21,1,0
+7655,ST21-005,Jinbe,base,official-cardlist,,ST21,005,ST21,0,0
+7658,ST21-006,Stussy,base,official-cardlist,,ST21,006,ST21,0,0
+7661,ST21-007,Sentomaru,base,official-cardlist,,ST21,007,ST21,0,0
+7665,ST21-008,Tony Tony.Chopper,base,official-cardlist,,ST21,008,ST21,0,0
+7670,ST21-009,Nami,base,official-cardlist,,ST21,009,ST21,1,0
+7673,ST21-010,Nico Robin,base,official-cardlist,,ST21,010,ST21,1,0
+7676,ST21-011,Franky,base,official-cardlist,,ST21,011,ST21,0,0
+7679,ST21-012,Brook,base,official-cardlist,,ST21,012,ST21,1,0
+7682,ST21-013,Vegapunk,base,official-cardlist,,ST21,013,ST21,0,0
+7691,ST21-015,Roronoa Zoro,base,official-cardlist,,ST21,015,ST21,1,0
+7699,ST21-016,Gum-Gum Dawn Whip,base,official-cardlist,,ST21,016,ST21,0,0

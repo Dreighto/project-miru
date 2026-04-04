@@ -1,0 +1,33 @@
+Chapter 19.4 Variant-Aware Subtype Truth Audit (READ-ONLY)
+
+DB: D:\dev\tcg-watcher-worktree\data\card_catalog.db
+Working set rows: 10 (from Chapter 19.3 REVIEW_CLOSELY only)
+
+Schema fields used for variant/subtype evidence:
+- market_products.market_variant_label
+- market_products.subtype_support
+- market_products.rarity_market
+- market_products.product_name
+- market_prices.subtype_name
+
+Verdict counts:
+- VARIANT_SUPPORTED: 0
+- BASE_SHELL_ONLY: 10
+- NEEDS_MORE_EVIDENCE: 0
+
+Operator recommendation counts:
+- APPROVE_FOR_FUTURE_WRITE: 0
+- HOLD_DO_NOT_WRITE: 0
+- REJECT_CURRENT_CANDIDATE: 10
+
+Row notes:
+cv_id=6151 | OP15-002 Lucy | mp_pk=5456 mp_id=685338 title=Lucy | subtypes=[normal] | verdict=BASE_SHELL_ONLY | rec=REJECT_CURRENT_CANDIDATE
+cv_id=6153 | OP15-003 Alvida | mp_pk=5458 mp_id=685340 title=Alvida | subtypes=[foil] | verdict=BASE_SHELL_ONLY | rec=REJECT_CURRENT_CANDIDATE
+cv_id=6158 | OP15-007 Gin | mp_pk=5463 mp_id=685345 title=Gin | subtypes=[foil] | verdict=BASE_SHELL_ONLY | rec=REJECT_CURRENT_CANDIDATE
+cv_id=6179 | OP15-025 Kuro | mp_pk=5484 mp_id=685366 title=Kuro | subtypes=[foil] | verdict=BASE_SHELL_ONLY | rec=REJECT_CURRENT_CANDIDATE
+cv_id=6203 | OP15-046 Sabo | mp_pk=5508 mp_id=685390 title=Sabo | subtypes=[foil] | verdict=BASE_SHELL_ONLY | rec=REJECT_CURRENT_CANDIDATE
+cv_id=6223 | OP15-061 Ohm | mp_pk=5528 mp_id=685410 title=Ohm | subtypes=[foil] | verdict=BASE_SHELL_ONLY | rec=REJECT_CURRENT_CANDIDATE
+cv_id=6240 | OP15-077 Lightning Dragon | mp_pk=5545 mp_id=685427 title=Lightning Dragon | subtypes=[foil] | verdict=BASE_SHELL_ONLY | rec=REJECT_CURRENT_CANDIDATE
+cv_id=6242 | OP15-078 Mamaragan | mp_pk=5547 mp_id=685429 title=Mamaragan | subtypes=[foil] | verdict=BASE_SHELL_ONLY | rec=REJECT_CURRENT_CANDIDATE
+cv_id=6284 | OP15-114 Wyper | mp_pk=5589 mp_id=685471 title=Wyper | subtypes=[foil] | verdict=BASE_SHELL_ONLY | rec=REJECT_CURRENT_CANDIDATE
+cv_id=6287 | OP15-116 Gum-Gum Golden Rifle | mp_pk=5592 mp_id=685474 title=Gum-Gum Golden Rifle | subtypes=[foil] | verdict=BASE_SHELL_ONLY | rec=REJECT_CURRENT_CANDIDATE

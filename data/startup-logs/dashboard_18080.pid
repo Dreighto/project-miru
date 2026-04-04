@@ -1,7 +1,7 @@
 ﻿{
-    "pid":  41100,
+    "pid":  25568,
     "port":  18080,
-    "started_at":  "2026-03-29T15:01:08",
-    "repo_root":  "C:\\Users\\andre\\.codex\\worktrees\\0814\\tcg-watcher",
-    "adopted":  true
+    "started_at":  "2026-04-03T15:20:21",
+    "repo_root":  "D:\\dev\\tcg-watcher-worktree",
+    "script_path":  "D:\\dev\\tcg-watcher-worktree\\pm\\app.py"
 }

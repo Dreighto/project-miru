@@ -1,1 +1,7 @@
-﻿{"notifications":{}}
+{
+  "learning_batch_progress": {
+    "last_notified_verified_count": 0,
+    "last_threshold": 10,
+    "updated_at": "2026-04-03 22:34:31"
+  }
+}

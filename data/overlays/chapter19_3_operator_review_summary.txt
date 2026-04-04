@@ -1,0 +1,27 @@
+Chapter 19.3 Operator Review Summary (READ-ONLY)
+
+DB: D:\dev\tcg-watcher-worktree\data\card_catalog.db
+Input review rows: 10 (NEEDS_REVIEW + R2:set_code+clean_name only)
+Output packet rows: 10
+
+Recommendation counts:
+- LIKELY_SAFE: 0
+- REVIEW_CLOSELY: 10
+- REJECT_SIGNAL: 0
+
+How to review each row:
+- Check card_code + card_display_name match the proposed market title identity.
+- Verify variant treatment (alt/sp/tr/etc.) is acceptable for the proposed listing.
+- Confirm recent market price snapshot exists and looks sane.
+- Pay special attention to rows with duplicate-name warnings.
+
+cv_id=6151 | OP15-002 Lucy | proposed mp_pk=5456 mp_id=685338 title=Lucy | rec=REVIEW_CLOSELY | warnings=alt family but product title/label lacks alt/parallel token
+cv_id=6153 | OP15-003 Alvida | proposed mp_pk=5458 mp_id=685340 title=Alvida | rec=REVIEW_CLOSELY | warnings=alt family but product title/label lacks alt/parallel token
+cv_id=6158 | OP15-007 Gin | proposed mp_pk=5463 mp_id=685345 title=Gin | rec=REVIEW_CLOSELY | warnings=alt family but product title/label lacks alt/parallel token
+cv_id=6179 | OP15-025 Kuro | proposed mp_pk=5484 mp_id=685366 title=Kuro | rec=REVIEW_CLOSELY | warnings=alt family but product title/label lacks alt/parallel token
+cv_id=6203 | OP15-046 Sabo | proposed mp_pk=5508 mp_id=685390 title=Sabo | rec=REVIEW_CLOSELY | warnings=alt family but product title/label lacks alt/parallel token
+cv_id=6223 | OP15-061 Ohm | proposed mp_pk=5528 mp_id=685410 title=Ohm | rec=REVIEW_CLOSELY | warnings=alt family but product title/label lacks alt/parallel token
+cv_id=6240 | OP15-077 Lightning Dragon | proposed mp_pk=5545 mp_id=685427 title=Lightning Dragon | rec=REVIEW_CLOSELY | warnings=alt family but product title/label lacks alt/parallel token
+cv_id=6242 | OP15-078 Mamaragan | proposed mp_pk=5547 mp_id=685429 title=Mamaragan | rec=REVIEW_CLOSELY | warnings=alt family but product title/label lacks alt/parallel token
+cv_id=6284 | OP15-114 Wyper | proposed mp_pk=5589 mp_id=685471 title=Wyper | rec=REVIEW_CLOSELY | warnings=alt family but product title/label lacks alt/parallel token
+cv_id=6287 | OP15-116 Gum-Gum Golden Rifle | proposed mp_pk=5592 mp_id=685474 title=Gum-Gum Golden Rifle | rec=REVIEW_CLOSELY | warnings=alt family but product title/label lacks alt/parallel token

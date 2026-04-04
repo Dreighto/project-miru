@@ -1,0 +1,69 @@
+card_variant_id,card_code,card_name,variant_family,variant_key,tcgplayer_product_id,proposed_market_product_pk,proposed_market_product_id,proposed_market_product_name,confidence_bucket,confidence_reason,evidence_fields,candidate_count,candidate_market_product_pks,candidate_market_product_ids,candidate_market_product_names,proposed_has_usable_market_prices,candidates_with_usable_market_prices
+582,EB04-001,Jewelry Bonney,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+584,EB04-002,Jewelry Bonney,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+586,EB04-003,Smoker & Tashigi,sp,sp,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+591,EB04-007,Roronoa Zoro,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+678,EB04-043,Kaku,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+680,EB04-044,Koby,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+686,EB04-048,Rob Lucci,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+691,EB04-052,Sanji,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+698,EB04-058,Borsalino,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+702,EB04-061,Monkey.D.Luffy,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6149,OP15-001,Krieg,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6151,OP15-002,Lucy,alt,alt,,5456,685338,Lucy,NEEDS_REVIEW,R2:set_code+clean_name,card_set_code;cards.card_name;market_set_code;clean_product_name,1,5456,685338,Lucy,1,1
+6153,OP15-003,Alvida,alt,alt,,5458,685340,Alvida,NEEDS_REVIEW,R2:set_code+clean_name,card_set_code;cards.card_name;market_set_code;clean_product_name,1,5458,685340,Alvida,1,1
+6158,OP15-007,Gin,alt,alt,,5463,685345,Gin,NEEDS_REVIEW,R2:set_code+clean_name,card_set_code;cards.card_name;market_set_code;clean_product_name,1,5463,685345,Gin,1,1
+6160,OP15-008,Krieg,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6175,OP15-022,Brook,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6179,OP15-025,Kuro,alt,alt,,5484,685366,Kuro,NEEDS_REVIEW,R2:set_code+clean_name,card_set_code;cards.card_name;market_set_code;clean_product_name,1,5484,685366,Kuro,1,1
+6187,OP15-032,Brook,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6195,OP15-039,Rebecca,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6203,OP15-046,Sabo,alt,alt,,5508,685390,Sabo,NEEDS_REVIEW,R2:set_code+clean_name,card_set_code;cards.card_name;market_set_code;clean_product_name,1,5508,685390,Sabo,1,1
+6205,OP15-047,Sanji,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6212,OP15-053,Rebecca,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6218,OP15-058,Enel,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6221,OP15-060,Enel,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6223,OP15-061,Ohm,alt,alt,,5528,685410,Ohm,NEEDS_REVIEW,R2:set_code+clean_name,card_set_code;cards.card_name;market_set_code;clean_product_name,1,5528,685410,Ohm,1,1
+6240,OP15-077,Lightning Dragon,alt,alt,,5545,685427,Lightning Dragon,NEEDS_REVIEW,R2:set_code+clean_name,card_set_code;cards.card_name;market_set_code;clean_product_name,1,5545,685427,Lightning Dragon,1,1
+6242,OP15-078,Mamaragan,alt,alt,,5547,685429,Mamaragan,NEEDS_REVIEW,R2:set_code+clean_name,card_set_code;cards.card_name;market_set_code;clean_product_name,1,5547,685429,Mamaragan,1,1
+6251,OP15-086,Nami,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6258,OP15-092,Monkey.D.Luffy,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6265,OP15-098,Monkey.D.Luffy,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6277,OP15-109,Nico Robin,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6282,OP15-113,Roronoa Zoro,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6284,OP15-114,Wyper,alt,alt,,5589,685471,Wyper,NEEDS_REVIEW,R2:set_code+clean_name,card_set_code;cards.card_name;market_set_code;clean_product_name,1,5589,685471,Wyper,1,1
+6287,OP15-116,Gum-Gum Golden Rifle,alt,alt,,5592,685474,Gum-Gum Golden Rifle,NEEDS_REVIEW,R2:set_code+clean_name,card_set_code;cards.card_name;market_set_code;clean_product_name,1,5592,685474,Gum-Gum Golden Rifle,1,1
+6290,OP15-118,Enel,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+6293,OP15-119,Monkey.D.Luffy,alt,alt,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7263,ST10-001,Trafalgar Law,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7265,ST10-002,Monkey.D.Luffy,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7267,ST10-003,"Eustass""Captain""Kid",base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7269,ST10-004,Sanji,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7285,ST10-007,Killer,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7293,ST10-009,Jean Bart,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7305,ST10-011,Heat,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7307,ST10-012,Bepo,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7315,ST10-014,Wire,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7317,ST10-015,Gum-Gum Giant Sumo Slap,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7319,ST10-016,Gum-Gum Kong Gatling,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7321,ST10-017,Punk Vise,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7403,ST13-005,Emporio.Ivankov,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7407,ST13-006,Curly.Dadan,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7417,ST13-008,Sabo,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7421,ST13-009,Shanks,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7443,ST13-013,Monkey.D.Garp,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7464,ST13-017,Flame Dragon King,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7466,ST13-018,Gum-Gum Jet Spear,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7635,ST21-001,Monkey.D.Luffy,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7642,ST21-002,Usopp,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7651,ST21-004,Jewelry Bonney,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7655,ST21-005,Jinbe,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7658,ST21-006,Stussy,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7661,ST21-007,Sentomaru,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7665,ST21-008,Tony Tony.Chopper,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7670,ST21-009,Nami,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7673,ST21-010,Nico Robin,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7676,ST21-011,Franky,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7679,ST21-012,Brook,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7682,ST21-013,Vegapunk,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0
+7699,ST21-016,Gum-Gum Dawn Whip,base,base,,,,,NO_CANDIDATE,no_deterministic_candidate,,0,,,,,0

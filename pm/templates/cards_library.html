@@ -1103,6 +1103,16 @@
       return (el && el.getAttribute(name)) || "";
     }
 
+    function isUsableImage(src) {
+      if (!src || typeof src !== "string") return false;
+      var trimmed = src.trim();
+      if (!trimmed) return false;
+      if (trimmed === window.location.href) return false;
+      // Add any known blank placeholder patterns if they exist
+      if (trimmed.includes("placeholder") || trimmed.includes("blank")) return false;
+      return true;
+    }
+
     function setCodePrefix(full) {
       var i = (full || "").indexOf("-");
       return i > 0 ? full.substring(0, i) : (full || "");
@@ -1462,7 +1472,7 @@
           });
         })
         .catch(function (err) {
-          
+
           content.innerHTML =
             '<div class="libraryDeferredState">Card library unavailable. Reload to retry.</div>';
         });
@@ -1671,7 +1681,22 @@
         }
       }
       variantIdx = 0;
-      dThumb.src = variants[0] || "";
+
+      // Preserve seeded modal image if first API variant is unusable
+      var currentSrc = dThumb ? dThumb.src : "";
+      var candidateSrc = variants[0] || "";
+      if (isUsableImage(candidateSrc)) {
+        dThumb.src = candidateSrc;
+      } else if (currentSrc && isUsableImage(currentSrc)) {
+        // Keep the current seeded image, don't overwrite with unusable API result
+        // Ensure variants array reflects the actual displayed image
+        if (variants.length > 0) {
+          variants[0] = currentSrc;
+        }
+      } else {
+        dThumb.src = candidateSrc;
+      }
+
       updateVarDots();
       updateVarStrip();
     }
@@ -1691,6 +1716,15 @@
       if (!variants || variants.length <= 1) return;
       variantIdx = idx;
 
+      var candidateSrc = variants[variantIdx] || "";
+      var currentSrc = dThumb ? dThumb.src : "";
+      var shouldUpdate = isUsableImage(candidateSrc);
+
+      // If candidate is unusable, don't update and keep current state
+      if (!shouldUpdate) {
+        return;
+      }
+
       // Flip animation on the drawer thumbnail
       var thumbCol = dThumb ? dThumb.parentNode : null;
       if (thumbCol && dThumb) {
@@ -1700,7 +1734,7 @@
         dThumb.offsetWidth; // force reflow
         dThumb.style.transform = "rotateY(180deg)";
         setTimeout(function () {
-          dThumb.src = variants[variantIdx] || "";
+          dThumb.src = candidateSrc;
           dThumb.classList.add("libraryThumb--foilFlash");
           setTimeout(function () {
             dThumb.classList.remove("libraryThumb--foilFlash");
@@ -1715,7 +1749,7 @@
           thumbCol.style.perspective = "";
         }, 300);
       } else if (dThumb) {
-        dThumb.src = variants[variantIdx] || "";
+        dThumb.src = candidateSrc;
       }
 
       // Update dots
@@ -1746,7 +1780,8 @@
             pill.className = "libDrawerVarPill" + (idx === variantIdx ? " is-active" : "");
             var thumb = document.createElement("img");
             thumb.className = "libDrawerVarPillThumb";
-            thumb.src = variants[idx] || "";
+            var pillSrc = variants[idx] || "";
+            thumb.src = isUsableImage(pillSrc) ? pillSrc : "";
             thumb.alt = variantLabels[idx] || "";
             thumb.decoding = "async";
             thumb.loading = "lazy";
@@ -1933,8 +1968,9 @@
 
     /* ── View Full Art ───────────────────────────────────── */
     document.getElementById("libDrawerViewArt").addEventListener("click", function () {
-      if (!dThumb.src || dThumb.src === window.location.href) return;
-      artFSImg.src = dThumb.src;
+      var thumbSrc = dThumb ? dThumb.src : "";
+      if (!thumbSrc || thumbSrc === window.location.href || !isUsableImage(thumbSrc)) return;
+      artFSImg.src = thumbSrc;
       artFSImg.alt = dName.textContent;
       artFS.classList.add("is-open");
     });

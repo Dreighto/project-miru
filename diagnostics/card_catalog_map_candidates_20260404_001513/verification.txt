@@ -1,0 +1,6 @@
+db_path=D:\dev\tcg-watcher-worktree\data\card_catalog.db
+size_before=47869952
+size_after=47869952
+mtime_ns_before=1775260637852755500
+mtime_ns_after=1775260637852755500
+unchanged=True

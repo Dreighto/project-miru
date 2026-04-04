@@ -1,0 +1,11 @@
+cv_id,canonical_code,cv_variant_type,total_mp_rows_found,alt_signal_mp_ids,alt_signal_mp_names,weak_signal_mp_ids,weak_signal_mp_names,coverage_verdict,best_alt_mp_id,best_alt_mid_price,notes
+6151,OP15-002,alt,2,5457,Lucy (Alternate Art),,,ALT_PRODUCT_EXISTS,5457,134.99,Strong alt signal product(s) with market_prices row found.
+6153,OP15-003,alt,2,5459,Alvida (Alternate Art),5458,Alvida,ALT_PRODUCT_EXISTS,5459,13.41,Strong alt signal product(s) with market_prices row found.
+6158,OP15-007,alt,2,5464,Gin (Alternate Art),5463,Gin,ALT_PRODUCT_EXISTS,5464,8.29,Strong alt signal product(s) with market_prices row found.
+6179,OP15-025,alt,2,5485,Kuro (Alternate Art),5484,Kuro,ALT_PRODUCT_EXISTS,5485,26.04,Strong alt signal product(s) with market_prices row found.
+6203,OP15-046,alt,2,5509,Sabo (Alternate Art),5508,Sabo,ALT_PRODUCT_EXISTS,5509,35.33,Strong alt signal product(s) with market_prices row found.
+6223,OP15-061,alt,2,5529,Ohm (Alternate Art),5528,Ohm,ALT_PRODUCT_EXISTS,5529,28.05,Strong alt signal product(s) with market_prices row found.
+6240,OP15-077,alt,2,5546,Lightning Dragon (Alternate Art),5545,Lightning Dragon,ALT_PRODUCT_EXISTS,5546,170.77,Strong alt signal product(s) with market_prices row found.
+6242,OP15-078,alt,2,5548,Mamaragan (Alternate Art),5547,Mamaragan,ALT_PRODUCT_EXISTS,5548,54.99,Strong alt signal product(s) with market_prices row found.
+6284,OP15-114,alt,2,5590,Wyper (Alternate Art),5589,Wyper,ALT_PRODUCT_EXISTS,5590,33.0,Strong alt signal product(s) with market_prices row found.
+6287,OP15-116,alt,2,5593,Gum-Gum Golden Rifle (Alternate Art),5592,Gum-Gum Golden Rifle,ALT_PRODUCT_EXISTS,5593,136.89,Strong alt signal product(s) with market_prices row found.

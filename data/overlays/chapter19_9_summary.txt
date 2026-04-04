@@ -1,0 +1,27 @@
+Chapter 19.9 Summary
+Generated: 2026-04-04T08:18:57
+DB: D:\dev\tcg-watcher-worktree\data\card_catalog.db
+
+Live unresolved population rebuild:
+- PM-visible count: 2382
+- Mapped PM-visible count (usable mapping path): 2323
+- Unresolved PM-visible count (excluding installed 10): 59
+- Unresolved count equals 58: NO
+
+Local catalog classification split:
+- STRONG_TREATMENT_PRODUCT_EXISTS: 16
+- STRONG_TREATMENT_EXISTS_NO_PRICE: 0
+- BASE_ONLY_IN_LOCAL_CATALOG: 0
+- LOCAL_SIGNAL_INSUFFICIENT: 0
+- NOT_IN_LOCAL_CATALOG: 43
+
+Next-lane readiness split:
+- READY_FOR_19_10_TARGETED_CANDIDATE_PASS: 16
+- HOLD_FOR_PRICE_GAP_REVIEW: 0
+- HOLD_BASE_ONLY: 0
+- HOLD_SIGNAL_TOO_WEAK: 0
+- HOLD_NOT_IN_CATALOG: 43
+
+Immediately eligible for targeted next pass: 16
+Blocked by base-only coverage: 0
+Absent from local catalog: 43

@@ -1262,10 +1262,10 @@ def api_card_variants(card_code: str):
           FROM image_assets
         ) ia ON ia.printing_id = cv.id AND ia.rn = 1
         WHERE c.canonical_code = ?
-          AND EXISTS (
-              SELECT 1
-              FROM image_assets ia2
-              WHERE ia2.printing_id = cv.id
+          AND (
+              EXISTS (SELECT 1 FROM image_assets ia WHERE ia.printing_id = cv.id)
+              OR (cv.image_path IS NOT NULL AND cv.image_path != '')
+              OR (cv.image_url IS NOT NULL AND cv.image_url != '')
           )
         ORDER BY
           CASE WHEN cv.variant_key = 'base' AND cv.is_base = 1 THEN 0 ELSE 1 END,

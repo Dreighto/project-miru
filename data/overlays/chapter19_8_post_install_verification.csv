@@ -1,0 +1,11 @@
+printing_id,canonical_code,market_product_id,market_product_name,db_row_present,mapping_confidence,installed_exact_pair,price_row_present,verification_status,verification_notes
+6151,OP15-002,5457,Lucy (Alternate Art),1,HIGH,1,1,VERIFIED,pair exists and fields align with install plan
+6153,OP15-003,5459,Alvida (Alternate Art),1,HIGH,1,1,VERIFIED,pair exists and fields align with install plan
+6158,OP15-007,5464,Gin (Alternate Art),1,HIGH,1,1,VERIFIED,pair exists and fields align with install plan
+6179,OP15-025,5485,Kuro (Alternate Art),1,HIGH,1,1,VERIFIED,pair exists and fields align with install plan
+6203,OP15-046,5509,Sabo (Alternate Art),1,HIGH,1,1,VERIFIED,pair exists and fields align with install plan
+6223,OP15-061,5529,Ohm (Alternate Art),1,HIGH,1,1,VERIFIED,pair exists and fields align with install plan
+6240,OP15-077,5546,Lightning Dragon (Alternate Art),1,HIGH,1,1,VERIFIED,pair exists and fields align with install plan
+6242,OP15-078,5548,Mamaragan (Alternate Art),1,HIGH,1,1,VERIFIED,pair exists and fields align with install plan
+6284,OP15-114,5590,Wyper (Alternate Art),1,HIGH,1,1,VERIFIED,pair exists and fields align with install plan
+6287,OP15-116,5593,Gum-Gum Golden Rifle (Alternate Art),1,HIGH,1,1,VERIFIED,pair exists and fields align with install plan

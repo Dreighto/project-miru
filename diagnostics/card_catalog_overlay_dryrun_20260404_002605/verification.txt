@@ -1,0 +1,5 @@
+db_path=D:\dev\tcg-watcher-worktree\data\card_catalog.db
+candidate_bundle=D:\dev\tcg-watcher-worktree\diagnostics\card_catalog_map_candidates_20260404_001525
+size_before=47869952
+size_after=47869952
+unchanged=True
