@@ -5,10 +5,10 @@ import unittest
 import uuid
 from pathlib import Path
 
-from dashboard.miru_intel_adapters import MiruKnowledgeCacheAdapter, OfficialCardListSnapshotAdapter, StaticJsonAdapter
-from dashboard.miru_intel_db import MiruIntelRepository, init_miru_intel_schema
-from dashboard.miru_intel_pipeline import MiruEnrichmentRunner
-from dashboard.miru_intel_trust import build_source_registry, get_source_profile
+from shared.intel.adapters import MiruKnowledgeCacheAdapter, OfficialCardListSnapshotAdapter, StaticJsonAdapter
+from shared.intel.db import MiruIntelRepository, init_miru_intel_schema
+from shared.intel.pipeline import MiruEnrichmentRunner
+from shared.intel.trust import build_source_registry, get_source_profile
 
 
 class MiruVerifiedIntelTests(unittest.TestCase):

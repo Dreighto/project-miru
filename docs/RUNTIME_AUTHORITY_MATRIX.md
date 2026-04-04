@@ -1,6 +1,6 @@
 # Runtime Authority Matrix (Project Miru / tcg-watcher)
 
-Last updated: 2026-03-17
+Last updated: 2026-04-03
 
 This is the canonical map for which runtime paths are authoritative right now.
 Use this file first before editing launchers, ports, or Dev controls.
@@ -10,9 +10,9 @@ Use this file first before editing launchers, ports, or Dev controls.
 | Surface | Authoritative repo | Canonical launcher / start path | Runtime entry point | Canonical ports |
 |---|---|---|---|---|
 | Main stable Project Miru site | `D:\docker\tcg-watcher` | RETIRED — do not use. Legacy NAS stack (D:\docker) is dead. | `dashboard` Docker service from main repo | `8080` |
-| Main Miru AI | `D:\docker\tcg-watcher` | RETIRED — do not use. Legacy NAS stack (D:\docker) is dead. | `tools/miru_ai_server.py` (main repo) | `8765` |
-| Worktree Project Miru test site | `C:\Users\andre\.codex\worktrees\0814\tcg-watcher` | `windows/start_op_miru_worktree.ps1` | `dashboard/app.py` (native) or `docker-compose.worktree.yml` | `18080` |
-| Worktree Miru AI / Dev control surface | `C:\Users\andre\.codex\worktrees\0814\tcg-watcher` | `windows/start_op_miru_worktree.ps1` | `tools/miru_ai_server.py` (worktree) | `18765` |
+| Main Miru AI | `D:\docker\tcg-watcher` | RETIRED — do not use. Legacy NAS stack (D:\docker) is dead. | legacy main repo Miru AI path | `8765` |
+| Worktree Project Miru test site | `D:\dev\tcg-watcher-worktree` | `windows/start_op_miru_worktree.ps1` | `pm/app.py` (native) or `docker-compose.worktree.yml` | `18080` |
+| Worktree Miru AI / Dev control surface | `D:\dev\tcg-watcher-worktree` | `windows/start_op_miru_worktree.ps1` | `python -m miru_ai.server` -> `miru_ai/server.py` | `18765` |
 
 ## Worktree Canonical Control Paths
 
@@ -27,12 +27,12 @@ Use this file first before editing launchers, ports, or Dev controls.
 - Worktree learner process control API (Dev page on 18765):
   - `POST /api/dev/start-learner`
   - `POST /api/dev/stop-learner`
-  - Implementation: `tools/miru_ai_server.py`
+  - Implementation: `miru_ai/server.py`
   - PID/log path: `data/startup-logs/miru_learner_worktree.pid` and `data/startup-logs/miru_learner_worktree_*.log`
 
 ## Dev Page Alignment (Worktree)
 
-- Worktree Dev UI should be served from `tools/templates/miru_ai.html` and `tools/static/miru_ai.{css,js}` in this worktree.
+- Worktree Dev UI should be served from `miru_ai/templates/miru_ai.html` and `miru_ai/static/miru_ai.{css,js}` in this worktree.
 - The Dev page control actions should run against the local worktree server on `18765` (not main `8765`) when started via `windows/start_op_miru_worktree.ps1`.
 - Use `GET /api/dev/debug-routes` on the running instance to verify `server_file` and `cwd` point to the expected repo path.
 
@@ -47,5 +47,11 @@ Use this file first before editing launchers, ports, or Dev controls.
 
 - If your target is worktree testing, use only `18080` and `18765`.
 - Do not treat files under `D:\docker\tcg-watcher` as worktree runtime authority.
-- Do not treat files under `C:\Users\andre\.codex\worktrees\0814\tcg-watcher` as main production authority.
+- Do not treat files under deleted historical worktrees as runtime authority; the only valid worktree root is `D:\dev\tcg-watcher-worktree`.
 - Learner start/stop should be driven from the worktree Dev page (`18765`) so process guardrails are applied.
+
+## Worker Path Law
+
+- Active worker/data scripts must derive paths from `Path(__file__).resolve()` or script-root-relative paths.
+- Do not hardcode `C:\Users\andre\.codex\worktrees\0814\tcg-watcher` in any active runtime or worker script.
+- Canonical data/log roots for worker code in this repo are `data/` and `logs/` under `D:\dev\tcg-watcher-worktree`.

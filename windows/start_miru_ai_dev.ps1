@@ -99,6 +99,12 @@ if ($stillListening) {
 
 $env:PROJECT_MIRU_PORT = "18080"
 $python = Get-Command python -ErrorAction Stop
+if ((Test-Path Env:PATH) -and (Test-Path Env:Path)) {
+    if ([string]::IsNullOrWhiteSpace($env:Path) -and -not [string]::IsNullOrWhiteSpace($env:PATH)) {
+        $env:Path = $env:PATH
+    }
+    Remove-Item Env:PATH -ErrorAction SilentlyContinue
+}
 Write-Host "Starting Miru AI Dev on port $Port."
 $stillListening = netstat -ano | Select-String ":18765\s.*LISTENING"
 if ($stillListening) {
@@ -106,7 +112,7 @@ if ($stillListening) {
 }
 $process = Start-Process `
     -FilePath $python.Source `
-    -ArgumentList @("tools\miru_ai_server.py", "--host", $BindHost, "--port", "$Port") `
+    -ArgumentList @("-m", "miru_ai.server", "--host", $BindHost, "--port", "$Port") `
     -WorkingDirectory $repoRoot `
     -RedirectStandardOutput $stdoutLog `
     -RedirectStandardError $stderrLog `

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#130b1f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ app_name }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description" content="Leader Hub – Miru intelligence for One Piece deck leaders.">
+    {% if manifest_url %}
+    <link rel="manifest" href="{{ manifest_url }}?v={{ asset_version }}">
+    {% endif %}
+    {% if apple_icon_url %}
+    <link rel="apple-touch-icon" href="{{ apple_icon_url }}{% if apple_icon_url.startswith('data:') %}{% else %}?v={{ asset_version }}{% endif %}">
+    {% endif %}
+    {% if favicon_url %}
+    <link rel="icon" href="{{ favicon_url }}{% if favicon_url.startswith('data:') %}{% else %}?v={{ asset_version }}{% endif %}">
+    {% endif %}
+    <title>Leader Hub – {{ leader_data.leader_name or leader_data.leader_code or 'Leader' }} – {{ app_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='miru_ai.css') }}?v={{ asset_version }}">
+</head>
+
+<body class="pageBody pageBody--leaderHub">
+    <main class="appShell">
+        <nav class="topNav" aria-label="Miru navigation">
+            <a class="brandLink" href="{{ url_for('index') }}" aria-label="Go to Miru home">
+                <img class="brandLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+                <span class="brandWordmark">
+                    <strong>{{ app_name }}</strong>
+                    <span>{{ app_tagline }}</span>
+                </span>
+            </a>
+            <div class="navLinks">
+                <a class="navLink{% if request.path.rstrip('/') == '/dev' %} isActive{% endif %}" href="/dev">Dev</a>
+                <a class="navLink{% if request.path.startswith('/dev/monitor') %} isActive{% endif %}" href="/dev/monitor">Dev · Full</a>
+            </div>
+        </nav>
+
+        <div class="leaderHubContent">
+            {# ----- Leader Header ----- #}
+            <header class="leaderHubHeader panelCard">
+                <h1 class="leaderHubTitle">{{ leader_data.leader_name or leader_data.leader_code or 'Leader' }}</h1>
+                <p class="leaderHubMeta">
+                    <span class="leaderHubCode">{{ leader_data.leader_code }}</span>
+                    <span class="leaderHubSample">{{ leader_data.decks_sampled }} deck{{ 's' if leader_data.decks_sampled != 1 else '' }} sampled</span>
+                    <span class="leaderHubConfidence confidence--{{ leader_data.confidence }}">{{ leader_data.confidence }}</span>
+                </p>
+            </header>
+
+            {# ----- Miru Insight (reusable component; hidden if no insight) ----- #}
+            {% if leader_data.miru_insight %}
+            <section class="miru_insight_card panelCard" aria-label="Miru Insight">
+                <button type="button" class="miru_insight_card__toggle" aria-expanded="false" aria-controls="miru_insight_panel" id="miru_insight_toggle">
+                    <span class="miru_insight_card__indicator">Miru Insight <span class="miru_insight_card__dot" aria-hidden="true">●</span></span>
+                </button>
+                <div class="miru_insight_card__panel isCollapsed" id="miru_insight_panel" hidden>
+                    <p class="miru_insight_card__category">{{ leader_data.miru_insight.category or 'Insight' }}</p>
+                    <p class="miru_insight_card__text">{{ leader_data.miru_insight.text }}</p>
+                    <footer class="miru_insight_card__footer">Confidence: {{ leader_data.miru_insight.confidence or leader_data.confidence }}</footer>
+                </div>
+            </section>
+            {% endif %}
+
+            {# ----- Archetypes ----- #}
+            <section class="leaderHubSection leaderHubArchetypes" aria-label="Archetypes">
+                <h2 class="leaderHubSectionTitle">Archetypes</h2>
+                {% if leader_data.archetypes %}
+                <div class="leaderHubArchetypeGrid">
+                    {% for arch in leader_data.archetypes %}
+                    <article class="leaderHubArchetypeCard panelCard">
+                        <h3 class="leaderHubArchetypeName">{{ arch.archetype_id }}</h3>
+                        <p class="leaderHubArchetypeMeta">
+                            <span>{{ arch.deck_count }} deck{{ 's' if arch.deck_count != 1 else '' }}</span>
+                            <span>similarity {{ arch.avg_similarity }}</span>
+                        </p>
+                        <p class="leaderHubArchetypeDesc">Build cluster from deck intelligence.</p>
+                    </article>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="leaderHubEmpty">No archetype profiles for this leader. Run the archetype pipeline to populate.</p>
+                {% endif %}
+            </section>
+
+            {# ----- Shared Shell ----- #}
+            <section class="leaderHubSection leaderHubSharedShell" aria-label="Shared shell">
+                <h2 class="leaderHubSectionTitle">Shared Shell</h2>
+                {% if leader_data.shared_shell %}
+                <div class="leaderHubCardGrid">
+                    {% for code in leader_data.shared_shell %}
+                    <span class="leaderHubCardChip">{{ code }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="leaderHubEmpty">No shared shell (cards core across 2+ archetypes).</p>
+                {% endif %}
+            </section>
+
+            {# ----- Variant Packages ----- #}
+            <section class="leaderHubSection leaderHubVariantPackages" aria-label="Variant packages">
+                <h2 class="leaderHubSectionTitle">Variant Packages</h2>
+                {% if leader_data.archetypes %}
+                {% for arch in leader_data.archetypes %}
+                <div class="leaderHubVariantBlock panelCard">
+                    <h3 class="leaderHubVariantArchName">{{ arch.archetype_id }}</h3>
+                    {% if arch.variant_package %}
+                    <ul class="leaderHubVariantList">
+                        {% for item in arch.variant_package %}
+                        <li><span class="leaderHubCardChip role--{{ item.role_label }}">{{ item.card_code }}</span> <span class="leaderHubRoleLabel">{{ item.role_label }}</span></li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="leaderHubEmpty">No package cards.</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="leaderHubEmpty">No archetypes; variant packages unavailable.</p>
+                {% endif %}
+            </section>
+
+            {# ----- Cost Curve Identity ----- #}
+            <section class="leaderHubSection leaderHubCostCurves" aria-label="Cost curve identity">
+                <h2 class="leaderHubSectionTitle">Cost Curve Identity</h2>
+                {% if leader_data.cost_curves %}
+                <div class="leaderHubCostGrid">
+                    {% for curve in leader_data.cost_curves %}
+                    <div class="leaderHubCostCard panelCard">
+                        <span class="leaderHubCostArch">{{ curve.archetype_id }}</span>
+                        <span class="leaderHubCostAvg">avg {{ curve.avg_cost }} cp</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="leaderHubEmpty">No cost curve data.</p>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+    <script>
+        (function() {
+            var toggle = document.getElementById('miru_insight_toggle');
+            var panel = document.getElementById('miru_insight_panel');
+            if (!toggle || !panel) return;
+            toggle.addEventListener('click', function() {
+                var expanded = toggle.getAttribute('aria-expanded') === 'true';
+                expanded = !expanded;
+                toggle.setAttribute('aria-expanded', expanded);
+                panel.classList.toggle('isCollapsed', !expanded);
+                panel.hidden = !expanded;
+            });
+        })();
+    </script>
+</body>
+
+</html>

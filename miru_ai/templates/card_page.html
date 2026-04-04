@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#130b1f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ app_name }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description" content="Card – {{ card_data.card_name or card_data.card_code }} – {{ app_name }}">
+    {% if manifest_url %}
+    <link rel="manifest" href="{{ manifest_url }}?v={{ asset_version }}">
+    {% endif %}
+    {% if apple_icon_url %}
+    <link rel="apple-touch-icon" href="{{ apple_icon_url }}{% if apple_icon_url.startswith('data:') %}{% else %}?v={{ asset_version }}{% endif %}">
+    {% endif %}
+    {% if favicon_url %}
+    <link rel="icon" href="{{ favicon_url }}{% if favicon_url.startswith('data:') %}{% else %}?v={{ asset_version }}{% endif %}">
+    {% endif %}
+    <title>{{ card_data.card_name or card_data.card_code }} – {{ app_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='miru_ai.css') }}?v={{ asset_version }}">
+</head>
+
+<body class="pageBody pageBody--cardPage">
+    <main class="appShell">
+        <nav class="topNav" aria-label="Miru navigation">
+            <a class="brandLink" href="{{ url_for('index') }}" aria-label="Go to Miru home">
+                <img class="brandLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+                <span class="brandWordmark">
+                    <strong>{{ app_name }}</strong>
+                    <span>{{ app_tagline }}</span>
+                </span>
+            </a>
+            <div class="navLinks">
+                <a class="navLink{% if request.path.rstrip('/') == '/dev' %} isActive{% endif %}" href="/dev">Dev</a>
+                <a class="navLink{% if request.path.startswith('/dev/monitor') %} isActive{% endif %}" href="/dev/monitor">Dev · Full</a>
+            </div>
+        </nav>
+
+        <div class="cardPageContent">
+            {# ----- Card Header ----- #}
+            <header class="cardHeader panelCard">
+                <h1 class="cardPageTitle">{{ card_data.card_name or card_data.card_code }}</h1>
+                <p class="cardPageMeta">
+                    <span class="cardPageCode">{{ card_data.card_code }}</span>
+                    {% if card_data.set %}<span class="cardPageSet">{{ card_data.set }}</span>{% endif %}
+                    {% if card_data.cost is not none %}<span class="cardPageCost">{{ card_data.cost }} cost</span>{% endif %}
+                    {% if card_data.type %}<span class="cardPageType">{{ card_data.type }}</span>{% endif %}
+                    {% if card_data.color %}<span class="cardPageColor">{{ card_data.color }}</span>{% endif %}
+                </p>
+            </header>
+
+            {# ----- Card Image ----- #}
+            {% if card_data.image_path %}
+            <section class="cardImageSection panelCard" aria-label="Card image">
+                <img class="cardImage" src="{{ card_data.image_path }}" alt="{{ card_data.card_name or card_data.card_code }}">
+            </section>
+            {% endif %}
+
+            {# ----- Usage Context ----- #}
+            <section class="cardUsage panelCard" aria-label="Usage context">
+                <h2 class="cardSectionTitle">Usage context</h2>
+                {% if card_data.leaders_using or card_data.roles %}
+                {% if card_data.leaders_using %}
+                <p class="cardUsageLine"><strong>Leaders using this card:</strong> {{ card_data.leaders_using | join(', ') }}</p>
+                {% endif %}
+                {% if card_data.roles %}
+                <p class="cardUsageLine"><strong>Roles:</strong></p>
+                <ul class="cardUsageRoles">
+                    {% for r in card_data.roles %}
+                    <li><span class="leaderHubCardChip role--{{ r.role_label }}">{{ r.leader_code }}</span> {{ r.role_label }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+                {% else %}
+                <p class="leaderHubEmpty">No usage data in stored archetype profiles.</p>
+                {% endif %}
+            </section>
+
+            {# ----- Miru Insight (reuse component; hidden if no insight) ----- #}
+            {% if card_data.miru_insight %}
+            <section class="miru_insight_card panelCard" aria-label="Miru Insight">
+                <button type="button" class="miru_insight_card__toggle" aria-expanded="false" aria-controls="card_miru_insight_panel" id="card_miru_insight_toggle">
+                    <span class="miru_insight_card__indicator">Miru Insight <span class="miru_insight_card__dot" aria-hidden="true">●</span></span>
+                </button>
+                <div class="miru_insight_card__panel isCollapsed" id="card_miru_insight_panel" hidden>
+                    <p class="miru_insight_card__category">{{ card_data.miru_insight.category or 'Insight' }}</p>
+                    <p class="miru_insight_card__text">{{ card_data.miru_insight.text }}</p>
+                    <footer class="miru_insight_card__footer">Confidence: {{ card_data.miru_insight.confidence }}</footer>
+                </div>
+            </section>
+            {% endif %}
+        </div>
+    </main>
+    <script>
+        (function() {
+            var toggle = document.getElementById('card_miru_insight_toggle');
+            var panel = document.getElementById('card_miru_insight_panel');
+            if (!toggle || !panel) return;
+            toggle.addEventListener('click', function() {
+                var expanded = toggle.getAttribute('aria-expanded') === 'true';
+                expanded = !expanded;
+                toggle.setAttribute('aria-expanded', expanded);
+                panel.classList.toggle('isCollapsed', !expanded);
+                panel.hidden = !expanded;
+            });
+        })();
+    </script>
+</body>
+
+</html>

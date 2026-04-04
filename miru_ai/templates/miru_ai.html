@@ -1,0 +1,1796 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#130b1f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ app_name }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description"
+        content="Miru is a One Piece Card Intelligence System that answers from verified card knowledge, not unsourced guesses.">
+    {% if manifest_url %}
+    <link rel="manifest" href="{{ manifest_url }}?v={{ asset_version }}">
+    {% endif %}
+    {% if apple_icon_url %}
+    <link rel="apple-touch-icon"
+        href="{{ apple_icon_url }}{% if apple_icon_url.startswith('data:') %}{% else %}?v={{ asset_version }}{% endif %}">
+    {% endif %}
+    {% if favicon_url %}
+    <link rel="icon"
+        href="{{ favicon_url }}{% if favicon_url.startswith('data:') %}{% else %}?v={{ asset_version }}{% endif %}">
+    {% endif %}
+    <title>{{ app_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='miru_ai.css') }}?v={{ asset_version }}">
+</head>
+
+<body
+    class="pageBody pageBody--{{ 'dev' if page_key in ('dev', 'dev_monitor') else page_key }}{% if page_key == 'dev_monitor' %} pageBody--devMonitor{% endif %}">
+    <main class="appShell">
+        <nav class="topNav" aria-label="Miru navigation">
+            <a class="brandLink" href="{{ url_for('index') }}" aria-label="Go to Miru home">
+                <img class="brandLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+                <span class="brandWordmark">
+                    <strong>{{ app_name }}</strong>
+                    <span>{{ app_tagline }}</span>
+                </span>
+            </a>
+            <div class="navLinks">
+                <a class="navLink{% if request.path.rstrip('/') == '/dev' %} isActive{% endif %}" href="/dev">Dev</a>
+                <a class="navLink{% if request.path.startswith('/dev/monitor') %} isActive{% endif %}"
+                    href="/dev/monitor">Dev · Full</a>
+            </div>
+        </nav>
+
+        <div id="miruMainContent" data-page-key="{{ page_key }}"
+            data-run-disabled="{{ 'true' if run_disabled else 'false' }}" data-run-url="{{ run_url }}">
+            {% if page_key == "home" %}
+            <header class="heroCard heroCard--home heroCard--homeAsk">
+                <img class="heroLogo heroLogo--home heroLogo--glow miruLogo" src="/static/icons/miru-fruit.png"
+                    alt="Miru Logo">
+                <div class="heroCopy heroCopy--homeAsk">
+                    <div class="heroEyebrow">One Piece card intelligence</div>
+                    <h1>{{ app_name }}</h1>
+                    <p>Miru answers questions about One Piece cards using verified card knowledge built from trusted
+                        sources.</p>
+                </div>
+            </header>
+
+            {% if startup_issues %}
+            <section class="noticeStack" aria-label="Startup notices">
+                {% for issue in startup_issues %}
+                <article class="noticeCard">
+                    <strong>Heads up</strong>
+                    <p>{{ issue }}</p>
+                </article>
+                {% endfor %}
+            </section>
+            {% endif %}
+
+            <form class="panelCard formCard homeAskCard" id="miruHomeForm" action="{{ run_url }}" method="post"
+                novalidate>
+                <input class="homeModeInput" type="radio" name="mode" value="{{ default_mode }}" checked>
+                <div class="homeAskIntro">
+                    <p class="fieldHelp" id="requestHelp"
+                        data-home-help="Ask about a card code, card name, set, or variant. Miru answers from current local card knowledge and keeps unknowns visible.">
+                        Ask about a card code, card name, set, or variant. Miru answers from current local card
+                        knowledge and keeps unknowns visible.</p>
+                    <p class="fieldExample isHidden" id="requestExample" data-home-example=""></p>
+                    <div class="modeHint isHidden" id="modeHint" aria-live="polite"></div>
+                </div>
+
+                <div class="fieldBlock homeAskFieldBlock">
+                    <label class="srOnly" for="requestText">Question</label>
+                    <textarea id="requestText" name="request_text" rows="4"
+                        data-home-placeholder="Ask Miru about a One Piece card..."
+                        placeholder="Ask Miru about a One Piece card..."></textarea>
+                </div>
+
+                <div class="actionRow homeActionRow">
+                    <button class="runButton" id="runButton" type="submit" {% if run_disabled %}disabled{% endif %}>Ask
+                        Miru</button>
+                    <button class="clearButton" id="clearButton" type="button">Clear</button>
+                </div>
+
+                <section class="homeExamples" aria-label="Example questions">
+                    <h2>Try a question</h2>
+                    <div class="presetGrid presetGrid--home" id="presetGrid">
+                        <button class="presetButton" type="button" data-mode="{{ default_mode }}"
+                            data-request="What is OP09-001?">
+                            <span>What is OP09-001?</span>
+                        </button>
+                        <button class="presetButton" type="button" data-mode="{{ default_mode }}"
+                            data-request="What variants exist for OP01-001?">
+                            <span>What variants exist for OP01-001?</span>
+                        </button>
+                        <button class="presetButton" type="button" data-mode="{{ default_mode }}"
+                            data-request="What set is EB03-018 from?">
+                            <span>What set is EB03-018 from?</span>
+                        </button>
+                        <button class="presetButton" type="button" data-mode="{{ default_mode }}"
+                            data-request="What does P-088 do?">
+                            <span>What does P-088 do?</span>
+                        </button>
+                    </div>
+                    <div class="homeQuickLinks" aria-label="More Miru pages">
+                        <a class="ctaButton ctaButton--secondary" href="{{ url_for('dossiers_page') }}">View
+                            Dossiers</a>
+                        <a class="ctaButton ctaButton--secondary" href="{{ url_for('gaps_page') }}">Knowledge gaps</a>
+                    </div>
+                </section>
+            </form>
+
+            <section class="panelCard statusCard isHidden" id="loadingCard" aria-live="polite">
+                <div class="statusSpinner" aria-hidden="true"></div>
+                <div>
+                    <strong>Working...</strong>
+                    <p>Miru is checking the current One Piece knowledge data and building a structured answer. Keep this
+                        page open until the result lands.</p>
+                </div>
+            </section>
+
+            <section class="panelCard resultCard isHidden" id="resultCard" aria-live="polite">
+                <div class="resultLabel">Miru answer</div>
+                <p class="resultMeta" id="resultMeta"></p>
+                <p class="copyHint" id="resultHint">Copy Result will try direct clipboard first, then a safe fallback if
+                    the browser blocks it.</p>
+                <p class="resultGuide">Read this in order: resolved cards and sets, known card details, missing fields,
+                    ambiguity notes, then follow-up questions.</p>
+                <div class="copyRow">
+                    <button class="copyButton" id="copyButton" type="button">Copy Result</button>
+                    <button class="copyButton" id="selectButton" type="button">Select Result</button>
+                    <span class="copyFeedback" id="copyFeedback" aria-live="polite"></span>
+                </div>
+                <pre class="resultReadable" id="resultReadable"></pre>
+                <div class="manualCopyBlock isHidden" id="manualCopyBlock">
+                    <p class="manualCopyHint">Manual copy area</p>
+                    <textarea class="resultOutput" id="resultOutput" readonly spellcheck="false"
+                        aria-label="Miru AI manual copy area"></textarea>
+                </div>
+            </section>
+
+            <section class="panelCard errorCard isHidden" id="errorCard" aria-live="polite">
+                <div class="resultLabel">Run issue</div>
+                <p class="resultMeta" id="errorMeta"></p>
+                <pre class="errorOutput" id="errorOutput"></pre>
+            </section>
+            {% elif page_key == "ask" %}
+            <header class="heroCard heroCard--section">
+                <img class="heroLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+                <div class="heroCopy">
+                    <div class="heroEyebrow">Ask a card question</div>
+                    <h1>Ask Miru</h1>
+                    <p>Ask about a One Piece card, set, variant, or mechanic. Miru should answer with known facts first,
+                        then show gaps, ambiguity, and useful follow-up questions.</p>
+                </div>
+            </header>
+
+            {% if startup_issues %}
+            <section class="noticeStack" aria-label="Startup notices">
+                {% for issue in startup_issues %}
+                <article class="noticeCard">
+                    <strong>Heads up</strong>
+                    <p>{{ issue }}</p>
+                </article>
+                {% endfor %}
+            </section>
+            {% endif %}
+
+            <section class="panelCard">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Try a question</div>
+                    <h2>Start with a real card question</h2>
+                    <p>These examples are written like normal Miru questions, not tool commands. Tap one, then adjust it
+                        however you want.</p>
+                </div>
+                <div class="presetGrid" id="presetGrid">
+                    {% for preset in presets %}
+                    <button class="presetButton" type="button" data-mode="{{ preset.mode }}"
+                        data-request="{{ preset.request_text }}">
+                        <span>{{ preset.label }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <form class="panelCard formCard" id="miruForm" action="{{ run_url }}" method="post" novalidate>
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Ask Miru</div>
+                    <h2>Use the simplest mode that fits</h2>
+                    <p>If you are not sure, leave it on Card Lookup. Miru will keep the answer grounded in card
+                        knowledge and make missing information visible.</p>
+                </div>
+
+                <fieldset class="modeGrid" aria-label="Miru AI knowledge mode">
+                    {% for mode in mode_configs %}
+                    <label class="modeCard">
+                        <input type="radio" name="mode" value="{{ mode.key }}" {% if mode.key==default_mode %}checked{%
+                            endif %}>
+                        <span class="modeBody">
+                            <strong>{{ mode.label }}</strong>
+                            <span>{{ mode.caption }}</span>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </fieldset>
+
+                <div class="modeHint" id="modeHint" aria-live="polite"></div>
+
+                <div class="fieldBlock">
+                    <div class="fieldHeaderRow">
+                        <label for="requestText">Question</label>
+                        <button class="utilityButton" id="pasteButton" type="button">Paste Question</button>
+                    </div>
+                    <p class="fieldHelp" id="requestHelp">Ask about cards, sets, variants, mechanics, citation-backed
+                        facts, or what Miru still does not know.</p>
+                    <p class="fieldExample" id="requestExample"></p>
+                    <textarea id="requestText" name="request_text" rows="7"
+                        placeholder="Example: What card information is still missing for OP09-001?"></textarea>
+                </div>
+
+                <div class="tipRow" aria-label="Question tips">
+                    <span class="tipPill">Try exact card codes like OP09-001</span>
+                    <span class="tipPill">Ask what a mechanic means</span>
+                    <span class="tipPill">Ask which facts are still missing</span>
+                    <span class="tipPill">Ask how prints or variants differ</span>
+                </div>
+
+                <div class="actionRow">
+                    <button class="runButton" id="runButton" type="submit" {% if run_disabled %}disabled{% endif %}>Ask
+                        Miru</button>
+                    <button class="clearButton" id="clearButton" type="button">Clear</button>
+                    <p class="runNote">Ask one question at a time, read the known facts first, then use the gaps and
+                        follow-ups to decide what to ask next.</p>
+                </div>
+            </form>
+
+            <section class="panelCard statusCard isHidden" id="loadingCard" aria-live="polite">
+                <div class="statusSpinner" aria-hidden="true"></div>
+                <div>
+                    <strong>Working...</strong>
+                    <p>Miru is checking the current One Piece knowledge data and building a structured answer. Keep this
+                        page open until the result lands.</p>
+                </div>
+            </section>
+
+            <section class="panelCard resultCard isHidden" id="resultCard" aria-live="polite">
+                <div class="resultLabel">Miru answer</div>
+                <p class="resultMeta" id="resultMeta"></p>
+                <p class="copyHint" id="resultHint">Copy Result will try direct clipboard first, then a safe fallback if
+                    the browser blocks it.</p>
+                <p class="resultGuide">Read this in order: resolved cards and sets, known card details, missing fields,
+                    ambiguity notes, then follow-up questions.</p>
+                <div class="copyRow">
+                    <button class="copyButton" id="copyButton" type="button">Copy Result</button>
+                    <button class="copyButton" id="selectButton" type="button">Select Result</button>
+                    <span class="copyFeedback" id="copyFeedback" aria-live="polite"></span>
+                </div>
+                <pre class="resultReadable" id="resultReadable"></pre>
+                <div class="manualCopyBlock isHidden" id="manualCopyBlock">
+                    <p class="manualCopyHint">Manual copy area</p>
+                    <textarea class="resultOutput" id="resultOutput" readonly spellcheck="false"
+                        aria-label="Miru AI manual copy area"></textarea>
+                </div>
+            </section>
+
+            <section class="panelCard errorCard isHidden" id="errorCard" aria-live="polite">
+                <div class="resultLabel">Run issue</div>
+                <p class="resultMeta" id="errorMeta"></p>
+                <pre class="errorOutput" id="errorOutput"></pre>
+            </section>
+
+            <section class="panelCard helpCard">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">If you are not sure what to ask</div>
+                    <h2>Use short, concrete card questions</h2>
+                </div>
+                <ol class="helpList">
+                    <li>Start with a card code, set code, card name, or mechanic if you have one.</li>
+                    <li>Ask one direct question, or a short cluster of closely related questions.</li>
+                    <li>After the answer appears, look at the missing fields and follow-up ideas to decide what to ask
+                        next.</li>
+                </ol>
+            </section>
+            {% elif page_key == "dossiers" %}
+            <header class="heroCard heroCard--section">
+                <img class="heroLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+                <div class="heroCopy">
+                    <div class="heroEyebrow">Card dossiers</div>
+                    <h1>Structured card knowledge</h1>
+                    <p>Miru dossiers are the reusable card profiles behind better answers. They keep identity, variants,
+                        sources, and verification state together so card questions stay grounded.</p>
+                </div>
+            </header>
+
+            <section class="overviewGrid" aria-label="Dossier panels">
+                {% for panel in dossier_panels %}
+                <article class="infoCard">
+                    <div class="sectionEyebrow">{{ panel.eyebrow }}</div>
+                    <h2>{{ panel.title }}</h2>
+                    <p>{{ panel.body }}</p>
+                </article>
+                {% endfor %}
+            </section>
+
+            <section class="panelCard compactPanel">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Good dossier questions</div>
+                    <h2>Ask for identity, sources, or variants</h2>
+                </div>
+                <ul class="featureList">
+                    <li>What is OP01-001?</li>
+                    <li>What variants exist for OP01-001?</li>
+                    <li>What source supports this card's rarity?</li>
+                    <li>What official image record is tied to this version?</li>
+                </ul>
+                <a class="ctaButton ctaButton--secondary" href="{{ ask_url }}">Ask these on the Ask Miru page</a>
+            </section>
+            {% elif page_key == "gaps" %}
+            <header class="heroCard heroCard--section">
+                <img class="heroLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+                <div class="heroCopy">
+                    <div class="heroEyebrow">Knowledge gaps</div>
+                    <h1>What Miru still needs to learn</h1>
+                    <p>Miru is more useful when it shows what is missing, uncertain, or conflicting instead of guessing.
+                        This page is the short version of that promise.</p>
+                </div>
+            </header>
+
+            <section class="overviewGrid" aria-label="Gap panels">
+                {% for panel in gap_panels %}
+                <article class="infoCard">
+                    <div class="sectionEyebrow">{{ panel.eyebrow }}</div>
+                    <h2>{{ panel.title }}</h2>
+                    <p>{{ panel.body }}</p>
+                </article>
+                {% endfor %}
+            </section>
+
+            <section class="panelCard compactPanel">
+                <div class="sectionCopy">
+                    <div class="sectionEyebrow">Questions that expose gaps</div>
+                    <h2>Ask Miru what is missing, not just what is known</h2>
+                </div>
+                <ul class="featureList">
+                    <li>What facts are still missing for P-088?</li>
+                    <li>Which fields are uncertain for OP09-001?</li>
+                    <li>What conflicts exist for this card family?</li>
+                    <li>What should Miru verify next about this card?</li>
+                </ul>
+                <a class="ctaButton ctaButton--secondary" href="{{ ask_url }}">Open Ask Miru</a>
+            </section>
+            {% elif page_key == "training" %}
+            <header class="heroCard heroCard--section">
+                <img class="heroLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+                <div class="heroCopy">
+                    <div class="heroEyebrow">Training and roadmap</div>
+                    <h1>How Miru is growing</h1>
+                    <p>Miru should get smarter by learning trusted card facts, keeping citations, and exposing gaps
+                        honestly. This page shows what is real now and what comes next.</p>
+                </div>
+            </header>
+
+            <section class="overviewGrid" aria-label="Training panels">
+                {% for panel in training_panels %}
+                <article class="infoCard">
+                    <div class="sectionEyebrow">{{ panel.eyebrow }}</div>
+                    <h2>{{ panel.title }}</h2>
+                    <p>{{ panel.body }}</p>
+                </article>
+                {% endfor %}
+            </section>
+
+            {% set tp = training_status.get("training_progress") or {} %}
+            <section class="panelCard trainingProgressCard" aria-label="Training progress">
+                <div class="trainingProgressIntro">
+                    <div class="sectionCopy">
+                        <div class="sectionEyebrow">Training progress</div>
+                        <h2>Verified dossiers vs catalog</h2>
+                        <p>Miru gets stronger as catalog coverage becomes structured dossiers and then verified
+                            dossiers. This panel keeps that progress visible without pretending the work is finished.
+                        </p>
+                    </div>
+                    <div class="trainingProgressMeta">
+                        <span class="trainingProgressPercent">{{ "%.1f"|format(tp.get("training_progress_percent",
+                            training_status.get("progress_percent", 0))) }}%</span>
+                        <p>{{ tp.get("verified_summary", training_status.get("verified_summary", "")) }}</p>
+                    </div>
+                </div>
+
+                <div class="trainingProgressBar" aria-hidden="true">
+                    <span style="width: {{ " %.1f"|format(tp.get("training_progress_percent",
+                        training_status.get("progress_percent", 0))) }}%;"></span>
+                </div>
+                <p class="trainingProgressNote">{{ tp.get("remaining_summary", training_status.get("remaining_summary",
+                    "")) }}</p>
+
+                <div class="trainingStatGrid" aria-label="Training metrics">
+                    {% for item in tp.get("stats") or training_status.get("stats") or [] %}
+                    <article class="trainingStatCard">
+                        <span class="trainingStatLabel">{{ item["label"] }}</span>
+                        <strong>{{ item["value"] }}</strong>
+                        <p>{{ item["detail"] }}</p>
+                    </article>
+                    {% endfor %}
+                </div>
+
+                <div class="trainingRingGrid" aria-label="Coverage rings">
+                    {% for item in tp.get("ring_metrics") or training_status.get("ring_metrics") or [] %}
+                    <article class="trainingRingCard">
+                        <div class="trainingRing" style="--ring-progress: {{ " %.1f"|format(item["percent"]) }}%;">
+                            <div class="trainingRingInner">
+                                <strong>{{ "%.1f"|format(item["percent"]) }}%</strong>
+                                <span>{{ item["label"] }}</span>
+                            </div>
+                        </div>
+                        <div class="trainingRingCopy">
+                            <h3>{{ item["label"] }}</h3>
+                            <p>{{ item["detail"] }}</p>
+                            <span>{{ item["value"] }}</span>
+                        </div>
+                    </article>
+                    {% endfor %}
+                </div>
+
+                <div class="trainingStageRow" aria-label="Training stages">
+                    {% for item in training_status["stage_rows"] %}
+                    <article class="trainingStage trainingStage--{{ item[" state"] }}">
+                        <span class="trainingStageState">{{ item["state"]|replace("_", " ")|title }}</span>
+                        <h3>{{ item["label"] }}</h3>
+                        <p>{{ item["detail"] }}</p>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            {% set intelligence = training_status.get("intelligence_progress", {}) %}
+            {% set current_stage = intelligence.get("current_stage", {}) %}
+            {% set next_stage = intelligence.get("next_stage") %}
+            {% set training_voyage = training_status.get("voyage", {}) %}
+            {% set training_assets = training_voyage.get("assets", {}) %}
+            <section class="panelCard intelligenceProgressCard" aria-label="Miru intelligence progress">
+                <div class="intelligenceProgressIntro">
+                    <div class="sectionCopy">
+                        <div class="sectionEyebrow">Miru Intelligence Progress</div>
+                        <h2>{{ current_stage.get("label", "Card Recognition") }}</h2>
+                        <p>{{ current_stage.get("summary", "Miru is still building its card knowledge foundation.") }}
+                        </p>
+                    </div>
+                    <div class="intelligenceStageHero">
+                        <span class="trainingStageState">Stage {{ current_stage.get("number", 1) }} of {{
+                            intelligence.get("total_stages", 6) }}</span>
+                        <strong>Voyage Arc: {{ current_stage.get("voyage_arc", "East Blue") }}</strong>
+                        <p>{{ intelligence.get("coverage_note", "Training coverage is still being measured.") }}</p>
+                    </div>
+                </div>
+
+                <article class="trainingStage intelligenceMeaningCard">
+                    <span class="trainingStageState">What this means</span>
+                    <h3>{{ current_stage.get("label", "Card Recognition") }}</h3>
+                    <p>{{ current_stage.get("what_this_means", "Miru is still building its card knowledge foundation.")
+                        }}</p>
+                </article>
+
+                <div class="intelligenceVoyageStrip" aria-label="Voyage progress strip">
+                    <div class="intelligenceVoyageStripHeader">
+                        <div>
+                            <span class="trainingStageState">Voyage Theme</span>
+                            <h3>Mini voyage track</h3>
+                            <p>The voyage layer is just supporting flavor for Miru’s current stage, with the current arc
+                                highlighted and future arcs kept subdued.</p>
+                        </div>
+                    </div>
+                    <div class="intelligenceVoyageTrack" role="list">
+                        {% for item in intelligence.get("stage_rows", []) %}
+                        <article class="intelligenceVoyageNode intelligenceVoyageNode--{{ item['state'] }}"
+                            role="listitem" aria-current="{{ 'step' if item['state'] == 'active' else 'false' }}">
+                            <div class="intelligenceVoyageNodeMarker" aria-hidden="true">
+                                {% if item["state"] == "active" %}
+                                <img src="{{ training_assets.get('ship', '/static/icons/miru-fruit.png') }}" alt="">
+                                {% elif item["state"] == "complete" %}
+                                <img src="{{ training_assets.get('compass', '/static/icons/miru-fruit.png') }}" alt="">
+                                {% else %}
+                                <img src="{{ training_assets.get('vivre', '/static/icons/miru-fruit.png') }}" alt="">
+                                {% endif %}
+                            </div>
+                            <div class="intelligenceVoyageNodeCopy">
+                                <span class="trainingStageState">{{ item["state"]|replace("_", " ")|title }}</span>
+                                <strong>{{ item["number"] }}. {{ item["voyage_arc"] }}</strong>
+                                <p>{{ item["label"] }}</p>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="trainingStatGrid intelligenceSummaryGrid" aria-label="Miru intelligence summary">
+                    <article class="trainingStatCard">
+                        <span class="trainingStatLabel">Current Stage</span>
+                        <strong>{{ current_stage.get("label", "Card Recognition") }}</strong>
+                        <p>Miru is strongest at this level today.</p>
+                    </article>
+                    <article class="trainingStatCard">
+                        <span class="trainingStatLabel">Voyage Arc</span>
+                        <strong>{{ current_stage.get("voyage_arc", "East Blue") }}</strong>
+                        <p>{{ intelligence.get("voyage_note", "The voyage theme supports the plain-English stage.") }}
+                        </p>
+                    </article>
+                    <article class="trainingStatCard">
+                        <span class="trainingStatLabel">Next Stage</span>
+                        <strong>{{ next_stage.get("label", "Ongoing refinement") if next_stage else "Ongoing refinement"
+                            }}</strong>
+                        <p>{{ current_stage.get("next_stage_detail", "Miru will keep improving coverage and answer
+                            quality.") }}</p>
+                    </article>
+                </div>
+
+                <div class="intelligenceListGrid" aria-label="Miru current and future capabilities">
+                    <article class="trainingStage">
+                        <span class="trainingStageState">What Miru can do now</span>
+                        <ul class="roadmapList">
+                            {% for item in current_stage.get("can_do_now", []) %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </article>
+                    <article class="trainingStage">
+                        <span class="trainingStageState">What Miru is still learning</span>
+                        <ul class="roadmapList">
+                            {% for item in current_stage.get("still_learning", []) %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </article>
+                    <article class="trainingStage">
+                        <span class="trainingStageState">Next Stage</span>
+                        <h3>{{ next_stage.get("label", "Ongoing refinement") if next_stage else "Ongoing refinement" }}
+                        </h3>
+                        <p>{{ current_stage.get("next_stage_detail", "Miru will keep improving coverage and answer
+                            quality.") }}</p>
+                    </article>
+                </div>
+
+                <div class="intelligenceStageGrid" aria-label="Miru intelligence stages">
+                    {% for item in intelligence.get("stage_rows", []) %}
+                    <article class="trainingStage trainingStage--{{ item[" state"] }}">
+                        <span class="trainingStageState">{{ item["state"]|replace("_", " ")|title }}</span>
+                        <h3>{{ item["number"] }}. {{ item["label"] }}</h3>
+                        <p>{{ item["summary"] }}</p>
+                        <p class="intelligenceVoyageArc">Voyage arc: {{ item["voyage_arc"] }}</p>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="panelCard roadmapCard" aria-label="Miru AI progress">
+                <div class="sectionCopy roadmapIntro">
+                    <div class="sectionEyebrow">Miru AI progress</div>
+                    <h2>What it can do now, what comes next, and what comes later</h2>
+                    <p>The roadmap stays product-focused here so users can see how card intelligence is expanding over
+                        time.</p>
+                </div>
+                <div class="roadmapGrid">
+                    {% for section in roadmap_sections %}
+                    <article class="roadmapBlock">
+                        <h3>{{ section["title"] }}</h3>
+                        <ul class="roadmapList">
+                            {% for item in section["items"] %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </article>
+                    {% endfor %}
+                </div>
+            </section>
+            {% elif page_key == "dev" %}
+            <style>
+                /* Dev cockpit styles - purple and gold theme */
+                .devCockpit {
+                    background: #0d0d0f;
+                    color: #f0edf8;
+                    font-family: system-ui, -apple-system, sans-serif;
+                    min-height: 100vh;
+                }
+
+                .devCockpit a {
+                    color: #c9a84c;
+                    text-decoration: none;
+                }
+
+                .devCockpit a:hover {
+                    text-decoration: underline;
+                }
+
+                /* Zone 1 - System Pulse */
+                .devSystemPulse {
+                    background: #13111a;
+                    border: 1px solid rgba(108, 63, 196, 0.2);
+                    border-left: 3px solid #c9a84c;
+                    border-radius: 12px;
+                    padding: 12px 16px;
+                    margin: 16px;
+                    cursor: pointer;
+                    transition: all 200ms ease;
+                    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+                }
+
+                .devSystemPulse:hover {
+                    border-color: rgba(108, 63, 196, 0.4);
+                }
+
+                .devPulseContent {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    font-size: 0.9rem;
+                }
+
+                .devStatusDot {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    flex-shrink: 0;
+                }
+
+                .devStatusDot--healthy {
+                    background: #6c3fc4;
+                }
+
+                .devStatusDot--down {
+                    background: #e74c3c;
+                }
+
+                .devStatusDot--degraded {
+                    background: #c9a84c;
+                }
+
+                .devPulseExpanded {
+                    margin-top: 16px;
+                    display: none;
+                }
+
+                .devSystemPulse--expanded .devPulseExpanded {
+                    display: block;
+                }
+
+                .devServiceGrid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                    gap: 12px;
+                    margin-top: 12px;
+                }
+
+                .devServiceCard {
+                    background: #13111a;
+                    border: 1px solid rgba(108, 63, 196, 0.2);
+                    border-radius: 12px;
+                    padding: 16px;
+                    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+                }
+
+                .devServiceName {
+                    font-weight: 600;
+                    color: #f0edf8;
+                    margin-bottom: 4px;
+                }
+
+                .devServicePort {
+                    color: #7a6f8a;
+                    font-size: 0.85rem;
+                    margin-bottom: 8px;
+                }
+
+                .devServiceStatus {
+                    display: inline-block;
+                    padding: 4px 8px;
+                    border-radius: 6px;
+                    font-size: 0.75rem;
+                    font-weight: 500;
+                    margin-bottom: 8px;
+                }
+
+                .devServiceStatus--healthy {
+                    background: rgba(108, 63, 196, 0.2);
+                    color: #6c3fc4;
+                    font-weight: 700;
+                }
+
+                .devServiceStatus--down {
+                    background: rgba(231, 76, 60, 0.2);
+                    color: #e74c3c;
+                    font-weight: 700;
+                }
+
+                .devServiceStatus--decommissioned {
+                    background: rgba(122, 111, 138, 0.2);
+                    color: #7a6f8a;
+                }
+
+                .devServiceMeta {
+                    color: #7a6f8a;
+                    font-size: 0.8rem;
+                    margin-bottom: 12px;
+                }
+
+                .devServiceActions {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .devBtn {
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 140ms ease;
+                    min-height: 44px;
+                    border: none;
+                    text-decoration: none;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .devBtn--primary {
+                    background: #c9a84c;
+                    color: #0d0d0f;
+                    font-weight: 700;
+                }
+
+                .devBtn--primary:hover {
+                    background: #d4b45c;
+                    opacity: 0.85;
+                }
+
+                .devBtn--secondary {
+                    background: transparent;
+                    color: #6c3fc4;
+                    border: 1.5px solid #6c3fc4;
+                }
+
+                .devBtn--secondary:hover {
+                    background: rgba(108, 63, 196, 0.1);
+                    opacity: 0.85;
+                }
+
+                .devBtn--disabled {
+                    background: rgba(122, 111, 138, 0.2);
+                    color: #7a6f8a;
+                    cursor: not-allowed;
+                }
+
+                /* Zone 2 - Image Review */
+                .devImageReview {
+                    margin: 16px;
+                }
+
+                .devImageReviewLink {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    background: #13111a;
+                    border: 1px solid rgba(108, 63, 196, 0.2);
+                    border-radius: 8px;
+                    padding: 16px;
+                    color: #f0edf8;
+                    text-decoration: none;
+                    transition: all 0.2s ease;
+                }
+
+                .devImageReviewLink:hover {
+                    background: rgba(108, 63, 196, 0.1);
+                    border-color: #6c3fc4;
+                    transform: translateY(-1px);
+                }
+
+                .devImageReviewIcon {
+                    font-size: 24px;
+                }
+
+                .devImageReviewText {
+                    flex: 1;
+                    font-size: 16px;
+                    font-weight: 500;
+                }
+
+                .devImageReviewBadge {
+                    background: #c9a84c;
+                    color: #0d0d0f;
+                    font-size: 12px;
+                    font-weight: 700;
+                    padding: 4px 8px;
+                    border-radius: 12px;
+                    min-width: 20px;
+                    text-align: center;
+                }
+
+                /* Zone 3 - Intelligence Feed */
+                .devIntelligenceFeed {
+                    margin: 16px;
+                }
+
+                .devSectionTitle {
+                    color: #c9a84c;
+                    font-size: 1.2rem;
+                    font-weight: 600;
+                    margin-bottom: 16px;
+                }
+
+                .devFeedCard {
+                    background: #13111a;
+                    border: 1px solid rgba(108, 63, 196, 0.2);
+                    border-radius: 12px;
+                    padding: 16px;
+                    margin-bottom: 12px;
+                    display: flex;
+                    gap: 12px;
+                    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+                }
+
+                .devFeedImage {
+                    width: 64px;
+                    height: 64px;
+                    object-fit: contain;
+                    border-radius: 8px;
+                    background: rgba(108, 63, 196, 0.1);
+                    flex-shrink: 0;
+                }
+
+                .devFeedContent {
+                    flex: 1;
+                    min-width: 0;
+                }
+
+                .devFeedTitle {
+                    font-weight: 700;
+                    font-size: 1.05rem;
+                    letter-spacing: -0.01em;
+                    color: #f0edf8;
+                    margin-bottom: 4px;
+                }
+
+                .devFeedCode {
+                    color: #7a6f8a;
+                    font-size: 0.85rem;
+                    margin-bottom: 8px;
+                }
+
+                .devFeedMeta {
+                    display: flex;
+                    gap: 8px;
+                    margin-bottom: 8px;
+                    flex-wrap: wrap;
+                }
+
+                .devFeedBadge {
+                    padding: 3px 10px;
+                    border-radius: 12px;
+                    font-size: 0.65rem;
+                    font-weight: 700;
+                    letter-spacing: 0.06em;
+                    text-transform: uppercase;
+                }
+
+                .devFeedBadge--type {
+                    background: rgba(108, 63, 196, 0.2);
+                    color: #6c3fc4;
+                }
+
+                .devFeedBadge--strong {
+                    background: #c9a84c;
+                    color: #0d0d0f;
+                }
+
+                .devFeedBadge--medium {
+                    background: #6c3fc4;
+                    color: #f0edf8;
+                }
+
+                .devFeedBadge--low {
+                    background: transparent;
+                    border: 1px solid #7a6f8a;
+                    color: #7a6f8a;
+                }
+
+                .devFeedText {
+                    color: #f0edf8;
+                    line-height: 1.4;
+                    margin-bottom: 8px;
+                }
+
+                .devFeedTime {
+                    color: #7a6f8a;
+                    font-size: 0.8rem;
+                }
+
+                /* Zone 3 - Triage Stack */
+                .devTriageStack {
+                    margin: 16px;
+                }
+
+                .devThresholdControl {
+                    background: #13111a;
+                    border: 1px solid rgba(108, 63, 196, 0.2);
+                    border-radius: 12px;
+                    padding: 16px;
+                    margin-bottom: 16px;
+                    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+                }
+
+                .devThresholdLabel {
+                    color: #f0edf8;
+                    margin-bottom: 12px;
+                    font-weight: 500;
+                }
+
+                .devThresholdValue {
+                    color: #c9a84c;
+                    font-weight: 600;
+                }
+
+                .devSegmentedControl {
+                    display: flex;
+                    gap: 2px;
+                    background: rgba(122, 111, 138, 0.2);
+                    border-radius: 8px;
+                    padding: 2px;
+                }
+
+                .devSegmentedOption {
+                    flex: 1;
+                    padding: 8px 12px;
+                    background: transparent;
+                    border: none;
+                    border-radius: 6px;
+                    color: #7a6f8a;
+                    font-size: 0.85rem;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 140ms ease;
+                    min-height: 36px;
+                }
+
+                .devSegmentedOption:hover {
+                    background: rgba(122, 111, 138, 0.3);
+                    opacity: 0.85;
+                }
+
+                .devSegmentedOption--active {
+                    background: #c9a84c;
+                    color: #0d0d0f;
+                    font-weight: 700;
+                }
+
+                .devFilterBar {
+                    background: #13111a;
+                    border: 1px solid rgba(108, 63, 196, 0.2);
+                    border-radius: 12px;
+                    padding: 12px;
+                    margin-bottom: 16px;
+                    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+                }
+
+                .devFilterRow {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    margin-bottom: 8px;
+                }
+
+                .devFilterRow:last-child {
+                    margin-bottom: 0;
+                }
+
+                .devFilterPill {
+                    padding: 6px 12px;
+                    background: transparent;
+                    border: 1px solid rgba(108, 63, 196, 0.4);
+                    border-radius: 20px;
+                    color: #7a6f8a;
+                    font-size: 0.8rem;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 140ms ease;
+                    min-height: 32px;
+                }
+
+                .devFilterPill:hover {
+                    background: rgba(108, 63, 196, 0.1);
+                    opacity: 0.85;
+                }
+
+                .devFilterPill--active {
+                    background: #c9a84c;
+                    color: #0d0d0f;
+                    border-color: #c9a84c;
+                    font-weight: 700;
+                }
+
+                .devProgressIndicator {
+                    background: #13111a;
+                    border: 1px solid rgba(108, 63, 196, 0.2);
+                    border-radius: 12px;
+                    padding: 12px;
+                    margin-bottom: 16px;
+                    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+                }
+
+                .devProgressText {
+                    color: #f0edf8;
+                    font-size: 0.85rem;
+                    margin-bottom: 8px;
+                }
+
+                .devProgressBar {
+                    height: 4px;
+                    background: rgba(108, 63, 196, 0.2);
+                    border-radius: 2px;
+                    overflow: hidden;
+                }
+
+                .devProgressFill {
+                    height: 100%;
+                    background: #c9a84c;
+                    transition: width 300ms ease;
+                }
+
+                .devTriageCard {
+                    background: #13111a;
+                    border: 1px solid rgba(108, 63, 196, 0.2);
+                    border-radius: 12px;
+                    padding: 16px;
+                    margin-bottom: 12px;
+                }
+
+                .devTriageCard[data-auto-approve="true"] .devTriageActions {
+                    opacity: 0.5;
+                    pointer-events: none;
+                }
+
+                .devTriageAutoBadge {
+                    background: #c9a84c;
+                    color: #0d0d0f;
+                    padding: 4px 8px;
+                    border-radius: 6px;
+                    font-size: 0.75rem;
+                    font-weight: 600;
+                    margin-bottom: 12px;
+                    display: inline-block;
+                }
+
+                .devTriageHeader {
+                    display: flex;
+                    gap: 12px;
+                    margin-bottom: 12px;
+                }
+
+                .devTriageImage {
+                    width: 80px;
+                    height: 80px;
+                    object-fit: contain;
+                    border-radius: 8px;
+                    background: rgba(108, 63, 196, 0.1);
+                    flex-shrink: 0;
+                }
+
+                .devTriageInfo {
+                    flex: 1;
+                    min-width: 0;
+                }
+
+                .devTriageTitle {
+                    font-weight: 700;
+                    font-size: 1.05rem;
+                    letter-spacing: -0.01em;
+                    color: #c9a84c;
+                    margin-bottom: 4px;
+                }
+
+                .devTriageCode {
+                    color: #7a6f8a;
+                    font-size: 0.85rem;
+                    margin-bottom: 8px;
+                }
+
+                .devTriageMeta {
+                    display: flex;
+                    gap: 8px;
+                    margin-bottom: 8px;
+                    flex-wrap: wrap;
+                }
+
+                .devConfidenceBar {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-bottom: 12px;
+                }
+
+                .devConfidenceTrack {
+                    flex: 1;
+                    height: 4px;
+                    background: #1e1a2e;
+                    border-radius: 2px;
+                    overflow: hidden;
+                    max-width: 100px;
+                }
+
+                .devConfidenceFill {
+                    height: 100%;
+                    background: #6c3fc4;
+                    transition: width 200ms ease;
+                }
+
+                .devConfidenceFill--high {
+                    background: #c9a84c;
+                }
+
+                .devTriageText {
+                    color: #f0edf8;
+                    line-height: 1.4;
+                    margin-bottom: 8px;
+                }
+
+                .devTriageReason {
+                    color: #7a6f8a;
+                    font-style: italic;
+                    font-size: 0.85rem;
+                    margin-bottom: 8px;
+                }
+
+                .devTriageLinks {
+                    margin-bottom: 8px;
+                }
+
+                .devTriageLink {
+                    display: block;
+                    color: #c9a84c;
+                    font-size: 0.85rem;
+                    margin-bottom: 4px;
+                }
+
+                .devTriageRuling {
+                    background: rgba(108, 63, 196, 0.1);
+                    border-left: 3px solid #6c3fc4;
+                    padding: 8px 12px;
+                    margin-bottom: 12px;
+                    font-size: 0.85rem;
+                }
+
+                .devTriageRulingLabel {
+                    color: #6c3fc4;
+                    font-weight: 500;
+                    margin-bottom: 4px;
+                }
+
+                .devTriageActions {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .devEmptyState {
+                    text-align: center;
+                    padding: 32px;
+                    color: #7a6f8a;
+                }
+
+                .devEmptyIcon {
+                    font-size: 2rem;
+                    color: #c9a84c;
+                    margin-bottom: 8px;
+                }
+
+                @media (max-width: 768px) {
+                    .devSystemPulse {
+                        margin: 12px;
+                    }
+
+                    .devIntelligenceFeed,
+                    .devTriageStack {
+                        margin: 12px;
+                    }
+
+                    .devServiceGrid {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .devTriageHeader {
+                        flex-direction: column;
+                        gap: 8px;
+                    }
+
+                    .devTriageImage {
+                        width: 100%;
+                        height: 120px;
+                    }
+                }
+            </style>
+
+            <div class="devCockpit">
+                <!-- Zone 1: System Pulse -->
+                <div class="devSystemPulse" id="devSystemPulse">
+                    <div class="devPulseContent">
+                        <span class="devStatusDot devStatusDot--healthy" id="devPulseDot"></span>
+                        <span id="devCoverageText">--%</span> coverage •
+                        <span id="devTriageCount">0</span> pending triage
+                    </div>
+                    <div class="devPulseExpanded">
+                        <div class="devServiceGrid" id="devServiceGrid">
+                            <!-- Service cards will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Zone 2: Image Review -->
+                <section class="devImageReview">
+                    <h2 class="devSectionTitle">Image Review</h2>
+                    <a href="http://100.104.150.125:18765/dev/image-review" class="devImageReviewLink" target="_blank">
+                        <span class="devImageReviewIcon">🖼️</span>
+                        <span class="devImageReviewText">Review Images</span>
+                        <span class="devImageReviewBadge" id="imageReviewCount">713</span>
+                    </a>
+                </section>
+
+                <!-- Zone 3: Intelligence Feed -->
+                <section class="devIntelligenceFeed">
+                    <h2 class="devSectionTitle">Recently Published</h2>
+                    <div id="devIntelligenceFeed">
+                        <!-- Feed cards will be populated by JavaScript -->
+                    </div>
+                </section>
+
+                <!-- Zone 3: Triage Stack -->
+                <section class="devTriageStack">
+                    <h2 class="devSectionTitle">Needs Your Review</h2>
+
+                    <!-- Confidence Threshold Control -->
+                    <div class="devThresholdControl">
+                        <div class="devThresholdLabel">
+                            Auto-approve above: <span class="devThresholdValue" id="devThresholdValue">0.75</span>
+                        </div>
+                        <div class="devSegmentedControl">
+                            <button class="devSegmentedOption" data-threshold="0.70">0.70</button>
+                            <button class="devSegmentedOption devSegmentedOption--active"
+                                data-threshold="0.75">0.75</button>
+                            <button class="devSegmentedOption" data-threshold="0.80">0.80</button>
+                            <button class="devSegmentedOption" data-threshold="0.85">0.85</button>
+                        </div>
+                    </div>
+
+                    <!-- Filter Bar -->
+                    <div class="devFilterBar">
+                        <div class="devFilterRow">
+                            <button class="devFilterPill devFilterPill--active" data-filter-type="insight"
+                                data-value="all">All</button>
+                            <button class="devFilterPill" data-filter-type="insight" data-value="usage">Usage</button>
+                            <button class="devFilterPill" data-filter-type="insight" data-value="ruling">Ruling</button>
+                            <button class="devFilterPill" data-filter-type="insight" data-value="price">Price</button>
+                            <button class="devFilterPill" data-filter-type="insight" data-value="meta">Meta</button>
+                            <button class="devFilterPill" data-filter-type="insight"
+                                data-value="strategy">Strategy</button>
+                        </div>
+                        <div class="devFilterRow">
+                            <button class="devFilterPill devFilterPill--active" data-filter-type="confidence"
+                                data-value="all">All</button>
+                            <button class="devFilterPill" data-filter-type="confidence"
+                                data-value="strong">Strong</button>
+                            <button class="devFilterPill" data-filter-type="confidence"
+                                data-value="medium">Medium</button>
+                            <button class="devFilterPill" data-filter-type="confidence" data-value="low">Low</button>
+                        </div>
+                    </div>
+
+                    <!-- Session Progress -->
+                    <div class="devProgressIndicator">
+                        <div class="devProgressText" id="devProgressText">0 reviewed this session</div>
+                        <div class="devProgressBar">
+                            <div class="devProgressFill" id="devProgressFill" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Triage Cards -->
+                    <div id="devTriageStack">
+                        <!-- Triage cards will be populated by JavaScript -->
+                    </div>
+                </section>
+            </div>
+
+            <script>
+                // Dev cockpit JavaScript - replaces existing approval system
+                (function () {
+                    let sessionReviewed = 0;
+                    let sessionTotal = 0;
+                    let autoApproveThreshold = 0.75;
+                    let activeInsightFilter = 'all';
+                    let activeConfidenceFilter = 'all';
+                    let pulseExpanded = false;
+
+                    // Initialize from localStorage
+                    autoApproveThreshold = parseFloat(localStorage.getItem('devAutoApproveThreshold') || '0.75');
+
+                    // System Pulse
+                    function updateSystemPulse() {
+                        fetch('/api/runtime/status')
+                            .then(r => r.json())
+                            .then(data => {
+                                const dot = document.getElementById('devPulseDot');
+                                const triageElement = document.getElementById('devTriageCount');
+                                const grid = document.getElementById('devServiceGrid');
+
+                                const miruStatus = data['18765'];
+                                const pmStatus = data['18080'];
+                                const mainStatus = data['8080'];
+
+                                // Determine overall status
+                                let overallStatus = 'healthy';
+                                if (miruStatus !== 'ok' || pmStatus !== 'ok') {
+                                    overallStatus = 'down';
+                                } else if (mainStatus !== 'ok') {
+                                    overallStatus = 'degraded';
+                                }
+
+                                dot.className = `devStatusDot devStatusDot--${overallStatus}`;
+
+                                // Update triage count only
+                                const triage = document.querySelectorAll('.devTriageCard:not([style*="display: none"])').length;
+                                if (triageElement) {
+                                    triageElement.textContent = triage;
+                                }
+
+                                // Populate service cards
+                                grid.innerHTML = `
+                    <div class="devServiceCard">
+                        <div class="devServiceName">Miru AI</div>
+                        <div class="devServicePort">Port 18765</div>
+                        <div class="devServiceStatus devServiceStatus--${miruStatus === 'ok' ? 'healthy' : 'down'}">
+                            ${miruStatus === 'ok' ? 'Healthy' : 'Down'}
+                        </div>
+                        <div class="devServiceMeta">Last checked: just now</div>
+                        <div class="devServiceActions">
+                            <a href="http://100.104.150.125:18765" target="_blank" class="devBtn devBtn--secondary">Open</a>
+                            <button class="devBtn devBtn--secondary" onclick="restartService(18765)">Restart</button>
+                            <button id="fetch-images-btn" class="devBtn devBtn--primary" type="button">Fetch Missing Images</button>
+                        </div>
+                        <div class="devServiceMeta" id="fetch-images-status">Ready to fetch missing assets</div>
+                    </div>
+                    <div class="devServiceCard">
+                        <div class="devServiceName">Project Miru</div>
+                        <div class="devServicePort">Port 18080</div>
+                        <div class="devServiceStatus devServiceStatus--${pmStatus === 'ok' ? 'healthy' : 'down'}">
+                            ${pmStatus === 'ok' ? 'Healthy' : 'Down'}
+                        </div>
+                        <div class="devServiceMeta">Last checked: just now</div>
+                        <div class="devServiceActions">
+                            <a href="http://100.104.150.125:18080" target="_blank" class="devBtn devBtn--secondary">Open</a>
+                            <button class="devBtn devBtn--secondary" onclick="restartService(18080)">Restart</button>
+                        </div>
+                    </div>
+                    <div class="devServiceCard">
+                        <div class="devServiceName">Main Site</div>
+                        <div class="devServicePort">Port 8080</div>
+                        <div class="devServiceStatus devServiceStatus--decommissioned">DECOMMISSIONED</div>
+                        <div class="devServiceMeta">No longer active</div>
+                        <div class="devServiceActions">
+                            <span class="devBtn devBtn--disabled">Decommissioned</span>
+                        </div>
+                    </div>
+                `;
+                            })
+                            .catch(err => {
+                                console.error('Failed to load system status:', err);
+                            });
+                    }
+
+                    // Intelligence Feed
+                    function loadIntelligenceFeed() {
+                        fetch('/api/dev/recently-published')
+                            .then(r => r.json())
+                            .then(data => {
+                                const items = data.items || [];
+                                const feedContainer = document.getElementById('devIntelligenceFeed');
+
+                                if (items.length === 0) {
+                                    feedContainer.innerHTML = '<div class="devEmptyState">Miru hasn\'t published anything yet.</div>';
+                                    return;
+                                }
+
+                                feedContainer.innerHTML = items.map(item => {
+                                    const imagePath = item.image_path || item.thumb_path;
+                                    const cardCode = item.card_code || '';
+                                    const initials = cardCode.length >= 3 ? cardCode.substring(0, 3).toUpperCase() : '???';
+
+                                    return `
+                                        <div class="devFeedCard">
+                                            ${imagePath ?
+                                            `<img src="${imagePath}" alt="${item.card_name || cardCode}" class="devFeedImage" onerror="this.style.display='none'">` :
+                                            `<div class="devFeedImage" style="background: #1e1a2e; display: flex; align-items: center; justify-content: center; color: #c9a84c; font-weight: 700; font-size: 0.8rem;">${initials}</div>`
+                                        }
+                                            <div class="devFeedContent">
+                                                <div class="devFeedTitle">${item.card_name || cardCode}</div>
+                                                <div class="devFeedCode">${cardCode}</div>
+                                                <div class="devFeedMeta">
+                                                    <span class="devFeedBadge devFeedBadge--type">${item.insight_type || 'usage'}</span>
+                                                    <span class="devFeedBadge devFeedBadge--${item.confidence >= 0.85 ? 'strong' : item.confidence >= 0.65 ? 'medium' : 'low'}">
+                                                        ${item.confidence >= 0.85 ? 'Strong' : item.confidence >= 0.65 ? 'Medium' : 'Low'}
+                                                    </span>
+                                                </div>
+                                                <div class="devFeedText">${item.summary_text || item.insight_text || ''}</div>
+                                                <div class="devFeedTime">${item.published_at ? new Date(item.published_at).toLocaleString() : 'Just now'}</div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('');
+                            })
+                            .catch(err => {
+                                console.error('Failed to load intelligence feed:', err);
+                                // Fallback to mock data
+                                const mockFeed = [
+                                    {
+                                        image: '/images/cards/op01-001.jpg',
+                                        name: 'Roronoa Zoro',
+                                        code: 'OP01-001',
+                                        type: 'usage',
+                                        confidence: 0.92,
+                                        text: 'Zoro is a powerful attacker with high cost efficiency. Best used in mid-game when you have enough Don to pay his 7 cost.',
+                                        time: '2 hours ago'
+                                    },
+                                    {
+                                        image: '/images/cards/op01-002.jpg',
+                                        name: 'Trafalgar Law',
+                                        code: 'OP01-002',
+                                        type: 'strategy',
+                                        confidence: 0.88,
+                                        text: 'Law\'s ability to rearrange the top 5 cards makes him excellent for setting up future plays and removing threats.',
+                                        time: '4 hours ago'
+                                    }
+                                ];
+
+                                const feedContainer = document.getElementById('devIntelligenceFeed');
+                                feedContainer.innerHTML = mockFeed.map(item => `
+                                    <div class="devFeedCard">
+                                        <img src="${item.image}" alt="${item.name}" class="devFeedImage" onerror="this.style.display='none'">
+                                        <div class="devFeedContent">
+                                            <div class="devFeedTitle">${item.name}</div>
+                                            <div class="devFeedCode">${item.code}</div>
+                                            <div class="devFeedMeta">
+                                                <span class="devFeedBadge devFeedBadge--type">${item.type}</span>
+                                                <span class="devFeedBadge devFeedBadge--${item.confidence >= 0.85 ? 'strong' : item.confidence >= 0.65 ? 'medium' : 'low'}">
+                                                    ${item.confidence >= 0.85 ? 'Strong' : item.confidence >= 0.65 ? 'Medium' : 'Low'}
+                                                </span>
+                                            </div>
+                                            <div class="devFeedText">${item.text}</div>
+                                            <div class="devFeedTime">${item.time}</div>
+                                        </div>
+                                    </div>
+                                `).join('');
+                            });
+                    }
+
+                    // Triage Stack
+                    function loadTriageStack() {
+                        fetch('/api/dev/pending-approvals')
+                            .then(r => r.json())
+                            .then(data => {
+                                const items = data.items || [];
+                                sessionTotal = items.length;
+                                renderTriageCards(items);
+                                updateProgress();
+                            })
+                            .catch(err => {
+                                console.error('Failed to load triage stack:', err);
+                                document.getElementById('devTriageStack').innerHTML = '<div class="devEmptyState">Failed to load triage queue.</div>';
+                            });
+                    }
+
+                    function renderTriageCards(items) {
+                        const container = document.getElementById('devTriageStack');
+
+                        if (items.length === 0) {
+                            container.innerHTML = '<div class="devEmptyState"><div class="devEmptyIcon">✓</div>Queue is clear. Miru is running.</div>';
+                            return;
+                        }
+
+                        container.innerHTML = items.map(item => {
+                            const confidence = parseFloat(item.confidence_score || 0);
+                            const autoApprove = confidence >= autoApproveThreshold;
+                            const confidencePercent = Math.min(confidence * 100, 100);
+
+                            // Determine insight type
+                            let insightType = 'usage';
+                            const summary = (item.summary_text || item.review_reason || '').toLowerCase();
+                            if (summary.includes('ruling')) insightType = 'ruling';
+                            else if (summary.includes('price')) insightType = 'price';
+                            else if (summary.includes('meta')) insightType = 'meta';
+                            else if (summary.includes('strategy')) insightType = 'strategy';
+
+                            // Determine confidence band
+                            let confidenceBand = 'low';
+                            if (confidence >= 0.85) confidenceBand = 'strong';
+                            else if (confidence >= 0.65) confidenceBand = 'medium';
+
+                            return `
+                <div class="devTriageCard" 
+                     data-insight-type="${insightType}" 
+                     data-confidence="${confidence}"
+                     data-auto-approve="${autoApprove}">
+                    ${autoApprove ? '<div class="devTriageAutoBadge">Auto</div>' : ''}
+                    <div class="devTriageHeader">
+                        <img src="${item.image_url || '/images/cards/placeholder.jpg'}" 
+                             alt="${item.card_name}" 
+                             class="devTriageImage"
+                             onerror="this.style.display='none'">
+                        <div class="devTriageInfo">
+                            <div class="devTriageTitle">${item.card_name || item.card_code}</div>
+                            <div class="devTriageCode">${item.card_code || ''}</div>
+                            <div class="devTriageMeta">
+                                <span class="devFeedBadge devFeedBadge--type">${insightType}</span>
+                                <span class="devFeedBadge devFeedBadge--${confidenceBand}">
+                                    ${confidenceBand === 'strong' ? 'Strong' : confidenceBand === 'medium' ? 'Medium' : 'Low'}
+                                </span>
+                            </div>
+                            <div class="devConfidenceBar">
+                                <span style="font-size: 0.8rem; color: #7a6f8a;">${confidencePercent}%</span>
+                                <div class="devConfidenceTrack">
+                                    <div class="devConfidenceFill ${confidenceBand === 'strong' ? 'devConfidenceFill--high' : ''}" 
+                                         style="width: ${confidencePercent}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="devTriageText">${item.summary_text || item.review_reason || ''}</div>
+                    <div class="devTriageReason">Flagged: ${item.review_reason || 'Manual review required'}</div>
+                    ${item.image_url ? `<div class="devTriageLinks"><a href="${item.image_url}" target="_blank" class="devTriageLink">View card image</a></div>` : ''}
+                    ${item.ruling_citation ? `
+                        <div class="devTriageRuling">
+                            <div class="devTriageRulingLabel">Ruling:</div>
+                            <div>${item.ruling_citation.source_title || 'Official ruling'}</div>
+                        </div>
+                    ` : ''}
+                    <div class="devTriageActions">
+                        <a href="/dev/approve/${item.card_code}" class="devBtn devBtn--primary" style="flex: 1;">Approve</a>
+                        <a href="/dev/reject/${item.card_code}" class="devBtn devBtn--secondary" style="flex: 1;">Reject</a>
+                    </div>
+                </div>
+            `;
+                        }).join('');
+
+                        applyFilters();
+                    }
+
+                    // Filter functionality
+                    function applyFilters() {
+                        const cards = document.querySelectorAll('.devTriageCard');
+                        let visibleCount = 0;
+
+                        cards.forEach(card => {
+                            const insightType = card.dataset.insightType;
+                            const confidence = parseFloat(card.dataset.confidence);
+
+                            let insightMatch = activeInsightFilter === 'all' || insightType === activeInsightFilter;
+                            let confidenceMatch = activeConfidenceFilter === 'all';
+
+                            if (!confidenceMatch) {
+                                if (activeConfidenceFilter === 'strong' && confidence >= 0.85) confidenceMatch = true;
+                                else if (activeConfidenceFilter === 'medium' && confidence >= 0.65 && confidence < 0.85) confidenceMatch = true;
+                                else if (activeConfidenceFilter === 'low' && confidence < 0.65) confidenceMatch = true;
+                            }
+
+                            const shouldShow = insightMatch && confidenceMatch;
+                            card.style.display = shouldShow ? '' : 'none';
+                            if (shouldShow) visibleCount++;
+                        });
+
+                        // Update pulse text with filtered count
+                        const triageElement = document.getElementById('devTriageCount');
+                        if (triageElement) {
+                            triageElement.textContent = visibleCount;
+                        }
+                    }
+
+                    // Progress tracking
+                    function updateProgress() {
+                        const progressText = document.getElementById('devProgressText');
+                        const progressFill = document.getElementById('devProgressFill');
+
+                        if (progressText) {
+                            progressText.textContent = `${sessionReviewed} reviewed this session`;
+                        }
+                        if (progressFill && sessionTotal > 0) {
+                            progressFill.style.width = `${(sessionReviewed / sessionTotal) * 100}%`;
+                        }
+                    }
+
+                    // Event handlers
+                    function setupEventHandlers() {
+                        // System pulse toggle
+                        document.getElementById('devSystemPulse').addEventListener('click', function (e) {
+                            if (!e.target.closest('.devServiceActions')) {
+                                pulseExpanded = !pulseExpanded;
+                                this.classList.toggle('devSystemPulse--expanded', pulseExpanded);
+                            }
+                        });
+
+                        // Threshold control
+                        document.querySelectorAll('.devSegmentedOption').forEach(btn => {
+                            btn.addEventListener('click', function () {
+                                document.querySelectorAll('.devSegmentedOption').forEach(b => b.classList.remove('devSegmentedOption--active'));
+                                this.classList.add('devSegmentedOption--active');
+                                autoApproveThreshold = parseFloat(this.dataset.threshold);
+                                localStorage.setItem('devAutoApproveThreshold', autoApproveThreshold);
+                                document.getElementById('devThresholdValue').textContent = autoApproveThreshold.toFixed(2);
+                                loadTriageStack(); // Re-render to update auto badges
+                            });
+                        });
+
+                        // Filter pills
+                        document.querySelectorAll('.devFilterPill').forEach(pill => {
+                            pill.addEventListener('click', function () {
+                                const filterType = this.dataset.filterType;
+                                const filterValue = this.dataset.value;
+
+                                // Update active state
+                                const row = this.closest('.devFilterRow');
+                                row.querySelectorAll('.devFilterPill').forEach(p => p.classList.remove('devFilterPill--active'));
+                                this.classList.add('devFilterPill--active');
+
+                                // Update filter state
+                                if (filterType === 'insight') {
+                                    activeInsightFilter = filterValue;
+                                } else if (filterType === 'confidence') {
+                                    activeConfidenceFilter = filterValue;
+                                }
+
+                                applyFilters();
+                            });
+                        });
+                    }
+
+                    // Restart service function
+                    window.restartService = function (port) {
+                        const button = event.target;
+                        const originalText = button.textContent;
+
+                        // Show inline confirmation
+                        button.textContent = 'Restarting...';
+                        button.style.background = 'rgba(201, 168, 76, 0.2)';
+                        button.style.color = '#c9a84c';
+                        button.disabled = true;
+
+                        fetch(`/api/dev/restart/${port}`, { method: 'POST' })
+                            .then(r => r.json())
+                            .then(data => {
+                                if (data.status === 'restarting') {
+                                    // Show success briefly
+                                    button.textContent = 'Restarting...';
+                                    setTimeout(() => {
+                                        updateSystemPulse();
+                                    }, 3000);
+                                } else {
+                                    // Show error briefly then restore
+                                    button.textContent = 'Failed';
+                                    button.style.background = 'rgba(231, 76, 60, 0.2)';
+                                    button.style.color = '#e74c3c';
+                                    setTimeout(() => {
+                                        button.textContent = originalText;
+                                        button.style.background = '';
+                                        button.style.color = '';
+                                        button.disabled = false;
+                                    }, 2000);
+                                }
+                            })
+                            .catch(err => {
+                                button.textContent = 'Failed';
+                                button.style.background = 'rgba(231, 76, 60, 0.2)';
+                                button.style.color = '#e74c3c';
+                                setTimeout(() => {
+                                    button.textContent = originalText;
+                                    button.style.background = '';
+                                    button.style.color = '';
+                                    button.disabled = false;
+                                }, 2000);
+                            });
+                    };
+
+                    // Initialize
+                    function init() {
+                        setupEventHandlers();
+                        updateSystemPulse();
+                        loadIntelligenceFeed();
+                        loadTriageStack();
+
+                        // Update pulse every 30 seconds
+                        setInterval(updateSystemPulse, 30000);
+
+                        // Update threshold display
+                        document.getElementById('devThresholdValue').textContent = autoApproveThreshold.toFixed(2);
+                    }
+
+                    // Start when DOM is ready
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', init);
+                    } else {
+                        init();
+                    }
+                })();
+            </script>
+            {% elif page_key == "dev_monitor" %}
+            {% include 'partials/dev_monitor_full.html' %}
+            {% elif page_key == "status" %}
+            <header class="heroCard heroCard--section">
+                <img class="heroLogo miruLogo" src="/static/icons/miru-fruit.png" alt="Miru Logo">
+                <div class="heroCopy">
+                    <div class="heroEyebrow">System status</div>
+                    <h1>Miru sidecar status</h1>
+                    <p>This is a lightweight view of the current Miru AI sidecar state so you can sanity-check the
+                        routes and helper availability without leaving the product surface.</p>
+                </div>
+            </header>
+
+            <section class="overviewGrid" aria-label="Miru status checks">
+                {% for item in status_snapshot %}
+                <article class="infoCard statusInfoCard">
+                    <div class="statusHeadingRow">
+                        <h2>{{ item.label }}</h2>
+                        <span class="statusPill statusPill--{{ item.tone }}">{{ item.value }}</span>
+                    </div>
+                    <p>{{ item.detail }}</p>
+                </article>
+                {% endfor %}
+            </section>
+
+            {% if startup_issues %}
+            <section class="noticeStack" aria-label="Startup notices">
+                {% for issue in startup_issues %}
+                <article class="noticeCard">
+                    <strong>Heads up</strong>
+                    <p>{{ issue }}</p>
+                </article>
+                {% endfor %}
+            </section>
+            {% endif %}
+            {% endif %}
+        </div>
+    </main>
+
+    <div id="miruApprovalModal" class="miruModalOverlay" hidden>
+        <div class="miruModalBox">
+            <button class="miruModalClose" id="miruModalClose" aria-label="Close">✕</button>
+            <div class="miruModalImageWrap">
+                <img id="miruModalImage" src="" alt="" class="miruModalImage">
+            </div>
+            <div class="miruModalCardTitle">
+                <span id="miruModalName" class="miruModalName"></span>
+                <span id="miruModalCode" class="miruModalCode"></span>
+            </div>
+            <div id="miruModalInsight" class="miruModalInsight"></div>
+            <div id="miruModalMeta" class="miruModalMeta"></div>
+            <div class="miruModalActions">
+                <button id="miruModalApprove" class="miruApproveBtn">Approve</button>
+                <button id="miruModalReject" class="miruRejectBtn">Reject</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.MIRU_AI_CONFIG = {
+            pageKey: {{ page_key | tojson }},
+        modeConfigs: { { mode_configs | tojson } },
+        defaultMode: { { default_mode | tojson } },
+        runUrl: { { run_url | tojson } },
+        healthUrl: { { health_url | tojson } },
+        devStatusUrl: { { dev_status_url | tojson } },
+        runDisabled: { { run_disabled | tojson } },
+        pythonName: { { config.get('PYTHON_NAME', 'python') | tojson } },
+        copySuccessText: { { "Copied to clipboard." | tojson } },
+        copyFallbackText: { { "Clipboard copy is blocked here. Miru selected the result so you can copy it manually." | tojson } },
+        pasteSuccessText: { { "Pasted into the question box." | tojson } },
+        pasteFallbackText: { { "Browser paste is blocked here. Tap the question box and use your device paste action." | tojson } }
+        };
+    </script>
+    <script src="{{ url_for('static', filename='miru_ai.js') }}?v={{ asset_version }}" defer></script>
+</body>
+
+</html>

@@ -4,7 +4,8 @@ import sqlite3
 from pathlib import Path
 
 ASSETS_ROOT = r"D:\Miru_Assets"
-DB_PATH = r"C:\Users\andre\.codex\worktrees\0814\tcg-watcher\data\card_catalog.db"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DB_PATH = PROJECT_ROOT / "data" / "card_catalog.db"
 
 # Folders to skip — base card folders only
 SKIP_SUBFOLDERS = {"base"}
@@ -35,7 +36,7 @@ for set_folder in os.listdir(ASSETS_ROOT):
 print(f"Total non-base variant files found: {len(variant_files)}")
 
 # Load card_variants joined to cards for canonical_code lookup
-conn = sqlite3.connect(Path(DB_PATH).as_uri() + "?mode=ro", uri=True)
+conn = sqlite3.connect(DB_PATH.as_uri() + "?mode=ro", uri=True)
 cur = conn.execute(
     """
     SELECT

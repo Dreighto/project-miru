@@ -4,7 +4,7 @@ import json
 import unittest
 from pathlib import Path
 
-from dashboard.miru_card_intel import (
+from shared.intel.card_intel import (
     analyze_card_text,
     build_observed_catalog,
     evaluate_cases,

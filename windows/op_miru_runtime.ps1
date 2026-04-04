@@ -82,7 +82,7 @@ function Test-MiruProcessIsMiruAiDev {
         $proc = Get-CimInstance Win32_Process -Filter "ProcessId = $ProcessId" -ErrorAction Stop
         $cmd = [string]$proc.CommandLine
         $portMatch = $cmd -match "(^|[^\d])$ExpectedPort($|[^\d])"
-        $scriptMatch = $cmd -match "tools[/\\]miru_ai_server\.py"
+        $scriptMatch = $cmd -match "tools[/\\]miru_ai_server\.py" -or $cmd -match "(^|\\s)-m\\s+miru_ai\.server(\\s|$)"
         return $scriptMatch -and $portMatch
     }
     catch { return $false }

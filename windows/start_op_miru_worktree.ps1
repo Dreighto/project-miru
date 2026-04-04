@@ -98,7 +98,7 @@ function Test-OpMiruWorktreeMiruAiOwnership {
         $commandLine = [string]($processInfo.CommandLine)
         $pidFileMatchesRepo = $pidRecord -and ([string]$pidRecord.repo_root) -eq $RepoRoot
         return (
-            $commandLine -match "tools[/\\]miru_ai_server\.py" -and (
+            ($commandLine -match "tools[/\\]miru_ai_server\.py" -or $commandLine -match "(^|\\s)-m\\s+miru_ai\.server(\\s|$)") -and (
                 $commandLine -match "(^|[^\d])$MiruAiPort($|[^\d])" -or
                 $pidFileMatchesRepo
             )
@@ -129,11 +129,17 @@ function Start-OpMiruWorktreeMiruAi {
 
     $pythonCommand = Get-Command python -ErrorAction Stop
     $env:PROJECT_MIRU_PORT = "$DashboardPort"
+    if ((Test-Path Env:PATH) -and (Test-Path Env:Path)) {
+        if ([string]::IsNullOrWhiteSpace($env:Path) -and -not [string]::IsNullOrWhiteSpace($env:PATH)) {
+            $env:Path = $env:PATH
+        }
+        Remove-Item Env:PATH -ErrorAction SilentlyContinue
+    }
 
     Write-OpMiruWorktreeLine "Starting worktree Miru AI with companion dashboard port $DashboardPort."
     $process = Start-Process `
         -FilePath $pythonCommand.Source `
-        -ArgumentList @("tools\miru_ai_server.py", "--host", $BindHost, "--port", "$MiruAiPort", "--debug") `
+        -ArgumentList @("-m", "miru_ai.server", "--host", $BindHost, "--port", "$MiruAiPort", "--debug") `
         -WorkingDirectory $RepoRoot `
         -RedirectStandardOutput $StdoutLog `
         -RedirectStandardError $StderrLog `
@@ -170,7 +176,7 @@ function Start-OpMiruWorktreeDashboardNative {
     Write-OpMiruWorktreeLine "Starting worktree dashboard on port $DashboardPort (native Python, no Docker)."
     $process = Start-Process `
         -FilePath $pythonCommand.Source `
-        -ArgumentList "dashboard\app.py" `
+        -ArgumentList "pm\app.py" `
         -WorkingDirectory $RepoRoot `
         -RedirectStandardOutput $StdoutLog `
         -RedirectStandardError $StderrLog `
@@ -219,7 +225,7 @@ Write-OpMiruWorktreeLine $pushoverStatus.Summary
 if ($Native) {
     $listeningDashboard = Get-OpMiruListeningEntry -Port $DashboardPort
     if ($listeningDashboard) {
-        # Check if the existing process is already serving dashboard/app.py
+        # Check if the existing process is already serving pm/app.py
         $existingDashboardCmd = ""
         try {
             $existingDashboardCmd = [string](Get-CimInstance Win32_Process -Filter "ProcessId = $($listeningDashboard.Pid)" -ErrorAction Stop).CommandLine
@@ -231,7 +237,7 @@ if ($Native) {
         } catch { }
 
         $isDashboardProcess = (
-            $existingDashboardCmd -match "dashboard[/\\]app\.py" -or
+            $existingDashboardCmd -match "pm[/\\]app\.py" -or
             ($existingDashboardCmd -eq "" -and $existingProcessName -match "^python")
         )
 
@@ -449,7 +455,7 @@ if ($miruAiProbe.Ok) {
     }
 
     if (-not $miruAiNeedsRestart) {
-        $serverFileMtime = (Get-Item (Join-Path $repoRoot "tools\miru_ai_server.py")).LastWriteTime
+        $serverFileMtime = (Get-Item (Join-Path $repoRoot "miru_ai\server.py")).LastWriteTime
         $pidRecord = Get-OpMiruWorktreeMiruAiPidRecord -PidFilePath $pidFilePath
         if ($pidRecord -and [datetime]$pidRecord.started_at -lt $serverFileMtime) {
             $miruAiNeedsRestart = $true

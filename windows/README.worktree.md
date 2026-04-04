@@ -6,8 +6,8 @@ Canonical authority note: this is the primary startup doc for worktree runtime. 
 
 ## Services
 
-1. **Dashboard** on host port **18080** (worktree Project Miru site)
-2. **Miru AI** from `tools/miru_ai_server.py` on host port **18765** (Dev control surface, binds 0.0.0.0 for Tailscale)
+1. **Dashboard** on host port **18080** (worktree Project Miru site from `pm/app.py`)
+2. **Miru AI** from `miru_ai/server.py` via `python -m miru_ai.server` on host port **18765** (Dev control surface, binds 0.0.0.0 for Tailscale)
 3. Optionally **tcg-watcher** from `app/` with isolated worktree `data/` (Docker flow only)
 
 ## Files

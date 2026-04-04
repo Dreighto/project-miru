@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Image Review — Miru</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0d0d0f; color: #f0edf8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; min-height: 100vh; padding-bottom: calc(8px + 56px + max(16px, env(safe-area-inset-bottom, 0px)) + 16px); }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #1e1a2e; position: sticky; top: 0; background: #0d0d0f; z-index: 5; }
+.back-link { color: #7a6f8a; text-decoration: none; font-size: 14px; }
+.header-title { color: #f0edf8; font-size: 16px; font-weight: 600; }
+.progress-text { color: #c9a84c; font-size: 13px; }
+.tabs { display: flex; gap: 8px; padding: 8px 16px; }
+.tab-btn { flex: 1; padding: 10px; border-radius: 8px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; }
+.tab-btn.active { background: #6c3fc4; color: #fff; }
+.tab-btn.inactive { background: #13111a; color: #7a6f8a; }
+.group-tabs { display: flex; gap: 6px; padding: 8px 16px; overflow-x: auto; }
+.group-tab { padding: 6px 12px; border-radius: 20px; border: 1px solid #2a2440; background: #13111a; color: #7a6f8a; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.group-tab.active { background: #6c3fc4; color: #fff; border-color: #6c3fc4; }
+.legend-wrap { margin: 8px 16px; border: 1px solid #2a2440; border-radius: 8px; overflow: hidden; }
+.legend-toggle { width: 100%; padding: 10px 12px; background: #13111a; border: none; color: #c9a84c; font-size: 13px; font-weight: 600; text-align: left; cursor: pointer; }
+.legend-body { display: none; max-height: 200px; overflow: auto; font-size: 11px; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+.legend-body.open { display: block; }
+.legend-table { width: 100%; border-collapse: collapse; }
+.legend-table th, .legend-table td { padding: 6px 8px; border-bottom: 1px solid #1e1a2e; text-align: left; color: #a89fb8; }
+.legend-table th { color: #7a6f8a; font-weight: 600; }
+.legend-table td.legend-key { white-space: nowrap; font-weight: 600; color: #c9a84c; width: 1%; vertical-align: top; }
+.legend-product-cell { vertical-align: top; }
+.legend-count { color: #5c5470; font-size: 10px; margin-left: 8px; white-space: nowrap; }
+.legend-search { width: 100%; padding: 8px 10px; border: none; border-bottom: 1px solid #1e1a2e; background: #13111a; color: #f0edf8; font-size: 12px; box-sizing: border-box; }
+.legend-search::placeholder { color: #5c5470; }
+.legend-search:focus { outline: none; background: #18151f; }
+.thumb-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 12px 16px; }
+@media (min-width: 600px) { .thumb-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 900px) { .thumb-grid { grid-template-columns: repeat(4, 1fr); } }
+.thumb-card { border-radius: 10px; overflow: visible; border: 2px solid transparent; background: #13111a; cursor: pointer; position: relative; }
+.thumb-card.selected { border-color: #c9a84c; }
+.thumb-card img { width: 100%; max-width: 160px; height: auto; display: block; margin: 0 auto; min-height: 80px; object-fit: contain; background: #0d0d0f; border-radius: 8px; }
+.thumb-meta { padding: 6px; font-size: 11px; text-align: center; }
+.thumb-code { color: #c9a84c; font-weight: 700; word-break: break-all; }
+.thumb-vision { color: #7a6f8a; font-size: 10px; margin-top: 2px; }
+.thumb-batch { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; z-index: 2; }
+.thumb-wrap { position: relative; border-radius: 8px; overflow: hidden; }
+.thumb-card > .thumb-badge { bottom: 32px; }
+.thumb-badge { position: absolute; bottom: 6px; left: 6px; z-index: 3; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 6px; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.6); }
+.thumb-badge.confirm { background: #1a3a1a; color: #4caf50; border: 1px solid #2d6b2d; }
+.thumb-badge.reclassify { background: #2a1a4a; color: #b39ddb; border: 1px solid #6c3fc4; }
+.thumb-badge.delete { background: #3a1a1a; color: #f44336; border: 1px solid #6b2d2d; }
+.legacy-action-panel { display: none !important; }
+.reclassify-row { margin-bottom: 10px; }
+.reclassify-row label { display: block; font-size: 11px; color: #7a6f8a; margin-bottom: 4px; }
+.reclassify-row input, .reclassify-row select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #2a2440; background: #13111a; color: #f0edf8; font-size: 14px; }
+.reclassify-row .ro-field { padding: 10px; border-radius: 8px; border: 1px solid #2a2440; background: #0d0d0f; color: #7a6f8a; font-size: 12px; word-break: break-all; }
+.sheet-field-input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #2a2440; background: #13111a; color: #f0edf8; font-size: 16px; }
+/* iOS Safari: inputs below 16px trigger focus zoom */
+.action-sheet input,
+.action-sheet select,
+.action-sheet textarea { font-size: 16px; }
+#sheetFieldRelease { font-size: 16px; }
+.dkey-picker-trigger { font-size: 16px; }
+.sheet-dest-ro { padding: 10px; border-radius: 8px; border: 1px solid #2a2440; background: #0d0d0f; color: #7a6f8a; font-size: 11px; word-break: break-all; }
+.empty-state { text-align: center; padding: 40px 16px; color: #7a6f8a; }
+.batch-bar { position: fixed; bottom: calc(8px + 56px + max(16px, env(safe-area-inset-bottom, 0px))); left: 0; right: 0; background: #13111a; border-top: 1px solid #2a2440; padding: 10px 16px; display: flex; gap: 8px; z-index: 35; }
+.batch-bar button { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #2a2440; background: #1a1a22; color: #f0edf8; font-size: 12px; cursor: pointer; }
+.panel { display: none; }
+.panel.active { display: block; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(13,13,15,0.95); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
+.modal-overlay.open { display: flex; }
+.modal-overlay img { max-width: 100%; max-height: 90vh; border-radius: 8px; }
+.panel-batch .thumb-wrap { margin-bottom: 0; }
+#panelBatch { padding-bottom: calc(148px + max(16px, env(safe-area-inset-bottom, 0px))); }
+
+/* Bottom sheet — backdrop above page (z>5), below sheet; receives taps */
+.sheet-backdrop { display: none; position: fixed; inset: 0; background: rgba(13,13,15,0.55); z-index: 60; pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.sheet-backdrop.open { display: block; }
+.action-sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 85vh; overflow: hidden; background: #13111a; border-radius: 16px 16px 0 0; border: 1px solid #2a2440; border-bottom: none; z-index: 70; pointer-events: none; transform: translateY(105%); transition: transform 0.28s ease-out; display: flex; flex-direction: column; padding-bottom: calc(8px + 56px + max(16px, env(safe-area-inset-bottom, 0px)) + 12px); box-shadow: 0 -8px 32px rgba(0,0,0,0.5); }
+.action-sheet.open { transform: translateY(0); pointer-events: auto; }
+.sheet-handle { width: 40px; height: 4px; background: #3a3550; border-radius: 2px; margin: 8px auto 4px; flex-shrink: 0; }
+.sheet-main { flex: 1 1 auto; min-height: 0; max-height: 100%; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.sheet-header-compact { flex-shrink: 0; display: flex; gap: 10px; align-items: flex-start; padding: 8px 16px 10px; max-height: 120px; }
+.sheet-header-img { width: 80px; flex-shrink: 0; border-radius: 8px; overflow: hidden; background: #0d0d0f; cursor: pointer; border: 1px solid #2a2440; }
+.sheet-header-img img { width: 100%; display: block; }
+.sheet-header-text { flex: 1; min-width: 0; }
+.sheet-code { color: #c9a84c; font-weight: 700; font-size: 16px; line-height: 1.2; word-break: break-all; }
+.sheet-vision { color: #7a6f8a; font-size: 12px; margin-top: 4px; }
+.sheet-cardname { color: #7a6f8a; font-size: 12px; margin-top: 4px; word-break: break-all; }
+.sheet-classify-scroll { flex: 1 1 auto; min-height: 0; max-height: calc(85vh - 230px); overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 4px 16px 16px; border-top: 1px solid #1e1a2e; }
+.classify-label { font-size: 11px; color: #7a6f8a; margin: 10px 0 6px; display: block; }
+.classify-label:first-child { margin-top: 0; }
+.seg-row { display: flex; flex-wrap: nowrap; gap: 6px; overflow-x: auto; overflow-y: hidden; touch-action: pan-x; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; margin: 0 -16px 4px; padding: 0 16px; scrollbar-width: none; -ms-overflow-style: none; }
+.seg-row::-webkit-scrollbar { display: none; height: 0; width: 0; }
+.seg-btn { flex-shrink: 0; padding: 8px 14px; border-radius: 8px; border: 1px solid #2a2440; background: #0d0d0f; color: #a89fb8; font-size: 10px; font-weight: 700; cursor: pointer; text-transform: lowercase; white-space: nowrap; }
+.seg-btn.active { background: #c9a84c; border-color: #c9a84c; color: #0d0d0f; }
+.sheet-variants-toggle { width: 100%; text-align: left; padding: 10px 0 6px; margin-top: 4px; background: none; border: none; color: #c9a84c; font-size: 12px; font-weight: 600; cursor: pointer; }
+.sheet-variants-body { display: none; font-size: 12px; color: #a89fb8; line-height: 1.45; margin-top: 4px; overflow: visible; touch-action: pan-y; }
+.sheet-variants-body.open { display: block; }
+.sheet-actions-pinned { flex-shrink: 0; border-top: 1px solid #1e1a2e; padding: 10px 16px 8px; background: #13111a; position: sticky; bottom: 0; z-index: 3; box-shadow: 0 -6px 16px rgba(13,13,15,0.65); }
+.sheet-row3 { display: flex; gap: 8px; align-items: stretch; }
+.sheet-btn-icon { flex: 1; height: 44px; border-radius: 10px; border: 1px solid; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.sheet-btn-confirm { background: #1a3a1a; border-color: #2d6b2d; color: #4caf50; }
+.sheet-btn-delete { background: #3a1a1a; border-color: #6b2d2d; color: #f44336; }
+.sheet-btn-cancel { background: #1a1a22; border-color: #2a2440; color: #7a6f8a; }
+.sheet-btn-reclass-full { width: 100%; height: 48px; margin-top: 10px; border-radius: 10px; border: 2px solid #4a3fc4; background: #1e1a3a; color: #9f8fff; font-size: 15px; font-weight: 800; cursor: pointer; }
+.sheet-btn-reclass-full:disabled { opacity: 0.4; border-color: #2a2440; background: #1a1a22; color: #5c5470; cursor: not-allowed; }
+
+/* Staged + commit dock: drawer expands above fixed commit row (never covers Commit) */
+.staged-commit-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; flex-direction: column; align-items: stretch; pointer-events: none; }
+.staged-commit-dock > * { pointer-events: auto; }
+.staged-drawer-backdrop { display: none; position: fixed; inset: 0; background: rgba(13,13,15,0.45); z-index: 49; pointer-events: none; }
+.staged-drawer-backdrop.open { display: block; pointer-events: auto; }
+.staged-drawer { flex-shrink: 0; max-height: 0; min-height: 0; overflow: hidden; transition: max-height 0.28s ease; background: #13111a; border-top: 1px solid transparent; display: flex; flex-direction: column; }
+.staged-drawer.open { max-height: 40vh; border-top-color: #c9a84c; }
+.staged-drawer-head { flex-shrink: 0; padding: 10px 16px; font-weight: 700; color: #c9a84c; border-bottom: 1px solid #1e1a2e; }
+.staged-drawer-body { overflow-y: auto; flex: 1; min-height: 0; padding: 8px 16px 12px; touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.staged-commit-row { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-sizing: border-box; min-height: 56px; padding: 8px 12px max(16px, env(safe-area-inset-bottom, 0px)) 16px; background: #0d0d0f; border-top: 1px solid #2a2440; }
+.floating-commit-count { font-size: 14px; font-weight: 600; cursor: pointer; user-select: none; color: #5c5470; }
+.floating-commit-count.has { color: #c9a84c; }
+.floating-commit-count.zero { color: #5c5470; }
+.floating-commit-btn { min-height: 48px; min-width: 120px; padding: 0 22px; border-radius: 10px; border: 2px solid #c9a84c; background: #c9a84c; color: #0d0d0f; font-size: 15px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; -webkit-tap-highlight-color: transparent; }
+.floating-commit-btn:disabled { opacity: 0.35; cursor: not-allowed; border-color: #3a3550; background: #1a1a22; color: #5c5470; }
+.staged-item { display: flex; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px solid #1e1a2e; font-size: 11px; }
+.staged-item .badge { flex-shrink: 0; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+.badge-confirm { background: #1a3a1a; color: #4caf50; }
+.badge-reclass { background: #2a1a4a; color: #b39ddb; }
+.badge-del { background: #3a1a1a; color: #f44336; }
+.staged-item .meta { flex: 1; word-break: break-all; color: #a89fb8; }
+.btn-recall { padding: 4px 8px; font-size: 11px; border-radius: 4px; border: 1px solid #2a2440; background: #1a1a22; color: #f0edf8; cursor: pointer; }
+
+/* Toast */
+.toast { position: fixed; left: 16px; right: 16px; bottom: calc(8px + 56px + max(16px, env(safe-area-inset-bottom, 0px)) + 16px); background: #1a3a1a; border: 1px solid #2d6b2d; color: #a5d6a7; padding: 12px 14px; border-radius: 10px; font-size: 14px; z-index: 90; text-align: center; display: none; }
+.toast.open { display: block; }
+
+/* Commit confirm dialog */
+.commit-dialog-backdrop { display: none; position: fixed; inset: 0; background: rgba(13,13,15,0.7); z-index: 85; align-items: center; justify-content: center; padding: 24px; }
+.commit-dialog-backdrop.open { display: flex; }
+.commit-dialog { background: #13111a; border: 1px solid #2a2440; border-radius: 12px; padding: 20px; max-width: 320px; width: 100%; }
+.commit-dialog p { margin-bottom: 16px; color: #f0edf8; font-size: 15px; }
+.commit-dialog-actions { display: flex; gap: 10px; }
+.commit-dialog-actions button { flex: 1; padding: 12px; border-radius: 8px; font-weight: 700; cursor: pointer; border: 1px solid #2a2440; }
+.commit-dialog-cancel { background: #1a1a22; color: #a89fb8; }
+.commit-dialog-ok { background: #c9a84c; color: #0d0d0f; border-color: #c9a84c; }
+
+/* Product key full-screen picker (z above sheet; below img modal if same z — DOM order) */
+.dkey-picker-root { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; pointer-events: none; transform: translateY(100%); transition: transform 200ms ease-out; }
+.dkey-picker-root.open { pointer-events: auto; transform: translateY(0); }
+.dkey-picker-scrim { flex: 0 0 12vh; min-height: 56px; max-height: 140px; background: rgba(13,13,15,0.85); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.dkey-picker-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; background: rgba(13,13,15,0.98); border-top: 1px solid #2a2440; }
+.dkey-picker-head { flex-shrink: 0; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 12px; border-bottom: 1px solid #1e1a2e; }
+.dkey-picker-head-spacer { width: 44px; flex-shrink: 0; }
+.dkey-picker-title { flex: 1; text-align: center; color: #f0edf8; font-size: 16px; font-weight: 600; }
+.dkey-picker-close { width: 44px; height: 44px; flex-shrink: 0; border: none; background: transparent; color: #a89fb8; font-size: 22px; line-height: 1; cursor: pointer; border-radius: 8px; -webkit-tap-highlight-color: transparent; }
+.dkey-picker-search-row { flex-shrink: 0; padding: 10px 12px; border-bottom: 1px solid #1e1a2e; }
+.dkey-picker-search-wrap { position: relative; display: flex; align-items: center; }
+.dkey-picker-search-input { width: 100%; padding: 10px 40px 10px 12px; border-radius: 8px; border: 1px solid #2a2440; background: #13111a; color: #f0edf8; font-size: 16px; }
+.dkey-picker-search-input::placeholder { color: #5c5470; }
+.dkey-picker-search-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border: none; border-radius: 8px; background: #1a1a22; color: #a89fb8; font-size: 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.dkey-picker-results { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 4px 0 calc(12px + env(safe-area-inset-bottom, 0px)); }
+.dkey-picker-row { width: 100%; min-height: 56px; display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: none; border-bottom: 1px solid #1e1a2e; background: transparent; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.dkey-picker-row:hover { background: #1a1825; }
+.dkey-picker-row:active { background: #1a1825; }
+.dkey-picker-row-key { flex-shrink: 0; color: #c9a84c; font-weight: 700; font-size: 14px; max-width: 38%; word-break: break-all; }
+.dkey-picker-row-name { flex: 1; min-width: 0; color: #f0edf8; font-size: 14px; line-height: 1.35; word-break: break-word; }
+.dkey-picker-row-count { flex-shrink: 0; color: #5c5470; font-size: 12px; padding-top: 1px; }
+.dkey-picker-empty { padding: 32px 20px; text-align: center; color: #7a6f8a; font-size: 14px; }
+.dkey-picker-trigger { width: 100%; min-height: 44px; padding: 10px 40px 10px 12px; border-radius: 8px; border: 1px solid #2a2440; background: #13111a; display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; text-align: left; -webkit-tap-highlight-color: transparent; position: relative; }
+.dkey-picker-trigger:focus { outline: 2px solid #6c3fc4; outline-offset: 2px; }
+.dkey-picker-display-text { flex: 1; min-width: 0; line-height: 1.35; word-break: break-word; color: #f0edf8; }
+.dkey-picker-display-text.dkey-picker-display-empty { color: #5c5470; }
+.dkey-picker-display-actions { flex-shrink: 0; display: flex; align-items: center; gap: 4px; }
+.dkey-picker-inline-clear { width: 32px; height: 32px; border: none; border-radius: 8px; background: #1a1a22; color: #7a6f8a; font-size: 14px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.dkey-picker-chevron { color: #7a6f8a; font-size: 10px; padding: 0 2px; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="header">
+  <a href="/dev" class="back-link">← Back</a>
+  <span class="header-title">Image Review</span>
+  <span class="progress-text" id="progressText">—</span>
+</div>
+
+<div class="tabs">
+  <button type="button" class="tab-btn active" id="tabSingle" onclick="switchTab('single')">Single</button>
+  <button type="button" class="tab-btn inactive" id="tabBatch" onclick="switchTab('batch')">Batch</button>
+</div>
+
+<div class="legend-wrap">
+  <button type="button" class="legend-toggle" onclick="toggleLegend()">▼ Legend: distribution keys</button>
+  <div class="legend-body" id="legendBody">
+    <input type="search" class="legend-search" id="legendSearch" placeholder="Filter by key or product name…" autocomplete="off" />
+    <table class="legend-table" id="legendTable">
+      <thead><tr><th>Key</th><th>Product name</th></tr></thead>
+      <tbody id="legendTbody"></tbody>
+    </table>
+  </div>
+</div>
+<datalist id="dkeyList"></datalist>
+
+<div id="panelSingle" class="panel active">
+  <div class="group-tabs" id="groupTabsSingle"></div>
+  <div id="singleEmpty" class="empty-state" style="display:none">Loading…</div>
+  <div class="thumb-grid" id="thumbGrid"></div>
+  <div class="legacy-action-panel action-panel" id="actionPanel">
+    <div class="provenance-box"><strong>Known variants</strong><div>—</div></div>
+  </div>
+</div>
+
+<div id="panelBatch" class="panel panel-batch">
+  <div class="group-tabs" id="groupTabsBatch"></div>
+  <div class="thumb-grid" id="batchGrid"></div>
+  <div class="batch-bar">
+    <button type="button" onclick="batchStage('confirm')">Stage Confirm</button>
+    <button type="button" onclick="batchStage('delete')">Stage Delete</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="imgModal" onclick="closeModal(event)">
+  <img id="modalImg" src="" alt="" />
+</div>
+
+<div class="sheet-backdrop" id="sheetBackdrop" role="presentation"></div>
+<div class="action-sheet" id="actionSheet" aria-hidden="true">
+  <div class="sheet-handle" id="sheetHandle"></div>
+  <div class="sheet-main">
+    <div class="sheet-header-compact">
+      <div class="sheet-header-img" id="sheetHeaderImgWrap" title="View full size">
+        <img id="sheetHeaderImg" src="" alt="" />
+      </div>
+      <div class="sheet-header-text">
+        <div class="sheet-code" id="sheetCanon">—</div>
+        <div class="sheet-vision" id="sheetVision" style="display:none"></div>
+        <div class="sheet-cardname" id="sheetCardName">—</div>
+      </div>
+    </div>
+    <div class="sheet-classify-scroll" id="sheetClassifyScroll">
+      <span class="classify-label">Treatment</span>
+      <div class="seg-row" id="sheetSegTreatment" role="tablist">
+        <button type="button" class="seg-btn active" data-treat="parallel">parallel</button>
+        <button type="button" class="seg-btn" data-treat="sp">sp</button>
+        <button type="button" class="seg-btn" data-treat="tr">tr</button>
+        <button type="button" class="seg-btn" data-treat="alt_art">alt_art</button>
+        <button type="button" class="seg-btn" data-treat="ir">ir</button>
+        <button type="button" class="seg-btn" data-treat="mr">mr</button>
+        <button type="button" class="seg-btn" data-treat="gmr">gmr</button>
+      </div>
+      <span class="classify-label">Product key</span>
+      <input type="hidden" id="sheetFieldDkey" value="" />
+      <div class="dkey-picker-trigger" id="dkeyPickerTrigger" role="button" tabindex="0" aria-haspopup="listbox" aria-expanded="false" onclick="openDkeyPickerFromTap(event)">
+        <span class="dkey-picker-display-text dkey-picker-display-empty" id="dkeyPickerDisplayText">Select product key...</span>
+        <span class="dkey-picker-display-actions">
+          <button type="button" class="dkey-picker-inline-clear" id="dkeyPickerClear" style="display:none" aria-label="Clear product key" onclick="clearDkeyPickerSelection(event)">✕</button>
+          <span class="dkey-picker-chevron" aria-hidden="true">▼</span>
+        </span>
+      </div>
+      <label class="classify-label" for="sheetFieldRelease">Release set name</label>
+      <input type="text" class="sheet-field-input" id="sheetFieldRelease" placeholder="Bandai product name" />
+      <label class="classify-label">Destination (preview)</label>
+      <div class="sheet-dest-ro" id="sheetDestFullPath">—</div>
+      <button type="button" class="sheet-variants-toggle" id="sheetVariantsToggle" onclick="toggleSheetVariants()">▶ Known variants (0)</button>
+      <div class="sheet-variants-body" id="sheetVariantsBody"></div>
+    </div>
+    <div class="sheet-actions-pinned">
+      <div class="sheet-row3">
+        <button type="button" class="sheet-btn-icon sheet-btn-confirm" onclick="submitSheetConfirm()" title="Confirm">✓</button>
+        <button type="button" class="sheet-btn-icon sheet-btn-cancel" onclick="closeSheet()" title="Cancel">✗</button>
+        <button type="button" class="sheet-btn-icon sheet-btn-delete" onclick="submitSheetDelete()" title="Delete">🗑</button>
+      </div>
+      <button type="button" class="sheet-btn-reclass-full" id="sheetBtnReclassify" disabled onclick="submitSheetReclassify()">Reclassify</button>
+    </div>
+  </div>
+</div>
+
+<div id="dkeyPickerRoot" class="dkey-picker-root" aria-hidden="true">
+  <div class="dkey-picker-scrim" id="dkeyPickerScrim" role="button" tabindex="-1" aria-label="Close picker"></div>
+  <div class="dkey-picker-panel" id="dkeyPickerPanel">
+    <header class="dkey-picker-head">
+      <span class="dkey-picker-head-spacer"></span>
+      <span class="dkey-picker-title">Select Product</span>
+      <button type="button" class="dkey-picker-close" id="dkeyPickerCloseBtn" aria-label="Close">✕</button>
+    </header>
+    <div class="dkey-picker-search-row">
+      <div class="dkey-picker-search-wrap">
+        <input type="search" class="dkey-picker-search-input" id="dkeyPickerSearch" placeholder="Search by key or product name..." autocomplete="off" />
+        <button type="button" class="dkey-picker-search-clear" id="dkeyPickerSearchClear" style="display:none" aria-label="Clear search">✕</button>
+      </div>
+    </div>
+    <div class="dkey-picker-results" id="dkeyPickerResults"></div>
+  </div>
+</div>
+
+<div class="staged-drawer-backdrop" id="stagedDrawerBackdrop" onclick="closeStagedDrawer()"></div>
+<div class="staged-commit-dock" id="stagedCommitDock">
+  <div class="staged-drawer" id="stagedDrawer">
+    <div class="staged-drawer-head">Staged — tap Recall to undo</div>
+    <div class="staged-drawer-body" id="stagedList"></div>
+  </div>
+  <div class="staged-commit-row" id="floatingCommitBar">
+    <span class="floating-commit-count zero" id="floatingStagedLabel">0 staged</span>
+    <button type="button" class="floating-commit-btn" id="floatingCommitBtn" disabled onclick="openCommitDialog()">Commit</button>
+  </div>
+</div>
+
+<div class="commit-dialog-backdrop" id="commitDialogBackdrop">
+  <div class="commit-dialog" onclick="event.stopPropagation()">
+    <p id="commitDialogText">Commit?</p>
+    <div class="commit-dialog-actions">
+      <button type="button" class="commit-dialog-cancel" onclick="closeCommitDialog()">Cancel</button>
+      <button type="button" class="commit-dialog-ok" onclick="executeCommit()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let queueData = {};
+let currentGroup = '';
+let totalItems = 0;
+let reviewedCount = 0;
+let selectedId = null;
+let legendRows = [];
+let stagedItems = [];
+let sheetVariantsCount = 0;
+let bodyScrollLockDepth = 0;
+const MIRU_ASSETS_PREFIX = 'D:\\\\Miru_Assets\\\\';
+
+function lockBodyScroll() {
+  bodyScrollLockDepth++;
+  if (bodyScrollLockDepth === 1) document.body.style.overflow = 'hidden';
+}
+function unlockBodyScroll() {
+  bodyScrollLockDepth = Math.max(0, bodyScrollLockDepth - 1);
+  if (bodyScrollLockDepth === 0) document.body.style.overflow = '';
+}
+
+function switchTab(tab) {
+  document.getElementById('panelSingle').classList.toggle('active', tab === 'single');
+  document.getElementById('panelBatch').classList.toggle('active', tab === 'batch');
+  document.getElementById('tabSingle').className = 'tab-btn ' + (tab === 'single' ? 'active' : 'inactive');
+  document.getElementById('tabBatch').className = 'tab-btn ' + (tab === 'batch' ? 'active' : 'inactive');
+  if (tab === 'batch') closeActionSheet();
+}
+
+function toggleLegend() {
+  document.getElementById('legendBody').classList.toggle('open');
+}
+
+function normPathJoin(folder, filename) {
+  const f = (folder || '').replace(/\\/g, '/').toLowerCase();
+  const n = (filename || '').toLowerCase();
+  return (f + '/' + n).replace(/\/+/g, '/');
+}
+
+function stagedRecordForItem(item) {
+  if (!item || !item.filename) return null;
+  const want = normPathJoin(item.folder, item.filename);
+  for (let i = 0; i < stagedItems.length; i++) {
+    const s = stagedItems[i];
+    const fp = (s.file_path || '').replace(/\\/g, '/').toLowerCase();
+    if (fp.endsWith(want)) return s;
+  }
+  return null;
+}
+
+function badgeForItem(item) {
+  const s = stagedRecordForItem(item);
+  if (!s) return '';
+  const a = (s.action || '').toLowerCase();
+  if (a === 'confirm') return '<span class="thumb-badge confirm" title="Staged confirm">✓</span>';
+  if (a === 'reclassify' || a === 'misroute') return '<span class="thumb-badge reclassify" title="Staged reclassify">R</span>';
+  if (a === 'delete') return '<span class="thumb-badge delete" title="Staged delete">🗑</span>';
+  return '';
+}
+
+function legendRowsFiltered() {
+  const q = (document.getElementById('legendSearch') && document.getElementById('legendSearch').value || '').trim().toLowerCase();
+  if (!q) return legendRows;
+  return legendRows.filter(r => {
+    const k = String(r.key || '').toLowerCase();
+    const p = String(r.product_name || '').toLowerCase();
+    return k.includes(q) || p.includes(q);
+  });
+}
+
+function renderLegendTable() {
+  const tb = document.getElementById('legendTbody');
+  const rows = legendRowsFiltered();
+  tb.innerHTML = rows.map(r => {
+    const name = r.product_name != null && String(r.product_name).trim() !== '' ? r.product_name : '—';
+    const cnt = r.card_count != null ? String(r.card_count) : '';
+    const cntHtml = cnt !== '' ? '<span class="legend-count">' + esc(cnt) + '</span>' : '';
+    return '<tr><td class="legend-key">' + esc(r.key) + '</td><td class="legend-product-cell">' + esc(name) + cntHtml + '</td></tr>';
+  }).join('');
+}
+
+function buildDkeyDatalist() {
+  const dl = document.getElementById('dkeyList');
+  const rows = legendRows || [];
+  dl.innerHTML = rows.map(r => {
+    const k = r.key || '';
+    const n = (r.product_name && String(r.product_name).trim()) ? String(r.product_name).trim() : '—';
+    const label = k + ' — ' + n;
+    return '<option value="' + escAttr(k) + '" label="' + escAttr(label) + '">' + esc(label) + '</option>';
+  }).join('');
+}
+
+async function loadLegend() {
+  try {
+    const res = await fetch('/api/dev/image-review/legend');
+    legendRows = await res.json();
+    if (!Array.isArray(legendRows)) legendRows = [];
+    buildDkeyDatalist();
+    renderLegendTable();
+    if (document.getElementById('dkeyPickerRoot').classList.contains('open')) renderDkeyPickerList();
+    syncDkeyPickerDisplay();
+  } catch (e) {
+    legendRows = [];
+    buildDkeyDatalist();
+    renderLegendTable();
+    if (document.getElementById('dkeyPickerRoot').classList.contains('open')) renderDkeyPickerList();
+    syncDkeyPickerDisplay();
+  }
+}
+
+async function loadQueue() {
+  try {
+    const res = await fetch('/api/dev/image-review/queue');
+    const data = await res.json();
+    queueData = data.groups || {};
+    totalItems = data.total || 0;
+    reviewedCount = data.reviewed || 0;
+    document.getElementById('progressText').textContent = reviewedCount + ' / ' + totalItems;
+    const groups = Object.keys(queueData);
+    const emptyEl = document.getElementById('singleEmpty');
+    if (groups.length === 0) {
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = 'Queue complete ✓';
+      document.getElementById('thumbGrid').innerHTML = '';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    buildGroupTabs(groups);
+    if (!currentGroup || !queueData[currentGroup]) currentGroup = groups[0];
+    selectGroup(currentGroup);
+  } catch (e) {
+    document.getElementById('singleEmpty').style.display = 'block';
+    document.getElementById('singleEmpty').textContent = 'Failed to load queue: ' + e.message;
+  }
+}
+
+async function loadStaged() {
+  try {
+    const res = await fetch('/api/dev/image-review/staged');
+    const data = await res.json();
+    stagedItems = data.items || [];
+    const n = stagedItems.length;
+    const lbl = document.getElementById('floatingStagedLabel');
+    lbl.textContent = n + ' staged';
+    lbl.className = 'floating-commit-count ' + (n > 0 ? 'has' : 'zero');
+    document.getElementById('floatingCommitBtn').disabled = n === 0;
+    const list = document.getElementById('stagedList');
+    list.innerHTML = stagedItems.map((s, si) => {
+      const act = (s.action || '').toLowerCase();
+      let cls = 'badge-reclass';
+      if (act === 'confirm') cls = 'badge-confirm';
+      if (act === 'delete') cls = 'badge-del';
+      const dest = s.destination_path ? esc(s.destination_path) : '(delete)';
+      return '<div class="staged-item"><span class="badge ' + cls + '">' + esc(act) + '</span><div class="meta">' +
+        esc(s.timestamp) + '<br/>' + esc(s.canonical_code) + '<br/>' + dest +
+        '</div><button type="button" class="btn-recall" data-ridx="' + si + '">Recall</button></div>';
+    }).join('');
+    list.querySelectorAll('.btn-recall').forEach(btn => {
+      btn.onclick = () => {
+        const i = parseInt(btn.getAttribute('data-ridx'), 10);
+        const sid = stagedItems[i] && stagedItems[i].decision_id;
+        if (sid) recallStaged(sid);
+      };
+    });
+    if (n === 0) closeStagedDrawer();
+    renderThumbs();
+    renderBatchGrid();
+  } catch (e) { stagedItems = []; }
+}
+
+function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return esc(s).replace(/"/g, '&quot;'); }
+
+function buildGroupTabs(groups) {
+  ['groupTabsSingle','groupTabsBatch'].forEach(id => {
+    document.getElementById(id).innerHTML = groups.map(g =>
+      '<button type="button" class="group-tab" data-group="' + escAttr(g) + '" onclick="selectGroup(this.dataset.group)">' + esc(g) + ' (' + (queueData[g]||[]).length + ')</button>'
+    ).join('');
+  });
+}
+
+function selectGroup(group) {
+  currentGroup = group;
+  selectedId = null;
+  document.querySelectorAll('.group-tab').forEach(t => {
+    t.classList.toggle('active', t.getAttribute('data-group') === group);
+  });
+  renderThumbs();
+  renderBatchGrid();
+  closeActionSheet();
+}
+
+function itemsInGroup() { return queueData[currentGroup] || []; }
+
+function displayPathForItem(item) {
+  if (!item) return '—';
+  const folder = (item.folder || '').replace(/\//g, '\\');
+  const fn = item.filename || '';
+  return MIRU_ASSETS_PREFIX + folder + (folder ? '\\' : '') + fn;
+}
+
+function setFolderFromCanonical(code) {
+  const u = (code || '').trim().toUpperCase();
+  if (!u) return '';
+  const i = u.indexOf('-');
+  return i >= 0 ? u.slice(0, i) : u;
+}
+
+function displayNameForItem(item) {
+  if (!item || !item.filename) return '—';
+  const fn = item.filename;
+  const dot = fn.lastIndexOf('.');
+  return dot > 0 ? fn.slice(0, dot) : fn;
+}
+
+function getSheetTreatment() {
+  const el = document.querySelector('#sheetSegTreatment .seg-btn.active');
+  return el ? el.getAttribute('data-treat') : 'parallel';
+}
+
+function setSheetTreatment(t) {
+  const want = (t || 'parallel').toLowerCase();
+  document.querySelectorAll('#sheetSegTreatment .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-treat') === want);
+  });
+}
+
+function updateReclassifyButtonState() {
+  const dkey = document.getElementById('sheetFieldDkey').value.trim();
+  document.getElementById('sheetBtnReclassify').disabled = !dkey;
+}
+
+function dkeyPickerLegendRowsSorted() {
+  const rows = (legendRows || []).filter(r => (r.key || '').trim());
+  return rows.slice().sort((a, b) => String(a.key).localeCompare(String(b.key)));
+}
+
+function dkeyPickerFilteredRows(query) {
+  const qq = (query || '').trim().toLowerCase();
+  const sorted = dkeyPickerLegendRowsSorted();
+  if (!qq) return sorted;
+  return sorted.filter(r => {
+    const k = String(r.key || '').toLowerCase();
+    const p = String(r.product_name || '').toLowerCase();
+    return k.includes(qq) || p.includes(qq);
+  });
+}
+
+function toggleDkeySearchClearVisibility() {
+  const inp = document.getElementById('dkeyPickerSearch');
+  const btn = document.getElementById('dkeyPickerSearchClear');
+  btn.style.display = (inp.value && inp.value.trim()) ? '' : 'none';
+}
+
+function renderDkeyPickerList() {
+  const inp = document.getElementById('dkeyPickerSearch');
+  const q = inp ? inp.value : '';
+  const list = dkeyPickerFilteredRows(q);
+  const el = document.getElementById('dkeyPickerResults');
+  const qTrim = (q || '').trim();
+  if (!list.length) {
+    el.innerHTML = '<div class="dkey-picker-empty">No results for \'' + esc(qTrim) + '\'</div>';
+    return;
+  }
+  el.innerHTML = list.map(r => {
+    const k = r.key || '';
+    const name = r.product_name != null && String(r.product_name).trim() !== '' ? String(r.product_name) : '—';
+    const cnt = r.card_count != null ? String(r.card_count) : '';
+    return '<button type="button" class="dkey-picker-row" data-key="' + escAttr(k) + '">' +
+      '<span class="dkey-picker-row-key">' + esc(k) + '</span>' +
+      '<span class="dkey-picker-row-name">' + esc(name) + '</span>' +
+      '<span class="dkey-picker-row-count">' + esc(cnt) + '</span></button>';
+  }).join('');
+  el.querySelectorAll('.dkey-picker-row').forEach(function(btn) {
+    btn.onclick = function() { onDkeyPickerRowSelect(btn.getAttribute('data-key')); };
+  });
+}
+
+function syncDkeyPickerDisplay() {
+  const textEl = document.getElementById('dkeyPickerDisplayText');
+  const clearBtn = document.getElementById('dkeyPickerClear');
+  const k = document.getElementById('sheetFieldDkey').value.trim();
+  if (!k) {
+    textEl.textContent = 'Select product key...';
+    textEl.classList.add('dkey-picker-display-empty');
+    clearBtn.style.display = 'none';
+    return;
+  }
+  const row = legendRows.find(r => (r.key || '') === k);
+  const name = row && row.product_name != null && String(row.product_name).trim() !== '' ? String(row.product_name).trim() : '—';
+  textEl.textContent = k + ' — ' + name;
+  textEl.classList.remove('dkey-picker-display-empty');
+  clearBtn.style.display = '';
+}
+
+function clearDkeyPickerSelection(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  document.getElementById('sheetFieldDkey').value = '';
+  document.getElementById('sheetFieldRelease').value = '';
+  syncDkeyPickerDisplay();
+  const item = itemsInGroup().find(x => x.id === selectedId);
+  if (item) updateSheetDestFullPath(item.expected_code);
+  updateReclassifyButtonState();
+}
+
+function openDkeyPickerFromTap(ev) {
+  if (ev && ev.target.closest && ev.target.closest('#dkeyPickerClear')) return;
+  openDkeyPicker();
+}
+
+function openDkeyPicker() {
+  const root = document.getElementById('dkeyPickerRoot');
+  if (root.classList.contains('open')) return;
+  lockBodyScroll();
+  root.classList.add('open');
+  root.setAttribute('aria-hidden', 'false');
+  document.getElementById('dkeyPickerTrigger').setAttribute('aria-expanded', 'true');
+  const hid = document.getElementById('sheetFieldDkey').value.trim();
+  const input = document.getElementById('dkeyPickerSearch');
+  input.value = hid;
+  toggleDkeySearchClearVisibility();
+  renderDkeyPickerList();
+  setTimeout(function() {
+    input.focus();
+    try { input.setSelectionRange(0, input.value.length); } catch (e) { input.select(); }
+  }, 220);
+}
+
+function closeDkeyPicker() {
+  const root = document.getElementById('dkeyPickerRoot');
+  if (!root.classList.contains('open')) return;
+  root.classList.remove('open');
+  root.setAttribute('aria-hidden', 'true');
+  document.getElementById('dkeyPickerTrigger').setAttribute('aria-expanded', 'false');
+  const input = document.getElementById('dkeyPickerSearch');
+  input.blur();
+  unlockBodyScroll();
+}
+
+function onDkeyPickerRowSelect(key) {
+  if (!key) return;
+  const row = legendRows.find(r => (r.key || '') === key);
+  if (!row) return;
+  document.getElementById('sheetFieldDkey').value = key;
+  document.getElementById('sheetFieldRelease').value =
+    row.product_name != null && String(row.product_name).trim() !== '' ? String(row.product_name).trim() : '';
+  syncDkeyPickerDisplay();
+  const item = itemsInGroup().find(x => x.id === selectedId);
+  if (item) updateSheetDestFullPath(item.expected_code);
+  updateReclassifyButtonState();
+  closeDkeyPicker();
+}
+
+function updateSheetVariantsToggleLabel(expanded) {
+  const arrow = expanded ? '▼' : '▶';
+  document.getElementById('sheetVariantsToggle').textContent = arrow + ' Known variants (' + sheetVariantsCount + ')';
+}
+
+function renderThumbs() {
+  const items = itemsInGroup();
+  const grid = document.getElementById('thumbGrid');
+  if (!items.length) {
+    grid.innerHTML = '<div class="empty-state">No items in group</div>';
+    return;
+  }
+  grid.innerHTML = items.map((it, idx) => {
+    const sel = it.id === selectedId ? ' selected' : '';
+    const vis = (it.status === 'MISMATCH' && it.vision_returned) ? it.vision_returned : '';
+    const bd = badgeForItem(it);
+    return '<div class="thumb-card' + sel + '" data-idx="' + idx + '" onclick="selectThumbIdx(' + idx + ')">' +
+      '<div class="thumb-wrap">' +
+      '<img loading="lazy" src="' + escAttr(it.img_url) + '" alt=""/>' +
+      '</div>' + bd + '<div class="thumb-meta"><div class="thumb-code">' + esc(it.expected_code) + '</div>' +
+      (vis ? '<div class="thumb-vision">Vision: ' + esc(vis) + '</div>' : '') + '</div></div>';
+  }).join('');
+}
+
+function selectThumbIdx(idx) {
+  const item = itemsInGroup()[idx];
+  if (!item) return;
+  selectedId = item.id;
+  document.querySelectorAll('.thumb-card').forEach(el => {
+    el.classList.toggle('selected', String(el.getAttribute('data-idx')) === String(idx));
+  });
+  openActionSheet(item);
+}
+
+function openActionSheet(item) {
+  document.getElementById('sheetCanon').textContent = item.expected_code || '—';
+  document.getElementById('sheetCardName').textContent = displayNameForItem(item);
+  const vEl = document.getElementById('sheetVision');
+  if (item.status === 'MISMATCH' && item.vision_returned) {
+    vEl.style.display = 'block';
+    vEl.textContent = 'Vision: ' + item.vision_returned;
+  } else {
+    vEl.style.display = 'none';
+  }
+  document.getElementById('sheetHeaderImg').src = item.img_url || '';
+  document.getElementById('sheetVariantsBody').classList.remove('open');
+  sheetVariantsCount = 0;
+  updateSheetVariantsToggleLabel(false);
+  document.getElementById('sheetVariantsBody').innerHTML = 'Loading…';
+  document.getElementById('sheetBackdrop').classList.add('open');
+  document.getElementById('actionSheet').classList.add('open');
+  document.getElementById('actionSheet').setAttribute('aria-hidden', 'false');
+  lockBodyScroll();
+  resetSheetReclassifyFields(item.expected_code);
+  loadVariantsForSheet(item.expected_code);
+}
+
+function resetSheetReclassifyFields(code) {
+  setSheetTreatment('parallel');
+  document.getElementById('sheetFieldDkey').value = '';
+  document.getElementById('sheetFieldRelease').value = '';
+  syncDkeyPickerDisplay();
+  updateSheetDestFullPath(code);
+  updateReclassifyButtonState();
+}
+
+function treatmentSuffix(t) {
+  const m = { parallel: '_p1', sp: '_sp', tr: '_tr', alt_art: '_alt', ir: '_ir', mr: '_mr', gmr: '_gmr' };
+  return m[t] || '_p1';
+}
+
+function updateSheetDestFullPath(canonicalCode) {
+  const code = (canonicalCode || '').trim().toUpperCase();
+  const t = getSheetTreatment();
+  const dkey = document.getElementById('sheetFieldDkey').value.trim();
+  const suf = treatmentSuffix(t);
+  const folderKey = dkey || setFolderFromCanonical(code);
+  const el = document.getElementById('sheetDestFullPath');
+  if (!code || !folderKey) {
+    el.textContent = '—';
+    return;
+  }
+  el.textContent = MIRU_ASSETS_PREFIX + folderKey + '\\' + t + '\\' + code + suf + '.png';
+}
+
+function toggleSheetVariants() {
+  const b = document.getElementById('sheetVariantsBody');
+  const open = b.classList.toggle('open');
+  updateSheetVariantsToggleLabel(open);
+}
+
+function closeActionSheet() {
+  closeDkeyPicker();
+  document.getElementById('sheetBackdrop').classList.remove('open');
+  document.getElementById('actionSheet').classList.remove('open');
+  document.getElementById('actionSheet').setAttribute('aria-hidden', 'true');
+  unlockBodyScroll();
+}
+
+function closeSheet() {
+  closeActionSheet();
+}
+
+function openStagedDrawer() {
+  document.getElementById('stagedDrawerBackdrop').classList.add('open');
+  document.getElementById('stagedDrawer').classList.add('open');
+}
+function closeStagedDrawer() {
+  document.getElementById('stagedDrawerBackdrop').classList.remove('open');
+  document.getElementById('stagedDrawer').classList.remove('open');
+}
+
+document.getElementById('floatingStagedLabel').onclick = function() {
+  if (!stagedItems.length) return;
+  const dr = document.getElementById('stagedDrawer');
+  if (dr.classList.contains('open')) closeStagedDrawer();
+  else openStagedDrawer();
+};
+
+async function loadVariantsForSheet(code) {
+  const box = document.getElementById('sheetVariantsBody');
+  try {
+    const res = await fetch('/api/dev/image-review/variants?code=' + encodeURIComponent(code));
+    const data = await res.json();
+    const vars = data.variants || [];
+    sheetVariantsCount = vars.length;
+    updateSheetVariantsToggleLabel(box.classList.contains('open'));
+    if (!vars.length) {
+      box.innerHTML = '<em>No variants in catalog for this code.</em>';
+      return;
+    }
+    box.innerHTML = vars.map(v =>
+      '• <strong>' + esc(v.variant_key) + '</strong> → ' + esc(v.release_set_name || '') +
+      (v.distribution_product_key ? ' (' + esc(v.distribution_product_key) + ')' : '')
+    ).join('<br/>');
+  } catch (e) {
+    sheetVariantsCount = 0;
+    updateSheetVariantsToggleLabel(false);
+    box.innerHTML = esc(e.message);
+  }
+}
+
+document.getElementById('sheetSegTreatment').addEventListener('click', function(ev) {
+  const btn = ev.target.closest('.seg-btn');
+  if (!btn || !document.getElementById('sheetSegTreatment').contains(btn)) return;
+  document.querySelectorAll('#sheetSegTreatment .seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const item = itemsInGroup().find(x => x.id === selectedId);
+  if (item) updateSheetDestFullPath(item.expected_code);
+});
+document.getElementById('dkeyPickerScrim').addEventListener('click', function() { closeDkeyPicker(); });
+document.getElementById('dkeyPickerCloseBtn').addEventListener('click', function() { closeDkeyPicker(); });
+document.getElementById('dkeyPickerSearch').addEventListener('input', function() {
+  toggleDkeySearchClearVisibility();
+  renderDkeyPickerList();
+});
+document.getElementById('dkeyPickerSearchClear').addEventListener('click', function() {
+  document.getElementById('dkeyPickerSearch').value = '';
+  toggleDkeySearchClearVisibility();
+  renderDkeyPickerList();
+});
+document.getElementById('dkeyPickerTrigger').addEventListener('keydown', function(ev) {
+  if (ev.key === 'Enter' || ev.key === ' ') {
+    ev.preventDefault();
+    openDkeyPicker();
+  }
+});
+document.addEventListener('keydown', function(ev) {
+  if (ev.key === 'Escape' && document.getElementById('dkeyPickerRoot').classList.contains('open')) {
+    ev.preventDefault();
+    closeDkeyPicker();
+  }
+});
+
+document.getElementById('sheetHeaderImgWrap').onclick = function(e) {
+  e.stopPropagation();
+  const u = document.getElementById('sheetHeaderImg').src;
+  if (u) { document.getElementById('modalImg').src = u; document.getElementById('imgModal').classList.add('open'); }
+};
+
+(function sheetSwipe() {
+  const handle = document.getElementById('sheetHandle');
+  let startY = null;
+  handle.addEventListener('touchstart', function(ev) {
+    startY = ev.changedTouches[0].clientY;
+  }, { passive: true });
+  handle.addEventListener('touchend', function(ev) {
+    if (startY == null) return;
+    const y = ev.changedTouches[0].clientY;
+    if (y - startY > 56) closeSheet();
+    startY = null;
+  }, { passive: true });
+})();
+
+document.getElementById('sheetBackdrop').addEventListener('click', function() {
+  closeSheet();
+});
+
+function openModal(url) {
+  document.getElementById('modalImg').src = url;
+  document.getElementById('imgModal').classList.add('open');
+}
+function closeModal(ev) {
+  if (ev.target.id === 'imgModal' || ev.target.id === 'modalImg')
+    document.getElementById('imgModal').classList.remove('open');
+}
+
+async function recallIfStagedForCurrentItem() {
+  const item = itemsInGroup().find(x => x.id === selectedId);
+  if (!item) return;
+  const ex = stagedRecordForItem(item);
+  if (ex && ex.decision_id) {
+    await fetch('/api/dev/image-review/staged/' + encodeURIComponent(ex.decision_id), { method: 'DELETE' });
+    await loadStaged();
+  }
+}
+
+async function recallStaged(decisionId, silent) {
+  await fetch('/api/dev/image-review/staged/' + encodeURIComponent(decisionId), { method: 'DELETE' });
+  await loadStaged();
+  if (!silent) closeStagedDrawer();
+}
+
+async function stagePayload(body) {
+  const res = await fetch('/api/dev/image-review/stage', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { alert(j.error || res.status); return false; }
+  return true;
+}
+
+async function submitSheetConfirm() {
+  const item = itemsInGroup().find(x => x.id === selectedId);
+  if (!item) return;
+  await recallIfStagedForCurrentItem();
+  const dkey = document.getElementById('sheetFieldDkey').value.trim();
+  const release = document.getElementById('sheetFieldRelease').value.trim();
+  const body = {
+    id: item.id,
+    canonical_code: item.expected_code,
+    action: 'confirm',
+    variant_treatment: getSheetTreatment(),
+  };
+  if (dkey) body.distribution_product_key = dkey;
+  if (release) body.release_set_name = release;
+  const ok = await stagePayload(body);
+  if (ok) { closeActionSheet(); loadStaged(); }
+}
+
+async function submitSheetDelete() {
+  const item = itemsInGroup().find(x => x.id === selectedId);
+  if (!item) return;
+  await recallIfStagedForCurrentItem();
+  const ok = await stagePayload({
+    id: item.id,
+    canonical_code: item.expected_code,
+    action: 'delete'
+  });
+  if (ok) { closeActionSheet(); loadStaged(); }
+}
+
+async function submitSheetReclassify() {
+  const item = itemsInGroup().find(x => x.id === selectedId);
+  if (!item) return;
+  const dkey = document.getElementById('sheetFieldDkey').value.trim();
+  if (!dkey) return;
+  await recallIfStagedForCurrentItem();
+  const ok = await stagePayload({
+    id: item.id,
+    canonical_code: item.expected_code,
+    action: 'reclassify',
+    variant_treatment: getSheetTreatment(),
+    distribution_product_key: dkey,
+    release_set_name: document.getElementById('sheetFieldRelease').value.trim() || null
+  });
+  if (ok) { closeActionSheet(); loadStaged(); }
+}
+
+let batchSelected = new Set();
+
+function renderBatchGrid() {
+  const items = itemsInGroup();
+  const grid = document.getElementById('batchGrid');
+  grid.innerHTML = items.map((it, idx) => {
+    const chk = batchSelected.has(it.id) ? 'checked' : '';
+    const bd = badgeForItem(it);
+    return '<div class="thumb-wrap thumb-card"><input type="checkbox" class="thumb-batch" ' + chk + ' data-bidx="' + idx + '" onclick="event.stopPropagation();toggleBatchIdx(' + idx + ')"/>' +
+      '<div onclick="toggleBatchIdx(' + idx + ')"><img loading="lazy" src="' + escAttr(it.img_url) + '" style="max-width:160px;width:100%"/>' +
+      '</div>' + bd + '<div class="thumb-meta"><div class="thumb-code">' + esc(it.expected_code) + '</div></div></div>';
+  }).join('');
+}
+
+function toggleBatchIdx(idx) {
+  const it = itemsInGroup()[idx];
+  if (!it) return;
+  if (batchSelected.has(it.id)) batchSelected.delete(it.id); else batchSelected.add(it.id);
+  renderBatchGrid();
+}
+
+async function batchStage(action) {
+  const ids = [...batchSelected];
+  if (!ids.length) { alert('Select items'); return; }
+  for (const id of ids) {
+    const item = findItemById(id);
+    if (!item) continue;
+    const ex = stagedRecordForItem(item);
+    if (ex && ex.decision_id) await fetch('/api/dev/image-review/staged/' + encodeURIComponent(ex.decision_id), { method: 'DELETE' });
+    const body = { id: item.id, canonical_code: item.expected_code, action: action };
+    if (action === 'confirm') body.variant_treatment = 'parallel';
+    const res = await fetch('/api/dev/image-review/stage', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) { const j = await res.json().catch(()=>({})); alert(j.error || res.status); break; }
+  }
+  batchSelected.clear();
+  loadStaged();
+  renderBatchGrid();
+}
+
+function findItemById(id) {
+  for (const g of Object.keys(queueData)) {
+    const it = (queueData[g] || []).find(x => x.id === id);
+    if (it) return it;
+  }
+  return null;
+}
+
+function openCommitDialog() {
+  if (!stagedItems.length) return;
+  document.getElementById('commitDialogText').textContent = 'Commit ' + stagedItems.length + ' actions?';
+  document.getElementById('commitDialogBackdrop').classList.add('open');
+}
+function closeCommitDialog() {
+  document.getElementById('commitDialogBackdrop').classList.remove('open');
+}
+document.getElementById('commitDialogBackdrop').onclick = function(e) {
+  if (e.target.id === 'commitDialogBackdrop') closeCommitDialog();
+};
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('open');
+  setTimeout(function() { t.classList.remove('open'); }, 3500);
+}
+
+async function executeCommit() {
+  closeCommitDialog();
+  if (!stagedItems.length) return;
+  const n = stagedItems.length;
+  const res = await fetch('/api/dev/image-review/commit', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+  const j = await res.json().catch(() => ({}));
+  if (j.failed) {
+    alert('Failed at ' + (j.failed_id || '?') + ': ' + (j.reason || ''));
+  } else {
+    showToast('Done — ' + (j.committed || n) + ' actions committed');
+  }
+  closeStagedDrawer();
+  await loadStaged();
+  await loadQueue();
+}
+
+document.getElementById('legendSearch').addEventListener('input', function() { renderLegendTable(); });
+
+loadLegend();
+loadQueue();
+loadStaged();
+</script>
+</body>
+</html>

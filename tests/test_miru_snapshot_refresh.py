@@ -5,11 +5,11 @@ import unittest
 import uuid
 from pathlib import Path
 
-from dashboard.miru_dossier_queries import get_conflict_summary, get_fact_answer, get_source_summary
-from dashboard.miru_intel_adapters import OfficialCardListSnapshotAdapter, StaticJsonAdapter
-from dashboard.miru_intel_db import MiruIntelRepository
-from dashboard.miru_intel_pipeline import MiruEnrichmentRunner
-from dashboard.miru_snapshot_refresh import OfficialSnapshotRefresher, normalize_official_export_path
+from shared.intel.dossier_queries import get_conflict_summary, get_fact_answer, get_source_summary
+from shared.intel.adapters import OfficialCardListSnapshotAdapter, StaticJsonAdapter
+from shared.intel.db import MiruIntelRepository
+from shared.intel.pipeline import MiruEnrichmentRunner
+from shared.intel.snapshot_refresh import OfficialSnapshotRefresher, normalize_official_export_path
 
 
 class MiruSnapshotRefreshTests(unittest.TestCase):

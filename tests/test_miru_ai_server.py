@@ -394,7 +394,7 @@ class MiruAiServerTests(unittest.TestCase):
         self.assertIn("Miru Dev Launcher", content)
         self.assertIn("Dev Monitor URL", content)
         self.assertIn("LAN Dev Monitor URL", content)
-        self.assertIn(r"python tools\miru_ai_server.py --host $BindHost --port $Port", content)
+        self.assertIn(r"python -m miru_ai.server --host $BindHost --port $Port", content)
 
     def test_initialize_fallback_catalog_db_populates_local_snapshot(self) -> None:
         knowledge_path = Path(__file__).resolve().parent.parent / "data" / "miru_ai_onepiece_knowledge.json"
@@ -529,7 +529,7 @@ class MiruAiServerTests(unittest.TestCase):
         self.assertIn("Codex implementation prompt", output)
 
     def test_js_copy_and_paste_hooks_have_working_fallbacks(self) -> None:
-        js_path = (Path(__file__).resolve().parent.parent / "tools" / "static" / "miru_ai.js").as_posix()
+        js_path = server.JS_PATH.as_posix()
         node_script = textwrap.dedent(
             f"""
             const fs = require('fs');
@@ -598,7 +598,7 @@ class MiruAiServerTests(unittest.TestCase):
         self.assertIn("Pasted ok:success", result.stdout)
 
     def test_js_ask_submit_uses_canonical_api_route_even_with_stale_config(self) -> None:
-        js_path = (Path(__file__).resolve().parent.parent / "tools" / "static" / "miru_ai.js").as_posix()
+        js_path = server.JS_PATH.as_posix()
         node_script = textwrap.dedent(
             f"""
             const fs = require('fs');

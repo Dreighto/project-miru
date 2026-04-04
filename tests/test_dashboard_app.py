@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import dashboard.app as dashboard_app
+import pm.app as dashboard_app
 from tools.miru_project_sync import MiruProjectDbSync
 from tools.miru_source_adapters import NormalizedSourceRecord
 

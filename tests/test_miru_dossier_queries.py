@@ -4,16 +4,16 @@ import unittest
 import uuid
 from pathlib import Path
 
-from dashboard.miru_dossier_queries import (
+from shared.intel.dossier_queries import (
     get_conflict_summary,
     get_fact_answer,
     get_identity_summary,
     get_source_summary,
     get_variant_answer,
 )
-from dashboard.miru_intel_adapters import OfficialCardListSnapshotAdapter, StaticJsonAdapter
-from dashboard.miru_intel_db import MiruIntelRepository
-from dashboard.miru_intel_pipeline import MiruEnrichmentRunner
+from shared.intel.adapters import OfficialCardListSnapshotAdapter, StaticJsonAdapter
+from shared.intel.db import MiruIntelRepository
+from shared.intel.pipeline import MiruEnrichmentRunner
 
 
 class MiruDossierQueryTests(unittest.TestCase):

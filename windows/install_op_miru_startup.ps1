@@ -30,7 +30,7 @@ if ($Worktree) {
 }
 else {
     $action = New-ScheduledTaskAction -Execute $bootstrapPath
-    $description = "Starts Docker-backed OP Miru services and Miru AI (legacy 8080/8765) after Windows startup."
+    $description = "Starts Miru AI Dev on 18765 after Windows startup."
 }
 $trigger = New-ScheduledTaskTrigger -AtStartup
 $settings = New-ScheduledTaskSettingsSet `

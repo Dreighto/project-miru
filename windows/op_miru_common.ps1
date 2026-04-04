@@ -15,7 +15,7 @@ function Get-OpMiruPaths {
         LogDirectory          = $logDir
         DockerComposeFile     = Join-Path $repoRoot "docker-compose.yml"
         DockerConfigDirectory = Join-Path $repoRoot ".docker-config"
-        MiruAiScript          = Join-Path $repoRoot "tools\miru_ai_server.py"
+        MiruAiScript          = Join-Path $repoRoot "miru_ai\server.py"
         MiruAiHealthUrlLocal  = "http://127.0.0.1:8765/api/health"
         MiruAiRootUrlLocal    = "http://127.0.0.1:8765/"
         DashboardUrlLocal     = "http://127.0.0.1:8080/"

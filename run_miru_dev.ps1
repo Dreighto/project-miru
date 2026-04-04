@@ -178,4 +178,4 @@ if ($tailscaleIp) {
 Write-LaunchLine "Press CTRL+C to stop the server."
 Write-LaunchLine ""
 
-python tools\miru_ai_server.py --host $BindHost --port $Port
+python -m miru_ai.server --host $BindHost --port $Port

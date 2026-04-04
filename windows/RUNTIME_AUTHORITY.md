@@ -6,8 +6,8 @@ Single-instance, health-verified startup and verification for all three runtimes
 
 The **authoritative worktree services** are:
 
-- **18765** — Miru AI / Dev (this repo, `tools\miru_ai_server.py`)
-- **18080** — Project Miru worktree dashboard (this repo, `dashboard\app.py`)
+- **18765** — Miru AI / Dev (this repo, `python -m miru_ai.server` -> `miru_ai\server.py`)
+- **18080** — Project Miru worktree dashboard (this repo, `pm\app.py`)
 
 They are intended to stay running so you can:
 
@@ -78,7 +78,7 @@ If the phone gets **ERR_CONNECTION_TIMED_OUT** or a blank page to `http://<Tails
 ```
 
 - If 18765 is already healthy (`/api/health` + `/dev`), does nothing.
-- If the wrong process is on 18765, stops it and starts `tools\miru_ai_server.py` on 18765.
+- If the wrong process is on 18765, stops it and starts `python -m miru_ai.server` on 18765.
 - Waits for health and Dev page; exits 1 if they fail.
 - Optional: `-Force` to stop whatever is on 18765 and start fresh.
 
@@ -89,7 +89,7 @@ If the phone gets **ERR_CONNECTION_TIMED_OUT** or a blank page to `http://<Tails
 ```
 
 - If 18080 is already healthy (root contains "Miru"), does nothing.
-- If the wrong process is on 18080, stops it and starts `dashboard\app.py` with `PORT=18080`.
+- If the wrong process is on 18080, stops it and starts `pm\app.py` with `PORT=18080`.
 - Optional: `-Force` to stop and start fresh.
 
 ### Main stable (8080)
@@ -145,8 +145,8 @@ Without `-Worktree`, the task runs the legacy bootstrap (8080 + 8765). For the w
 
 | Change type | After save | Your action |
 |-------------|------------|-------------|
-| Templates (e.g. `tools/templates/*.html`, dashboard templates) | Reloader restarts process | **Refresh** browser |
-| CSS / JS / static (e.g. `tools/static/*`, dashboard static) | Reloader restarts process | **Refresh** browser |
+| Templates (e.g. `miru_ai/templates/*.html`, PM templates) | Reloader restarts process | **Refresh** browser |
+| CSS / JS / static (e.g. `miru_ai/static/*`, PM static) | Reloader restarts process | **Refresh** browser |
 | Dev page or Project Miru UI (above) | Same as above | **Refresh** browser |
 | New Python dependencies (`pip install` / `requirements`) | Not picked up | **Restart** affected service or stack |
 | Server logic or env (e.g. new routes, env vars) | Not picked up | **Restart** affected service or stack |

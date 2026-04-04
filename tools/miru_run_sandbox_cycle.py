@@ -387,8 +387,8 @@ def stage_card_intake(
         return result
 
     from tools.miru_import_card_csv import main as csv_main
-    from dashboard.miru_intel_db import MiruIntelRepository
-    from dashboard.miru_snapshot_refresh import OfficialSnapshotRefresher
+    from shared.intel.db import MiruIntelRepository
+    from shared.intel.snapshot_refresh import OfficialSnapshotRefresher
 
     t0 = time.monotonic()
     processed = 0

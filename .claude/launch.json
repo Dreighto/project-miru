@@ -4,7 +4,7 @@
     {
       "name": "project-miru-0814",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["dashboard/app.py"],
+      "runtimeArgs": ["pm/app.py"],
       "port": 18080
     }
   ]

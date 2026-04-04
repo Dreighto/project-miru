@@ -19,7 +19,7 @@ services:
       DISCORD_WEBHOOK_URL: ""
 
   tcg-dashboard:
-    build: ./dashboard
+    build: ./pm
     container_name: tcg-dashboard-codex
     restart: "no"
     ports:

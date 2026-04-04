@@ -15,7 +15,7 @@ from typing import Any, Callable
 from config.miru_storage_layout import build_storage_layout
 
 try:
-    from dashboard.miru_intel_models import CardDossier
+    from shared.intel.models import CardDossier
 except Exception:  # pragma: no cover - optional import for runtime flexibility
     CardDossier = Any  # type: ignore[misc,assignment]
 

@@ -1,0 +1,207 @@
+{% set control_deck = dev_status.get('control_deck', {}) %}
+{% set osr = dev_status.get('operator_self_report') or {} %}
+{% set met = osr.get('metrics') or {} %}
+{% set lis = dev_status.get('last_insight_sync') or {} %}
+{% set cov = (met.get('coverage_pct') or 0)|float %}
+{% if cov > 100 %}{% set cov = 100 %}{% endif %}
+{% if cov < 0 %}{% set cov=0 %}{% endif %} <section class="panelCard devCockpit" id="devMonitor"
+    data-dev-status-url="{{ dev_status_url }}" data-dev-default-tab="overview"
+    data-project-miru-link="{{ dev_status.get('links', {}).get('project_miru', '') }}"
+    data-runtime-restart-token="{{ runtime_restart_token|default('') }}" data-main-site-port="{{ main_site_port }}">
+    <header class="devCockpitHeader">
+        <div class="devCockpitHeaderLead">
+            <div class="sectionEyebrow">Operator</div>
+            <h2 class="devCockpitTitle">Dev</h2>
+            <p class="devCockpitSub">Essential runtime facts. <a class="devCockpitFullLink"
+                    href="/dev/monitor">Diagnostics &amp; tools →</a></p>
+        </div>
+        <div class="devCockpitHeaderMeta">
+            <span class="devUpdatedAt" id="devUpdatedAt">{{ dev_status.get('updated_at_display') or
+                dev_status.get('updated_at') or '—' }}</span>
+            <button class="devBtn devBtn--secondary devRefreshButton devRefreshButton--mini" id="devRefreshButton"
+                type="button" title="Refresh status" data-dev-refresh="status">↻</button>
+        </div>
+    </header>
+
+    <h3 class="devCockpitSectionTitle">Service status</h3>
+    <details class="devServiceStatusDetails" id="devServiceStatusDetails">
+        <summary class="devServiceStatusSummary">
+            <span class="devServiceStatusSummaryLine" aria-label="Linked service health">
+                <span class="devServiceStatusSummaryServices">Services: Miru AI</span>
+                <span class="devServiceDot devServiceDot--neutral" id="devServiceSummaryDot18765"
+                    aria-hidden="true">&#9679;</span>
+                <span class="devServiceStatusSummaryServices">Project Miru</span>
+                <span class="devServiceDot devServiceDot--neutral" id="devServiceSummaryDot18080"
+                    aria-hidden="true">&#9679;</span>
+                <span class="devServiceStatusSummaryServices">Main Site</span>
+                <span class="devServiceDot devServiceDot--neutral" id="devServiceSummaryDot8080"
+                    aria-hidden="true">&#9679;</span>
+            </span>
+            <span class="devServiceStatusToggle" aria-hidden="true">
+                <span class="devServiceStatusToggleCollapsed">&#9660; Show details</span>
+                <span class="devServiceStatusToggleExpanded">&#9650; Hide details</span>
+            </span>
+        </summary>
+        <div class="devServiceStatusExpanded">
+            <div class="devCockpitGrid" role="list">
+                <article class="devCockpitCard" role="listitem">
+                    <div class="devCockpitCardTop">
+                        <h3 class="devCockpitCardTitle">Miru AI</h3>
+                        <span class="devCockpitCardPort">18765</span>
+                    </div>
+                    <p class="devCockpitCardStatus"><span class="statusPill statusPill--good"
+                            id="devRuntimeStatus18765">—</span></p>
+                    <p class="devCockpitCardChecked" id="devChecked18765" aria-live="polite">Last checked —</p>
+                    <div class="devCockpitCardActions">
+                        <a class="devBtn devBtn--secondary"
+                            href="{{ control_deck.get('miru_dev_console', '/dev') }}">Open</a>
+                        <button type="button" class="devBtn devBtn--primary" id="devRuntimeRestart18765Btn"
+                            data-action="restart-18765"
+                            title="Restart Miru AI Dev (replaces this process)">Restart</button>
+                    </div>
+                </article>
+                <article class="devCockpitCard" role="listitem">
+                    <div class="devCockpitCardTop">
+                        <h3 class="devCockpitCardTitle">Project Miru</h3>
+                        <span class="devCockpitCardPort">18080</span>
+                    </div>
+                    <p class="devCockpitCardStatus"><span class="statusPill statusPill--neutral"
+                            id="devRuntimeStatus18080">—</span></p>
+                    <p class="devCockpitCardChecked" id="devChecked18080" aria-live="polite">Last checked —</p>
+                    <div class="devCockpitCardActions">
+                        <a class="devBtn devBtn--secondary"
+                            href="{{ control_deck.get('worktree_site', 'http://100.104.150.125:18080/') }}" target="_blank"
+                            rel="noopener noreferrer">Open</a>
+                        <button type="button" class="devBtn devBtn--primary" id="devRuntimeRestart18080Btn"
+                            data-action="restart-18080"
+                            title="Restart Project Miru (script stops/restarts listener)">Restart</button>
+                    </div>
+                </article>
+                <article class="devCockpitCard" role="listitem">
+                    <div class="devCockpitCardTop">
+                        <h3 class="devCockpitCardTitle">Main site</h3>
+                        <span class="devCockpitCardPort">8080</span>
+                    </div>
+                    <p class="devCockpitCardStatus"><span class="statusPill statusPill--neutral"
+                            id="devRuntimeStatus8080">—</span></p>
+                    <p class="devCockpitCardChecked" id="devChecked8080" aria-live="polite">Last checked —</p>
+                    <div class="devCockpitCardActions">
+                        <a class="devBtn devBtn--secondary"
+                            href="{{ control_deck.get('main_site', 'http://100.104.150.125:8080/') }}" target="_blank"
+                            rel="noopener noreferrer">Open</a>
+                        <button type="button" class="devBtn devBtn--primary" id="devRuntimeRestart8080Btn"
+                            data-action="restart-8080"
+                            title="Start or refresh main site (docker compose when configured)">Restart</button>
+                    </div>
+                </article>
+            </div>
+            <p class="devCockpitGuardState devCockpitGuardState--compact" id="devRuntimeGuardState" aria-live="polite">
+                Loading
+                guard state…</p>
+        </div>
+    </details>
+
+    {% if osr and not osr.get('error') %}
+    <h3 class="devCockpitSectionTitle devCockpitSectionTitle--intelPrimary">Intelligence snapshot</h3>
+    <section class="devIntelCard devIntelCard--snapshot devIntelCard--snapshotPrimary"
+        aria-label="Intelligence snapshot">
+        <div class="devSnapshotCovRow">
+            <span class="devIntelCardKicker">Coverage</span>
+            <span class="devIntelCardCovPill" id="devSnapshotCoveragePct">{{ "%.1f"|format(met.get('coverage_pct') or 0)
+                }}%</span>
+        </div>
+        <div class="devSnapshotCovTrack" aria-hidden="true"><span class="devSnapshotCovFill" id="devSnapshotCovBarFill"
+                style="width: {{ cov }}%;"></span></div>
+        <p class="devIntelCardCounts" id="devSnapshotInsightLine"><strong>{{ met.get('cards_with_any_insight', '—')
+                }}</strong> cards with insight out of <strong>{{ met.get('cards_total', '—') }}</strong> total</p>
+        <p class="devIntelCardCounts" id="devSnapshotStrongLine">{% if met.get('cards_with_strong_insight') is not none
+            %}<strong>{{ met.get('cards_with_strong_insight') }}</strong> strong insights{% else %}<strong>—</strong>
+            strong insights{% endif %}</p>
+        <p class="devCockpitMuted" id="devSnapshotLastSync">{% if lis.get('at') %}Last insight sync (UTC): {{
+            lis.get('at') }}{% else %}Last insight sync: —{% endif %}</p>
+    </section>
+    {% elif osr.get('error') %}
+    <h3 class="devCockpitSectionTitle devCockpitSectionTitle--intelPrimary">Intelligence snapshot</h3>
+    <p class="devCockpitMuted">Intelligence metrics unavailable (self-report error).</p>
+    {% endif %}
+
+    <section id="miruApprovals">
+        <h2>PENDING APPROVALS</h2>
+        <p id="miruApprovalsCount">Loading...</p>
+        <button type="button" id="miruApprovalsRefresh">Refresh</button>
+
+        <div class="miruApprovalFilters" id="miruApprovalFilters">
+            <div class="miruFilterRow">
+                <button class="miruFilterPill miruFilterPill--active" data-filter-type="insight"
+                    data-value="all">All</button>
+                <button class="miruFilterPill" data-filter-type="insight" data-value="usage">Usage</button>
+                <button class="miruFilterPill" data-filter-type="insight" data-value="ruling">Ruling</button>
+                <button class="miruFilterPill" data-filter-type="insight" data-value="price">Price</button>
+                <button class="miruFilterPill" data-filter-type="insight" data-value="meta">Meta</button>
+                <button class="miruFilterPill" data-filter-type="insight" data-value="strategy">Strategy</button>
+            </div>
+            <div class="miruFilterRow">
+                <button class="miruFilterPill miruFilterPill--active" data-filter-type="confidence"
+                    data-value="any">Any</button>
+                <button class="miruFilterPill" data-filter-type="confidence" data-value="strong">Strong</button>
+                <button class="miruFilterPill" data-filter-type="confidence" data-value="medium">Medium</button>
+                <button class="miruFilterPill" data-filter-type="confidence" data-value="low">Low</button>
+            </div>
+        </div>
+
+        <div class="miruApprovalProgress" id="miruApprovalProgress">
+            <div class="miruProgressText">0 reviewed this session</div>
+            <div class="miruProgressBar">
+                <div class="miruProgressFill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div id="miruApprovalsList"></div>
+    </section>
+
+    <h3 class="devCockpitSectionTitle">Task Queue</h3>
+    <details class="devTaskQueueDetails" id="devTaskQueueDetails">
+        <summary class="devTaskQueueSummary">
+            <span class="devTaskQueueSummaryLine" aria-label="Operator task queue">
+                <span class="devTaskQueueSummaryLabel">Queue tasks for follow-up</span>
+            </span>
+            <span class="devTaskQueueToggle" aria-hidden="true">
+                <span class="devTaskQueueToggleCollapsed">&#9660; Show</span>
+                <span class="devTaskQueueToggleExpanded">&#9650; Hide</span>
+            </span>
+        </summary>
+        <div class="devTaskQueueExpanded">
+            <form class="devTaskQueueForm" id="devTaskQueueForm" autocomplete="off">
+                <label class="devTaskQueueFieldLabel" for="devTaskQueueLabel">Label</label>
+                <input class="devTaskQueueTextInput" id="devTaskQueueLabel" name="label" type="text"
+                    placeholder="Short name (e.g. Wire optcgapi source)" maxlength="160" />
+
+                <label class="devTaskQueueFieldLabel" for="devTaskQueueScope">Scope</label>
+                <select class="devTaskQueueSelect" id="devTaskQueueScope" name="scope">
+                    <option value="Port 18765" selected>Port 18765</option>
+                    <option value="Note Only">Note Only</option>
+                </select>
+
+                <label class="devTaskQueueFieldLabel" for="devTaskQueuePrompt">Prompt</label>
+                <textarea class="devTaskQueueTextarea" id="devTaskQueuePrompt" name="prompt"
+                    placeholder="Paste worker prompt text here"></textarea>
+
+                <button type="submit" class="devBtn devBtn--primary devTaskQueueSubmit" id="devTaskQueueSubmit">Queue
+                    Task</button>
+                <p class="devTaskQueueFeedback" id="devTaskQueueFeedback" aria-live="polite"></p>
+            </form>
+
+            <div class="devTaskQueueList" id="devTaskQueueList" aria-live="polite" aria-busy="true">
+                <p class="devTaskQueueEmpty" id="devTaskQueueEmpty">Loading tasks…</p>
+            </div>
+        </div>
+    </details>
+
+    <h3 class="devCockpitSectionTitle">Recent activity</h3>
+    <ul class="devCockpitRecentList" id="devCockpitRecentActivity" aria-live="polite" aria-busy="true">
+        <li class="devCockpitRecentPlaceholder">Loading recent activity after first paint…</li>
+        <li class="devCockpitRecentPlaceholder">Fetching latest runtime events…</li>
+    </ul>
+
+    <p class="devRuntimeControlFeedback devProgressDetail" id="devRuntimeControlFeedback" aria-live="polite" hidden></p>
+    </section>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#130b1f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>{{ app_name }} — Status</title>
+    <style>
+        :root {
+            --bg: #130b1f;
+            --surface: #1c1228;
+            --border: rgba(255, 255, 255, 0.08);
+            --text: #e8e4f5;
+            --muted: #9a92b0;
+            --accent: #7dd3a8;
+            --bad: #f07178;
+            --link: #b8a0ff;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0.75rem 1rem max(1rem, env(safe-area-inset-bottom));
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            font-size: 1.05rem;
+            line-height: 1.45;
+            background: var(--bg);
+            color: var(--text);
+            -webkit-text-size-adjust: 100%;
+        }
+        .top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        .title a {
+            color: var(--text);
+            text-decoration: none;
+        }
+        .meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--muted);
+        }
+        .refresh {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2.25rem;
+            height: 2.25rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+        .refresh:active { opacity: 0.85; }
+        section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 0.65rem;
+            padding: 0.85rem 1rem;
+            margin-bottom: 0.75rem;
+        }
+        h2 {
+            margin: 0 0 0.65rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+        }
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            padding: 0.35rem 0;
+            font-size: 1rem;
+        }
+        .row + .row { border-top: 1px solid var(--border); }
+        .dot {
+            width: 0.55rem;
+            height: 0.55rem;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .dot--ok { background: var(--accent); box-shadow: 0 0 0 2px rgba(125, 211, 168, 0.25); }
+        .dot--bad { background: var(--bad); box-shadow: 0 0 0 2px rgba(240, 113, 120, 0.25); }
+        .svc {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .cov-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.4rem;
+            font-size: 0.95rem;
+        }
+        .cov-pct { font-weight: 700; color: var(--accent); }
+        .bar {
+            height: 0.45rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+            margin-bottom: 0.65rem;
+        }
+        .bar > span {
+            display: block;
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #5ac8a0, #78b4ff);
+            min-width: 2px;
+        }
+        .stat {
+            margin: 0.25rem 0;
+            font-size: 0.98rem;
+        }
+        .stat strong { color: var(--text); }
+        .dev-link {
+            display: inline-block;
+            margin-top: 0.5rem;
+            font-weight: 600;
+            color: var(--link);
+            text-decoration: none;
+            font-size: 1rem;
+        }
+        .dev-link:active { opacity: 0.85; }
+        .detail {
+            font-size: 0.92rem;
+            color: var(--muted);
+            margin: 0.2rem 0 0;
+        }
+        .mono { font-family: ui-monospace, monospace; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <header class="top">
+        <div class="title"><a href="/">{{ app_name }}</a> <span style="font-weight:500;color:var(--muted)">Status</span></div>
+        <div class="meta">
+            <span>{{ fetched_at }} UTC</span>
+            <a class="refresh" href="/status" title="Refresh" aria-label="Refresh status">↻</a>
+        </div>
+    </header>
+
+    <section aria-labelledby="h-health">
+        <h2 id="h-health">System health</h2>
+        <div class="row">
+            <div class="svc">
+                <span class="dot {% if miru_ai_ok %}dot--ok{% else %}dot--bad{% endif %}" aria-hidden="true"></span>
+                <span>Miru AI <span class="mono">(18765)</span></span>
+            </div>
+            <span>{% if miru_ai_ok %}Healthy{% else %}Down{% endif %}</span>
+        </div>
+        <div class="row">
+            <div class="svc">
+                <span class="dot {% if project_miru_ok %}dot--ok{% else %}dot--bad{% endif %}" aria-hidden="true"></span>
+                <span>Project Miru <span class="mono">(18080)</span></span>
+            </div>
+            <span>{% if project_miru_ok %}Healthy{% else %}Down{% endif %}</span>
+        </div>
+    </section>
+
+    <section aria-labelledby="h-intel">
+        <h2 id="h-intel">Intelligence snapshot</h2>
+        <div class="cov-head">
+            <span>Coverage</span>
+            <span class="cov-pct">{{ coverage_pct_display }}</span>
+        </div>
+        <div class="bar" role="presentation" aria-hidden="true"><span style="width: {{ coverage_bar_width }}%;"></span></div>
+        <p class="stat"><strong>{{ cards_with_insight_display }}</strong> / <strong>{{ cards_total_display }}</strong> cards with insight</p>
+        <p class="stat"><strong>{{ strong_insights_display }}</strong> strong insights</p>
+    </section>
+
+    <section aria-labelledby="h-learn">
+        <h2 id="h-learn">Learning engine</h2>
+        <p class="stat"><strong>{{ engine_state_label }}</strong></p>
+        {% if engine_processing and (current_card_code or current_task_type) %}
+        <p class="detail">Card <span class="mono">{{ current_card_code or "—" }}</span> · <span class="mono">{{ current_task_type or "—" }}</span></p>
+        {% endif %}
+        <p class="stat">Queue: <strong>{{ queue_queued }}</strong> task(s) waiting</p>
+        <p class="detail">Last heartbeat: {{ last_heartbeat }}</p>
+    </section>
+
+    <section aria-labelledby="h-appr">
+        <h2 id="h-appr">Pending approvals</h2>
+        <p class="stat"><strong>{{ pending_approvals }}</strong> card(s) waiting for approval</p>
+        <a class="dev-link" href="/dev">Review on Dev →</a>
+    </section>
+</body>
+</html>

@@ -17,7 +17,7 @@ $logDir = Join-Path $repoRoot "data\startup-logs"
 $pidFile = Join-Path $logDir "dashboard_18080.pid"
 $stdoutLog = Join-Path $logDir "dashboard_18080_stdout.log"
 $stderrLog = Join-Path $logDir "dashboard_18080_stderr.log"
-$dashboardScriptPath = Join-Path $repoRoot "dashboard\app.py"
+$dashboardScriptPath = Join-Path $repoRoot "pm\app.py"
 $rootUrl = "http://127.0.0.1:$Port/"
 
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
@@ -114,7 +114,7 @@ function Test-DashboardProcessMatch {
         return $true
     }
 
-    if ($normalizedCmd -notmatch "dashboard\\app\.py") {
+    if ($normalizedCmd -notmatch "pm\\app\.py") {
         return $false
     }
 
@@ -239,7 +239,7 @@ $process = Start-Process `
 # Localhost probes must not go through a corporate HTTP proxy (common Invoke-WebRequest failure on 127.0.0.1).
 $prevWebProxy = [System.Net.WebRequest]::DefaultWebProxy
 [System.Net.WebRequest]::DefaultWebProxy = $null
-# Allow time for heavy dashboard/app import before bind plus a slow first GET / (see Wait-OpMiruHttp HTTP timeout).
+# Allow time for heavy pm/app import before bind plus a slow first GET / (see Wait-OpMiruHttp HTTP timeout).
 $dashboardProbeTimeoutSeconds = 240
 try {
     # RetryDelaySeconds is sleep between attempts; Wait-OpMiruHttp uses a separate per-attempt HTTP timeout (min 180s, max 300s).
