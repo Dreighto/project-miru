@@ -176,7 +176,20 @@
       try {
         const response = await fetch(`/api/card-variants/${cardCode}`);
         const data = await response.json();
-        const variants = data.variants || [];
+        const raw = data.variants || [];
+        let firstImg = '';
+        for (const v of raw) {
+          const p = v && v.image_path ? String(v.image_path).trim() : '';
+          if (p) {
+            firstImg = p;
+            break;
+          }
+        }
+        const variants = raw.map((v) => {
+          const cur = v && v.image_path ? String(v.image_path).trim() : '';
+          if (cur) return { ...v, image_path: cur };
+          return { ...v, image_path: firstImg || null };
+        });
         this.variantCache.set(cardCode, variants);
         return variants;
       } catch (error) {

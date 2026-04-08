@@ -1,0 +1,12 @@
+Chapter 19.11C — DOM-driven official image resolution + surgical fetch
+Input: D:\dev\tcg-watcher-worktree\data\overlays\chapter19_11_install_plan.csv
+Official cardlist: https://en.onepiece-cardgame.com/cardlist/
+Rows processed: 16
+PNG files present after (report): 16
+WebP files present after (report): 16
+PNG newly fetched (this run): 0
+WebP newly generated (this run): 0
+Failures (resolution or fetch): 0
+Manifest: D:\dev\tcg-watcher-worktree\data\overlays\chapter19_11c_install_panel_image_manifest.json
+Report: D:\dev\tcg-watcher-worktree\data\overlays\chapter19_11c_image_resolution_and_fetch_report.csv
+Database writes: none

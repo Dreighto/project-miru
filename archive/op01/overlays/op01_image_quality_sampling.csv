@@ -1,0 +1,25 @@
+card_code,printing_id,treatment_category,local_path,file_size,dimensions,quality_class,notes
+OP01-001,704,base,OP01\OP01-001.png,538067,600x838,LOW_RES,match=lowres_match
+OP01-021,811,base,OP01\OP01-021.png,3406681,3358x4692,GOOD_ENOUGH,match=highres_match
+OP01-041,905,base,OP01\OP01-041.png,4663629,3358x4692,GOOD_ENOUGH,match=highres_match
+OP01-061,984,base,OP01\OP01-061.jpg,4627970,3357x4692,GOOD_ENOUGH,match=highres_match
+OP01-081,1056,base,OP01\OP01-081.png,188879,600x838,LOW_RES,match=lowres_match
+OP01-101,1108,base,OP01\OP01-101.jpg,3926520,3358x4692,GOOD_ENOUGH,match=highres_match
+OP01-121,1165,base,OP01\OP01-121.png,8520020,3358x4692,GOOD_ENOUGH,match=highres_match
+OP01-001::alt,707,alt,OP01\ALTS\OP01-001(alt).jpg,665107,1200x1676,BORDERLINE,"match=alts_highres, label=Alt"
+OP01-002::alt,712,alt,OP01\ALTS\OP01-002(alt).png,10705249,3357x4692,GOOD_ENOUGH,"match=alts_highres, label=Alt"
+OP01-001_p1,708,parallel_1,,0,,NO_FILE,"match=no_match, label=Parallel 1"
+OP01-002_p1,713,parallel_1,,0,,NO_FILE,"match=no_match, label=Parallel 1"
+OP01-006_p3,736,parallel_3,PRB01\parallel\OP01-006_p3.png,212357,600x838,LOW_RES,"match=lowres_match, label=Parallel 3"
+OP01-013_p3,765,parallel_3,,0,,NO_FILE,"match=no_match, label=Parallel 3"
+OP01-006_p5,738,parallel_5,PRB01\parallel\OP01-006_p5.png,178618,600x838,LOW_RES,"match=lowres_match, label=Parallel 5"
+OP01-016_p5,792,parallel_5,,0,,NO_FILE,"match=no_match, label=Parallel 5"
+OP01-001::25th,706,promo,OP01\ALTS\OP01-001(25th).png,13686306,3357x4692,GOOD_ENOUGH,"match=alts_highres, label=25Th"
+OP01-004::1st anniversary alt,720,promo,OP01\ALTS\OP01-004(1st anniversary alt).jpg,2968166,1876x2619,BORDERLINE,"match=alts_highres, label=1St Anniversary Alt"
+OP01-035::s p,889,sp,OP07\Alts\SP\OP01-035SP.jpg,4850332,3358x4692,GOOD_ENOUGH,"match=alts_highres, label=S P"
+OP01-047::s p,933,sp,OP04\ALTS\OP01-047SP.png,12063252,3358x4692,GOOD_ENOUGH,"match=alts_highres, label=S P"
+OP01-016::manga alt,787,manga,PRB01\Alts\OP01-016( manga alt ).jpg,7071029,3358x4692,GOOD_ENOUGH,"match=alts_highres, label=Manga Alt"
+OP01-120::manga,1157,manga,OP01\ALTS\OP01-120 Manga Rare.jpg,5583178,3358x4692,GOOD_ENOUGH,"match=alts_highres, label=Manga"
+OP01-006_r1,741,r1,,0,,NO_FILE,"match=no_match, label=R1"
+OP01-024_r1,833,r1,,0,,NO_FILE,"match=no_match, label=R1"
+OP01-013::tr alt,767,tr,OP01\ALTS\OP01-013(TR-alt).jpg,5342438,3358x4692,GOOD_ENOUGH,"match=alts_highres, label=Tr Alt"

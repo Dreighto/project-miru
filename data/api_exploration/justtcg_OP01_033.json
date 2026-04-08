@@ -1,0 +1,888 @@
+{
+  "data": [
+    {
+      "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-alternate-art-uncommon",
+      "name": "Izo (OP01-033) (Alternate Art)",
+      "game": "One Piece Card Game",
+      "set": "premium-booster-the-best-one-piece-card-game",
+      "set_name": "Premium Booster -The Best-",
+      "number": "OP01-033",
+      "rarity": "Uncommon",
+      "tcgplayerId": "593285",
+      "mtgjsonId": null,
+      "scryfallId": null,
+      "details": null,
+      "variants": [
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-alternate-art-uncommon_damaged_foil",
+          "condition": "Damaged",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8354138",
+          "price": 9.59,
+          "lastUpdated": 1772430399,
+          "priceChange24hr": null,
+          "priceHistory": null,
+          "priceChange7d": null,
+          "avgPrice": null,
+          "minPrice7d": null,
+          "maxPrice7d": null,
+          "stddevPopPrice7d": null,
+          "covPrice7d": null,
+          "iqrPrice7d": 0,
+          "trendSlope7d": null,
+          "priceChangesCount7d": 0,
+          "priceChange30d": null,
+          "avgPrice30d": null,
+          "priceHistory30d": null,
+          "minPrice30d": null,
+          "maxPrice30d": null,
+          "stddevPopPrice30d": null,
+          "covPrice30d": null,
+          "iqrPrice30d": 0,
+          "trendSlope30d": null,
+          "priceChangesCount30d": 0,
+          "priceRelativeTo30dRange": null,
+          "priceChange90d": 0,
+          "avgPrice90d": 9.59,
+          "minPrice90d": 9.59,
+          "maxPrice90d": 9.59,
+          "stddevPopPrice90d": 0,
+          "covPrice90d": 0,
+          "iqrPrice90d": 0,
+          "trendSlope90d": 0,
+          "priceChangesCount90d": 0,
+          "priceRelativeTo90dRange": null,
+          "minPrice1y": 7.8,
+          "maxPrice1y": 10,
+          "minPriceAllTime": 7.8,
+          "minPriceAllTimeDate": "2025-10-12T03:35:32.568Z",
+          "maxPriceAllTime": 10,
+          "maxPriceAllTimeDate": "2025-09-02T18:04:47.062Z"
+        },
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-alternate-art-uncommon_near-mint_foil",
+          "condition": "Near Mint",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8354134",
+          "price": 7.71,
+          "lastUpdated": 1775490592,
+          "priceChange24hr": -1.15,
+          "priceHistory": [
+            {
+              "p": 7.81,
+              "t": 1774915200
+            },
+            {
+              "p": 7.81,
+              "t": 1775001600
+            },
+            {
+              "p": 7.83,
+              "t": 1775088000
+            },
+            {
+              "p": 7.83,
+              "t": 1775174400
+            },
+            {
+              "p": 7.83,
+              "t": 1775260800
+            },
+            {
+              "p": 7.8,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": -1.28,
+          "avgPrice": 7.81,
+          "minPrice7d": 7.71,
+          "maxPrice7d": 7.83,
+          "stddevPopPrice7d": 0.03,
+          "covPrice7d": 0.0037269570860989716,
+          "iqrPrice7d": 0.02,
+          "trendSlope7d": -0.00634888842954494,
+          "priceChangesCount7d": 5,
+          "priceChange30d": 0.13,
+          "avgPrice30d": 7.68,
+          "priceHistory30d": [
+            {
+              "p": 7.81,
+              "t": 1774915200
+            },
+            {
+              "p": 7.81,
+              "t": 1775001600
+            },
+            {
+              "p": 7.83,
+              "t": 1775088000
+            },
+            {
+              "p": 7.83,
+              "t": 1775174400
+            },
+            {
+              "p": 7.83,
+              "t": 1775260800
+            },
+            {
+              "p": 7.8,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 7.56,
+          "maxPrice30d": 7.83,
+          "stddevPopPrice30d": 0.11,
+          "covPrice30d": 0.014556174452869256,
+          "iqrPrice30d": 0.24,
+          "trendSlope30d": 0.00975288681281027,
+          "priceChangesCount30d": 12,
+          "priceRelativeTo30dRange": 0.5555555555555556,
+          "priceChange90d": 3.21,
+          "avgPrice90d": 7.68,
+          "minPrice90d": 7.45,
+          "maxPrice90d": 7.96,
+          "stddevPopPrice90d": 0.13,
+          "covPrice90d": 0.017221472510686404,
+          "iqrPrice90d": 0.24,
+          "trendSlope90d": 0.00210454931125714,
+          "priceChangesCount90d": 56,
+          "priceRelativeTo90dRange": 0.5098039215686274,
+          "minPrice1y": 7.45,
+          "maxPrice1y": 17.23,
+          "minPriceAllTime": 7.45,
+          "minPriceAllTimeDate": "2026-01-18T16:25:52.822Z",
+          "maxPriceAllTime": 17.23,
+          "maxPriceAllTimeDate": "2025-08-03T18:58:55.458Z"
+        },
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-alternate-art-uncommon_lightly-played_foil",
+          "condition": "Lightly Played",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8354135",
+          "price": 7.52,
+          "lastUpdated": 1775490592,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 8.19,
+              "t": 1774915200
+            },
+            {
+              "p": 8.19,
+              "t": 1775001600
+            },
+            {
+              "p": 8.19,
+              "t": 1775088000
+            },
+            {
+              "p": 7.52,
+              "t": 1775174400
+            },
+            {
+              "p": 7.52,
+              "t": 1775260800
+            },
+            {
+              "p": 7.52,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": -8.18,
+          "avgPrice": 7.87,
+          "minPrice7d": 7.52,
+          "maxPrice7d": 8.19,
+          "stddevPopPrice7d": 0.33,
+          "covPrice7d": 0.04255152136034963,
+          "iqrPrice7d": 0.67,
+          "trendSlope7d": -0.139910432113626,
+          "priceChangesCount7d": 1,
+          "priceChange30d": -11.63,
+          "avgPrice30d": 8.28,
+          "priceHistory30d": [
+            {
+              "p": 8.19,
+              "t": 1774915200
+            },
+            {
+              "p": 8.19,
+              "t": 1775001600
+            },
+            {
+              "p": 8.19,
+              "t": 1775088000
+            },
+            {
+              "p": 7.52,
+              "t": 1775174400
+            },
+            {
+              "p": 7.52,
+              "t": 1775260800
+            },
+            {
+              "p": 7.52,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 7.52,
+          "maxPrice30d": 8.51,
+          "stddevPopPrice30d": 0.31,
+          "covPrice30d": 0.03778560472241059,
+          "iqrPrice30d": 0.32,
+          "trendSlope30d": -0.0293694533413345,
+          "priceChangesCount30d": 2,
+          "priceRelativeTo30dRange": 0,
+          "priceChange90d": -27.9,
+          "avgPrice90d": 8.79,
+          "minPrice90d": 7.52,
+          "maxPrice90d": 10.43,
+          "stddevPopPrice90d": 0.57,
+          "covPrice90d": 0.0649711155563755,
+          "iqrPrice90d": 0.62,
+          "trendSlope90d": -0.0208895935948623,
+          "priceChangesCount90d": 8,
+          "priceRelativeTo90dRange": 0,
+          "minPrice1y": 7.52,
+          "maxPrice1y": 14.92,
+          "minPriceAllTime": 7.52,
+          "minPriceAllTimeDate": "2026-04-06T15:49:52.950Z",
+          "maxPriceAllTime": 14.92,
+          "maxPriceAllTimeDate": "2025-07-19T21:24:37.744Z"
+        },
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-alternate-art-uncommon_moderately-played_foil",
+          "condition": "Moderately Played",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8354136",
+          "price": 7.29,
+          "lastUpdated": 1775490592,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 7.29,
+              "t": 1774915200
+            },
+            {
+              "p": 7.29,
+              "t": 1775001600
+            },
+            {
+              "p": 7.29,
+              "t": 1775088000
+            },
+            {
+              "p": 7.29,
+              "t": 1775174400
+            },
+            {
+              "p": 7.29,
+              "t": 1775260800
+            },
+            {
+              "p": 7.29,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 0,
+          "avgPrice": 7.29,
+          "minPrice7d": 7.29,
+          "maxPrice7d": 7.29,
+          "stddevPopPrice7d": 0,
+          "covPrice7d": 0,
+          "iqrPrice7d": 0,
+          "trendSlope7d": 0,
+          "priceChangesCount7d": 0,
+          "priceChange30d": 0,
+          "avgPrice30d": 7.29,
+          "priceHistory30d": [
+            {
+              "p": 7.29,
+              "t": 1774915200
+            },
+            {
+              "p": 7.29,
+              "t": 1775001600
+            },
+            {
+              "p": 7.29,
+              "t": 1775088000
+            },
+            {
+              "p": 7.29,
+              "t": 1775174400
+            },
+            {
+              "p": 7.29,
+              "t": 1775260800
+            },
+            {
+              "p": 7.29,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 7.29,
+          "maxPrice30d": 7.29,
+          "stddevPopPrice30d": 0,
+          "covPrice30d": 0,
+          "iqrPrice30d": 0,
+          "trendSlope30d": 0,
+          "priceChangesCount30d": 0,
+          "priceRelativeTo30dRange": null,
+          "priceChange90d": -41.02,
+          "avgPrice90d": 8.3,
+          "minPrice90d": 7.29,
+          "maxPrice90d": 12.36,
+          "stddevPopPrice90d": 1.48,
+          "covPrice90d": 0.17802691562156195,
+          "iqrPrice90d": 2.8,
+          "trendSlope90d": -0.0481281328358297,
+          "priceChangesCount90d": 2,
+          "priceRelativeTo90dRange": 0,
+          "minPrice1y": 7.29,
+          "maxPrice1y": 16.89,
+          "minPriceAllTime": 7.29,
+          "minPriceAllTimeDate": "2026-04-06T15:49:52.950Z",
+          "maxPriceAllTime": 16.89,
+          "maxPriceAllTimeDate": "2025-08-13T21:57:58.296Z"
+        }
+      ]
+    },
+    {
+      "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-full-art-uncommon",
+      "name": "Izo (OP01-033) (Full Art)",
+      "game": "One Piece Card Game",
+      "set": "premium-booster-the-best-one-piece-card-game",
+      "set_name": "Premium Booster -The Best-",
+      "number": "OP01-033",
+      "rarity": "Uncommon",
+      "tcgplayerId": "593284",
+      "mtgjsonId": null,
+      "scryfallId": null,
+      "details": null,
+      "variants": [
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-full-art-uncommon_lightly-played_foil",
+          "condition": "Lightly Played",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8354130",
+          "price": 3.04,
+          "lastUpdated": 1775490592,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 3.04,
+              "t": 1774915200
+            },
+            {
+              "p": 3.04,
+              "t": 1775001600
+            },
+            {
+              "p": 3.04,
+              "t": 1775088000
+            },
+            {
+              "p": 3.04,
+              "t": 1775174400
+            },
+            {
+              "p": 3.04,
+              "t": 1775260800
+            },
+            {
+              "p": 3.04,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 0,
+          "avgPrice": 3.04,
+          "minPrice7d": 3.04,
+          "maxPrice7d": 3.04,
+          "stddevPopPrice7d": 0,
+          "covPrice7d": 0,
+          "iqrPrice7d": 0,
+          "trendSlope7d": 0,
+          "priceChangesCount7d": 0,
+          "priceChange30d": 0,
+          "avgPrice30d": 3.04,
+          "priceHistory30d": [
+            {
+              "p": 3.04,
+              "t": 1774915200
+            },
+            {
+              "p": 3.04,
+              "t": 1775001600
+            },
+            {
+              "p": 3.04,
+              "t": 1775088000
+            },
+            {
+              "p": 3.04,
+              "t": 1775174400
+            },
+            {
+              "p": 3.04,
+              "t": 1775260800
+            },
+            {
+              "p": 3.04,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 3.04,
+          "maxPrice30d": 3.04,
+          "stddevPopPrice30d": 0,
+          "covPrice30d": 0,
+          "iqrPrice30d": 0,
+          "trendSlope30d": 0,
+          "priceChangesCount30d": 0,
+          "priceRelativeTo30dRange": null,
+          "priceChange90d": 6.67,
+          "avgPrice90d": 3.03,
+          "minPrice90d": 2.85,
+          "maxPrice90d": 3.12,
+          "stddevPopPrice90d": 0.07,
+          "covPrice90d": 0.02432441988847191,
+          "iqrPrice90d": 0,
+          "trendSlope90d": 0.0013321071457848498,
+          "priceChangesCount90d": 3,
+          "priceRelativeTo90dRange": 0.7037037037037037,
+          "minPrice1y": 2.35,
+          "maxPrice1y": 3.12,
+          "minPriceAllTime": 2.35,
+          "minPriceAllTimeDate": "2026-01-03T05:15:55.863Z",
+          "maxPriceAllTime": 3.12,
+          "maxPriceAllTimeDate": "2026-02-14T12:33:52.681Z"
+        },
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-full-art-uncommon_near-mint_foil",
+          "condition": "Near Mint",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8354129",
+          "price": 2,
+          "lastUpdated": 1775490592,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 2.04,
+              "t": 1774915200
+            },
+            {
+              "p": 2.04,
+              "t": 1775001600
+            },
+            {
+              "p": 2,
+              "t": 1775088000
+            },
+            {
+              "p": 2,
+              "t": 1775174400
+            },
+            {
+              "p": 2,
+              "t": 1775260800
+            },
+            {
+              "p": 2,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": -1.96,
+          "avgPrice": 2.01,
+          "minPrice7d": 2,
+          "maxPrice7d": 2.04,
+          "stddevPopPrice7d": 0.02,
+          "covPrice7d": 0.00936565273094765,
+          "iqrPrice7d": 0.04,
+          "trendSlope7d": -0.00742611108521555,
+          "priceChangesCount7d": 1,
+          "priceChange30d": -3.85,
+          "avgPrice30d": 2.03,
+          "priceHistory30d": [
+            {
+              "p": 2.04,
+              "t": 1774915200
+            },
+            {
+              "p": 2.04,
+              "t": 1775001600
+            },
+            {
+              "p": 2,
+              "t": 1775088000
+            },
+            {
+              "p": 2,
+              "t": 1775174400
+            },
+            {
+              "p": 2,
+              "t": 1775260800
+            },
+            {
+              "p": 2,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 1.98,
+          "maxPrice30d": 2.08,
+          "stddevPopPrice30d": 0.03,
+          "covPrice30d": 0.014404160690847814,
+          "iqrPrice30d": 0.04,
+          "trendSlope30d": -0.0008312851054961209,
+          "priceChangesCount30d": 6,
+          "priceRelativeTo30dRange": 0.2,
+          "priceChange90d": -10.31,
+          "avgPrice90d": 2.1,
+          "minPrice90d": 1.98,
+          "maxPrice90d": 2.25,
+          "stddevPopPrice90d": 0.07,
+          "covPrice90d": 0.03356030330281606,
+          "iqrPrice90d": 0.11,
+          "trendSlope90d": -0.00254874379167371,
+          "priceChangesCount90d": 21,
+          "priceRelativeTo90dRange": 0.07407407407407407,
+          "minPrice1y": 1.92,
+          "maxPrice1y": 2.31,
+          "minPriceAllTime": 1.92,
+          "minPriceAllTimeDate": "2025-07-03T14:03:59.992Z",
+          "maxPriceAllTime": 2.31,
+          "maxPriceAllTimeDate": "2025-11-26T13:35:43.453Z"
+        }
+      ]
+    },
+    {
+      "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-jolly-roger-foil-uncommon",
+      "name": "Izo (OP01-033) (Jolly Roger Foil)",
+      "game": "One Piece Card Game",
+      "set": "premium-booster-the-best-one-piece-card-game",
+      "set_name": "Premium Booster -The Best-",
+      "number": "OP01-033",
+      "rarity": "Uncommon",
+      "tcgplayerId": "586589",
+      "mtgjsonId": null,
+      "scryfallId": null,
+      "details": null,
+      "variants": [
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-jolly-roger-foil-uncommon_lightly-played_foil",
+          "condition": "Lightly Played",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8267799",
+          "price": 0.59,
+          "lastUpdated": 1775490592,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 0.59,
+              "t": 1774915200
+            },
+            {
+              "p": 0.59,
+              "t": 1775001600
+            },
+            {
+              "p": 0.59,
+              "t": 1775088000
+            },
+            {
+              "p": 0.59,
+              "t": 1775174400
+            },
+            {
+              "p": 0.59,
+              "t": 1775260800
+            },
+            {
+              "p": 0.59,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 0,
+          "avgPrice": 0.59,
+          "minPrice7d": 0.59,
+          "maxPrice7d": 0.59,
+          "stddevPopPrice7d": 0,
+          "covPrice7d": 0,
+          "iqrPrice7d": 0,
+          "trendSlope7d": 0,
+          "priceChangesCount7d": 0,
+          "priceChange30d": 5.36,
+          "avgPrice30d": 0.58,
+          "priceHistory30d": [
+            {
+              "p": 0.59,
+              "t": 1774915200
+            },
+            {
+              "p": 0.59,
+              "t": 1775001600
+            },
+            {
+              "p": 0.59,
+              "t": 1775088000
+            },
+            {
+              "p": 0.59,
+              "t": 1775174400
+            },
+            {
+              "p": 0.59,
+              "t": 1775260800
+            },
+            {
+              "p": 0.59,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 0.56,
+          "maxPrice30d": 0.59,
+          "stddevPopPrice30d": 0.01,
+          "covPrice30d": 0.016802610502197463,
+          "iqrPrice30d": 0.02,
+          "trendSlope30d": 0.000907501871699474,
+          "priceChangesCount30d": 2,
+          "priceRelativeTo30dRange": 1,
+          "priceChange90d": -16.9,
+          "avgPrice90d": 0.71,
+          "minPrice90d": 0.56,
+          "maxPrice90d": 0.88,
+          "stddevPopPrice90d": 0.13,
+          "covPrice90d": 0.18720999772353974,
+          "iqrPrice90d": 0.27,
+          "trendSlope90d": -0.0038847147011829303,
+          "priceChangesCount90d": 8,
+          "priceRelativeTo90dRange": 0.09375,
+          "minPrice1y": 0.25,
+          "maxPrice1y": 0.88,
+          "minPriceAllTime": 0.25,
+          "minPriceAllTimeDate": "2025-08-30T07:32:34.127Z",
+          "maxPriceAllTime": 0.88,
+          "maxPriceAllTimeDate": "2026-02-10T16:03:23.233Z"
+        },
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-jolly-roger-foil-uncommon_near-mint_foil",
+          "condition": "Near Mint",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8267798",
+          "price": 0.56,
+          "lastUpdated": 1775490592,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 0.6,
+              "t": 1774915200
+            },
+            {
+              "p": 0.6,
+              "t": 1775001600
+            },
+            {
+              "p": 0.6,
+              "t": 1775088000
+            },
+            {
+              "p": 0.56,
+              "t": 1775174400
+            },
+            {
+              "p": 0.56,
+              "t": 1775260800
+            },
+            {
+              "p": 0.56,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": -6.67,
+          "avgPrice": 0.58,
+          "minPrice7d": 0.53,
+          "maxPrice7d": 0.6,
+          "stddevPopPrice7d": 0.02,
+          "covPrice7d": 0.037565741308582215,
+          "iqrPrice7d": 0.04,
+          "trendSlope7d": -0.00860237736555156,
+          "priceChangesCount7d": 3,
+          "priceChange30d": -8.2,
+          "avgPrice30d": 0.6,
+          "priceHistory30d": [
+            {
+              "p": 0.6,
+              "t": 1774915200
+            },
+            {
+              "p": 0.6,
+              "t": 1775001600
+            },
+            {
+              "p": 0.6,
+              "t": 1775088000
+            },
+            {
+              "p": 0.56,
+              "t": 1775174400
+            },
+            {
+              "p": 0.56,
+              "t": 1775260800
+            },
+            {
+              "p": 0.56,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 0.53,
+          "maxPrice30d": 0.63,
+          "stddevPopPrice30d": 0.02,
+          "covPrice30d": 0.029750195044742012,
+          "iqrPrice30d": 0.01,
+          "trendSlope30d": -0.00163087176171526,
+          "priceChangesCount30d": 8,
+          "priceRelativeTo30dRange": 0.3,
+          "priceChange90d": 3.7,
+          "avgPrice90d": 0.62,
+          "minPrice90d": 0.49,
+          "maxPrice90d": 0.71,
+          "stddevPopPrice90d": 0.05,
+          "covPrice90d": 0.07452070852404696,
+          "iqrPrice90d": 0.04,
+          "trendSlope90d": -1.0319373226072402e-05,
+          "priceChangesCount90d": 47,
+          "priceRelativeTo90dRange": 0.3181818181818182,
+          "minPrice1y": 0.32,
+          "maxPrice1y": 0.81,
+          "minPriceAllTime": 0.32,
+          "minPriceAllTimeDate": "2025-06-22T09:25:27.208Z",
+          "maxPriceAllTime": 0.81,
+          "maxPriceAllTimeDate": "2025-08-29T00:31:56.026Z"
+        },
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-izo-op01-033-jolly-roger-foil-uncommon_moderately-played_foil",
+          "condition": "Moderately Played",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8267800",
+          "price": 0.45,
+          "lastUpdated": 1775490592,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 0.45,
+              "t": 1774915200
+            },
+            {
+              "p": 0.45,
+              "t": 1775001600
+            },
+            {
+              "p": 0.45,
+              "t": 1775088000
+            },
+            {
+              "p": 0.45,
+              "t": 1775174400
+            },
+            {
+              "p": 0.45,
+              "t": 1775260800
+            },
+            {
+              "p": 0.45,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 0,
+          "avgPrice": 0.45,
+          "minPrice7d": 0.45,
+          "maxPrice7d": 0.45,
+          "stddevPopPrice7d": 0,
+          "covPrice7d": 0,
+          "iqrPrice7d": 0,
+          "trendSlope7d": 0,
+          "priceChangesCount7d": 0,
+          "priceChange30d": 0,
+          "avgPrice30d": 0.45,
+          "priceHistory30d": [
+            {
+              "p": 0.45,
+              "t": 1774915200
+            },
+            {
+              "p": 0.45,
+              "t": 1775001600
+            },
+            {
+              "p": 0.45,
+              "t": 1775088000
+            },
+            {
+              "p": 0.45,
+              "t": 1775174400
+            },
+            {
+              "p": 0.45,
+              "t": 1775260800
+            },
+            {
+              "p": 0.45,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 0.45,
+          "maxPrice30d": 0.45,
+          "stddevPopPrice30d": 0,
+          "covPrice30d": 0,
+          "iqrPrice30d": 0,
+          "trendSlope30d": 0,
+          "priceChangesCount30d": 0,
+          "priceRelativeTo30dRange": null,
+          "priceChange90d": 0,
+          "avgPrice90d": 0.45,
+          "minPrice90d": 0.45,
+          "maxPrice90d": 0.45,
+          "stddevPopPrice90d": 0,
+          "covPrice90d": 0,
+          "iqrPrice90d": 0,
+          "trendSlope90d": 0,
+          "priceChangesCount90d": 1,
+          "priceRelativeTo90dRange": null,
+          "minPrice1y": 0.45,
+          "maxPrice1y": 0.45,
+          "minPriceAllTime": 0.45,
+          "minPriceAllTimeDate": "2026-04-06T15:49:52.950Z",
+          "maxPriceAllTime": 0.45,
+          "maxPriceAllTimeDate": "2026-04-06T15:49:52.950Z"
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "total": 3,
+    "limit": 20,
+    "offset": 0,
+    "hasMore": false
+  },
+  "_metadata": {
+    "apiRequestLimit": 10000,
+    "apiDailyLimit": 1000,
+    "apiRateLimit": 50,
+    "apiRequestsUsed": 4,
+    "apiDailyRequestsUsed": 4,
+    "apiRequestsRemaining": 9996,
+    "apiDailyRequestsRemaining": 996,
+    "apiPlan": "Starter Plan"
+  }
+}

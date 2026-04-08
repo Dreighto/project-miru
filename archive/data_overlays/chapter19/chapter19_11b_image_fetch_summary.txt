@@ -1,0 +1,8 @@
+Chapter 19.11B surgical official image fetch summary
+Input artifact: D:\dev\tcg-watcher-worktree\data\overlays\chapter19_11_install_plan.csv
+Rows processed: 16
+PNG fetched: 0
+WebP generated: 0
+Failures observed: 16
+Assets root: D:\Miru_Assets
+DB touched: no

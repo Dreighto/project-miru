@@ -1,0 +1,23 @@
+[
+  {
+    "inventory_price": 0.2,
+    "market_price": 0.34,
+    "card_name": "Caesar Clown",
+    "set_name": "Romance Dawn",
+    "card_text": "[On K.O.] Play up to 1 [Smiley] from your deck, then shuffle your deck.  This card has been officially errata'd.",
+    "set_id": "OP-01",
+    "rarity": "R",
+    "card_set_id": "OP01-069",
+    "card_color": "Blue",
+    "card_type": "Character",
+    "life": null,
+    "card_cost": "4",
+    "card_power": "5000",
+    "sub_types": "Punk Hazard Scientist",
+    "counter_amount": 1000,
+    "attribute": "Special",
+    "date_scraped": "2026-04-06",
+    "card_image_id": "OP01-069",
+    "card_image": "https://optcgapi.com/media/static/Card_Images/OP01-069.jpg"
+  }
+]

@@ -1,0 +1,23 @@
+[
+  {
+    "inventory_price": 0.03,
+    "market_price": 0.08,
+    "card_name": "Hajrudin",
+    "set_name": "Romance Dawn",
+    "card_text": "NULL",
+    "set_id": "OP-01",
+    "rarity": "C",
+    "card_set_id": "OP01-018",
+    "card_color": "Red",
+    "card_type": "Character",
+    "life": null,
+    "card_cost": "4",
+    "card_power": "6000",
+    "sub_types": "Giant New Giant Pirate Crew",
+    "counter_amount": 1000,
+    "attribute": "Strike",
+    "date_scraped": "2026-04-06",
+    "card_image_id": "OP01-018",
+    "card_image": "https://optcgapi.com/media/static/Card_Images/OP01-018.jpg"
+  }
+]

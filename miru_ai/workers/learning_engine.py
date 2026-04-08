@@ -75,6 +75,8 @@ from tools.miru_source_discovery import (
 )
 from tools.miru_visual_intelligence import VisualAnalysisResult, analyze_card_image
 
+from shared.intel.identity_truth_locks import reject_forbidden_identity_name
+
 try:
     from tools.miru_preflight_safety import (
         PRIORITY_HIGH_INT,
@@ -5709,6 +5711,12 @@ class MiruLearningEngine:
         }
 
     def upsert_dossier(self, dossier: dict[str, Any]) -> None:
+        cc = str(dossier.get("card_code") or "").strip().upper()
+        if cc:
+            reject_forbidden_identity_name(cc, dossier.get("card_name"))
+            bf = dossier.get("basic_facts")
+            if isinstance(bf, dict):
+                reject_forbidden_identity_name(cc, bf.get("card_name"))
         with closing(connect_sqlite(self.dossier_db_path)) as conn:
             conn.execute(
                 """

@@ -131,6 +131,31 @@ function Remove-StaleDashboardPidFile {
     }
 }
 
+function Test-TrustedTrackedDashboardMetadata {
+    param(
+        [Parameter(Mandatory = $true)]$TrackedMetadata
+    )
+
+    if (-not $TrackedMetadata) {
+        return $false
+    }
+
+    $trackedRepoRoot = [string]$TrackedMetadata.RepoRoot
+    $trackedScriptPath = [string]$TrackedMetadata.ScriptPath
+    if ([string]::IsNullOrWhiteSpace($trackedRepoRoot) -or [string]::IsNullOrWhiteSpace($trackedScriptPath)) {
+        return $false
+    }
+
+    try {
+        $resolvedTrackedScript = (Resolve-Path -LiteralPath $trackedScriptPath -ErrorAction Stop).Path
+        $resolvedDashboardScript = (Resolve-Path -LiteralPath $dashboardScriptPath -ErrorAction Stop).Path
+        return ($trackedRepoRoot -eq $repoRoot) -and ($resolvedTrackedScript -eq $resolvedDashboardScript)
+    }
+    catch {
+        return $false
+    }
+}
+
 function Wait-ForDashboardPortState {
     param(
         [Parameter(Mandatory = $true)][int]$PortNumber,
@@ -183,7 +208,13 @@ if ($tracked -and -not $tracked.IsValid) {
 if ($tracked -and $tracked.Pid) {
     $trackedProcess = Get-Process -Id $tracked.Pid -ErrorAction SilentlyContinue
     if ($trackedProcess) {
-        Stop-DashboardProcessIfOwned -ProcessId $tracked.Pid -TrackedRepoRoot $tracked.RepoRoot -Reason "tracked PID file"
+        if (Test-TrustedTrackedDashboardMetadata -TrackedMetadata $tracked) {
+            Write-Host "Stopping tracked Project Miru dashboard PID $($tracked.Pid) (trusted PID metadata)."
+            Stop-Process -Id $tracked.Pid -Force -ErrorAction Stop
+        }
+        else {
+            Stop-DashboardProcessIfOwned -ProcessId $tracked.Pid -TrackedRepoRoot $tracked.RepoRoot -Reason "tracked PID file"
+        }
         [void](Wait-ForDashboardPortState -PortNumber $Port -ShouldExist:$false -TimeoutSeconds 20)
     }
     else {

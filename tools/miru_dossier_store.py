@@ -10,6 +10,8 @@ from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
+from shared.intel.identity_truth_locks import reject_forbidden_identity_name
+
 try:
     from tools.miru_insight_voice import build_insight_display_list, build_single_voice_insight
 except ImportError:
@@ -1270,6 +1272,9 @@ class MiruDossierStore:
         payload = dict(facts or {})
         resolved_confidence = float(confidence or 0.0)
         resolved_code = str(canonical_code or card_code or "").strip().upper()
+        reject_forbidden_identity_name(
+            resolved_code, str(payload.get("card_name") or "").strip()
+        )
         with closing(connect_dossier_db(self.db_path)) as conn:
             mode = _cards_table_identity_mode(conn)
             if mode == "unsupported":

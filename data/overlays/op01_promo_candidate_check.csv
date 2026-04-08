@@ -1,0 +1,27 @@
+card_code,printing_id,market_product_id,product_name,image_url,candidate_status,sub_classification
+OP01-001,706,814,Roronoa Zoro - OP01-001 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485262_200w.jpg,CANDIDATE_EXISTS,PLAIN_MATCH
+OP01-004,720,717,Usopp - OP01-004 (Treasure Cup),https://tcgplayer-cdn.tcgplayer.com/product/455814_200w.jpg,CANDIDATE_EXISTS,PLAIN_MATCH
+OP01-005,727,1258,Uta - OP01-005 (Premium Card Collection -Uta-),https://tcgplayer-cdn.tcgplayer.com/product/564142_200w.jpg,CANDIDATE_EXISTS,PLAIN_MATCH
+OP01-005,728,1258,Uta - OP01-005 (Premium Card Collection -Uta-),https://tcgplayer-cdn.tcgplayer.com/product/564142_200w.jpg,CANDIDATE_EXISTS,PLAIN_MATCH
+OP01-013,758,815,Sanji - OP01-013 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485263_200w.jpg,CANDIDATE_EXISTS,PLAIN_MATCH
+OP01-013,759,815,Sanji - OP01-013 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485263_200w.jpg,CANDIDATE_EXISTS,PLAIN_MATCH
+OP01-014,770,,,,NO_CANDIDATE,
+OP01-014,771,,,,NO_CANDIDATE,
+OP01-016,779,3375,Nami (OP01-016) (Manga),https://tcgplayer-cdn.tcgplayer.com/product/587966_200w.jpg,CANDIDATE_EXISTS,AMBIGUOUS
+OP01-016,779,817,Nami - OP01-016 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485265_200w.jpg,CANDIDATE_EXISTS,AMBIGUOUS
+OP01-016,779,1068,Nami - OP01-016 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527619_200w.jpg,CANDIDATE_EXISTS,AMBIGUOUS
+OP01-016,780,3375,Nami (OP01-016) (Manga),https://tcgplayer-cdn.tcgplayer.com/product/587966_200w.jpg,CANDIDATE_EXISTS,AMBIGUOUS
+OP01-016,780,817,Nami - OP01-016 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485265_200w.jpg,CANDIDATE_EXISTS,AMBIGUOUS
+OP01-016,780,1068,Nami - OP01-016 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527619_200w.jpg,CANDIDATE_EXISTS,AMBIGUOUS
+OP01-017,798,,,,NO_CANDIDATE,
+OP01-017,801,,,,NO_CANDIDATE,
+OP01-017,802,,,,NO_CANDIDATE,
+OP01-021,815,,,,NO_CANDIDATE,
+OP01-021,816,,,,NO_CANDIDATE,
+OP01-022,823,821,Brook - OP01-022 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485269_200w.jpg,CANDIDATE_EXISTS,PLAIN_MATCH
+OP01-025,836,969,Roronoa Zoro - OP01-025 (Treasure Cup),https://tcgplayer-cdn.tcgplayer.com/product/515356_200w.jpg,CANDIDATE_EXISTS,AMBIGUOUS
+OP01-025,836,1069,Roronoa Zoro - OP01-025 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527620_200w.jpg,CANDIDATE_EXISTS,AMBIGUOUS
+OP01-030,859,,,,NO_CANDIDATE,
+OP01-051,950,3336,"Eustass""Captain""Kid (OP01-051) (Alternate Art)",https://tcgplayer-cdn.tcgplayer.com/product/586892_200w.jpg,CANDIDATE_EXISTS,PLAIN_MATCH
+OP01-120,1164,3268,Shanks (OP01-120) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586194_200w.jpg,CANDIDATE_EXISTS,AMBIGUOUS
+OP01-120,1164,3537,Shanks (OP01-120) (Reprint),https://tcgplayer-cdn.tcgplayer.com/product/594316_200w.jpg,CANDIDATE_EXISTS,AMBIGUOUS

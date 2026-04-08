@@ -1,0 +1,23 @@
+[
+  {
+    "inventory_price": 0.05,
+    "market_price": 0.09,
+    "card_name": "Penguin",
+    "set_name": "Romance Dawn",
+    "card_text": "[Blocker] (After your opponent declares an attack, you may rest this card to make it the new target of the attack.) [On Play] If you don't have [Shachi], play up to 1 [Shachi] from your hand.  This card has been officially errata'd.",
+    "set_id": "OP-01",
+    "rarity": "C",
+    "card_set_id": "OP01-050",
+    "card_color": "Green",
+    "card_type": "Character",
+    "life": null,
+    "card_cost": "3",
+    "card_power": "2000",
+    "sub_types": "Heart Pirates",
+    "counter_amount": 1000,
+    "attribute": "Strike",
+    "date_scraped": "2026-04-06",
+    "card_image_id": "OP01-050",
+    "card_image": "https://optcgapi.com/media/static/Card_Images/OP01-050.jpg"
+  }
+]

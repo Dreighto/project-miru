@@ -19,6 +19,8 @@ from tools.miru_source_registry import (
     get_source_entry,
 )
 
+from shared.intel.identity_truth_locks import reject_forbidden_identity_name
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_PROJECT_DB_PATH = PROJECT_ROOT / "data" / "card_catalog.db"
@@ -3291,6 +3293,7 @@ class MiruProjectDbSync:
         confidence_score = self._score_source_confidence(source_entries)
         normalized = normalize_card_code(record.card_code)
         card_code = normalized["canonical_code"] or record.card_code.strip().upper()
+        reject_forbidden_identity_name(card_code, clean_display_text(record.card_name))
         set_code = normalize_set_code(record.set_code or normalized["set_code"])
         traits_text = " / ".join(clean_display_text(item) for item in (record.traits or []) if clean_display_text(item))
         validated_fields = [

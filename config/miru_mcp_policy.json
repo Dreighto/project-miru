@@ -1,0 +1,162 @@
+{
+  "policy_version": 1,
+  "authority_boundary": {
+    "canonical_repo": "D:\\dev\\tcg-watcher-worktree",
+    "canonical_project_miru_runtime_port": 18080,
+    "canonical_miru_ai_runtime_port": 18765,
+    "canonical_phone_verification_host": "100.104.150.125",
+    "miru_side_only_default": true,
+    "pm_read_only_verification_only": true,
+    "notes": [
+      "Miru AI runtime authority is port 18765. Project Miru on 18080 is read-only verification only for this pass.",
+      "Perplexity and YouTube are governed discovery lanes only. They never publish truth directly.",
+      "Use the sqlite-ro-snapshot MCP target configured in .mcp.json as the single active MCP catalog snapshot lane.",
+      "Do not create a second MCP ingestion path or treat repo-local snapshot mirrors as authoritative."
+    ]
+  },
+  "catalog_ingestion": {
+    "canonical_catalog_db": "data/card_catalog.db",
+    "sqlite_snapshot_server_id": "sqlite-ro-snapshot",
+    "truth_writeback_allowed": false,
+    "weaker_truth_overwrite_blocked": true,
+    "notes": [
+      "Catalog ingestion is one-way: canonical catalog db to read-only MCP snapshot.",
+      "Miru intelligence stores may reflect the catalog state, but MCP outputs never overwrite verified catalog truth."
+    ]
+  },
+  "research_governance": {
+    "default_outcome": "review_required",
+    "publish_truth_directly": false,
+    "required_review_fields": [
+      "captured_evidence",
+      "source_type",
+      "trust_classification",
+      "authority_cross_check_required",
+      "confidence",
+      "outcome"
+    ],
+    "default_cross_check_targets": [
+      "canonical_catalog",
+      "official-cardlist",
+      "official_rules_faq",
+      "official_restriction_notices",
+      "official_errata_cards"
+    ]
+  },
+  "lanes": [
+    {
+      "server_id": "sqlite-ro-snapshot",
+      "approval_class": "core_approved",
+      "lane_role": "read_only_db_inspection",
+      "source_type": "canonical_snapshot",
+      "blocked_from_truth_authority": true,
+      "publish_truth_directly": false,
+      "operator_only": false,
+      "research_enabled": false,
+      "default_confidence": 0.9,
+      "notes": "Core approved lane for read-only inspection of the canonical catalog snapshot only."
+    },
+    {
+      "server_id": "sequential-thinking",
+      "approval_class": "core_approved",
+      "lane_role": "reasoning_helper",
+      "source_type": "reasoning_helper",
+      "blocked_from_truth_authority": true,
+      "publish_truth_directly": false,
+      "operator_only": false,
+      "research_enabled": false,
+      "default_confidence": 0.5,
+      "notes": "Core approved helper for structured reasoning. It does not establish truth."
+    },
+    {
+      "server_id": "perplexity",
+      "approval_class": "optional_approved",
+      "lane_role": "research_discovery_error_hunting",
+      "source_type": "search_research",
+      "blocked_from_truth_authority": true,
+      "publish_truth_directly": false,
+      "operator_only": false,
+      "research_enabled": true,
+      "default_confidence": 0.35,
+      "cross_check_targets": [
+        "canonical_catalog",
+        "official-cardlist",
+        "official_rules_faq",
+        "official_restriction_notices",
+        "official_errata_cards"
+      ],
+      "notes": "Optional approved discovery lane only. Use for candidate discrepancies, review leads, and error hunting; never as sole truth."
+    },
+    {
+      "server_id": "youtube",
+      "approval_class": "optional_approved",
+      "lane_role": "media_signal_research",
+      "source_type": "media_signal",
+      "blocked_from_truth_authority": true,
+      "publish_truth_directly": false,
+      "operator_only": false,
+      "research_enabled": true,
+      "default_confidence": 0.25,
+      "cross_check_targets": [
+        "canonical_catalog",
+        "official-cardlist",
+        "official_rules_faq",
+        "official_restriction_notices",
+        "official_errata_cards"
+      ],
+      "notes": "Optional approved media-signal lane only. Use for review leads and mismatch discovery; never as sole truth."
+    },
+    {
+      "server_id": "filesystem",
+      "approval_class": "operator_only",
+      "lane_role": "system_utility",
+      "source_type": "system_utility",
+      "blocked_from_truth_authority": true,
+      "publish_truth_directly": false,
+      "operator_only": true,
+      "research_enabled": false,
+      "default_confidence": 0.0,
+      "notes": "Operator/system utility only unless explicitly and safely scoped."
+    },
+    {
+      "server_id": "git",
+      "approval_class": "operator_only",
+      "lane_role": "system_utility",
+      "source_type": "system_utility",
+      "blocked_from_truth_authority": true,
+      "publish_truth_directly": false,
+      "operator_only": true,
+      "research_enabled": false,
+      "default_confidence": 0.0,
+      "notes": "Operator/system utility only unless explicitly and safely scoped."
+    },
+    {
+      "server_id": "notion",
+      "approval_class": "operator_only",
+      "lane_role": "continuity_support",
+      "source_type": "continuity_support",
+      "blocked_from_truth_authority": true,
+      "publish_truth_directly": false,
+      "operator_only": true,
+      "research_enabled": false,
+      "default_confidence": 0.0,
+      "notes": "Continuity/operator support only unless explicitly authorized otherwise."
+    },
+    {
+      "server_id": "justtcg",
+      "approval_class": "optional_approved",
+      "lane_role": "reference_only",
+      "source_type": "reference_marketplace",
+      "blocked_from_truth_authority": true,
+      "publish_truth_directly": false,
+      "operator_only": false,
+      "research_enabled": true,
+      "default_confidence": 0.3,
+      "cross_check_targets": [
+        "canonical_catalog",
+        "official-cardlist"
+      ],
+      "notes": "Optional reference lane only when provenance policy is respected. It never outranks official or canonical truth."
+    }
+  ]
+}

@@ -4,6 +4,10 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://127.0.0.1:18765
  * Running on http://192.168.50.91:18765
 Press CTRL+C to quit
-127.0.0.1 - - [03/Apr/2026 17:55:33] "GET /api/health HTTP/1.1" 200 -
-127.0.0.1 - - [03/Apr/2026 17:55:36] "GET /dev HTTP/1.1" 200 -
-127.0.0.1 - - [03/Apr/2026 17:55:37] "POST /api/runtime/restart/18080 HTTP/1.1" 502 -
+127.0.0.1 - - [08/Apr/2026 08:06:00] "GET /api/health HTTP/1.1" 200 -
+127.0.0.1 - - [08/Apr/2026 08:06:02] "GET /dev HTTP/1.1" 200 -
+127.0.0.1 - - [08/Apr/2026 08:06:02] "GET /api/dev/mcp/status HTTP/1.1" 200 -
+127.0.0.1 - - [08/Apr/2026 08:06:05] "POST /api/dev/mcp/research HTTP/1.1" 200 -
+100.104.150.125 - - [08/Apr/2026 08:06:08] "POST /api/dev/mcp/research HTTP/1.1" 200 -
+127.0.0.1 - - [08/Apr/2026 08:06:08] "GET /api/dev/mcp/research/leads?limit=6 HTTP/1.1" 200 -
+100.104.150.125 - - [08/Apr/2026 08:06:08] "GET /api/dev/mcp/status HTTP/1.1" 200 -

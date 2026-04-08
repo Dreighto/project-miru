@@ -1,7 +1,7 @@
 ﻿{
-    "pid":  25568,
+    "pid":  39072,
     "port":  18080,
-    "started_at":  "2026-04-03T15:20:21",
+    "started_at":  "2026-04-07T21:25:49",
     "repo_root":  "D:\\dev\\tcg-watcher-worktree",
     "script_path":  "D:\\dev\\tcg-watcher-worktree\\pm\\app.py"
 }

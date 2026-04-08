@@ -1,0 +1,2 @@
+card_code,db_card_id,field_corrected,old_value,new_value,authority,correction_date,worker_rule
+OP01-001,246,card_name,Monkey D. Luffy,Roronoa Zoro,English Bandai cardlist (3 results exhausted),2026-04-07,SKIP_LUFFY_RECOVERY: English Bandai confirms OP01-001 = Roronoa Zoro across all 3 variants. No Monkey D. Luffy exists at this code. alt/OP01-001_alt.png is Roronoa Zoro alt art. Future workers must not attempt Luffy recovery for this file. The alt file remains a 200x280 thumbnail pending future size normalization from an approved source.

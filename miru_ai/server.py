@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import atexit
 import copy
+import csv
 from contextlib import closing
 import argparse
 from datetime import date, datetime, timedelta, timezone
@@ -82,6 +83,13 @@ from miru_ai.governance.action_governance import (
     resolve_review_queue_item,
     update_review_queue_item,
 )
+from miru_ai.governance.mcp_governance import (
+    McpInvocationError,
+    build_mcp_governance_summary,
+    list_research_review_leads,
+    run_governed_research,
+    sync_catalog_snapshot,
+)
 from tools.miru_source_adapters import NormalizedSourceRecord
 from tools.miru_learner_config import get_learner_mode, set_learner_mode, LEARNER_MODES
 from tools.miru_self_report import build_self_report
@@ -107,6 +115,15 @@ LEARNING_QUEUE_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_queue.db"
 LEARNING_STATUS_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_log.db"
 LEARNING_DOSSIER_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_dossiers.db"
 PRICES_PATH = PROJECT_ROOT / "data" / "prices.json"
+CHAPTER19_11_INSTALL_PLAN_CSV = (
+    PROJECT_ROOT / "data" / "overlays" / "chapter19_11_install_plan.csv"
+)
+CHAPTER19_11C_INSTALL_PANEL_MANIFEST = (
+    PROJECT_ROOT / "data" / "overlays" / "chapter19_11c_install_panel_image_manifest.json"
+)
+CHAPTER19_12_PRICE_HYDRATION_CSV = (
+    PROJECT_ROOT / "data" / "overlays" / "chapter19_12_price_hydration.csv"
+)
 LIMITS_STATUS_PATH = PROJECT_ROOT / "data" / "miru_limits_status.json"
 PUSHOVER_LEARNING_SNAPSHOT_PATH = (
     PROJECT_ROOT / "data" / "miru_pushover_learning_snapshot.json"
@@ -7004,6 +7021,7 @@ def build_dev_status(
         )["recent_activity"],
         "last_insight_sync": _get_last_insight_sync_report(),
         "operator_self_report": load_operator_self_report(),
+        "mcp_governance": build_mcp_governance_summary(),
     }
     payload["operator_handoff"] = build_operator_handoff_payload(payload)
     payload = ensure_governed_autopilot_payload(payload)
@@ -7461,11 +7479,472 @@ def _build_card_page_insight(data: dict[str, Any]) -> dict[str, str] | None:
     }
 
 
+def _install_panel_extract_set_code(canonical_code: str) -> str:
+    """Match ``miru_ai.workers.image_fetcher._extract_set_code`` (OPxx from OPxx-###)."""
+    code = str(canonical_code or "").strip().upper()
+    if not code:
+        return "UNKNOWN"
+    if code.startswith("P-"):
+        return "P"
+    m = re.match(r"^([A-Z]+\d{2})-", code)
+    if m:
+        return m.group(1)
+    return "UNKNOWN"
+
+
+def _install_plan_png_relpath(canonical_code: str, variant_family: str) -> str | None:
+    """Relative path under ``MIRU_ASSETS_ROOT`` for the card PNG (mirrors image_fetcher layout)."""
+    code = str(canonical_code or "").strip().upper()
+    if not code:
+        return None
+    set_code = _install_panel_extract_set_code(code)
+    vf = str(variant_family or "").strip().lower().replace("-", "_")
+
+    if vf in ("alt", "alt_art", "alternate_art"):
+        return f"{set_code}/alt_art/{code}_alt.png"
+    if vf == "base":
+        if code.startswith("P-"):
+            return f"P/base/{code}.png"
+        return f"{set_code}/base/{code}.png"
+    if vf == "sp":
+        return f"{set_code}/sp/{code}_sp.png"
+    if vf == "tr":
+        return f"{set_code}/tr/{code}_tr.png"
+    if vf == "parallel":
+        return f"{set_code}/parallel/{code}_p1.png"
+    if vf in ("ir", "illustration_rare"):
+        return f"{set_code}/alt_art/{code}_ir.png"
+    if vf in ("mr", "manga_rare"):
+        return f"{set_code}/alt_art/{code}_mr.png"
+    if vf in ("gmr", "golden_manga_rare"):
+        return f"{set_code}/alt_art/{code}_gmr.png"
+    return None
+
+
+def _load_chapter19_11c_install_manifest() -> dict[str, str]:
+    """Optional Chapter 19.11C manifest: official DOM-resolved PNG relpaths under Miru_Assets."""
+    path = CHAPTER19_11C_INSTALL_PANEL_MANIFEST
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        inner = data.get("png_relpath_by_canonical_code")
+        if not isinstance(inner, dict):
+            return {}
+        return {
+            str(k).strip().upper(): str(v).strip().replace("\\", "/")
+            for k, v in inner.items()
+            if str(k).strip() and str(v).strip()
+        }
+    except (OSError, json.JSONDecodeError, TypeError):
+        return {}
+
+
+def _install_plan_resolve_install_panel_image(
+    canonical_code: str, variant_family: str
+) -> dict[str, Any]:
+    """
+    Resolve PNG + thumb URLs for the dev install panel (18765 ``/img/`` route).
+
+    Thumb prefers a sibling ``.webp`` when present; modal always uses PNG.
+    """
+    code_u = str(canonical_code or "").strip().upper()
+    manifest = _load_chapter19_11c_install_manifest()
+    if code_u in manifest:
+        rel_png = manifest[code_u]
+    else:
+        rel_png = _install_plan_png_relpath(canonical_code, variant_family)
+    root = MIRU_ASSETS_ROOT.resolve()
+    out: dict[str, Any] = {
+        "ok": False,
+        "png_url": "",
+        "thumb_url": "",
+        "modal_image_url": "",
+        "thumb_is_webp": False,
+        "png_exists": False,
+        "webp_exists": False,
+        "png_relpath_posix": "",
+        "thumb_relpath_posix": "",
+    }
+    if not rel_png:
+        out["reason"] = "unknown_variant_family"
+        return out
+
+    posix = Path(rel_png).as_posix()
+    out["png_relpath_posix"] = posix
+    png_abs = (root / rel_png).resolve()
+    try:
+        png_abs.relative_to(root)
+    except ValueError:
+        out["reason"] = "path_outside_assets_root"
+        return out
+
+    webp_abs = png_abs.with_suffix(".webp")
+    out["png_exists"] = png_abs.is_file()
+    out["webp_exists"] = webp_abs.is_file()
+
+    out["png_url"] = "/img/" + posix
+    if out["webp_exists"]:
+        thumb_rel = Path(rel_png).with_suffix(".webp").as_posix()
+        out["thumb_relpath_posix"] = thumb_rel
+        out["thumb_url"] = "/img/" + thumb_rel
+        out["thumb_is_webp"] = True
+    else:
+        out["thumb_relpath_posix"] = posix
+        out["thumb_url"] = out["png_url"]
+        out["thumb_is_webp"] = False
+
+    # Lightbox prefers original PNG; WebP-only fallback keeps verification usable.
+    if out["png_exists"]:
+        out["modal_image_url"] = out["png_url"]
+    elif out["webp_exists"]:
+        out["modal_image_url"] = out["thumb_url"]
+    else:
+        out["modal_image_url"] = ""
+
+    out["ok"] = True
+    return out
+
+
+def _load_chapter19_12_price_hydration() -> dict[str, dict[str, str]]:
+    """Load the Chapter 19.12 price hydration artifact keyed by printing_id."""
+    path = CHAPTER19_12_PRICE_HYDRATION_CSV
+    if not path.is_file():
+        return {}
+    price_fields = (
+        "market_price", "mid_price", "low_price",
+        "subtype", "prices_updated_at",
+    )
+    out: dict[str, dict[str, str]] = {}
+    try:
+        with path.open("r", newline="", encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            for raw in reader:
+                if not raw:
+                    continue
+                pid = str(raw.get("printing_id") or "").strip()
+                if not pid:
+                    continue
+                out[pid] = {f: str(raw.get(f) or "").strip() for f in price_fields}
+    except Exception:
+        pass
+    return out
+
+
+def load_op01_conflict_review_panel() -> dict[str, Any]:
+    """Load OP01 conflict candidate rows for dual-image visual review.
+
+    Pure read-only: queries image_assets and market_products for side-by-side
+    comparison of Miru asset vs TCGPlayer product image.
+    """
+    CONFLICT_PIDS = (708, 788, 1157, 1158)
+    REFERENCE_PID = 707
+
+    out: dict[str, Any] = {
+        "rows": [],
+        "conflict_count": 0,
+        "reference_count": 0,
+        "available": False,
+        "error": "",
+    }
+
+    try:
+        db_path = FALLBACK_CATALOG_DB_PATH
+        uri = f"file:{db_path}?mode=ro"
+        con = sqlite3.connect(uri, uri=True)
+        con.row_factory = sqlite3.Row
+
+        all_pids = list(CONFLICT_PIDS) + [REFERENCE_PID]
+        placeholders = ",".join("?" * len(all_pids))
+
+        # Fetch printing details with image_assets and candidate market_products
+        sql = f"""
+            SELECT
+                cv.id                AS printing_id,
+                c.canonical_code     AS card_code,
+                cv.variant_key,
+                cv.is_alt,
+                cv.is_sp,
+                cv.is_manga_rare,
+                cv.is_golden_manga_rare,
+                ia.local_path        AS miru_image_path,
+                ia.is_primary
+            FROM card_variants cv
+            JOIN cards c ON c.id = cv.card_id
+            LEFT JOIN image_assets ia ON ia.printing_id = cv.id AND ia.is_primary = 1
+            WHERE cv.id IN ({placeholders})
+            ORDER BY c.canonical_code, cv.variant_key
+        """
+        printing_rows = con.execute(sql, all_pids).fetchall()
+
+        # For each printing, find candidate market_products by card_code + treatment signal
+        rows: list[dict[str, Any]] = []
+        for pr in printing_rows:
+            pid = pr["printing_id"]
+            code = pr["card_code"]
+            conflict_status = "CONFLICT_PENDING" if pid in CONFLICT_PIDS else "REFERENCE"
+
+            # Find candidate market_products for this card_code
+            candidates_sql = """
+                SELECT
+                    mp.id           AS market_product_id,
+                    mp.product_name,
+                    mp.image_url    AS tcg_image_url
+                FROM market_products mp
+                WHERE mp.product_name LIKE '%' || ? || '%'
+                  AND (
+                    mp.product_name LIKE '%Alternate Art%'
+                    OR mp.product_name LIKE '%Parallel%'
+                    OR mp.product_name LIKE '%Alt Art%'
+                    OR mp.product_name LIKE '%Manga%'
+                  )
+                ORDER BY mp.product_name
+            """
+            cands = con.execute(candidates_sql, (code,)).fetchall()
+
+            # Also check installed bridge (for reference rows)
+            bridge_sql = """
+                SELECT pmm.market_product_id, mp.product_name, mp.image_url AS tcg_image_url
+                FROM printing_market_map pmm
+                JOIN market_products mp ON mp.id = pmm.market_product_id
+                WHERE pmm.printing_id = ? AND pmm.is_preferred = 1
+            """
+            installed = con.execute(bridge_sql, (pid,)).fetchall()
+            installed_mp_id = installed[0]["market_product_id"] if installed else None
+
+            # Build candidate list
+            candidate_list = []
+            for c in cands:
+                candidate_list.append({
+                    "market_product_id": c["market_product_id"],
+                    "product_name": c["product_name"],
+                    "tcg_image_url": c["tcg_image_url"] or "",
+                    "is_installed": c["market_product_id"] == installed_mp_id,
+                })
+
+            miru_path = pr["miru_image_path"] or ""
+            row = {
+                "printing_id": pid,
+                "card_code": code,
+                "variant_key": pr["variant_key"],
+                "conflict_status": conflict_status,
+                "miru_image_path": miru_path,
+                "miru_image_url": ("/img/" + miru_path) if miru_path else "",
+                "candidates": candidate_list,
+                "has_miru_image": bool(miru_path),
+                "installed_mp_id": installed_mp_id,
+            }
+            rows.append(row)
+
+        con.close()
+        out["rows"] = rows
+        out["conflict_count"] = sum(1 for r in rows if r["conflict_status"] == "CONFLICT_PENDING")
+        out["reference_count"] = sum(1 for r in rows if r["conflict_status"] == "REFERENCE")
+        out["available"] = True
+    except Exception as exc:
+        out["error"] = f"Could not load conflict review data: {exc}"
+    return out
+
+
+def load_lane2_candidate_review_panel() -> dict[str, Any]:
+    """Load Lane 2 alt/sp/tr/mr candidate rows for dual-image visual review.
+
+    Reads the candidate check CSV and enriches with DB images (read-only).
+    Groups by printing_id, classifies as CLEAR / MULTI_MATCH / ALREADY_OWNED.
+    """
+    csv_path = PROJECT_ROOT / "data" / "overlays" / "op01_lane2_candidate_check.csv"
+    out: dict[str, Any] = {
+        "rows": [],
+        "clear_count": 0,
+        "multi_count": 0,
+        "owned_count": 0,
+        "available": False,
+        "error": "",
+    }
+
+    if not csv_path.is_file():
+        out["error"] = f"CSV not found: {csv_path}"
+        return out
+
+    try:
+        import csv as _csv
+
+        with open(csv_path, encoding="utf-8") as fh:
+            csv_rows = [
+                r for r in _csv.DictReader(fh)
+                if r.get("sub_classification") in ("CLEAR", "MULTI_MATCH", "ALREADY_OWNED")
+            ]
+
+        if not csv_rows:
+            return out
+
+        # Group by printing_id
+        from collections import OrderedDict
+        grouped: dict[int, list[dict]] = OrderedDict()
+        for r in csv_rows:
+            pid = int(r["printing_id"])
+            grouped.setdefault(pid, []).append(r)
+
+        db_path = FALLBACK_CATALOG_DB_PATH
+        uri = f"file:{db_path}?mode=ro"
+        con = sqlite3.connect(uri, uri=True)
+        con.row_factory = sqlite3.Row
+
+        rows: list[dict[str, Any]] = []
+        for pid, cand_rows in grouped.items():
+            first = cand_rows[0]
+            card_code = first["card_code"]
+            variant_key = first["variant_key"]
+
+            # Determine pid-level classification
+            subs = {r["sub_classification"] for r in cand_rows}
+            if "MULTI_MATCH" in subs:
+                pid_class = "MULTI_MATCH"
+            elif "ALREADY_OWNED" in subs and "CLEAR" not in subs:
+                pid_class = "ALREADY_OWNED"
+            elif "CLEAR" in subs:
+                pid_class = "CLEAR"
+            else:
+                pid_class = first["sub_classification"]
+
+            # Fetch miru image
+            miru_row = con.execute(
+                "SELECT local_path FROM image_assets "
+                "WHERE printing_id = ? AND is_primary = 1 LIMIT 1",
+                (pid,),
+            ).fetchone()
+            miru_path = miru_row["local_path"] if miru_row else ""
+
+            # Build candidate list with TCG image URLs from DB
+            candidate_list: list[dict[str, Any]] = []
+            for cr in cand_rows:
+                mpid_str = cr.get("market_product_id", "")
+                if not mpid_str:
+                    continue
+                mpid = int(mpid_str)
+                tcg_row = con.execute(
+                    "SELECT image_url FROM market_products WHERE id = ?",
+                    (mpid,),
+                ).fetchone()
+                tcg_url = (tcg_row["image_url"] or "") if tcg_row else ""
+                existing_owner = cr.get("existing_preferred_pid", "")
+
+                candidate_list.append({
+                    "market_product_id": mpid,
+                    "product_name": cr.get("product_name", ""),
+                    "tcg_image_url": tcg_url,
+                    "existing_owner_pid": int(existing_owner) if existing_owner else None,
+                    "sub_classification": cr["sub_classification"],
+                })
+
+            row = {
+                "printing_id": pid,
+                "card_code": card_code,
+                "variant_key": variant_key,
+                "pid_classification": pid_class,
+                "miru_image_path": miru_path,
+                "miru_image_url": ("/img/" + miru_path) if miru_path else "",
+                "has_miru_image": bool(miru_path),
+                "candidates": candidate_list,
+            }
+            rows.append(row)
+
+        con.close()
+        out["rows"] = rows
+        out["clear_count"] = sum(1 for r in rows if r["pid_classification"] == "CLEAR")
+        out["multi_count"] = sum(1 for r in rows if r["pid_classification"] == "MULTI_MATCH")
+        out["owned_count"] = sum(1 for r in rows if r["pid_classification"] == "ALREADY_OWNED")
+        out["available"] = True
+    except Exception as exc:
+        out["error"] = f"Could not load Lane 2 candidate data: {exc}"
+    return out
+
+
+def load_chapter19_11_install_plan_panel() -> dict[str, Any]:
+    path = CHAPTER19_11_INSTALL_PLAN_CSV
+    out: dict[str, Any] = {
+        "rows": [],
+        "total_rows": 0,
+        "clear_to_install_count": 0,
+        "flagged_count": 0,
+        "available": False,
+        "error": "",
+        "source_file": path.name,
+        "chapter_label": "Chapter 19.11",
+        "miru_assets_root_display": str(MIRU_ASSETS_ROOT),
+    }
+    if not path.is_file():
+        out["error"] = "Install-plan artifact not found."
+        return out
+
+    fields = (
+        "printing_id",
+        "canonical_code",
+        "variant_family",
+        "candidate_mp_id",
+        "candidate_mp_name",
+        "pre_install_status",
+        "snapshot_price_row_count",
+    )
+    try:
+        with path.open("r", newline="", encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            if not reader.fieldnames:
+                out["error"] = "Install-plan artifact is empty."
+                return out
+
+            rows: list[dict[str, Any]] = []
+            clear_count = 0
+            for raw in reader:
+                if not raw:
+                    continue
+                row = {field: str(raw.get(field) or "").strip() for field in fields}
+                status = row["pre_install_status"].upper()
+                row["is_clear_to_install"] = status == "CLEAR_TO_INSTALL"
+                if row["is_clear_to_install"]:
+                    clear_count += 1
+                    row["install_panel_image"] = _install_plan_resolve_install_panel_image(
+                        row.get("canonical_code") or "",
+                        row.get("variant_family") or "",
+                    )
+                else:
+                    row["install_panel_image"] = None
+                rows.append(row)
+
+            rows.sort(
+                key=lambda r: ((r.get("canonical_code") or ""), (r.get("printing_id") or ""))
+            )
+
+            # Hydrate price data from Chapter 19.12 artifact
+            price_map = _load_chapter19_12_price_hydration()
+            if price_map:
+                _empty_price: dict[str, str] = {
+                    "market_price": "", "mid_price": "", "low_price": "",
+                    "subtype": "", "prices_updated_at": "",
+                }
+                for row in rows:
+                    pid = row.get("printing_id") or ""
+                    row["price"] = price_map.get(pid, _empty_price)
+
+            out["rows"] = rows
+            out["total_rows"] = len(rows)
+            out["clear_to_install_count"] = clear_count
+            out["flagged_count"] = len(rows) - clear_count
+            out["available"] = True
+            return out
+    except Exception:
+        out["error"] = "Install-plan artifact could not be read."
+        return out
+
+
 def render_page(page_key: str, current_endpoint: str):
     issues = startup_issues()
     brand_assets = build_brand_assets()
     training_status: dict[str, Any] = {}
     dev_status = None
+    ready_install_panel: dict[str, Any] = {}
+    op01_conflict_panel: dict[str, Any] = {}
+    lane2_candidate_panel: dict[str, Any] = {}
     runtime_restart_token = ""
     status_snapshot: list[dict[str, Any]] = []
     runtime_dependencies: list[dict[str, Any]] = []
@@ -7478,6 +7957,10 @@ def render_page(page_key: str, current_endpoint: str):
         )
     elif page_key in ("dev", "dev_monitor"):
         dev_status = build_dev_bootstrap_status()
+        if page_key == "dev":
+            ready_install_panel = load_chapter19_11_install_plan_panel()
+            op01_conflict_panel = load_op01_conflict_review_panel()
+            lane2_candidate_panel = load_lane2_candidate_review_panel()
         runtime_restart_token = (
             os.environ.get("MIRU_RUNTIME_RESTART_TOKEN") or ""
         ).strip()
@@ -7520,6 +8003,9 @@ def render_page(page_key: str, current_endpoint: str):
         training_url=url_for("training_page"),
         status_url=url_for("status_page"),
         dev_status=dev_status,
+        ready_install_panel=ready_install_panel,
+        op01_conflict_panel=op01_conflict_panel,
+        lane2_candidate_panel=lane2_candidate_panel,
         dev_status_url=url_for("dev_status"),
         runtime_restart_token=runtime_restart_token,
         main_site_port=int(PROJECT_MIRU_PORT),
@@ -8794,7 +9280,9 @@ def create_app() -> Flask:
         _start_fetch_missing_images_job(trigger="nightly_0300")
         _schedule_next_nightly_image_fetch()
 
-    _schedule_next_nightly_image_fetch()
+    # DISABLED: nightly Bandai CDN image fetch — superseded by OPTCG API lane (2026-04-06)
+    # Re-enable by uncommenting the line below once OPTCG API cutover is fully validated.
+    # _schedule_next_nightly_image_fetch()
 
     @app.after_request
     def _miru_cache_control_core_static(response):
@@ -9370,6 +9858,87 @@ def create_app() -> Flask:
             {"ok": True, "operator_handoff": build_operator_handoff_payload(payload)}
         )
 
+    @app.get("/api/dev/lane2-review")
+    def dev_lane2_review():
+        """Return Lane 2 candidate review data with reviewability gating.
+
+        Splits rows into ready / not_ready / already_owned based on:
+        - miru_image_source = 'local_asset' only (NO Bandai CDN fallback)
+        - READY_FOR_REVIEW requires local asset + at least one candidate
+          with a non-null tcg_image_url
+        """
+        panel = load_lane2_candidate_review_panel()
+        ready_rows: list[dict[str, Any]] = []
+        not_ready_rows: list[dict[str, Any]] = []
+        already_owned_rows: list[dict[str, Any]] = []
+
+        for r in panel.get("rows", []):
+            has_local = bool(r.get("miru_image_path"))
+            miru_image_source = "local_asset" if has_local else None
+
+            candidates_out = [
+                {
+                    "market_product_id": c["market_product_id"],
+                    "product_name": c["product_name"],
+                    "tcg_image_url": c["tcg_image_url"] or None,
+                    "existing_owner_pid": c.get("existing_owner_pid"),
+                    "sub_classification": c.get("sub_classification", ""),
+                }
+                for c in r.get("candidates", [])
+            ]
+
+            has_any_tcg_image = any(c["tcg_image_url"] for c in candidates_out)
+
+            if r["pid_classification"] == "ALREADY_OWNED":
+                review_status = "ALREADY_OWNED"
+                review_context = "All candidates owned by other printings"
+            elif has_local and has_any_tcg_image:
+                review_status = "READY_FOR_REVIEW"
+                review_context = "Local asset available; TCG image(s) present"
+            elif not has_local:
+                review_status = "NOT_READY_FOR_REVIEW"
+                review_context = (
+                    "No local image asset — Bandai CDN shows base art, "
+                    "not treatment variant"
+                )
+            else:
+                review_status = "NOT_READY_FOR_REVIEW"
+                review_context = (
+                    "Local asset present but no candidate has a TCG image URL"
+                )
+
+            row_out = {
+                "printing_id": r["printing_id"],
+                "card_code": r["card_code"],
+                "variant_key": r["variant_key"],
+                "sub_classification": r["pid_classification"],
+                "miru_image_path": r.get("miru_image_path") or None,
+                "miru_image_source": miru_image_source,
+                "review_status": review_status,
+                "review_context": review_context,
+                "candidates": candidates_out,
+            }
+
+            if review_status == "ALREADY_OWNED":
+                already_owned_rows.append(row_out)
+            elif review_status == "READY_FOR_REVIEW":
+                ready_rows.append(row_out)
+            else:
+                not_ready_rows.append(row_out)
+
+        return jsonify({
+            "ready": ready_rows,
+            "not_ready": not_ready_rows,
+            "already_owned": already_owned_rows,
+            "summary": {
+                "ready_count": len(ready_rows),
+                "not_ready_count": len(not_ready_rows),
+                "already_owned_count": len(already_owned_rows),
+                "clear": panel.get("clear_count", 0),
+                "multi_match": panel.get("multi_count", 0),
+            },
+        })
+
     @app.get("/api/dev/action-governance")
     def dev_action_governance():
         summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
@@ -9436,6 +10005,90 @@ def create_app() -> Flask:
             prices_path=PRICES_PATH,
         )
         return jsonify(result), 200 if result.get("ok") else 400
+
+    @app.get("/api/dev/mcp/status")
+    def dev_mcp_status():
+        probe = str(request.args.get("probe") or "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        return jsonify(build_mcp_governance_summary(probe=probe))
+
+    @app.post("/api/dev/mcp/catalog-sync")
+    def dev_mcp_catalog_sync():
+        if not _is_runtime_control_allowed():
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "MCP catalog sync is only allowed from this machine, private LAN, Tailscale, or with a valid runtime token.",
+                    }
+                ),
+                403,
+            )
+        report = sync_catalog_snapshot()
+        ok = str(report.get("status") or "") == "synced"
+        return jsonify({"ok": ok, "report": report}), 200 if ok else 409
+
+    @app.post("/api/dev/mcp/research")
+    def dev_mcp_research():
+        if not _is_runtime_control_allowed():
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Governed MCP research is only allowed from this machine, private LAN, Tailscale, or with a valid runtime token.",
+                    }
+                ),
+                403,
+            )
+        payload = request.get_json(silent=True) or {}
+        lane_id = str(payload.get("lane_id") or "").strip().lower()
+        query = str(payload.get("query") or "").strip()
+        if not lane_id or not query:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "lane_id and query are required.",
+                    }
+                ),
+                400,
+            )
+        raw_max_results = payload.get("max_results")
+        try:
+            max_results = min(max(int(raw_max_results or 3), 1), 5)
+        except (TypeError, ValueError):
+            max_results = 3
+        try:
+            result = run_governed_research(
+                lane_id=lane_id,
+                query=query,
+                card_code=str(payload.get("card_code") or "").strip().upper(),
+                set_code=str(payload.get("set_code") or "").strip().upper(),
+                max_results=max_results,
+                lead_type=str(payload.get("lead_type") or "review_lead").strip()
+                or "review_lead",
+            )
+        except McpInvocationError as exc:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": str(exc),
+                        "fail_closed": True,
+                    }
+                ),
+                502,
+            )
+        return jsonify(result)
+
+    @app.get("/api/dev/mcp/research/leads")
+    def dev_mcp_research_leads():
+        limit = min(max(int(request.args.get("limit") or 20), 1), 100)
+        return jsonify(list_research_review_leads(limit=limit))
 
     @app.get("/api/dev/review-queue")
     def dev_review_queue():

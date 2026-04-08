@@ -1,0 +1,107 @@
+{
+  "budget_log_version": 1,
+  "generated_at": "2026-04-06T22:05:42Z",
+  "daily_total": 11,
+  "monthly_total": 11,
+  "entries": [
+    {
+      "source": "justtcg",
+      "endpoint": "/v1/games",
+      "request_count": 1,
+      "card_code": "discovery",
+      "timestamp": "2026-04-06T22:05:23Z",
+      "running_daily_total": 1,
+      "running_monthly_total": 1
+    },
+    {
+      "source": "justtcg",
+      "endpoint": "/v1/cards?q=OP01-001&game=one-piece-card-game",
+      "request_count": 1,
+      "card_code": "OP01-001",
+      "timestamp": "2026-04-06T22:05:25Z",
+      "running_daily_total": 2,
+      "running_monthly_total": 2
+    },
+    {
+      "source": "justtcg",
+      "endpoint": "/v1/cards?q=OP01-016&game=one-piece-card-game",
+      "request_count": 1,
+      "card_code": "OP01-016",
+      "timestamp": "2026-04-06T22:05:27Z",
+      "running_daily_total": 3,
+      "running_monthly_total": 3
+    },
+    {
+      "source": "justtcg",
+      "endpoint": "/v1/cards?q=OP01-025&game=one-piece-card-game",
+      "request_count": 1,
+      "card_code": "OP01-025",
+      "timestamp": "2026-04-06T22:05:30Z",
+      "running_daily_total": 4,
+      "running_monthly_total": 4
+    },
+    {
+      "source": "justtcg",
+      "endpoint": "/v1/cards?q=OP01-033&game=one-piece-card-game",
+      "request_count": 1,
+      "card_code": "OP01-033",
+      "timestamp": "2026-04-06T22:05:32Z",
+      "running_daily_total": 5,
+      "running_monthly_total": 5
+    },
+    {
+      "source": "justtcg",
+      "endpoint": "/v1/cards?q=OP01-004&game=one-piece-card-game",
+      "request_count": 1,
+      "card_code": "OP01-004",
+      "timestamp": "2026-04-06T22:05:33Z",
+      "running_daily_total": 6,
+      "running_monthly_total": 6
+    },
+    {
+      "source": "optcg",
+      "endpoint": "/api/sets/card/OP01-001/",
+      "request_count": 1,
+      "card_code": "OP01-001",
+      "timestamp": "2026-04-06T22:05:35Z",
+      "running_daily_total": 7,
+      "running_monthly_total": 7
+    },
+    {
+      "source": "optcg",
+      "endpoint": "/api/sets/card/OP01-016/",
+      "request_count": 1,
+      "card_code": "OP01-016",
+      "timestamp": "2026-04-06T22:05:37Z",
+      "running_daily_total": 8,
+      "running_monthly_total": 8
+    },
+    {
+      "source": "optcg",
+      "endpoint": "/api/sets/card/OP01-025/",
+      "request_count": 1,
+      "card_code": "OP01-025",
+      "timestamp": "2026-04-06T22:05:38Z",
+      "running_daily_total": 9,
+      "running_monthly_total": 9
+    },
+    {
+      "source": "optcg",
+      "endpoint": "/api/sets/card/OP01-033/",
+      "request_count": 1,
+      "card_code": "OP01-033",
+      "timestamp": "2026-04-06T22:05:40Z",
+      "running_daily_total": 10,
+      "running_monthly_total": 10
+    },
+    {
+      "source": "optcg",
+      "endpoint": "/api/sets/card/OP01-004/",
+      "request_count": 1,
+      "card_code": "OP01-004",
+      "timestamp": "2026-04-06T22:05:42Z",
+      "running_daily_total": 11,
+      "running_monthly_total": 11
+    }
+  ]
+}

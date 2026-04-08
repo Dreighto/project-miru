@@ -1,0 +1,1338 @@
+{
+  "data": [
+    {
+      "id": "one-piece-card-game-premium-booster-the-best-nami-op01-016-manga-rare",
+      "name": "Nami (OP01-016) (Manga)",
+      "game": "One Piece Card Game",
+      "set": "premium-booster-the-best-one-piece-card-game",
+      "set_name": "Premium Booster -The Best-",
+      "number": "OP01-016",
+      "rarity": "Rare",
+      "tcgplayerId": "587966",
+      "mtgjsonId": null,
+      "scryfallId": null,
+      "details": null,
+      "variants": [
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-nami-op01-016-manga-rare_near-mint_foil",
+          "condition": "Near Mint",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8275581",
+          "price": 1749.7,
+          "lastUpdated": 1775490592,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 1749.7,
+              "t": 1774915200
+            },
+            {
+              "p": 1749.7,
+              "t": 1775001600
+            },
+            {
+              "p": 1749.7,
+              "t": 1775088000
+            },
+            {
+              "p": 1749.7,
+              "t": 1775174400
+            },
+            {
+              "p": 1749.7,
+              "t": 1775260800
+            },
+            {
+              "p": 1749.7,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 1.1,
+          "avgPrice": 1748.29,
+          "minPrice7d": 1730.71,
+          "maxPrice7d": 1749.7,
+          "stddevPopPrice7d": 4.97,
+          "covPrice7d": 0.0028446700559471598,
+          "iqrPrice7d": 0,
+          "trendSlope7d": 1.08760155040993,
+          "priceChangesCount7d": 1,
+          "priceChange30d": 3.98,
+          "avgPrice30d": 1726.77,
+          "priceHistory30d": [
+            {
+              "p": 1749.7,
+              "t": 1774915200
+            },
+            {
+              "p": 1749.7,
+              "t": 1775001600
+            },
+            {
+              "p": 1749.7,
+              "t": 1775088000
+            },
+            {
+              "p": 1749.7,
+              "t": 1775174400
+            },
+            {
+              "p": 1749.7,
+              "t": 1775260800
+            },
+            {
+              "p": 1749.7,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 1682.71,
+          "maxPrice30d": 1749.7,
+          "stddevPopPrice30d": 21.45,
+          "covPrice30d": 0.01242175273669029,
+          "iqrPrice30d": 0,
+          "trendSlope30d": 1.9990419867842801,
+          "priceChangesCount30d": 2,
+          "priceRelativeTo30dRange": 1,
+          "priceChange90d": 47.82,
+          "avgPrice90d": 1655.06,
+          "minPrice90d": 1183.66,
+          "maxPrice90d": 1759.67,
+          "stddevPopPrice90d": 116.3,
+          "covPrice90d": 0.0702710907980437,
+          "iqrPrice90d": 90.2,
+          "trendSlope90d": 3.59747148600672,
+          "priceChangesCount90d": 11,
+          "priceRelativeTo90dRange": 0.9826912727209597,
+          "minPrice1y": 524.02,
+          "maxPrice1y": 1759.67,
+          "minPriceAllTime": 524.02,
+          "minPriceAllTimeDate": "2025-09-02T18:04:47.069Z",
+          "maxPriceAllTime": 1759.67,
+          "maxPriceAllTimeDate": "2026-02-09T02:35:54.078Z"
+        },
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-nami-op01-016-manga-rare_lightly-played_foil",
+          "condition": "Lightly Played",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8275582",
+          "price": 950,
+          "lastUpdated": 1775490592,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 950,
+              "t": 1774915200
+            },
+            {
+              "p": 950,
+              "t": 1775001600
+            },
+            {
+              "p": 950,
+              "t": 1775088000
+            },
+            {
+              "p": 950,
+              "t": 1775174400
+            },
+            {
+              "p": 950,
+              "t": 1775260800
+            },
+            {
+              "p": 950,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 0,
+          "avgPrice": 950,
+          "minPrice7d": 950,
+          "maxPrice7d": 950,
+          "stddevPopPrice7d": 0,
+          "covPrice7d": 0,
+          "iqrPrice7d": 0,
+          "trendSlope7d": 0,
+          "priceChangesCount7d": 0,
+          "priceChange30d": 0,
+          "avgPrice30d": 950,
+          "priceHistory30d": [
+            {
+              "p": 950,
+              "t": 1774915200
+            },
+            {
+              "p": 950,
+              "t": 1775001600
+            },
+            {
+              "p": 950,
+              "t": 1775088000
+            },
+            {
+              "p": 950,
+              "t": 1775174400
+            },
+            {
+              "p": 950,
+              "t": 1775260800
+            },
+            {
+              "p": 950,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 950,
+          "maxPrice30d": 950,
+          "stddevPopPrice30d": 0,
+          "covPrice30d": 0,
+          "iqrPrice30d": 0,
+          "trendSlope30d": 0,
+          "priceChangesCount30d": 0,
+          "priceRelativeTo30dRange": null,
+          "priceChange90d": 19.36,
+          "avgPrice90d": 865.5,
+          "minPrice90d": 646.24,
+          "maxPrice90d": 950,
+          "stddevPopPrice90d": 126.6,
+          "covPrice90d": 0.14627409039566314,
+          "iqrPrice90d": 225.64,
+          "trendSlope90d": 3.96578025483175,
+          "priceChangesCount90d": 3,
+          "priceRelativeTo90dRange": 1,
+          "minPrice1y": 492.43,
+          "maxPrice1y": 950,
+          "minPriceAllTime": 492.43,
+          "minPriceAllTimeDate": "2025-09-24T22:26:22.092Z",
+          "maxPriceAllTime": 950,
+          "maxPriceAllTimeDate": "2026-04-06T15:49:52.956Z"
+        },
+        {
+          "id": "one-piece-card-game-premium-booster-the-best-nami-op01-016-manga-rare_damaged_foil",
+          "condition": "Damaged",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "8275585",
+          "price": 425,
+          "lastUpdated": 1754018652,
+          "priceChange24hr": null,
+          "priceHistory": null,
+          "priceChange7d": null,
+          "avgPrice": null,
+          "minPrice7d": null,
+          "maxPrice7d": null,
+          "stddevPopPrice7d": null,
+          "covPrice7d": null,
+          "iqrPrice7d": 0,
+          "trendSlope7d": null,
+          "priceChangesCount7d": 0,
+          "priceChange30d": null,
+          "avgPrice30d": null,
+          "priceHistory30d": null,
+          "minPrice30d": null,
+          "maxPrice30d": null,
+          "stddevPopPrice30d": null,
+          "covPrice30d": null,
+          "iqrPrice30d": 0,
+          "trendSlope30d": null,
+          "priceChangesCount30d": 0,
+          "priceRelativeTo30dRange": null,
+          "priceChange90d": null,
+          "avgPrice90d": null,
+          "minPrice90d": null,
+          "maxPrice90d": null,
+          "stddevPopPrice90d": null,
+          "covPrice90d": null,
+          "iqrPrice90d": 0,
+          "trendSlope90d": null,
+          "priceChangesCount90d": 0,
+          "priceRelativeTo90dRange": null,
+          "minPrice1y": 425,
+          "maxPrice1y": 425,
+          "minPriceAllTime": 425,
+          "minPriceAllTimeDate": "2025-08-01T03:24:12.645Z",
+          "maxPriceAllTime": 425,
+          "maxPriceAllTimeDate": "2025-08-01T03:24:12.645Z"
+        }
+      ]
+    },
+    {
+      "id": "one-piece-card-game-one-piece-promotion-cards-nami-op01-016-alternate-art-promo",
+      "name": "Nami - OP01-016 (Alternate Art)",
+      "game": "One Piece Card Game",
+      "set": "one-piece-promotion-cards-one-piece-card-game",
+      "set_name": "One Piece Promotion Cards",
+      "number": "OP01-016",
+      "rarity": "Promo",
+      "tcgplayerId": "485265",
+      "mtgjsonId": null,
+      "scryfallId": null,
+      "details": null,
+      "variants": [
+        {
+          "id": "one-piece-card-game-one-piece-promotion-cards-nami-op01-016-alternate-art-promo_near-mint_foil",
+          "condition": "Near Mint",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "7013060",
+          "price": 52.38,
+          "lastUpdated": 1775490388,
+          "priceChange24hr": 3.62,
+          "priceHistory": [
+            {
+              "p": 41.76,
+              "t": 1774915200
+            },
+            {
+              "p": 43.84,
+              "t": 1775001600
+            },
+            {
+              "p": 46.16,
+              "t": 1775088000
+            },
+            {
+              "p": 46.87,
+              "t": 1775174400
+            },
+            {
+              "p": 46.87,
+              "t": 1775260800
+            },
+            {
+              "p": 50.55,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 34.72,
+          "avgPrice": 45.7,
+          "minPrice7d": 38.88,
+          "maxPrice7d": 52.38,
+          "stddevPopPrice7d": 3.58,
+          "covPrice7d": 0.07830770495322772,
+          "iqrPrice7d": 3.03,
+          "trendSlope7d": 1.62092461955801,
+          "priceChangesCount7d": 9,
+          "priceChange30d": 26.03,
+          "avgPrice30d": 40.47,
+          "priceHistory30d": [
+            {
+              "p": 41.76,
+              "t": 1774915200
+            },
+            {
+              "p": 43.84,
+              "t": 1775001600
+            },
+            {
+              "p": 46.16,
+              "t": 1775088000
+            },
+            {
+              "p": 46.87,
+              "t": 1775174400
+            },
+            {
+              "p": 46.87,
+              "t": 1775260800
+            },
+            {
+              "p": 50.55,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 37.34,
+          "maxPrice30d": 52.38,
+          "stddevPopPrice30d": 3.53,
+          "covPrice30d": 0.08728618777626133,
+          "iqrPrice30d": 1.69,
+          "trendSlope30d": 0.23820454878163802,
+          "priceChangesCount30d": 42,
+          "priceRelativeTo30dRange": 1,
+          "priceChange90d": -50.88,
+          "avgPrice90d": 59.12,
+          "minPrice90d": 37.34,
+          "maxPrice90d": 106.71,
+          "stddevPopPrice90d": 21.73,
+          "covPrice90d": 0.36754661749871864,
+          "iqrPrice90d": 36.52,
+          "trendSlope90d": -0.78005253463842,
+          "priceChangesCount90d": 125,
+          "priceRelativeTo90dRange": 0.21680841862476574,
+          "minPrice1y": 13.32,
+          "maxPrice1y": 106.71,
+          "minPriceAllTime": 13.32,
+          "minPriceAllTimeDate": "2025-07-23T05:27:12.111Z",
+          "maxPriceAllTime": 106.71,
+          "maxPriceAllTimeDate": "2026-01-07T09:52:57.619Z"
+        },
+        {
+          "id": "one-piece-card-game-one-piece-promotion-cards-nami-op01-016-alternate-art-promo_lightly-played_foil",
+          "condition": "Lightly Played",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "7013061",
+          "price": 51.69,
+          "lastUpdated": 1775490388,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 47.92,
+              "t": 1774915200
+            },
+            {
+              "p": 48.45,
+              "t": 1775001600
+            },
+            {
+              "p": 49.58,
+              "t": 1775088000
+            },
+            {
+              "p": 49.58,
+              "t": 1775174400
+            },
+            {
+              "p": 50.95,
+              "t": 1775260800
+            },
+            {
+              "p": 51.69,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 7.6,
+          "avgPrice": 49.68,
+          "minPrice7d": 47.92,
+          "maxPrice7d": 51.69,
+          "stddevPopPrice7d": 1.48,
+          "covPrice7d": 0.02971265840090661,
+          "iqrPrice7d": 2.87,
+          "trendSlope7d": 0.682001408658699,
+          "priceChangesCount7d": 5,
+          "priceChange30d": 6.25,
+          "avgPrice30d": 48.56,
+          "priceHistory30d": [
+            {
+              "p": 47.92,
+              "t": 1774915200
+            },
+            {
+              "p": 48.45,
+              "t": 1775001600
+            },
+            {
+              "p": 49.58,
+              "t": 1775088000
+            },
+            {
+              "p": 49.58,
+              "t": 1775174400
+            },
+            {
+              "p": 50.95,
+              "t": 1775260800
+            },
+            {
+              "p": 51.69,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 47.92,
+          "maxPrice30d": 51.69,
+          "stddevPopPrice30d": 1,
+          "covPrice30d": 0.020512669997370746,
+          "iqrPrice30d": 0.61,
+          "trendSlope30d": 0.050131914635945504,
+          "priceChangesCount30d": 6,
+          "priceRelativeTo30dRange": 1,
+          "priceChange90d": 118.01,
+          "avgPrice90d": 42.74,
+          "minPrice90d": 23.71,
+          "maxPrice90d": 51.69,
+          "stddevPopPrice90d": 7.71,
+          "covPrice90d": 0.18030666203550894,
+          "iqrPrice90d": 10.61,
+          "trendSlope90d": 0.274267015122533,
+          "priceChangesCount90d": 24,
+          "priceRelativeTo90dRange": 1,
+          "minPrice1y": 13.99,
+          "maxPrice1y": 51.69,
+          "minPriceAllTime": 13.99,
+          "minPriceAllTimeDate": "2025-09-04T11:53:39.943Z",
+          "maxPriceAllTime": 51.69,
+          "maxPriceAllTimeDate": "2026-04-06T15:46:28.474Z"
+        },
+        {
+          "id": "one-piece-card-game-one-piece-promotion-cards-nami-op01-016-alternate-art-promo_moderately-played_foil",
+          "condition": "Moderately Played",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "7013062",
+          "price": 46.64,
+          "lastUpdated": 1775490388,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 46.64,
+              "t": 1774915200
+            },
+            {
+              "p": 46.64,
+              "t": 1775001600
+            },
+            {
+              "p": 46.64,
+              "t": 1775088000
+            },
+            {
+              "p": 46.64,
+              "t": 1775174400
+            },
+            {
+              "p": 46.64,
+              "t": 1775260800
+            },
+            {
+              "p": 46.64,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 0,
+          "avgPrice": 46.64,
+          "minPrice7d": 46.64,
+          "maxPrice7d": 46.64,
+          "stddevPopPrice7d": 0,
+          "covPrice7d": 0,
+          "iqrPrice7d": 0,
+          "trendSlope7d": 0,
+          "priceChangesCount7d": 0,
+          "priceChange30d": -6.7,
+          "avgPrice30d": 49.11,
+          "priceHistory30d": [
+            {
+              "p": 46.64,
+              "t": 1774915200
+            },
+            {
+              "p": 46.64,
+              "t": 1775001600
+            },
+            {
+              "p": 46.64,
+              "t": 1775088000
+            },
+            {
+              "p": 46.64,
+              "t": 1775174400
+            },
+            {
+              "p": 46.64,
+              "t": 1775260800
+            },
+            {
+              "p": 46.64,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 46.64,
+          "maxPrice30d": 49.99,
+          "stddevPopPrice30d": 1.47,
+          "covPrice30d": 0.029965090697496716,
+          "iqrPrice30d": 3.35,
+          "trendSlope30d": -0.127000642377448,
+          "priceChangesCount30d": 1,
+          "priceRelativeTo30dRange": 0,
+          "priceChange90d": 86.63,
+          "avgPrice90d": 47.47,
+          "minPrice90d": 24.99,
+          "maxPrice90d": 49.99,
+          "stddevPopPrice90d": 7.06,
+          "covPrice90d": 0.14873553979630905,
+          "iqrPrice90d": 0,
+          "trendSlope90d": 0.12705696904580502,
+          "priceChangesCount90d": 2,
+          "priceRelativeTo90dRange": 0.866,
+          "minPrice1y": 10.14,
+          "maxPrice1y": 49.99,
+          "minPriceAllTime": 10.14,
+          "minPriceAllTimeDate": "2025-09-03T14:58:13.619Z",
+          "maxPriceAllTime": 49.99,
+          "maxPriceAllTimeDate": "2026-03-29T22:12:07.062Z"
+        },
+        {
+          "id": "one-piece-card-game-one-piece-promotion-cards-nami-op01-016-alternate-art-promo_damaged_foil",
+          "condition": "Damaged",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "7013064",
+          "price": 15.99,
+          "lastUpdated": 1770783653,
+          "priceChange24hr": null,
+          "priceHistory": null,
+          "priceChange7d": null,
+          "avgPrice": null,
+          "minPrice7d": null,
+          "maxPrice7d": null,
+          "stddevPopPrice7d": null,
+          "covPrice7d": null,
+          "iqrPrice7d": 0,
+          "trendSlope7d": null,
+          "priceChangesCount7d": 0,
+          "priceChange30d": null,
+          "avgPrice30d": null,
+          "priceHistory30d": null,
+          "minPrice30d": null,
+          "maxPrice30d": null,
+          "stddevPopPrice30d": null,
+          "covPrice30d": null,
+          "iqrPrice30d": 0,
+          "trendSlope30d": null,
+          "priceChangesCount30d": 0,
+          "priceRelativeTo30dRange": null,
+          "priceChange90d": 0,
+          "avgPrice90d": 15.99,
+          "minPrice90d": 15.99,
+          "maxPrice90d": 15.99,
+          "stddevPopPrice90d": 0,
+          "covPrice90d": 0,
+          "iqrPrice90d": 0,
+          "trendSlope90d": 0,
+          "priceChangesCount90d": 0,
+          "priceRelativeTo90dRange": null,
+          "minPrice1y": 15.99,
+          "maxPrice1y": 15.99,
+          "minPriceAllTime": 15.99,
+          "minPriceAllTimeDate": "2026-02-11T04:20:53.650Z",
+          "maxPriceAllTime": 15.99,
+          "maxPriceAllTimeDate": "2026-02-11T04:20:53.650Z"
+        }
+      ]
+    },
+    {
+      "id": "one-piece-card-game-one-piece-promotion-cards-nami-op01-016-ultra-deck-the-three-captains-rare",
+      "name": "Nami - OP01-016 (Ultra Deck: The Three Captains)",
+      "game": "One Piece Card Game",
+      "set": "one-piece-promotion-cards-one-piece-card-game",
+      "set_name": "One Piece Promotion Cards",
+      "number": "OP01-016",
+      "rarity": "Rare",
+      "tcgplayerId": "527619",
+      "mtgjsonId": null,
+      "scryfallId": null,
+      "details": null,
+      "variants": [
+        {
+          "id": "one-piece-card-game-one-piece-promotion-cards-nami-op01-016-ultra-deck-the-three-captains-rare_heavily-played_foil",
+          "condition": "Heavily Played",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "7575839",
+          "price": 3.92,
+          "lastUpdated": 1775490388,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 3.92,
+              "t": 1774915200
+            },
+            {
+              "p": 3.92,
+              "t": 1775001600
+            },
+            {
+              "p": 3.92,
+              "t": 1775088000
+            },
+            {
+              "p": 3.92,
+              "t": 1775174400
+            },
+            {
+              "p": 3.92,
+              "t": 1775260800
+            },
+            {
+              "p": 3.92,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 0,
+          "avgPrice": 3.92,
+          "minPrice7d": 3.92,
+          "maxPrice7d": 3.92,
+          "stddevPopPrice7d": 0,
+          "covPrice7d": 0,
+          "iqrPrice7d": 0,
+          "trendSlope7d": 0,
+          "priceChangesCount7d": 0,
+          "priceChange30d": 0,
+          "avgPrice30d": 3.92,
+          "priceHistory30d": [
+            {
+              "p": 3.92,
+              "t": 1774915200
+            },
+            {
+              "p": 3.92,
+              "t": 1775001600
+            },
+            {
+              "p": 3.92,
+              "t": 1775088000
+            },
+            {
+              "p": 3.92,
+              "t": 1775174400
+            },
+            {
+              "p": 3.92,
+              "t": 1775260800
+            },
+            {
+              "p": 3.92,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 3.92,
+          "maxPrice30d": 3.92,
+          "stddevPopPrice30d": 0,
+          "covPrice30d": 0,
+          "iqrPrice30d": 0,
+          "trendSlope30d": 0,
+          "priceChangesCount30d": 0,
+          "priceRelativeTo30dRange": null,
+          "priceChange90d": 50.19,
+          "avgPrice90d": 3.32,
+          "minPrice90d": 2.61,
+          "maxPrice90d": 3.92,
+          "stddevPopPrice90d": 0.57,
+          "covPrice90d": 0.1701129496838254,
+          "iqrPrice90d": 1.31,
+          "trendSlope90d": 0.0209695035066737,
+          "priceChangesCount90d": 4,
+          "priceRelativeTo90dRange": 1,
+          "minPrice1y": 1.75,
+          "maxPrice1y": 3.92,
+          "minPriceAllTime": 1.75,
+          "minPriceAllTimeDate": "2025-08-20T19:04:18.766Z",
+          "maxPriceAllTime": 3.92,
+          "maxPriceAllTimeDate": "2026-04-06T15:46:28.474Z"
+        },
+        {
+          "id": "one-piece-card-game-one-piece-promotion-cards-nami-op01-016-ultra-deck-the-three-captains-rare_moderately-played_foil",
+          "condition": "Moderately Played",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "7575838",
+          "price": 3.82,
+          "lastUpdated": 1775490388,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 3.97,
+              "t": 1774915200
+            },
+            {
+              "p": 3.97,
+              "t": 1775001600
+            },
+            {
+              "p": 3.97,
+              "t": 1775088000
+            },
+            {
+              "p": 3.97,
+              "t": 1775174400
+            },
+            {
+              "p": 3.97,
+              "t": 1775260800
+            },
+            {
+              "p": 3.82,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": -3.78,
+          "avgPrice": 3.93,
+          "minPrice7d": 3.82,
+          "maxPrice7d": 3.97,
+          "stddevPopPrice7d": 0.07,
+          "covPrice7d": 0.016721536978800498,
+          "iqrPrice7d": 0.08,
+          "trendSlope7d": -0.024041180904314497,
+          "priceChangesCount7d": 1,
+          "priceChange30d": -4.02,
+          "avgPrice30d": 3.96,
+          "priceHistory30d": [
+            {
+              "p": 3.97,
+              "t": 1774915200
+            },
+            {
+              "p": 3.97,
+              "t": 1775001600
+            },
+            {
+              "p": 3.97,
+              "t": 1775088000
+            },
+            {
+              "p": 3.97,
+              "t": 1775174400
+            },
+            {
+              "p": 3.97,
+              "t": 1775260800
+            },
+            {
+              "p": 3.82,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 3.82,
+          "maxPrice30d": 3.98,
+          "stddevPopPrice30d": 0.04,
+          "covPrice30d": 0.009482362507128033,
+          "iqrPrice30d": 0.01,
+          "trendSlope30d": -0.00216708996107412,
+          "priceChangesCount30d": 2,
+          "priceRelativeTo30dRange": 0,
+          "priceChange90d": 11.7,
+          "avgPrice90d": 3.76,
+          "minPrice90d": 3.42,
+          "maxPrice90d": 3.98,
+          "stddevPopPrice90d": 0.21,
+          "covPrice90d": 0.05492696003686292,
+          "iqrPrice90d": 0.35,
+          "trendSlope90d": 0.00765389687868073,
+          "priceChangesCount90d": 10,
+          "priceRelativeTo90dRange": 0.7142857142857143,
+          "minPrice1y": 2.8,
+          "maxPrice1y": 3.98,
+          "minPriceAllTime": 2.8,
+          "minPriceAllTimeDate": "2025-07-08T07:14:36.623Z",
+          "maxPriceAllTime": 3.98,
+          "maxPriceAllTimeDate": "2026-03-17T05:55:55.496Z"
+        },
+        {
+          "id": "one-piece-card-game-one-piece-promotion-cards-nami-op01-016-ultra-deck-the-three-captains-rare_lightly-played_foil",
+          "condition": "Lightly Played",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "7575837",
+          "price": 3.61,
+          "lastUpdated": 1775490388,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 3.88,
+              "t": 1774915200
+            },
+            {
+              "p": 3.88,
+              "t": 1775001600
+            },
+            {
+              "p": 3.81,
+              "t": 1775088000
+            },
+            {
+              "p": 3.61,
+              "t": 1775174400
+            },
+            {
+              "p": 3.61,
+              "t": 1775260800
+            },
+            {
+              "p": 3.61,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": -6.96,
+          "avgPrice": 3.74,
+          "minPrice7d": 3.61,
+          "maxPrice7d": 3.88,
+          "stddevPopPrice7d": 0.13,
+          "covPrice7d": 0.034914908249921224,
+          "iqrPrice7d": 0.27,
+          "trendSlope7d": -0.0562312613850039,
+          "priceChangesCount7d": 3,
+          "priceChange30d": -18.33,
+          "avgPrice30d": 4.01,
+          "priceHistory30d": [
+            {
+              "p": 3.88,
+              "t": 1774915200
+            },
+            {
+              "p": 3.88,
+              "t": 1775001600
+            },
+            {
+              "p": 3.81,
+              "t": 1775088000
+            },
+            {
+              "p": 3.61,
+              "t": 1775174400
+            },
+            {
+              "p": 3.61,
+              "t": 1775260800
+            },
+            {
+              "p": 3.61,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 3.61,
+          "maxPrice30d": 4.42,
+          "stddevPopPrice30d": 0.23,
+          "covPrice30d": 0.057188433886716676,
+          "iqrPrice30d": 0.36,
+          "trendSlope30d": -0.0254098941063913,
+          "priceChangesCount30d": 13,
+          "priceRelativeTo30dRange": 0,
+          "priceChange90d": -8.38,
+          "avgPrice90d": 4.34,
+          "minPrice90d": 3.61,
+          "maxPrice90d": 4.71,
+          "stddevPopPrice90d": 0.3,
+          "covPrice90d": 0.06978889774423677,
+          "iqrPrice90d": 0.46,
+          "trendSlope90d": -0.00795844899484913,
+          "priceChangesCount90d": 48,
+          "priceRelativeTo90dRange": 0,
+          "minPrice1y": 2.27,
+          "maxPrice1y": 4.71,
+          "minPriceAllTime": 2.27,
+          "minPriceAllTimeDate": "2025-04-08T00:39:44.976Z",
+          "maxPriceAllTime": 4.71,
+          "maxPriceAllTimeDate": "2026-02-07T19:14:46.807Z"
+        },
+        {
+          "id": "one-piece-card-game-one-piece-promotion-cards-nami-op01-016-ultra-deck-the-three-captains-rare_damaged_foil",
+          "condition": "Damaged",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "7575840",
+          "price": 3.33,
+          "lastUpdated": 1775490388,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 3.33,
+              "t": 1774915200
+            },
+            {
+              "p": 3.33,
+              "t": 1775001600
+            },
+            {
+              "p": 3.33,
+              "t": 1775088000
+            },
+            {
+              "p": 3.33,
+              "t": 1775174400
+            },
+            {
+              "p": 3.33,
+              "t": 1775260800
+            },
+            {
+              "p": 3.33,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 0,
+          "avgPrice": 3.33,
+          "minPrice7d": 3.33,
+          "maxPrice7d": 3.33,
+          "stddevPopPrice7d": 0,
+          "covPrice7d": 0,
+          "iqrPrice7d": 0,
+          "trendSlope7d": 0,
+          "priceChangesCount7d": 0,
+          "priceChange30d": 2.46,
+          "avgPrice30d": 3.28,
+          "priceHistory30d": [
+            {
+              "p": 3.33,
+              "t": 1774915200
+            },
+            {
+              "p": 3.33,
+              "t": 1775001600
+            },
+            {
+              "p": 3.33,
+              "t": 1775088000
+            },
+            {
+              "p": 3.33,
+              "t": 1775174400
+            },
+            {
+              "p": 3.33,
+              "t": 1775260800
+            },
+            {
+              "p": 3.33,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 3.25,
+          "maxPrice30d": 3.33,
+          "stddevPopPrice30d": 0.04,
+          "covPrice30d": 0.01187820057407026,
+          "iqrPrice30d": 0.08,
+          "trendSlope30d": 0.0037438122714122802,
+          "priceChangesCount30d": 1,
+          "priceRelativeTo30dRange": 1,
+          "priceChange90d": 11,
+          "avgPrice90d": 3.28,
+          "minPrice90d": 3,
+          "maxPrice90d": 3.5,
+          "stddevPopPrice90d": 0.09,
+          "covPrice90d": 0.02849101975112354,
+          "iqrPrice90d": 0.08,
+          "trendSlope90d": -0.000130238285285844,
+          "priceChangesCount90d": 4,
+          "priceRelativeTo90dRange": 0.66,
+          "minPrice1y": 0.25,
+          "maxPrice1y": 3.5,
+          "minPriceAllTime": 0.25,
+          "minPriceAllTimeDate": "2025-07-29T21:48:54.518Z",
+          "maxPriceAllTime": 3.5,
+          "maxPriceAllTimeDate": "2026-01-20T17:20:13.903Z"
+        },
+        {
+          "id": "one-piece-card-game-one-piece-promotion-cards-nami-op01-016-ultra-deck-the-three-captains-rare_near-mint_foil",
+          "condition": "Near Mint",
+          "printing": "Foil",
+          "language": "English",
+          "tcgplayerSkuId": "7575836",
+          "price": 2.87,
+          "lastUpdated": 1775490388,
+          "priceChange24hr": -1.37,
+          "priceHistory": [
+            {
+              "p": 3.21,
+              "t": 1774915200
+            },
+            {
+              "p": 3.1,
+              "t": 1775001600
+            },
+            {
+              "p": 3.1,
+              "t": 1775088000
+            },
+            {
+              "p": 2.93,
+              "t": 1775174400
+            },
+            {
+              "p": 2.81,
+              "t": 1775260800
+            },
+            {
+              "p": 2.91,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": -13.81,
+          "avgPrice": 3.02,
+          "minPrice7d": 2.81,
+          "maxPrice7d": 3.33,
+          "stddevPopPrice7d": 0.14,
+          "covPrice7d": 0.046970975122627955,
+          "iqrPrice7d": 0.21,
+          "trendSlope7d": -0.0641364202967774,
+          "priceChangesCount7d": 14,
+          "priceChange30d": -30.51,
+          "avgPrice30d": 3.67,
+          "priceHistory30d": [
+            {
+              "p": 3.21,
+              "t": 1774915200
+            },
+            {
+              "p": 3.1,
+              "t": 1775001600
+            },
+            {
+              "p": 3.1,
+              "t": 1775088000
+            },
+            {
+              "p": 2.93,
+              "t": 1775174400
+            },
+            {
+              "p": 2.81,
+              "t": 1775260800
+            },
+            {
+              "p": 2.91,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 2.81,
+          "maxPrice30d": 4.3,
+          "stddevPopPrice30d": 0.43,
+          "covPrice30d": 0.11609561560162378,
+          "iqrPrice30d": 0.69,
+          "trendSlope30d": -0.045075885283867204,
+          "priceChangesCount30d": 65,
+          "priceRelativeTo30dRange": 0.040268456375838924,
+          "priceChange90d": -27.71,
+          "avgPrice90d": 4.23,
+          "minPrice90d": 2.81,
+          "maxPrice90d": 5.2,
+          "stddevPopPrice90d": 0.57,
+          "covPrice90d": 0.13485552452154984,
+          "iqrPrice90d": 0.77,
+          "trendSlope90d": -0.0190569687041178,
+          "priceChangesCount90d": 200,
+          "priceRelativeTo90dRange": 0.02510460251046025,
+          "minPrice1y": 2.14,
+          "maxPrice1y": 6.99,
+          "minPriceAllTime": 2.14,
+          "minPriceAllTimeDate": "2025-07-20T12:18:13.691Z",
+          "maxPriceAllTime": 6.99,
+          "maxPriceAllTimeDate": "2025-12-19T11:13:02.827Z"
+        }
+      ]
+    },
+    {
+      "id": "one-piece-card-game-learn-together-deck-set-nami-op01-016-luffy-deck-rare",
+      "name": "Nami - OP01-016 (Luffy Deck)",
+      "game": "One Piece Card Game",
+      "set": "learn-together-deck-set-one-piece-card-game",
+      "set_name": "Learn Together Deck Set",
+      "number": "OP01-016",
+      "rarity": "Rare",
+      "tcgplayerId": "656656",
+      "mtgjsonId": null,
+      "scryfallId": null,
+      "details": null,
+      "variants": [
+        {
+          "id": "one-piece-card-game-learn-together-deck-set-nami-op01-016-luffy-deck-rare_lightly-played",
+          "condition": "Lightly Played",
+          "printing": "Normal",
+          "language": "English",
+          "tcgplayerSkuId": "8950409",
+          "price": 0.45,
+          "lastUpdated": 1775490746,
+          "priceChange24hr": 0,
+          "priceHistory": [
+            {
+              "p": 0.45,
+              "t": 1774915200
+            },
+            {
+              "p": 0.45,
+              "t": 1775001600
+            },
+            {
+              "p": 0.45,
+              "t": 1775088000
+            },
+            {
+              "p": 0.45,
+              "t": 1775174400
+            },
+            {
+              "p": 0.45,
+              "t": 1775260800
+            },
+            {
+              "p": 0.45,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": 0,
+          "avgPrice": 0.45,
+          "minPrice7d": 0.45,
+          "maxPrice7d": 0.45,
+          "stddevPopPrice7d": 0,
+          "covPrice7d": 0,
+          "iqrPrice7d": 0,
+          "trendSlope7d": 0,
+          "priceChangesCount7d": 0,
+          "priceChange30d": 0,
+          "avgPrice30d": 0.45,
+          "priceHistory30d": [
+            {
+              "p": 0.45,
+              "t": 1774915200
+            },
+            {
+              "p": 0.45,
+              "t": 1775001600
+            },
+            {
+              "p": 0.45,
+              "t": 1775088000
+            },
+            {
+              "p": 0.45,
+              "t": 1775174400
+            },
+            {
+              "p": 0.45,
+              "t": 1775260800
+            },
+            {
+              "p": 0.45,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 0.45,
+          "maxPrice30d": 0.45,
+          "stddevPopPrice30d": 0,
+          "covPrice30d": 0,
+          "iqrPrice30d": 0,
+          "trendSlope30d": 0,
+          "priceChangesCount30d": 1,
+          "priceRelativeTo30dRange": null,
+          "priceChange90d": 0,
+          "avgPrice90d": 0.45,
+          "minPrice90d": 0.45,
+          "maxPrice90d": 0.45,
+          "stddevPopPrice90d": 0,
+          "covPrice90d": 0,
+          "iqrPrice90d": 0,
+          "trendSlope90d": 0,
+          "priceChangesCount90d": 1,
+          "priceRelativeTo90dRange": null,
+          "minPrice1y": 0.45,
+          "maxPrice1y": 0.45,
+          "minPriceAllTime": 0.45,
+          "minPriceAllTimeDate": "2026-04-06T15:52:26.971Z",
+          "maxPriceAllTime": 0.45,
+          "maxPriceAllTimeDate": "2026-04-06T15:52:26.971Z"
+        },
+        {
+          "id": "one-piece-card-game-learn-together-deck-set-nami-op01-016-luffy-deck-rare_near-mint",
+          "condition": "Near Mint",
+          "printing": "Normal",
+          "language": "English",
+          "tcgplayerSkuId": "8950408",
+          "price": 0.4,
+          "lastUpdated": 1775490746,
+          "priceChange24hr": -2.44,
+          "priceHistory": [
+            {
+              "p": 0.41,
+              "t": 1774915200
+            },
+            {
+              "p": 0.45,
+              "t": 1775001600
+            },
+            {
+              "p": 0.45,
+              "t": 1775088000
+            },
+            {
+              "p": 0.45,
+              "t": 1775174400
+            },
+            {
+              "p": 0.45,
+              "t": 1775260800
+            },
+            {
+              "p": 0.41,
+              "t": 1775347200
+            }
+          ],
+          "priceChange7d": -2.44,
+          "avgPrice": 0.43,
+          "minPrice7d": 0.4,
+          "maxPrice7d": 0.45,
+          "stddevPopPrice7d": 0.02,
+          "covPrice7d": 0.04832528074037672,
+          "iqrPrice7d": 0.04,
+          "trendSlope7d": -0.00056951891676734,
+          "priceChangesCount7d": 4,
+          "priceChange30d": -24.53,
+          "avgPrice30d": 0.45,
+          "priceHistory30d": [
+            {
+              "p": 0.41,
+              "t": 1774915200
+            },
+            {
+              "p": 0.45,
+              "t": 1775001600
+            },
+            {
+              "p": 0.45,
+              "t": 1775088000
+            },
+            {
+              "p": 0.45,
+              "t": 1775174400
+            },
+            {
+              "p": 0.45,
+              "t": 1775260800
+            },
+            {
+              "p": 0.41,
+              "t": 1775347200
+            }
+          ],
+          "minPrice30d": 0.4,
+          "maxPrice30d": 0.54,
+          "stddevPopPrice30d": 0.05,
+          "covPrice30d": 0.11585511825756449,
+          "iqrPrice30d": 0.1,
+          "trendSlope30d": -0.004259271510933,
+          "priceChangesCount30d": 14,
+          "priceRelativeTo30dRange": 0,
+          "priceChange90d": -11.11,
+          "avgPrice90d": 0.47,
+          "minPrice90d": 0.4,
+          "maxPrice90d": 0.55,
+          "stddevPopPrice90d": 0.04,
+          "covPrice90d": 0.09265519213336426,
+          "iqrPrice90d": 0.06,
+          "trendSlope90d": -0.000284442520165698,
+          "priceChangesCount90d": 34,
+          "priceRelativeTo90dRange": 0,
+          "minPrice1y": 0.37,
+          "maxPrice1y": 0.55,
+          "minPriceAllTime": 0.37,
+          "minPriceAllTimeDate": "2025-10-04T03:21:29.080Z",
+          "maxPriceAllTime": 0.55,
+          "maxPriceAllTimeDate": "2026-02-12T11:11:05.933Z"
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "total": 4,
+    "limit": 20,
+    "offset": 0,
+    "hasMore": false
+  },
+  "_metadata": {
+    "apiRequestLimit": 10000,
+    "apiDailyLimit": 1000,
+    "apiRateLimit": 50,
+    "apiRequestsUsed": 1,
+    "apiDailyRequestsUsed": 1,
+    "apiRequestsRemaining": 9999,
+    "apiDailyRequestsRemaining": 999,
+    "apiPlan": "Starter Plan"
+  }
+}

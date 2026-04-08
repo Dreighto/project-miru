@@ -1,0 +1,23 @@
+[
+  {
+    "inventory_price": 0.06,
+    "market_price": 0.12,
+    "card_name": "Gordon",
+    "set_name": "Romance Dawn",
+    "card_text": "[On Play] You may place 1 card from your hand at the bottom of your deck: Draw 1 card.",
+    "set_id": "OP-01",
+    "rarity": "UC",
+    "card_set_id": "OP01-011",
+    "card_color": "Red",
+    "card_type": "Character",
+    "life": null,
+    "card_cost": "2",
+    "card_power": "3000",
+    "sub_types": "Film",
+    "counter_amount": 2000,
+    "attribute": "Wisdom",
+    "date_scraped": "2026-04-06",
+    "card_image_id": "OP01-011",
+    "card_image": "https://optcgapi.com/media/static/Card_Images/OP01-011.jpg"
+  }
+]

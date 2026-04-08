@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "chapter": "19.11C",
+    "miru_assets_root": "D:\\Miru_Assets",
+    "cardlist_page": "https://en.onepiece-cardgame.com/cardlist/",
+    "resolution": "official_cardlist_modal_img_src"
+  },
+  "png_relpath_by_canonical_code": {
+    "OP15-001": "OP15/alt_art/OP15-001_p1.png",
+    "OP15-008": "OP15/alt_art/OP15-008_p1.png",
+    "OP15-022": "OP15/alt_art/OP15-022_p1.png",
+    "OP15-032": "OP15/alt_art/OP15-032_p1.png",
+    "OP15-039": "OP15/alt_art/OP15-039_p1.png",
+    "OP15-047": "OP15/alt_art/OP15-047_p1.png",
+    "OP15-053": "OP15/alt_art/OP15-053_p1.png",
+    "OP15-058": "OP15/alt_art/OP15-058_p1.png",
+    "OP15-060": "OP15/alt_art/OP15-060_p1.png",
+    "OP15-086": "OP15/alt_art/OP15-086_p1.png",
+    "OP15-092": "OP15/alt_art/OP15-092_p1.png",
+    "OP15-098": "OP15/alt_art/OP15-098_p1.png",
+    "OP15-109": "OP15/alt_art/OP15-109_p1.png",
+    "OP15-113": "OP15/alt_art/OP15-113_p1.png",
+    "OP15-118": "OP15/alt_art/OP15-118_p1.png",
+    "OP15-119": "OP15/alt_art/OP15-119_p1.png"
+  }
+}

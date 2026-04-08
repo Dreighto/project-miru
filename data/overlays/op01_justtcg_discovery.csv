@@ -1,0 +1,36 @@
+printing_id,card_code,variant_key,justtcg_found,tcgplayer_product_id,variant_id,product_name,listing_type,confidence,discovery_note
+736,OP01-006,parallel_3,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-006
+737,OP01-006,parallel_4,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-006
+738,OP01-006,parallel_5,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-006
+747,OP01-008,parallel_1,TRUE,453507,,Cavendish (Box Topper),SEPARATE_SKU,HIGH,1:1 match - single variant maps to single JustTCG parallel SKU
+789,OP01-016,parallel_2,TRUE,454536,,Nami (Parallel),AMBIGUOUS,MEDIUM,2 internal variants map to 1 JustTCG SKU - identity unclear
+794,OP01-016,parallel_8,TRUE,454536,,Nami (Parallel),AMBIGUOUS,MEDIUM,2 internal variants map to 1 JustTCG SKU - identity unclear
+831,OP01-024,parallel_3,TRUE,453509,,Monkey.D.Luffy (024) (Parallel),SEPARATE_SKU,HIGH,1:1 match - single variant maps to single JustTCG parallel SKU
+853,OP01-029,parallel_2,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-029
+854,OP01-029,parallel_3,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-029
+872,OP01-033,parallel_3,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-033
+874,OP01-033,parallel_5,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-033
+881,OP01-034,parallel_1,TRUE,453513,,Inuarashi (Box Topper),SEPARATE_SKU,HIGH,1:1 match - single variant maps to single JustTCG parallel SKU
+887,OP01-035,parallel_2,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-035
+899,OP01-039,parallel_1,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-039
+908,OP01-041,parallel_1,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-041
+911,OP01-041,parallel_5,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-041
+929,OP01-047,parallel_2,TRUE,453515,,Trafalgar Law (047) (Parallel),AMBIGUOUS,MEDIUM,2 internal variants map to 1 JustTCG SKU - identity unclear
+930,OP01-047,parallel_4,TRUE,453515,,Trafalgar Law (047) (Parallel),AMBIGUOUS,MEDIUM,2 internal variants map to 1 JustTCG SKU - identity unclear
+937,OP01-048,parallel_1,TRUE,453516,,Nekomamushi (Box Topper),SEPARATE_SKU,HIGH,1:1 match - single variant maps to single JustTCG parallel SKU
+946,OP01-051,parallel_2,TRUE,454576,,"Eustass""Captain""Kid (Parallel)",AMBIGUOUS,MEDIUM,2 internal variants map to 1 JustTCG SKU - identity unclear
+947,OP01-051,parallel_4,TRUE,454576,,"Eustass""Captain""Kid (Parallel)",AMBIGUOUS,MEDIUM,2 internal variants map to 1 JustTCG SKU - identity unclear
+956,OP01-052,parallel_3,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-052
+957,OP01-052,parallel_4,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-052
+966,OP01-055,parallel_1,FALSE,,,,NO_MATCH,LOW,No parallel/box-topper SKU found in Romance Dawn set for OP01-055
+997,OP01-064,parallel_1,TRUE,453518,,Alvida (Box Topper),SEPARATE_SKU,HIGH,1:1 match - single variant maps to single JustTCG parallel SKU
+1016,OP01-070,parallel_4,TRUE,454599,,Dracule Mihawk (Parallel),SEPARATE_SKU,HIGH,1:1 match - single variant maps to single JustTCG parallel SKU
+1027,OP01-073,parallel_2,TRUE,454603,,Donquixote Doflamingo (073) (Parallel),SEPARATE_SKU,HIGH,1:1 match - single variant maps to single JustTCG parallel SKU
+1041,OP01-077,parallel_1,TRUE,453520,,Perona (Box Topper),SEPARATE_SKU,HIGH,1:1 match - single variant maps to single JustTCG parallel SKU
+1046,OP01-078,parallel_2,TRUE,454609,,Boa Hancock (Parallel),AMBIGUOUS,MEDIUM,2 internal variants map to 1 JustTCG SKU - identity unclear
+1047,OP01-078,parallel_4,TRUE,454609,,Boa Hancock (Parallel),AMBIGUOUS,MEDIUM,2 internal variants map to 1 JustTCG SKU - identity unclear
+1132,OP01-109,parallel_1,TRUE,453522,,Who's.Who (Box Topper),SEPARATE_SKU,HIGH,1:1 match - single variant maps to single JustTCG parallel SKU
+1159,OP01-120,parallel_2,TRUE,454665; 454666,,Shanks (Parallel); Shanks (Parallel) (Manga) (Alternate Art),AMBIGUOUS,MEDIUM,2 variants vs 2 JustTCG SKUs - pairing unclear
+1160,OP01-120,parallel_5,TRUE,454665; 454666,,Shanks (Parallel); Shanks (Parallel) (Manga) (Alternate Art),AMBIGUOUS,MEDIUM,2 variants vs 2 JustTCG SKUs - pairing unclear
+1170,OP01-121,parallel_2,TRUE,454669,,Yamato (Parallel),AMBIGUOUS,MEDIUM,2 internal variants map to 1 JustTCG SKU - identity unclear
+1171,OP01-121,parallel_4,TRUE,454669,,Yamato (Parallel),AMBIGUOUS,MEDIUM,2 internal variants map to 1 JustTCG SKU - identity unclear

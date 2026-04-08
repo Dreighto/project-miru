@@ -1,0 +1,11 @@
+Chapter 19.12 price hydration summary
+DB path: D:\dev\tcg-watcher-worktree\data\card_catalog.db
+Input artifact: D:\dev\tcg-watcher-worktree\data\overlays\chapter19_10_candidates.csv
+Total rows hydrated: 16
+candidate_mp_id values with exactly 1 price row: 16
+candidate_mp_id values with multiple price rows: 0
+candidate_mp_id values with no price rows: 0
+Hydrated rows with null numeric price values: 0
+Hydrated rows with subtype information present: 16
+Notable flags:
+- none

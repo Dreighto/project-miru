@@ -1,0 +1,23 @@
+[
+  {
+    "inventory_price": 0.02,
+    "market_price": 0.09,
+    "card_name": "Otsuru",
+    "set_name": "Romance Dawn",
+    "card_text": "NULL",
+    "set_id": "OP-01",
+    "rarity": "C",
+    "card_set_id": "OP01-036",
+    "card_color": "Green",
+    "card_type": "Character",
+    "life": null,
+    "card_cost": "1",
+    "card_power": "3000",
+    "sub_types": "Land of Wano",
+    "counter_amount": 1000,
+    "attribute": "Wisdom",
+    "date_scraped": "2026-04-06",
+    "card_image_id": "OP01-036",
+    "card_image": "https://optcgapi.com/media/static/Card_Images/OP01-036.jpg"
+  }
+]

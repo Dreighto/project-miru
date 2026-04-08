@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "magic-ui": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "set \"API_KEY=\" && for /f \"tokens=1,* delims==\" %A in ('findstr /b /i \"MAGIC_UI_API_KEY=\" \"D:\\dev\\tcg-watcher-worktree\\.env\"') do @set \"API_KEY=%~B\" && if not defined API_KEY (echo MAGIC_UI_API_KEY missing in D:\\dev\\tcg-watcher-worktree\\.env 1>&2 && exit /b 1) && npx -y @21st-dev/magic@latest"
+      ],
+      "env": {}
+    }
+  }
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "inventory_price": 0.1,
+    "market_price": 0.22,
+    "card_name": "Usopp",
+    "set_name": "Romance Dawn",
+    "card_text": "[DON!! x1] [Your Turn] [Once Per Turn] Draw 1 card when your opponent activates an Event.",
+    "set_id": "OP-01",
+    "rarity": "R",
+    "card_set_id": "OP01-004",
+    "card_color": "Red",
+    "card_type": "Character",
+    "life": null,
+    "card_cost": "2",
+    "card_power": "3000",
+    "sub_types": "Straw Hat Crew",
+    "counter_amount": 2000,
+    "attribute": "Ranged",
+    "date_scraped": "2026-04-06",
+    "card_image_id": "OP01-004",
+    "card_image": "https://optcgapi.com/media/static/Card_Images/OP01-004.jpg"
+  }
+]

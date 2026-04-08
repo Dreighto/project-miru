@@ -1,0 +1,349 @@
+card_code,printing_id,variant_key,mapped_product_id,market_price,mid_price,low_price,image_path,mapping_confidence,release_set_code,certification_status,failure_reason
+OP01-001,707,alt,814,66.58,74.79,62.0,OP01/alt/OP01-001_alt.png,HIGH,OP01,CERTIFIED,
+OP01-001,704,base,327,2.02,2.5,1.0,OP01/base/OP01-001.png,HIGH,OP01,CERTIFIED,
+OP01-001,708,parallel_1,,,,,OP01/parallel/OP01-001_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-001,709,parallel_2,,,,,PCC25/parallel/OP01-001_p2.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-001,706,promo,,,,,P/base/OP01-001.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-002,712,alt,,,,,thumbs/OP01-002(alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-002,710,base,309,1.13,1.18,0.28,OP01/base/OP01-002.png,HIGH,OP01,CERTIFIED,
+OP01-002,713,parallel_1,,,,,OP01/parallel/OP01-002_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-003,716,alt,,,,,thumbs/OP01-003(alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-003,714,base,330,6.57,10.0,6.34,OP01/base/OP01-003.png,HIGH,OP01,CERTIFIED,
+OP01-003,717,parallel_1,,,,,OP01/parallel/OP01-003_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-004,721,alt,,,,,thumbs/OP01-004(alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-004,718,base,331,0.2,0.25,0.06,OP01/base/OP01-004.png,HIGH,OP01,CERTIFIED,
+OP01-004,722,parallel_1,,,,,ANN1EN/parallel/OP01-004_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-004,720,promo,,,,,P/base/OP01-004.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-005,725,alt,,,,,thumbs/OP01-005alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-005,726,alt,,,,,thumbs/OP01-005(alt2).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-005,723,base,332,0.45,0.45,0.14,OP01/base/OP01-005.png,HIGH,OP01,CERTIFIED,
+OP01-005,729,parallel_1,,,,,PCCFR/parallel/OP01-005_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-005,730,parallel_2,,,,,GC01/parallel/OP01-005_p2.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-005,727,promo,,,,,P/base/OP01-005.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-005,728,promo,,,,,P/base/OP01-005.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-006,733,alt,,,,,thumbs/OP01-006(alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-006,734,alt,,,,,thumbs/OP01-006alt2.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-006,739,alt,,,,,thumbs/OP01-006(PRB01alt1).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-006,740,alt,,,,,thumbs/OP01-006(PRB01alt2).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-006,731,base,333,0.41,0.75,0.25,OP01/base/OP01-006.png,HIGH,OP01,CERTIFIED,
+OP01-006,735,parallel_1,,,,,ANN1JP/parallel/OP01-006_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-006,736,parallel_3,,,,,PRB01/parallel/OP01-006_p3.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-006,737,parallel_4,,,,,PRB01/parallel/OP01-006_p4.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-006,738,parallel_5,,,,,PRB01/parallel/OP01-006_p5.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-006,741,r1,333,0.41,0.75,0.25,OP01/base/OP01-006.png,reprint_share,PRB01,CERTIFIED,
+OP01-007,742,base,334,0.06,0.15,0.01,OP01/base/OP01-007.png,HIGH,OP01,CERTIFIED,
+OP01-008,746,alt,,,,,thumbs/OP01-008(alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-008,744,base,335,0.08,0.15,0.01,OP01/base/OP01-008.png,HIGH,OP01,CERTIFIED,
+OP01-008,747,parallel_1,,,,,OP01/parallel/OP01-008_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-009,748,base,336,0.11,0.17,0.02,OP01/base/OP01-009.png,HIGH,OP01,CERTIFIED,
+OP01-010,750,base,337,0.11,0.15,0.01,OP01/base/OP01-010.png,HIGH,OP01,CERTIFIED,
+OP01-011,752,base,338,0.12,0.2,0.05,OP01/base/OP01-011.png,HIGH,OP01,CERTIFIED,
+OP01-012,754,base,339,0.06,0.15,0.01,OP01/base/OP01-012.png,HIGH,OP01,CERTIFIED,
+OP01-013,760,alt,,,,,thumbs/OP01-013(alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-013,761,alt,,,,,thumbs/OP01-013(alt2).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-013,762,alt,,,,,thumbs/OP01-013alt3.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-013,756,base,340,1.07,1.96,0.69,OP01/base/OP01-013.png,HIGH,OP01,CERTIFIED,
+OP01-013,763,parallel_1,815,13.2,19.15,12.0,OP01/parallel/OP01-013_p1.png,HIGH,OP01,CERTIFIED,
+OP01-013,764,parallel_2,,,,,PCC25/parallel/OP01-013_p2.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-013,765,parallel_3,,,,,GC01/parallel/OP01-013_p3.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-013,766,parallel_4,,,,,ANN1EN/parallel/OP01-013_p4.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-013,758,promo,,,,,P/base/OP01-013.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-013,759,promo,,,,,P/base/OP01-013.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-013,767,tr,,,,,thumbs/OP01-013(TR-alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-014,768,base,342,0.19,0.2,0.05,OP01/base/OP01-014.png,HIGH,OP01,CERTIFIED,
+OP01-014,772,parallel_1,,,,,PCCFR/parallel/OP01-014_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-014,770,promo,,,,,P/base/OP01-014.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-014,771,promo,,,,,P/base/OP01-014.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-015,775,alt,,,,,thumbs/OP01-015alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-015,773,base,343,0.26,0.32,0.1,OP01/base/OP01-015.png,HIGH,OP01,CERTIFIED,
+OP01-015,776,parallel_1,,,,,ORP2024V3/parallel/OP01-015_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,781,alt,,,,,thumbs/OP01-016alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,783,alt,,,,,thumbs/OP01-016(alt2).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,784,alt,,,,,thumbs/OP01-016alt3.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,785,alt,,,,,thumbs/OP01-016alt4.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,786,alt,,,,,thumbs/OP01-016alt7.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,795,alt,,,,,thumbs/OP01-016(ST10 alt ).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,777,base,344,1.78,2.99,1.0,OP01/base/OP01-016.png,HIGH,OP01,CERTIFIED,
+OP01-016,787,mr,,,,,OP01/manga/OP01-016_mr.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-016,788,parallel_1,817,43.84,96.0,69.99,OP01/parallel/OP01-016_p1.png,HIGH,OP01,CERTIFIED,
+OP01-016,789,parallel_2,,,,,PCC25/parallel/OP01-016_p2.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,790,parallel_3,,,,,OP01/parallel/OP01-016_p3.png,,ST10,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,791,parallel_4,,,,,OP05/parallel/OP01-016_p4.png,,OP05,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,792,parallel_5,,,,,GC01/parallel/OP01-016_p5.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,793,parallel_7,,,,,OP01/parallel/OP01-016_p7.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,794,parallel_8,,,,,OP01/parallel/OP01-016_p8.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-016,779,promo,,,,,P/base/OP01-016.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-016,780,promo,,,,,P/base/OP01-016.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-017,799,alt,,,,,thumbs/OP01-017(alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-017,800,alt,,,,,thumbs/OP01-017alt2.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-017,796,base,346,0.39,0.49,0.1,OP01/base/OP01-017.png,HIGH,OP01,CERTIFIED,
+OP01-017,803,parallel_1,,,,,PCCFR/parallel/OP01-017_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-017,804,parallel_2,,,,,ANN1EN/parallel/OP01-017_p2.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-017,798,promo,,,,,P/base/OP01-017.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-017,801,promo,,,,,P/base/OP01-017.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-017,802,promo,,,,,P/base/OP01-017.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-018,805,base,347,0.07,0.15,0.01,OP01/base/OP01-018.png,HIGH,OP01,CERTIFIED,
+OP01-019,807,base,348,0.12,0.2,0.03,OP01/base/OP01-019.png,HIGH,OP01,CERTIFIED,
+OP01-020,809,base,349,0.07,0.15,0.01,OP01/base/OP01-020.png,HIGH,OP01,CERTIFIED,
+OP01-021,813,alt,,,,,thumbs/OP01-021(Alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-021,814,alt,,,,,thumbs/OP01-021(alt2).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-021,817,alt,,,,,thumbs/OP01-021(fullalt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-021,811,base,350,0.2,0.21,0.01,OP01/base/OP01-021.png,HIGH,OP01,CERTIFIED,
+OP01-021,818,parallel_1,,,,,PCCFR/parallel/OP01-021_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-021,819,parallel_2,,,,,TP02/parallel/OP01-021_p2.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-021,820,parallel_3,,,,,GC01/parallel/OP01-021_p3.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-021,815,promo,,,,,P/base/OP01-021.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-021,816,promo,,,,,P/base/OP01-021.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-022,821,base,351,0.29,0.3,0.1,OP01/base/OP01-022.png,HIGH,OP01,CERTIFIED,
+OP01-022,824,parallel_1,,,,,PCC25/parallel/OP01-022_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-022,823,promo,821,9.97,13.99,9.0,P/base/OP01-022.png,HIGH,OP01,CERTIFIED,
+OP01-023,825,base,352,0.08,0.15,0.01,OP01/base/OP01-023.png,HIGH,OP01,CERTIFIED,
+OP01-024,829,alt,,,,,thumbs/OP01-024 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-024,832,alt,,,,,thumbs/OP01-024(PRB01alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-024,827,base,312,2.17,3.0,1.0,OP01/base/OP01-024.png,HIGH,OP01,CERTIFIED,
+OP01-024,830,parallel_1,3253,26.87,40.0,23.99,OP01/parallel/OP01-024_p1.png,HIGH,OP01,CERTIFIED,
+OP01-024,831,parallel_3,,,,,PRB01/parallel/OP01-024_p3.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-024,833,r1,312,2.17,3.0,1.0,OP01/base/OP01-024.png,reprint_share,PRB01,CERTIFIED,
+OP01-025,837,alt,,,,,thumbs/OP01-025(alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-025,838,alt,,,,,thumbs/OP01-025alt2.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-025,839,alt,,,,,thumbs/OP01-025(alt-st10).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-025,843,alt,,,,,thumbs/OP01-025 Winner_Alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-025,834,base,314,6.03,6.99,4.49,OP01/base/OP01-025.png,HIGH,OP01,CERTIFIED,
+OP01-025,840,parallel_1,,,,,OP01/parallel/OP01-025_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-025,841,parallel_2,,,,,OP01/parallel/OP01-025_p2.png,,ST10,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-025,842,parallel_3,,,,,ANN1EN/parallel/OP01-025_p3.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-025,836,promo,,,,,P/base/OP01-025.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-026,844,base,353,0.83,1.25,0.7,OP01/base/OP01-026.png,HIGH,OP01,CERTIFIED,
+OP01-027,846,base,354,0.83,1.04,0.16,OP01/base/OP01-027.png,HIGH,OP01,CERTIFIED,
+OP01-028,848,base,355,0.08,0.15,0.01,OP01/base/OP01-028.png,HIGH,OP01,CERTIFIED,
+OP01-029,852,alt,,,,,thumbs/OP01-029alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-029,850,base,356,0.45,0.48,0.15,OP01/base/OP01-029.png,HIGH,OP01,CERTIFIED,
+OP01-029,853,parallel_2,,,,,PRB01/parallel/OP01-029_p2.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-029,854,parallel_3,,,,,PRB01/parallel/OP01-029_p3.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-029,855,parallel_4,,,,,BCV1/parallel/OP01-029_p4.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-029,856,r1,356,0.45,0.48,0.15,OP01/base/OP01-029.png,reprint_share,PRB01,CERTIFIED,
+OP01-030,857,base,316,1.58,1.99,0.2,OP01/base/OP01-030.png,HIGH,OP01,CERTIFIED,
+OP01-030,860,parallel_1,,,,,ANN2JP/parallel/OP01-030_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-030,859,promo,,,,,P/base/OP01-030.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-031,863,alt,,,,,thumbs/OP01-031 (Alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-031,861,base,357,0.28,0.3,0.15,OP01/base/OP01-031.png,HIGH,OP01,CERTIFIED,
+OP01-031,864,parallel_1,,,,,OP01/parallel/OP01-031_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-032,865,base,359,0.12,0.2,0.03,OP01/base/OP01-032.png,HIGH,OP01,CERTIFIED,
+OP01-033,869,alt,,,,,thumbs/OP01-033 (Alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-033,870,alt,,,,,thumbs/OP01-033alt2.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-033,876,alt,,,,,thumbs/OP01-033(PRB01alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-033,867,base,360,0.33,0.4,0.1,OP01/base/OP01-033.png,HIGH,OP01,CERTIFIED,
+OP01-033,871,parallel_1,,,,,TP02/parallel/OP01-033_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-033,872,parallel_3,,,,,PRB01/parallel/OP01-033_p3.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-033,873,parallel_4,,,,,PRB01/parallel/OP01-033_p4.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-033,874,parallel_5,,,,,PRB01/parallel/OP01-033_p5.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-033,875,parallel_6,,,,,_unclassified/parallel/OP01-033_p6.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-033,877,r1,360,0.33,0.4,0.1,OP01/base/OP01-033.png,reprint_share,PRB01,CERTIFIED,
+OP01-034,880,alt,,,,,thumbs/OP01-034 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-034,878,base,361,0.07,0.15,0.01,OP01/base/OP01-034.png,HIGH,OP01,CERTIFIED,
+OP01-034,881,parallel_1,,,,,OP01/parallel/OP01-034_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-035,884,alt,,,,,thumbs/op01-035alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-035,885,alt,,,,,thumbs/OP01-035alt2.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-035,882,base,362,0.32,0.32,0.14,OP01/base/OP01-035.png,HIGH,OP01,CERTIFIED,
+OP01-035,886,parallel_1,,,,,TP04/parallel/OP01-035_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-035,887,parallel_2,,,,,OP07/parallel/OP01-035_p2.png,,OP07,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-035,888,parallel_3,,,,,_unclassified/parallel/OP01-035_p3.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-035,889,sp,,,,,thumbs/OP01-035SP.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-036,890,base,363,0.08,0.15,0.01,OP01/base/OP01-036.png,HIGH,OP01,CERTIFIED,
+OP01-037,892,base,364,0.07,0.15,0.01,OP01/base/OP01-037.png,HIGH,OP01,CERTIFIED,
+OP01-038,894,base,365,0.06,0.15,0.01,OP01/base/OP01-038.png,HIGH,OP01,CERTIFIED,
+OP01-039,898,alt,,,,,thumbs/OP01-039alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-039,896,base,366,0.28,0.31,0.06,OP01/base/OP01-039.png,HIGH,OP01,CERTIFIED,
+OP01-039,899,parallel_1,,,,,PRB02/parallel/OP01-039_p1.png,,PRB02,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-039,900,r1,366,0.28,0.31,0.06,OP01/base/OP01-039.png,reprint_share,PRB02,CERTIFIED,
+OP01-040,903,alt,,,,,thumbs/OP01-040 (Alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-040,901,base,318,0.66,0.99,0.15,OP01/base/OP01-040.png,HIGH,OP01,CERTIFIED,
+OP01-040,904,parallel_1,,,,,OP01/parallel/OP01-040_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-041,907,alt,,,,,thumbs/OP01-041alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-041,912,alt,,,,,thumbs/OP01-041(PRB01alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-041,914,alt,,,,,thumbs/OP01-041Winner alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-041,905,base,368,0.41,0.41,0.11,OP01/base/OP01-041.png,HIGH,OP01,CERTIFIED,
+OP01-041,908,parallel_1,,,,,TP07/parallel/OP01-041_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-041,909,parallel_3,,,,,PRB01/parallel/OP01-041_p3.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-041,910,parallel_4,,,,,PRB01/parallel/OP01-041_p4.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-041,911,parallel_5,,,,,PRB01/parallel/OP01-041_p5.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-041,913,r1,368,0.41,0.41,0.11,OP01/base/OP01-041.png,reprint_share,PRB01,CERTIFIED,
+OP01-042,915,base,369,0.14,0.2,0.03,OP01/base/OP01-042.png,HIGH,OP01,CERTIFIED,
+OP01-043,917,base,370,0.08,0.15,0.01,OP01/base/OP01-043.png,HIGH,OP01,CERTIFIED,
+OP01-044,919,base,371,0.09,0.15,0.01,OP01/base/OP01-044.png,HIGH,OP01,CERTIFIED,
+OP01-045,921,base,372,0.06,0.15,0.01,OP01/base/OP01-045.png,HIGH,OP01,CERTIFIED,
+OP01-046,923,base,373,0.37,0.4,0.12,OP01/base/OP01-046.png,HIGH,OP01,CERTIFIED,
+OP01-047,927,alt,,,,,thumbs/OP01-047 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-047,931,alt,,,,,thumbs/OP01-047(PRB01alt2).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-047,925,base,374,0.59,1.16,0.39,OP01/base/OP01-047.png,HIGH,OP01,CERTIFIED,
+OP01-047,928,parallel_1,3337,21.7,22.27,15.71,OP01/parallel/OP01-047_p1.png,HIGH,OP01,CERTIFIED,
+OP01-047,929,parallel_2,,,,,OP04/parallel/OP01-047_p2.png,,OP04,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-047,930,parallel_4,,,,,PRB01/parallel/OP01-047_p4.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-047,932,r1,374,0.59,1.16,0.39,OP01/base/OP01-047.png,reprint_share,PRB01,CERTIFIED,
+OP01-047,933,sp,,,,,thumbs/OP01-047SP.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-048,936,alt,,,,,thumbs/OP01-048 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-048,934,base,375,0.08,0.17,0.01,OP01/base/OP01-048.png,HIGH,OP01,CERTIFIED,
+OP01-048,937,parallel_1,,,,,OP01/parallel/OP01-048_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-049,938,base,376,0.29,0.29,0.11,OP01/base/OP01-049.png,HIGH,OP01,CERTIFIED,
+OP01-050,940,base,377,0.08,0.15,0.02,OP01/base/OP01-050.png,HIGH,OP01,CERTIFIED,
+OP01-051,944,alt,,,,,thumbs/OP01-051 (Alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-051,948,alt,,,,,thumbs/OP01-051(PRB01alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-051,942,base,378,1.27,1.99,0.95,OP01/base/OP01-051.png,HIGH,OP01,CERTIFIED,
+OP01-051,945,parallel_1,3336,9.84,12.45,4.95,OP01/parallel/OP01-051_p1.png,HIGH,OP01,CERTIFIED,
+OP01-051,946,parallel_2,,,,,OP03/parallel/OP01-051_p2.png,,OP03,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-051,947,parallel_4,,,,,PRB01/parallel/OP01-051_p4.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-051,950,promo,,,,,P/base/OP01-051.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-051,949,r1,378,1.27,1.99,0.95,OP01/base/OP01-051.png,reprint_share,PRB01,CERTIFIED,
+OP01-052,953,alt,,,,,thumbs/OP01-052(alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-052,954,alt,,,,,thumbs/OP01-052alt2.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-052,958,alt,,,,,thumbs/OP01-052(PRB01alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-052,951,base,380,0.1,0.2,0.02,OP01/base/OP01-052.png,HIGH,OP01,CERTIFIED,
+OP01-052,955,parallel_1,,,,,EP02/parallel/OP01-052_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-052,956,parallel_3,,,,,PRB01/parallel/OP01-052_p3.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-052,957,parallel_4,,,,,PRB01/parallel/OP01-052_p4.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-052,959,r1,380,0.1,0.2,0.02,OP01/base/OP01-052.png,reprint_share,PRB01,CERTIFIED,
+OP01-053,960,base,381,0.07,0.15,0.01,OP01/base/OP01-053.png,HIGH,OP01,CERTIFIED,
+OP01-054,962,base,382,0.37,0.4,0.19,OP01/base/OP01-054.png,HIGH,OP01,CERTIFIED,
+OP01-055,964,base,383,0.17,0.25,0.02,OP01/base/OP01-055.png,HIGH,OP01,CERTIFIED,
+OP01-055,966,parallel_1,,,,,PRB02/parallel/OP01-055_p1.png,,PRB02,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-055,967,r1,383,0.17,0.25,0.02,OP01/base/OP01-055.png,reprint_share,PRB02,CERTIFIED,
+OP01-056,968,base,384,0.15,0.19,0.01,OP01/base/OP01-056.png,HIGH,OP01,CERTIFIED,
+OP01-057,972,alt,,,,,thumbs/OP01-057alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-057,970,base,385,1.54,1.99,1.0,OP01/base/OP01-057.png,HIGH,OP01,CERTIFIED,
+OP01-057,973,parallel_1,,,,,BCV1/parallel/OP01-057_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-058,974,base,386,0.51,0.75,0.26,OP01/base/OP01-058.png,HIGH,OP01,CERTIFIED,
+OP01-059,976,base,387,0.09,0.15,0.01,OP01/base/OP01-059.png,HIGH,OP01,CERTIFIED,
+OP01-060,980,alt,,,,,thumbs/OP01-060 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-060,983,alt,,,,,thumbs/OP01-060(ST17alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-060,978,base,388,0.4,0.44,0.15,OP01/base/OP01-060.png,HIGH,OP01,CERTIFIED,
+OP01-060,981,parallel_1,,,,,OP01/parallel/OP01-060_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-060,982,parallel_2,,,,,ST17/parallel/OP01-060_p2.png,,ST17,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-061,986,alt,,,,,thumbs/OP01-061 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-061,984,base,321,0.32,0.35,0.22,OP01/base/OP01-061.png,HIGH,OP01,CERTIFIED,
+OP01-061,987,parallel_1,,,,,OP01/parallel/OP01-061_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-062,990,alt,,,,,thumbs/OP01-062 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-062,988,base,391,0.29,0.32,0.15,OP01/base/OP01-062.png,HIGH,OP01,CERTIFIED,
+OP01-062,991,parallel_1,,,,,OP01/parallel/OP01-062_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-063,992,base,393,0.18,0.2,0.02,OP01/base/OP01-063.png,HIGH,OP01,CERTIFIED,
+OP01-064,996,alt,,,,,thumbs/OP01-064alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-064,994,base,394,0.1,0.19,0.03,OP01/base/OP01-064.png,HIGH,OP01,CERTIFIED,
+OP01-064,997,parallel_1,,,,,OP01/parallel/OP01-064_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-065,998,base,395,0.07,0.15,0.01,OP01/base/OP01-065.png,HIGH,OP01,CERTIFIED,
+OP01-066,1000,base,396,0.06,0.15,0.01,OP01/base/OP01-066.png,HIGH,OP01,CERTIFIED,
+OP01-067,1004,alt,,,,,thumbs/OP01-067 (Alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-067,1002,base,323,0.83,0.99,0.25,OP01/base/OP01-067.png,HIGH,OP01,CERTIFIED,
+OP01-067,1005,parallel_1,,,,,OP01/parallel/OP01-067_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-068,1006,base,398,0.29,0.29,0.15,OP01/base/OP01-068.png,HIGH,OP01,CERTIFIED,
+OP01-069,1008,base,399,0.38,0.35,0.1,OP01/base/OP01-069.png,HIGH,OP01,CERTIFIED,
+OP01-070,1012,alt,,,,,thumbs/OP01-070 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-070,1013,alt,,,,,thumbs/OP01-070alt2.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-070,1017,alt,,,,,thumbs/OP01-070(PRB01alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-070,1010,base,400,1.97,2.48,1.0,OP01/base/OP01-070.png,HIGH,OP01,CERTIFIED,
+OP01-070,1014,parallel_1,3285,22.27,20.0,14.49,OP01/parallel/OP01-070_p1.png,HIGH,OP01,CERTIFIED,
+OP01-070,1015,parallel_2,,,,,_unclassified/parallel/OP01-070_p2.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-070,1016,parallel_4,,,,,PRB01/parallel/OP01-070_p4.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-070,1018,r1,400,1.97,2.48,1.0,OP01/base/OP01-070.png,reprint_share,PRB01,CERTIFIED,
+OP01-071,1019,base,402,0.19,0.25,0.1,OP01/base/OP01-071.png,HIGH,OP01,CERTIFIED,
+OP01-072,1021,base,403,0.1,0.15,0.01,OP01/base/OP01-072.png,HIGH,OP01,CERTIFIED,
+OP01-073,1025,alt,,,,,thumbs/OP01-073 (Alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-073,1023,base,404,0.33,0.5,0.02,OP01/base/OP01-073.png,HIGH,OP01,CERTIFIED,
+OP01-073,1026,parallel_1,,,,,OP01/parallel/OP01-073_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-073,1027,parallel_2,,,,,OP07/parallel/OP01-073_p2.png,,OP07,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-073,1028,r1,404,0.33,0.5,0.02,OP01/base/OP01-073.png,reprint_share,ST17,CERTIFIED,
+OP01-073,1029,sp,,,,,thumbs/OP01-073SP.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-074,1030,base,406,0.28,0.31,0.07,OP01/base/OP01-074.png,HIGH,OP01,CERTIFIED,
+OP01-075,1032,base,407,0.16,0.22,0.05,OP01/base/OP01-075.png,HIGH,OP01,CERTIFIED,
+OP01-076,1034,base,408,0.07,0.15,0.01,OP01/base/OP01-076.png,HIGH,OP01,CERTIFIED,
+OP01-077,1038,alt,,,,,thumbs/OP01-077 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-077,1039,alt,,,,,thumbs/OP01-077alt2.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-077,1040,alt,,,,,thumbs/OP01-077Alt3.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-077,1036,base,409,0.68,1.0,0.5,OP01/base/OP01-077.png,HIGH,OP01,CERTIFIED,
+OP01-077,1041,parallel_1,,,,,OP01/parallel/OP01-077_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-078,1044,alt,,,,,thumbs/OP01-078 (Alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-078,1048,alt,,,,,thumbs/OP01-078(PRB01alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-078,1042,base,410,1.32,2.5,0.7,OP01/base/OP01-078.png,HIGH,OP01,CERTIFIED,
+OP01-078,1045,parallel_1,3284,38.73,40.17,33.9,OP01/parallel/OP01-078_p1.png,HIGH,OP01,CERTIFIED,
+OP01-078,1046,parallel_2,,,,,OP04/parallel/OP01-078_p2.png,,OP04,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-078,1047,parallel_4,,,,,PRB01/parallel/OP01-078_p4.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-078,1049,r1,410,1.32,2.5,0.7,OP01/base/OP01-078.png,reprint_share,PRB01,CERTIFIED,
+OP01-078,1050,sp,,,,,thumbs/OP01-078SP.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-079,1053,alt,,,,,thumbs/OP01-079(alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-079,1051,base,412,0.85,0.95,0.24,OP01/base/OP01-079.png,HIGH,OP01,CERTIFIED,
+OP01-080,1054,base,413,0.09,0.15,0.03,OP01/base/OP01-080.png,HIGH,OP01,CERTIFIED,
+OP01-081,1056,base,414,0.06,0.15,0.01,OP01/base/OP01-081.png,HIGH,OP01,CERTIFIED,
+OP01-082,1058,base,415,0.1,0.15,0.02,OP01/base/OP01-082.png,HIGH,OP01,CERTIFIED,
+OP01-083,1060,base,416,0.1,0.2,0.01,OP01/base/OP01-083.png,HIGH,OP01,CERTIFIED,
+OP01-084,1062,base,417,0.17,0.21,0.03,OP01/base/OP01-084.png,HIGH,OP01,CERTIFIED,
+OP01-085,1064,base,418,0.13,0.2,0.03,OP01/base/OP01-085.png,HIGH,OP01,CERTIFIED,
+OP01-086,1066,base,419,0.32,0.34,0.04,OP01/base/OP01-086.png,HIGH,OP01,CERTIFIED,
+OP01-086,1068,r1,419,0.32,0.34,0.04,OP01/base/OP01-086.png,reprint_share,ST17,CERTIFIED,
+OP01-087,1069,base,420,0.08,0.15,0.01,OP01/base/OP01-087.png,HIGH,OP01,CERTIFIED,
+OP01-088,1071,base,421,0.37,0.55,0.2,OP01/base/OP01-088.png,HIGH,OP01,CERTIFIED,
+OP01-089,1073,base,422,0.09,0.15,0.01,OP01/base/OP01-089.png,HIGH,OP01,CERTIFIED,
+OP01-090,1075,base,423,0.15,0.2,0.05,OP01/base/OP01-090.png,HIGH,OP01,CERTIFIED,
+OP01-091,1079,alt,,,,,thumbs/OP01-091 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-091,1077,base,424,0.28,0.28,0.1,OP01/base/OP01-091.png,HIGH,OP01,CERTIFIED,
+OP01-091,1080,parallel_1,,,,,OP01/parallel/OP01-091_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-092,1081,base,426,0.07,0.15,0.01,OP01/base/OP01-092.png,HIGH,OP01,CERTIFIED,
+OP01-093,1085,alt,,,,,thumbs/OP01-093 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-093,1086,alt,,,,,thumbs/OP01-093(alt2).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-093,1083,base,427,0.34,0.37,0.05,OP01/base/OP01-093.png,HIGH,OP01,CERTIFIED,
+OP01-093,1087,parallel_1,,,,,OP01/parallel/OP01-093_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-094,1090,alt,,,,,thumbs/OP01-094 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-094,1091,alt,,,,,thumbs/OP01-094alt2.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-094,1088,base,325,3.95,5.0,2.49,OP01/base/OP01-094.png,HIGH,OP01,CERTIFIED,
+OP01-094,1092,parallel_1,,,,,OP01/parallel/OP01-094_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-095,1093,base,430,0.14,0.2,0.05,OP01/base/OP01-095.png,HIGH,OP01,CERTIFIED,
+OP01-096,1097,alt,,,,,thumbs/OP01-096 (Alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-096,1095,base,431,0.66,0.95,0.45,OP01/base/OP01-096.png,HIGH,OP01,CERTIFIED,
+OP01-096,1098,parallel_1,,,,,OP01/parallel/OP01-096_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-097,1099,base,433,0.23,0.25,0.06,OP01/base/OP01-097.png,HIGH,OP01,CERTIFIED,
+OP01-097,1101,parallel_1,,,,,OP01/parallel/OP01-097_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-098,1102,base,435,0.15,0.25,0.09,OP01/base/OP01-098.png,HIGH,OP01,CERTIFIED,
+OP01-099,1104,base,436,0.07,0.15,0.01,OP01/base/OP01-099.png,HIGH,OP01,CERTIFIED,
+OP01-100,1106,base,437,0.07,0.15,0.01,OP01/base/OP01-100.png,HIGH,OP01,CERTIFIED,
+OP01-101,1110,alt,,,,,thumbs/OP01-101(alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-101,1108,base,438,0.33,0.39,0.15,OP01/base/OP01-101.png,HIGH,OP01,CERTIFIED,
+OP01-101,1111,parallel_1,,,,,EP02/parallel/OP01-101_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-102,1114,alt,,,,,thumbs/OP01-102 (Alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-102,1112,base,439,0.31,0.3,0.06,OP01/base/OP01-102.png,HIGH,OP01,CERTIFIED,
+OP01-102,1115,parallel_1,,,,,OP01/parallel/OP01-102_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-103,1116,base,441,0.1,0.16,0.01,OP01/base/OP01-103.png,HIGH,OP01,CERTIFIED,
+OP01-104,1118,base,442,0.09,0.15,0.02,OP01/base/OP01-104.png,HIGH,OP01,CERTIFIED,
+OP01-105,1120,base,443,0.07,0.15,0.01,OP01/base/OP01-105.png,HIGH,OP01,CERTIFIED,
+OP01-106,1122,base,444,0.26,0.33,0.1,OP01/base/OP01-106.png,HIGH,OP01,CERTIFIED,
+OP01-107,1124,base,445,0.08,0.15,0.01,OP01/base/OP01-107.png,HIGH,OP01,CERTIFIED,
+OP01-108,1128,alt,,,,,thumbs/OP01-108(ALT).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-108,1126,base,462,0.14,0.2,0.05,OP01/base/OP01-108.png,HIGH,OP01,CERTIFIED,
+OP01-109,1131,alt,,,,,thumbs/OP01-109 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-109,1129,base,446,0.09,0.16,0.01,OP01/base/OP01-109.png,HIGH,OP01,CERTIFIED,
+OP01-109,1132,parallel_1,,,,,OP01/parallel/OP01-109_p1.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-110,1133,base,447,0.07,0.15,0.01,OP01/base/OP01-110.png,HIGH,OP01,CERTIFIED,
+OP01-111,1135,base,448,0.28,0.28,0.08,OP01/base/OP01-111.png,HIGH,OP01,CERTIFIED,
+OP01-112,1137,base,449,0.31,0.3,0.08,OP01/base/OP01-112.png,HIGH,OP01,CERTIFIED,
+OP01-113,1139,base,450,0.07,0.15,0.01,OP01/base/OP01-113.png,HIGH,OP01,CERTIFIED,
+OP01-114,1143,alt,,,,,thumbs/OP01-114alt.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-114,1141,base,451,0.39,0.42,0.18,OP01/base/OP01-114.png,HIGH,OP01,CERTIFIED,
+OP01-115,1144,base,452,0.07,0.15,0.01,OP01/base/OP01-115.png,HIGH,OP01,CERTIFIED,
+OP01-116,1146,base,453,0.13,0.2,0.03,OP01/base/OP01-116.png,HIGH,OP01,CERTIFIED,
+OP01-117,1148,base,454,0.11,0.16,0.03,OP01/base/OP01-117.png,HIGH,OP01,CERTIFIED,
+OP01-118,1150,base,455,0.21,0.24,0.08,OP01/base/OP01-118.png,HIGH,OP01,CERTIFIED,
+OP01-119,1152,base,456,1.52,2.39,0.75,OP01/base/OP01-119.png,HIGH,OP01,CERTIFIED,
+OP01-120,1156,alt,,,,,thumbs/OP01-120 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-120,1161,alt,,,,,thumbs/OP01-120(PRB01alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-120,1154,base,457,6.6,8.03,5.42,OP01/base/OP01-120.png,HIGH,OP01,CERTIFIED,
+OP01-120,1157,mr,3268,19.93,22.98,17.99,OP01/manga/OP01-120_mr.png,HIGH,OP01,CERTIFIED,
+OP01-120,1158,parallel_1,,,,,OP01/parallel/OP01-120_p1.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-120,1159,parallel_2,,,,,OP01/parallel/OP01-120_p2.png,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-120,1160,parallel_5,,,,,PRB01/parallel/OP01-120_p5.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-120,1164,promo,,,,,P/base/OP01-120.png,,OP01,MISSING_PRICE_BRIDGE,No printing_market_map row (is_preferred=1)
+OP01-120,1162,r1,457,6.6,8.03,5.42,OP01/base/OP01-120.png,reprint_share,PRB01,CERTIFIED,
+OP01-120,1163,r2,457,6.6,8.03,5.42,OP01/base/OP01-120.png,reprint_share,PRB01,CERTIFIED,
+OP01-121,1168,alt,,,,,thumbs/OP01-121 (alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-121,1172,alt,,,,,thumbs/OP01-121(PRB01alt).webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-121,1165,base,460,5.52,9.0,4.99,OP01/base/OP01-121.png,HIGH,OP01,CERTIFIED,
+OP01-121,1167,operator_review,,,,,thumbs/OP01-121at2.webp,,OP01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-121,1169,parallel_1,3335,39.96,40.99,29.0,OP01/parallel/OP01-121_p1.png,HIGH,OP01,CERTIFIED,
+OP01-121,1170,parallel_2,,,,,OP05/parallel/OP01-121_p2.png,,OP05,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-121,1171,parallel_4,,,,,PRB01/parallel/OP01-121_p4.png,,PRB01,MISSING_IMAGE_ASSET,No image_assets row for printing_id
+OP01-121,1173,r1,460,5.52,9.0,4.99,OP01/base/OP01-121.png,reprint_share,PRB01,CERTIFIED,

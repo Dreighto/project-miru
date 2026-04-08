@@ -1,1 +1,0 @@
-ERROR	OperationalError: no such column: is_parallel

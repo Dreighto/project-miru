@@ -940,7 +940,7 @@
       </div>
       <!-- Right: portrait thumbnail + variant dots -->
       <div class="libDrawerThumbCol">
-        <img class="libDrawerThumb" id="libDrawerThumb" src="" alt="" data-card-code="" decoding="async" loading="lazy">
+        <img class="libDrawerThumb" id="libDrawerThumb" src="" alt="" data-card-code="" decoding="async" loading="eager" fetchpriority="high">
         <div class="libDrawerVarDots" id="libDrawerVarDots"></div>
       </div>
     </div>
@@ -1079,12 +1079,14 @@
     var variantIdx = 0;
     var variantLabels = [];   /* human-readable labels for each variant */
     var variantPrices = [];   /* nullable numeric price per variant */
+    var variantReviewStatuses = [];  /* nullable review status per variant */
     var currentDrawerCardCode = "";
     var lastThumbTap = 0;    /* for double-tap detection on thumbnail */
     var gridVariantCache = new Map();
     var gridTapTimes = new WeakMap();
     var gridTapTimers = new WeakMap();
     var gridVariantIndexes = new WeakMap();
+    var selectedVariantIndexes = new Map();
     var gridTouchStartX = 0;
     var gridTouchStartY = 0;
     var gridTouchMoved = false;
@@ -1111,6 +1113,92 @@
       // Add any known blank placeholder patterns if they exist
       if (trimmed.includes("placeholder") || trimmed.includes("blank")) return false;
       return true;
+    }
+
+    /**
+     * Assign img.src; on error restore fallback. Optional callbacks:
+     * onLoadOk() after nextSrc loads; onFallback(finalSrc) after reverting to fallback (finalSrc may be "").
+     */
+    function setImgSrcWithFallback(img, nextSrc, fallbackSrc, callbacks) {
+      callbacks = callbacks || {};
+      if (!img || !isUsableImage(nextSrc)) return;
+      var fb = isUsableImage(fallbackSrc) ? String(fallbackSrc).trim() : "";
+      function clear() {
+        img.onload = null;
+        img.onerror = null;
+      }
+      img.onload = function () {
+        clear();
+        if (callbacks.onLoadOk) callbacks.onLoadOk();
+      };
+      img.onerror = function () {
+        clear();
+        if (fb) {
+          img.src = fb;
+          if (callbacks.onFallback) callbacks.onFallback(fb);
+        } else if (callbacks.onFallback) {
+          callbacks.onFallback("");
+        }
+      };
+      var next = nextSrc.trim();
+      img.src = next;
+      if (img.complete && img.naturalWidth > 0) {
+        clear();
+        if (callbacks.onLoadOk) callbacks.onLoadOk();
+      }
+    }
+
+    function normalizeImageUrlForCompare(src) {
+      if (!src || typeof src !== "string") return "";
+      var trimmed = src.trim();
+      if (!trimmed) return "";
+      try {
+        var u = new URL(trimmed, window.location.href);
+        return u.pathname + (u.search || "");
+      } catch (e) {
+        return trimmed;
+      }
+    }
+
+    function resolveVariantIndexFromDisplayedImage(displayedSrc, usableList) {
+      if (!displayedSrc || !usableList || !usableList.length) return -1;
+      var normDisp = normalizeImageUrlForCompare(displayedSrc);
+      for (var i = 0; i < usableList.length; i++) {
+        var row = usableList[i];
+        var p = row && row.image_path ? String(row.image_path).trim() : "";
+        if (!p) continue;
+        if (p === displayedSrc) return i;
+        if (normalizeImageUrlForCompare(p) === normDisp) return i;
+      }
+      return -1;
+    }
+
+    /** Full art + sync: visible modal thumb is source of truth; then selected variant URL. */
+    function getDrawerVariantImageSrc() {
+      if (dThumb && dThumb.src && dThumb.src !== window.location.href && isUsableImage(dThumb.src)) {
+        return dThumb.src.trim();
+      }
+      if (variants && variants.length && variantIdx >= 0 && variantIdx < variants.length) {
+        var vs = variants[variantIdx];
+        if (isUsableImage(vs)) return vs.trim();
+      }
+      return "";
+    }
+
+    function syncArtLightboxToVisibleThumb() {
+      if (!artFS || !artFSImg || !artFS.classList.contains("is-open")) return;
+      var vis = getDrawerVariantImageSrc();
+      if (isUsableImage(vis)) {
+        artFSImg.src = vis;
+        if (dName) artFSImg.alt = dName.textContent;
+      }
+    }
+
+    function closeArtLightbox() {
+      if (!artFS || !artFSImg) return;
+      artFS.classList.remove("is-open");
+      artFSImg.src = "";
+      artFSImg.alt = "";
     }
 
     function setCodePrefix(full) {
@@ -1240,6 +1328,14 @@
       img.loading = "lazy";
       img.decoding = "async";
       img.setAttribute("data-card-code", card.code || "");
+      if (card.code && gridVariantCache.has(card.code)) {
+        var cachedVariants = gridVariantCache.get(card.code);
+        var selectedIndex = getSelectedVariantIndex(card.code, cachedVariants);
+        var selectedVariant = cachedVariants[selectedIndex];
+        if (selectedVariant && isUsableImage(selectedVariant.image_path)) {
+          img.src = selectedVariant.image_path;
+        }
+      }
       media.appendChild(img);
 
       var body = document.createElement("div");
@@ -1507,7 +1603,23 @@
     function formatGridVariantLabel(variant) {
       if (!variant) return "Variant";
       var base = (variant.display_label || "Variant").trim() || "Variant";
+      if (variant.review_status) return base + " · Needs Review";
       return base + formatPriceLabel(variant.market_price);
+    }
+
+    function getSelectedVariantIndex(cardCode, variantsList) {
+      if (!cardCode || !variantsList || !variantsList.length) return 0;
+      var stored = selectedVariantIndexes.has(cardCode)
+        ? selectedVariantIndexes.get(cardCode)
+        : 0;
+      if (!isFinite(stored)) stored = 0;
+      stored = Math.max(0, Math.min(variantsList.length - 1, Number(stored) || 0));
+      return stored;
+    }
+
+    function setSelectedVariantIndex(cardCode, idx) {
+      if (!cardCode) return;
+      selectedVariantIndexes.set(cardCode, Math.max(0, Number(idx) || 0));
     }
 
     function showGridVariantLabel(card, label) {
@@ -1538,6 +1650,47 @@
       }, 800);
     }
 
+    function appendVariantImageDisambiguator(url, printingId) {
+      if (!url || printingId === undefined || printingId === null) return url;
+      var sep = String(url).indexOf("?") >= 0 ? "&" : "?";
+      return String(url) + sep + "pv=" + encodeURIComponent(String(printingId));
+    }
+
+    /** Include mapped / priced variants even when API image_path is null; use first real image as display fallback. */
+    function buildUsableVariantUiRows(list) {
+      var fallback = "";
+      for (var i = 0; i < list.length; i++) {
+        var rp = (list[i].image_path || "").trim();
+        if (rp) {
+          fallback = rp;
+          break;
+        }
+      }
+      var usable = [];
+      for (var j = 0; j < list.length; j++) {
+        var row = list[j] || {};
+        var imagePath = (row.image_path || "").trim();
+        var hasMap = row.has_market_map === true || row.has_market_map === 1;
+        var hasPrice =
+          row.market_price !== null &&
+          row.market_price !== undefined &&
+          row.market_price !== "";
+        if (!imagePath) {
+          if (!hasMap && !hasPrice) continue;
+          imagePath = fallback;
+          if (!imagePath) continue;
+          imagePath = appendVariantImageDisambiguator(imagePath, row.printing_id);
+        }
+        usable.push({
+          image_path: imagePath,
+          display_label: (row.display_label || "Variant").trim() || "Variant",
+          market_price: row.market_price,
+          review_status: row.review_status || null
+        });
+      }
+      return usable;
+    }
+
     function loadGridVariants(cardCode) {
       if (!cardCode) return Promise.resolve([]);
       if (gridVariantCache.has(cardCode)) {
@@ -1553,23 +1706,41 @@
         .then(function (payload) {
           var list = (payload && payload.variants && Array.isArray(payload.variants))
             ? payload.variants : [];
-          var usable = [];
-          for (var i = 0; i < list.length; i++) {
-            var row = list[i] || {};
-            var imagePath = (row.image_path || "").trim();
-            if (!imagePath) continue;
-            usable.push({
-              image_path: imagePath,
-              display_label: (row.display_label || "Variant").trim() || "Variant",
-              market_price: row.market_price
-            });
-          }
+          var usable = buildUsableVariantUiRows(list);
           gridVariantCache.set(cardCode, usable);
           return usable;
         })
         .catch(function () {
           return [];
         });
+    }
+
+    function syncGridCardVariant(card, variantsList, idx, opts) {
+      opts = opts || {};
+      if (!card || !variantsList || !variantsList.length) return;
+      var targetIndex = Math.max(0, Math.min(variantsList.length - 1, Number(idx) || 0));
+      var targetVariant = variantsList[targetIndex];
+      if (!targetVariant || !isUsableImage(targetVariant.image_path)) return;
+
+      var imgEl = card.querySelector(".libraryThumb");
+      if (!imgEl) return;
+
+      var prevGridSrc = imgEl.src || "";
+      setImgSrcWithFallback(imgEl, targetVariant.image_path, prevGridSrc);
+      gridVariantIndexes.set(card, targetIndex);
+      setSelectedVariantIndex(attr(card, "data-card-code"), targetIndex);
+
+      if (opts.showLabel) {
+        showGridVariantLabel(card, formatGridVariantLabel(targetVariant));
+      }
+    }
+
+    function syncRenderedCardsForCode(cardCode, variantsList, idx, opts) {
+      if (!gridEl || !cardCode || !variantsList || !variantsList.length) return;
+      var cards = gridEl.querySelectorAll('.libraryCard[data-card-code="' + cardCode + '"]');
+      for (var i = 0; i < cards.length; i++) {
+        syncGridCardVariant(cards[i], variantsList, idx, opts);
+      }
     }
 
     function cycleGridCardVariant(card) {
@@ -1582,9 +1753,7 @@
       loadGridVariants(cardCode).then(function (variantsList) {
         if (!variantsList || variantsList.length < 2) return;
 
-        var currentIndex = gridVariantIndexes.has(card)
-          ? gridVariantIndexes.get(card)
-          : 0;
+        var currentIndex = getSelectedVariantIndex(cardCode, variantsList);
         var nextIndex = (currentIndex + 1) % variantsList.length;
         var nextVariant = variantsList[nextIndex];
         card.classList.add("libraryCard--flipping");
@@ -1595,13 +1764,11 @@
         mediaEl.style.transform = "rotateY(180deg)";
 
         setTimeout(function () {
-          imgEl.src = nextVariant.image_path;
+          syncRenderedCardsForCode(cardCode, variantsList, nextIndex, { showLabel: true });
           imgEl.classList.add("libraryThumb--foilFlash");
           setTimeout(function () {
             imgEl.classList.remove("libraryThumb--foilFlash");
           }, 240);
-          gridVariantIndexes.set(card, nextIndex);
-          showGridVariantLabel(card, formatGridVariantLabel(nextVariant));
         }, 150);
 
         setTimeout(function () {
@@ -1646,17 +1813,7 @@
           if (cardCode !== currentDrawerCardCode) return;
           var list = (payload && payload.variants && Array.isArray(payload.variants))
             ? payload.variants : [];
-          var usable = [];
-          for (var i = 0; i < list.length; i++) {
-            var row = list[i] || {};
-            var imagePath = (row.image_path || "").trim();
-            if (!imagePath) continue;
-            usable.push({
-              image_path: imagePath,
-              display_label: (row.display_label || "Variant").trim() || "Variant",
-              market_price: row.market_price
-            });
-          }
+          var usable = buildUsableVariantUiRows(list);
           gridVariantCache.set(cardCode, usable);
           applyDrawerVariants(cardCode, usable, fallbackImgSrc);
         })
@@ -1670,35 +1827,83 @@
         variants = [fallbackImgSrc];
         variantLabels = ["Base"];
         variantPrices = [null];
+        variantReviewStatuses = [null];
+        variantIdx = 0;
       } else {
         variants = [];
         variantLabels = [];
         variantPrices = [];
+        variantReviewStatuses = [];
         for (var i = 0; i < usable.length; i++) {
           variants.push(usable[i].image_path);
           variantLabels.push(usable[i].display_label || "Variant");
           variantPrices.push(usable[i].market_price);
+          variantReviewStatuses.push(usable[i].review_status || null);
+        }
+        var displayed = "";
+        if (dThumb && dThumb.src && dThumb.src !== window.location.href) {
+          displayed = dThumb.src;
+        } else if (fallbackImgSrc) {
+          displayed = fallbackImgSrc;
+        }
+        var resolved = resolveVariantIndexFromDisplayedImage(displayed, usable);
+        if (resolved >= 0) {
+          variantIdx = resolved;
+          setSelectedVariantIndex(cardCode, variantIdx);
+        } else {
+          variantIdx = getSelectedVariantIndex(cardCode, usable);
         }
       }
-      variantIdx = 0;
 
-      // Preserve seeded modal image if first API variant is unusable
-      var currentSrc = dThumb ? dThumb.src : "";
-      var candidateSrc = variants[0] || "";
-      if (isUsableImage(candidateSrc)) {
-        dThumb.src = candidateSrc;
-      } else if (currentSrc && isUsableImage(currentSrc)) {
-        // Keep the current seeded image, don't overwrite with unusable API result
-        // Ensure variants array reflects the actual displayed image
-        if (variants.length > 0) {
-          variants[0] = currentSrc;
-        }
-      } else {
-        dThumb.src = candidateSrc;
+      function finishApplyDrawerVisuals() {
+        if (cardCode !== currentDrawerCardCode) return;
+        updateVarDots();
+        updateVarStrip();
+        syncArtLightboxToVisibleThumb();
       }
 
       updateVarDots();
       updateVarStrip();
+
+      // Preserve seeded modal image if first API variant is unusable
+      var currentSrc = dThumb ? dThumb.src : "";
+      var candidateSrc = variants[variantIdx] || variants[0] || "";
+      if (isUsableImage(candidateSrc)) {
+        setImgSrcWithFallback(dThumb, candidateSrc, currentSrc, {
+          onLoadOk: function () {
+            finishApplyDrawerVisuals();
+          },
+          onFallback: function (finalSrc) {
+            var resolved = resolveVariantIndexFromDisplayedImage(finalSrc, usable);
+            if (resolved >= 0) {
+              variantIdx = resolved;
+              setSelectedVariantIndex(cardCode, variantIdx);
+            }
+            finishApplyDrawerVisuals();
+          }
+        });
+      } else if (currentSrc && isUsableImage(currentSrc)) {
+        // Keep the current seeded image, don't overwrite with unusable API result
+        // Ensure variants array reflects the actual displayed image
+        if (variants.length > variantIdx) {
+          variants[variantIdx] = currentSrc;
+        }
+        finishApplyDrawerVisuals();
+      } else {
+        setImgSrcWithFallback(dThumb, candidateSrc, currentSrc, {
+          onLoadOk: function () {
+            finishApplyDrawerVisuals();
+          },
+          onFallback: function (finalSrc) {
+            var resolved = resolveVariantIndexFromDisplayedImage(finalSrc, usable);
+            if (resolved >= 0) {
+              variantIdx = resolved;
+              setSelectedVariantIndex(cardCode, variantIdx);
+            }
+            finishApplyDrawerVisuals();
+          }
+        });
+      }
     }
 
     /* ── Variant dots ────────────────────────────────────── */
@@ -1714,18 +1919,44 @@
 
     function selectVariant(idx) {
       if (!variants || variants.length <= 1) return;
-      variantIdx = idx;
+      var candidateSrc = variants[idx] || "";
+      if (!isUsableImage(candidateSrc)) return;
 
-      var candidateSrc = variants[variantIdx] || "";
-      var currentSrc = dThumb ? dThumb.src : "";
-      var shouldUpdate = isUsableImage(candidateSrc);
+      var previousIdx = variantIdx;
+      var settleCardCode = currentDrawerCardCode;
 
-      // If candidate is unusable, don't update and keep current state
-      if (!shouldUpdate) {
-        return;
+      function settleSelection(finalIdx) {
+        if (!drawerIsOpen || currentDrawerCardCode !== settleCardCode) return;
+        variantIdx = finalIdx;
+        setSelectedVariantIndex(currentDrawerCardCode, variantIdx);
+        updateVarDots();
+        updateVarStrip();
+        if (currentDrawerCardCode && gridVariantCache.has(currentDrawerCardCode)) {
+          syncRenderedCardsForCode(
+            currentDrawerCardCode,
+            gridVariantCache.get(currentDrawerCardCode),
+            variantIdx,
+            { showLabel: false }
+          );
+        }
+        syncArtLightboxToVisibleThumb();
       }
 
-      // Flip animation on the drawer thumbnail
+      var currentSrc = dThumb ? dThumb.src : "";
+      var revertSrc = isUsableImage(currentSrc) ? currentSrc : "";
+      var imgCallbacks = {
+        onLoadOk: function () {
+          settleSelection(idx);
+        },
+        onFallback: function (finalSrc) {
+          var usable = gridVariantCache.get(settleCardCode) || [];
+          var resolved = finalSrc ? resolveVariantIndexFromDisplayedImage(finalSrc, usable) : -1;
+          var finalIdx = resolved >= 0 ? resolved : previousIdx;
+          settleSelection(finalIdx);
+        }
+      };
+
+      // Flip animation on the drawer thumbnail (pills/dots/grid update only after load or fallback)
       var thumbCol = dThumb ? dThumb.parentNode : null;
       if (thumbCol && dThumb) {
         thumbCol.style.perspective = "600px";
@@ -1734,7 +1965,8 @@
         dThumb.offsetWidth; // force reflow
         dThumb.style.transform = "rotateY(180deg)";
         setTimeout(function () {
-          dThumb.src = candidateSrc;
+          if (!drawerIsOpen || currentDrawerCardCode !== settleCardCode) return;
+          setImgSrcWithFallback(dThumb, candidateSrc, revertSrc, imgCallbacks);
           dThumb.classList.add("libraryThumb--foilFlash");
           setTimeout(function () {
             dThumb.classList.remove("libraryThumb--foilFlash");
@@ -1749,16 +1981,8 @@
           thumbCol.style.perspective = "";
         }, 300);
       } else if (dThumb) {
-        dThumb.src = candidateSrc;
+        setImgSrcWithFallback(dThumb, candidateSrc, revertSrc, imgCallbacks);
       }
-
-      // Update dots
-      var dots = dVarDots.querySelectorAll(".libDrawerVarDot");
-      for (var j = 0; j < dots.length; j++) {
-        dots[j].classList.toggle("libDrawerVarDot--active", j === variantIdx);
-      }
-
-      updateVarStrip();
     }
 
     function cycleVariant() {
@@ -1802,14 +2026,22 @@
       var priceEl = document.getElementById("libDrawerPrice");
       var priceVal = document.getElementById("libDrawerPriceValue");
       if (priceEl && priceVal) {
-        var p = variantPrices[variantIdx];
-        var label = formatPriceLabel(p);
-        if (label) {
-          priceVal.textContent = label;
+        var rs = variantReviewStatuses[variantIdx];
+        if (rs) {
+          priceVal.textContent = "Needs Review";
+          priceVal.style.color = "#b0885a";
           priceEl.style.display = "";
         } else {
-          priceVal.textContent = "";
-          priceEl.style.display = "none";
+          priceVal.style.color = "";
+          var p = variantPrices[variantIdx];
+          var label = formatPriceLabel(p);
+          if (label) {
+            priceVal.textContent = label;
+            priceEl.style.display = "";
+          } else {
+            priceVal.textContent = "";
+            priceEl.style.display = "none";
+          }
         }
       }
     }
@@ -1824,6 +2056,7 @@
       variants = [];
       variantLabels = [];
       variantPrices = [];
+      variantReviewStatuses = [];
       variantIdx = 0;
       drawerExpanded = false;
       drawerSheet.classList.remove("is-expanded");
@@ -1874,7 +2107,8 @@
       variants = d.imgSrc ? [d.imgSrc] : [""];
       variantLabels = ["Base"];
       variantPrices = [null];
-      variantIdx = 0;
+      variantReviewStatuses = [null];
+      variantIdx = getSelectedVariantIndex(currentDrawerCardCode, variants);
       updateVarDots();
       updateVarStrip();
 
@@ -1927,6 +2161,7 @@
     }
 
     function closeDrawer() {
+      closeArtLightbox();
       currentDrawerCardCode = "";
       drawerIsOpen = false;
       drawerExpanded = false;
@@ -1966,23 +2201,23 @@
       }
     });
 
-    /* ── View Full Art ───────────────────────────────────── */
+    /* ── View Full Art: always the visible modal thumb (same URL the user sees) ─ */
     document.getElementById("libDrawerViewArt").addEventListener("click", function () {
-      var thumbSrc = dThumb ? dThumb.src : "";
-      if (!thumbSrc || thumbSrc === window.location.href || !isUsableImage(thumbSrc)) return;
-      artFSImg.src = thumbSrc;
+      var src = getDrawerVariantImageSrc();
+      if (!isUsableImage(src)) return;
+      artFSImg.src = src;
       artFSImg.alt = dName.textContent;
       artFS.classList.add("is-open");
     });
     artFS.addEventListener("click", function () {
-      artFS.classList.remove("is-open");
+      closeArtLightbox();
     });
 
     /* ── Keyboard ─────────────────────────────────────────── */
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") {
         if (artFS.classList.contains("is-open")) {
-          artFS.classList.remove("is-open");
+          closeArtLightbox();
         } else if (filterModalOpen) {
           closeFilterModal();
         } else if (drawerExpanded) {

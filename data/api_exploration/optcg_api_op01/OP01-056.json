@@ -1,0 +1,23 @@
+[
+  {
+    "inventory_price": 0.08,
+    "market_price": 0.14,
+    "card_name": "Demon Face",
+    "set_name": "Romance Dawn",
+    "card_text": "[Main] K.O. up to 2 of your opponent's rested Characters with a cost of 5 or less.  This card has been officially errata'd.",
+    "set_id": "OP-01",
+    "rarity": "UC",
+    "card_set_id": "OP01-056",
+    "card_color": "Green",
+    "card_type": "Event",
+    "life": null,
+    "card_cost": "6",
+    "card_power": null,
+    "sub_types": "Hawkins Pirates Supernovas",
+    "counter_amount": null,
+    "attribute": null,
+    "date_scraped": "2026-04-06",
+    "card_image_id": "OP01-056",
+    "card_image": "https://optcgapi.com/media/static/Card_Images/OP01-056.jpg"
+  }
+]

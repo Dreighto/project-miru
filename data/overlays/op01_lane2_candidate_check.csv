@@ -1,0 +1,109 @@
+card_code,printing_id,variant_key,market_product_id,product_name,image_url,existing_preferred_pid,candidate_status,sub_classification
+OP01-002,712,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-003,716,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-004,721,alt,717,Usopp - OP01-004 (Treasure Cup),https://tcgplayer-cdn.tcgplayer.com/product/455814_200w.jpg,,CANDIDATE_EXISTS,CLEAR
+OP01-005,725,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-005,726,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-006,733,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-006,734,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-006,739,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-006,740,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-008,746,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-013,760,alt,815,Sanji - OP01-013 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485263_200w.jpg,763,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-013,761,alt,815,Sanji - OP01-013 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485263_200w.jpg,763,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-013,762,alt,815,Sanji - OP01-013 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485263_200w.jpg,763,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-015,775,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-016,781,alt,3375,Nami (OP01-016) (Manga),https://tcgplayer-cdn.tcgplayer.com/product/587966_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,781,alt,817,Nami - OP01-016 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485265_200w.jpg,788,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-016,781,alt,1068,Nami - OP01-016 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527619_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,783,alt,3375,Nami (OP01-016) (Manga),https://tcgplayer-cdn.tcgplayer.com/product/587966_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,783,alt,817,Nami - OP01-016 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485265_200w.jpg,788,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-016,783,alt,1068,Nami - OP01-016 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527619_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,784,alt,3375,Nami (OP01-016) (Manga),https://tcgplayer-cdn.tcgplayer.com/product/587966_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,784,alt,817,Nami - OP01-016 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485265_200w.jpg,788,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-016,784,alt,1068,Nami - OP01-016 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527619_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,785,alt,3375,Nami (OP01-016) (Manga),https://tcgplayer-cdn.tcgplayer.com/product/587966_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,785,alt,817,Nami - OP01-016 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485265_200w.jpg,788,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-016,785,alt,1068,Nami - OP01-016 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527619_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,786,alt,3375,Nami (OP01-016) (Manga),https://tcgplayer-cdn.tcgplayer.com/product/587966_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,786,alt,817,Nami - OP01-016 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485265_200w.jpg,788,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-016,786,alt,1068,Nami - OP01-016 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527619_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,795,alt,3375,Nami (OP01-016) (Manga),https://tcgplayer-cdn.tcgplayer.com/product/587966_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,795,alt,817,Nami - OP01-016 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485265_200w.jpg,788,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-016,795,alt,1068,Nami - OP01-016 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527619_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-017,799,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-017,800,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-021,813,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-021,814,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-021,817,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-024,829,alt,3253,Monkey.D.Luffy (OP01-024) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586178_200w.jpg,830,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-024,832,alt,3253,Monkey.D.Luffy (OP01-024) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586178_200w.jpg,830,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-025,837,alt,969,Roronoa Zoro - OP01-025 (Treasure Cup),https://tcgplayer-cdn.tcgplayer.com/product/515356_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-025,837,alt,1069,Roronoa Zoro - OP01-025 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527620_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-025,838,alt,969,Roronoa Zoro - OP01-025 (Treasure Cup),https://tcgplayer-cdn.tcgplayer.com/product/515356_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-025,838,alt,1069,Roronoa Zoro - OP01-025 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527620_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-025,839,alt,969,Roronoa Zoro - OP01-025 (Treasure Cup),https://tcgplayer-cdn.tcgplayer.com/product/515356_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-025,839,alt,1069,Roronoa Zoro - OP01-025 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527620_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-025,843,alt,969,Roronoa Zoro - OP01-025 (Treasure Cup),https://tcgplayer-cdn.tcgplayer.com/product/515356_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-025,843,alt,1069,Roronoa Zoro - OP01-025 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527620_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-029,852,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-031,863,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-033,869,alt,3379,Izo (OP01-033) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/593285_200w.jpg,,CANDIDATE_EXISTS,CLEAR
+OP01-033,870,alt,3379,Izo (OP01-033) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/593285_200w.jpg,,CANDIDATE_EXISTS,CLEAR
+OP01-033,876,alt,3379,Izo (OP01-033) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/593285_200w.jpg,,CANDIDATE_EXISTS,CLEAR
+OP01-034,880,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-035,884,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-035,885,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-039,898,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-040,903,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-041,907,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-041,912,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-041,914,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-047,927,alt,3337,Trafalgar Law (OP01-047) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586893_200w.jpg,928,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-047,931,alt,3337,Trafalgar Law (OP01-047) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586893_200w.jpg,928,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-048,936,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-051,944,alt,3336,"Eustass""Captain""Kid (OP01-051) (Alternate Art)",https://tcgplayer-cdn.tcgplayer.com/product/586892_200w.jpg,945,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-051,948,alt,3336,"Eustass""Captain""Kid (OP01-051) (Alternate Art)",https://tcgplayer-cdn.tcgplayer.com/product/586892_200w.jpg,945,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-052,953,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-052,954,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-052,958,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-057,972,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-060,980,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-060,983,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-061,986,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-062,990,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-064,996,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-067,1004,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-070,1012,alt,3285,Dracule Mihawk (OP01-070) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586549_200w.jpg,1014,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-070,1013,alt,3285,Dracule Mihawk (OP01-070) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586549_200w.jpg,1014,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-070,1017,alt,3285,Dracule Mihawk (OP01-070) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586549_200w.jpg,1014,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-073,1025,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-077,1038,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-077,1039,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-077,1040,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-078,1044,alt,3284,Boa Hancock (OP01-078) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586548_200w.jpg,1045,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-078,1048,alt,3284,Boa Hancock (OP01-078) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586548_200w.jpg,1045,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-079,1053,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-091,1079,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-093,1085,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-093,1086,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-094,1090,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-094,1091,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-096,1097,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-101,1110,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-102,1114,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-108,1128,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-109,1131,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-114,1143,alt,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-120,1156,alt,3268,Shanks (OP01-120) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586194_200w.jpg,1157,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-120,1161,alt,3268,Shanks (OP01-120) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586194_200w.jpg,1157,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-121,1168,alt,3335,Yamato (OP01-121) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586891_200w.jpg,1169,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-121,1172,alt,3335,Yamato (OP01-121) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586891_200w.jpg,1169,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-016,787,mr,3375,Nami (OP01-016) (Manga),https://tcgplayer-cdn.tcgplayer.com/product/587966_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-016,787,mr,817,Nami - OP01-016 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485265_200w.jpg,788,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-016,787,mr,1068,Nami - OP01-016 (Ultra Deck: The Three Captains),https://tcgplayer-cdn.tcgplayer.com/product/527619_200w.jpg,,CANDIDATE_EXISTS,MULTI_MATCH
+OP01-035,889,sp,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-047,933,sp,3337,Trafalgar Law (OP01-047) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586893_200w.jpg,928,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-073,1029,sp,,,,,NO_CANDIDATE,NO_CANDIDATE
+OP01-078,1050,sp,3284,Boa Hancock (OP01-078) (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/586548_200w.jpg,1045,CANDIDATE_EXISTS,ALREADY_OWNED
+OP01-013,767,tr,815,Sanji - OP01-013 (Alternate Art),https://tcgplayer-cdn.tcgplayer.com/product/485263_200w.jpg,763,CANDIDATE_EXISTS,ALREADY_OWNED

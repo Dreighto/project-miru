@@ -22,10 +22,9 @@ function Get-MiruProcessOnPort {
     if (Get-Command Get-OpMiruListeningEntry -ErrorAction SilentlyContinue) {
         return Get-OpMiruListeningEntry -Port $Port
     }
-    foreach ($line in (netstat -ano -p tcp)) {
-        if ($line -match "^\s*TCP\s+(.+):$Port\s+\S+\s+LISTENING\s+(\d+)\s*$") {
-            return [pscustomobject]@{ LocalAddress = $matches[1]; Port = $Port; Pid = [int]$matches[2] }
-        }
+    $entries = @(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+    if ($entries.Count -gt 0) {
+        return [pscustomobject]@{ LocalAddress = [string]$entries[0].LocalAddress; Port = $Port; Pid = [int]$entries[0].OwningProcess }
     }
     return $null
 }

@@ -1,0 +1,45 @@
+{
+  "name": "@a.ardeshir/youtube-mcp",
+  "version": "1.0.0",
+  "description": "Model Context Protocol server for YouTube API - search videos, manage playlists",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "youtube-mcp": "./index.js",
+    "youtube-mcp-setup": "./auth-setup.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "auth-setup": "node auth-setup.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "googleapis": "^140.0.0",
+    "dotenv": "^16.4.5",
+    "open": "^10.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "youtube",
+    "api",
+    "playlist",
+    "claude",
+    "model-context-protocol"
+  ],
+  "author": "Amir Ardeshir",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aardeshir/youtube-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aardeshir/youtube-mcp/issues"
+  },
+  "homepage": "https://github.com/aardeshir/youtube-mcp#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

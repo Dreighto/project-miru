@@ -1,0 +1,23 @@
+[
+  {
+    "inventory_price": 0.02,
+    "market_price": 0.08,
+    "card_name": "Shinobu",
+    "set_name": "Romance Dawn",
+    "card_text": "NULL",
+    "set_id": "OP-01",
+    "rarity": "C",
+    "card_set_id": "OP01-043",
+    "card_color": "Green",
+    "card_type": "Character",
+    "life": null,
+    "card_cost": "3",
+    "card_power": "5000",
+    "sub_types": "Land of Wano",
+    "counter_amount": 1000,
+    "attribute": "Special",
+    "date_scraped": "2026-04-06",
+    "card_image_id": "OP01-043",
+    "card_image": "https://optcgapi.com/media/static/Card_Images/OP01-043.jpg"
+  }
+]

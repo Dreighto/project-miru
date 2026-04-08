@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@cyanheads/git-mcp-server": "^2.10.5"
+  }
+}

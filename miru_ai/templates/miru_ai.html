@@ -1183,29 +1183,750 @@
                     margin-bottom: 8px;
                 }
 
+                .devInstallPanel {
+                    margin: 16px;
+                    padding: 14px;
+                    border-radius: 12px;
+                    border: 1px solid rgba(108, 63, 196, 0.28);
+                    background: #13111a;
+                    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.38);
+                }
+
+                .devInstallPanelTitle {
+                    color: #c9a84c;
+                    margin: 0 0 6px;
+                    font-size: 1.1rem;
+                    font-weight: 700;
+                }
+
+                .devInstallPanelNote {
+                    margin: 0 0 12px;
+                    color: #b7adca;
+                    font-size: 0.88rem;
+                }
+
+                .devInstallStats {
+                    display: grid;
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    gap: 10px;
+                    margin-bottom: 12px;
+                }
+
+                .devInstallStat {
+                    border-radius: 10px;
+                    border: 1px solid rgba(108, 63, 196, 0.28);
+                    background: rgba(108, 63, 196, 0.07);
+                    padding: 10px;
+                }
+
+                .devInstallStatLabel {
+                    margin: 0;
+                    color: #b7adca;
+                    font-size: 0.78rem;
+                }
+
+                .devInstallStatValue {
+                    margin: 4px 0 0;
+                    color: #f0edf8;
+                    font-size: 1.18rem;
+                    font-weight: 700;
+                }
+
+                .devInstallTableWrap {
+                    overflow-x: auto;
+                }
+
+                .devInstallTable {
+                    width: 100%;
+                    min-width: 1120px;
+                    border-collapse: collapse;
+                }
+
+                .devInstallTable th,
+                .devInstallTable td {
+                    text-align: left;
+                    vertical-align: top;
+                    border-bottom: 1px solid rgba(108, 63, 196, 0.24);
+                    padding: 8px 10px;
+                    font-size: 0.82rem;
+                    color: #f0edf8;
+                }
+
+                .devInstallTable th {
+                    color: #b7adca;
+                    font-weight: 600;
+                }
+
+                .devInstallStatus {
+                    display: inline-block;
+                    border-radius: 999px;
+                    padding: 3px 10px;
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    border: 1px solid transparent;
+                    white-space: nowrap;
+                }
+
+                .devInstallStatus--clear {
+                    color: #9ef8c0;
+                    background: rgba(38, 183, 106, 0.2);
+                    border-color: rgba(38, 183, 106, 0.52);
+                }
+
+                .devInstallStatus--flagged {
+                    color: #ffd487;
+                    background: rgba(201, 168, 76, 0.18);
+                    border-color: rgba(201, 168, 76, 0.52);
+                }
+
+                .devInstallEmpty {
+                    border-radius: 10px;
+                    border: 1px dashed rgba(108, 63, 196, 0.45);
+                    padding: 12px;
+                    color: #d3c9e6;
+                    font-size: 0.84rem;
+                }
+
+                .devInstallSource {
+                    margin: 12px 0 0;
+                    color: #a899bf;
+                    font-size: 0.78rem;
+                }
+
+                /* Chapter 19.11A: OPTCG card silhouette at true ratio 63:88 (no crop / no stretch). */
+                .devInstallCellCard {
+                    width: 1%;
+                    white-space: nowrap;
+                    vertical-align: middle;
+                }
+
+                .devInstallCardThumbBtn {
+                    display: inline-block;
+                    padding: 0;
+                    margin: 0;
+                    border: none;
+                    background: transparent;
+                    cursor: zoom-in;
+                    border-radius: 8px;
+                    line-height: 0;
+                }
+
+                .devInstallCardThumbBtn:focus-visible {
+                    outline: 2px solid rgba(201, 168, 76, 0.85);
+                    outline-offset: 2px;
+                }
+
+                .devInstallCardThumbFrame {
+                    display: inline-block;
+                    height: 84px;
+                    width: calc(84px * 63 / 88);
+                    border-radius: 8px;
+                    border: 1px solid rgba(108, 63, 196, 0.45);
+                    background: rgba(8, 6, 14, 0.92);
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .devInstallCardThumbImg {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                    object-position: center;
+                    display: block;
+                }
+
+                .devInstallCardThumbFallback {
+                    display: none;
+                    position: absolute;
+                    inset: 0;
+                    align-items: center;
+                    justify-content: center;
+                    text-align: center;
+                    font-size: 0.68rem;
+                    color: #8a7fa0;
+                    padding: 4px;
+                }
+
+                .devInstallCardThumbFrame.devInstallCardThumb--broken .devInstallCardThumbImg {
+                    display: none;
+                }
+
+                .devInstallCardThumbFrame.devInstallCardThumb--broken .devInstallCardThumbFallback {
+                    display: flex;
+                }
+
+                .devInstallCardThumbMissing {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 84px;
+                    width: calc(84px * 63 / 88);
+                    border-radius: 8px;
+                    border: 1px dashed rgba(108, 63, 196, 0.35);
+                    color: #8a7fa0;
+                    font-size: 0.72rem;
+                }
+
+                .devInstallImageModal {
+                    position: fixed;
+                    inset: 0;
+                    z-index: 12000;
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .devInstallImageModal.devInstallImageModal--open {
+                    display: flex;
+                }
+
+                .devInstallImageModalBackdrop {
+                    position: absolute;
+                    inset: 0;
+                    background: rgba(5, 4, 10, 0.78);
+                }
+
+                .devInstallImageModalDialog {
+                    margin: 0;
+                    position: relative;
+                    z-index: 1;
+                    max-width: min(92vw, calc(90vh * 63 / 88));
+                    max-height: min(90vh, 920px);
+                    width: min(92vw, calc(min(90vh, 920px) * 63 / 88));
+                    aspect-ratio: 63 / 88;
+                    border-radius: 12px;
+                    border: 1px solid rgba(108, 63, 196, 0.45);
+                    background: #0e0c12;
+                    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.55);
+                    overflow: hidden;
+                }
+
+                .devInstallImageModalDialog img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                    object-position: center;
+                    display: block;
+                }
+
+                .devInstallImageModalClose {
+                    position: absolute;
+                    top: 8px;
+                    right: 10px;
+                    z-index: 2;
+                    border: none;
+                    border-radius: 999px;
+                    width: 36px;
+                    height: 36px;
+                    font-size: 1.25rem;
+                    line-height: 1;
+                    cursor: pointer;
+                    background: rgba(20, 16, 30, 0.88);
+                    color: #f0edf8;
+                }
+
+                .devInstallImageModalClose:hover {
+                    background: rgba(40, 32, 58, 0.95);
+                }
+
+                /* ── Review Workflow: Tab Bar ── */
+                .devTabBar {
+                    display: flex;
+                    margin: 0 16px 6px;
+                    background: rgba(122, 111, 138, 0.15);
+                    border-radius: 10px;
+                    padding: 3px;
+                    gap: 2px;
+                }
+                .devTab {
+                    flex: 1;
+                    padding: 10px 0;
+                    background: transparent;
+                    border: none;
+                    border-radius: 8px;
+                    color: #7a6f8a;
+                    font-size: 0.88rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: background 140ms, color 140ms;
+                    min-height: 40px;
+                    font-family: inherit;
+                }
+                .devTab:hover { background: rgba(122, 111, 138, 0.25); }
+                .devTab--active {
+                    background: #c9a84c;
+                    color: #0d0d0f;
+                    font-weight: 700;
+                }
+
+                /* ── Review Workflow: Two-Column Layout ── */
+                .devReviewColumns { margin: 0 16px; }
+                .devReviewCol { min-width: 0; }
+
+                /* ── Mobile Install Cards · Stealth Console ── */
+                .devInstallCards { display: none; }
+                .devInstallCard {
+                    background: #100e18;
+                    border: 1px solid rgba(108, 63, 196, 0.14);
+                    border-radius: 6px;
+                    padding: 0;
+                    margin-bottom: 4px;
+                    content-visibility: auto;
+                    contain-intrinsic-size: auto 96px;
+                }
+                .devInstallCard--flagged { border-left: 2px solid #c9a84c; }
+                .devInstallCard--clear  { border-left: 2px solid rgba(38, 183, 106, 0.35); }
+
+                /* ── Card body: thumb-height constrained ── */
+                .devInstallCard__body {
+                    display: flex;
+                    gap: 8px;
+                    align-items: stretch;
+                    padding: 6px 8px 5px;
+                    min-height: 0;
+                }
+                .devInstallCard__thumb { flex-shrink: 0; }
+                .devInstallCard__thumbFrame { height: 64px !important; width: 46px !important; border-radius: 5px !important; }
+                .devInstallCard__thumbMissing { height: 64px !important; width: 46px !important; font-size: 0.58rem !important; border-radius: 5px !important; }
+                .devInstallCard__thumbPlaceholder {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    height: 64px; width: 46px;
+                    border-radius: 5px;
+                    border: 1px dashed rgba(108, 63, 196, 0.18);
+                    color: #3d3554;
+                    font-size: 0.7rem;
+                    flex-shrink: 0;
+                }
+
+                /* ── Text stack beside thumb ── */
+                .devInstallCard__info {
+                    flex: 1; min-width: 0;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    gap: 1px;
+                }
+                .devInstallCard__row1 {
+                    display: flex;
+                    align-items: baseline;
+                    gap: 5px;
+                }
+                .devInstallCard__code {
+                    font-weight: 700;
+                    font-size: 0.82rem;
+                    color: #e8e4f0;
+                    letter-spacing: -0.01em;
+                    line-height: 1.1;
+                }
+                .devInstallCard__variantBadge {
+                    display: inline-block;
+                    padding: 0 5px;
+                    border-radius: 3px;
+                    font-size: 0.58rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                    background: transparent;
+                    border: 1px solid rgba(108, 63, 196, 0.35);
+                    color: #9b82c9;
+                    line-height: 1.4;
+                }
+                .devInstallCard__pid {
+                    font-size: 0.58rem;
+                    color: #4d4565;
+                    font-family: monospace;
+                    margin-left: auto;
+                    flex-shrink: 0;
+                }
+                .devInstallCard__name {
+                    color: #8a7fa0;
+                    font-size: 0.68rem;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    line-height: 1.2;
+                }
+                .devInstallCard__row3 {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    flex-wrap: nowrap;
+                }
+                .devInstallCard__product {
+                    font-size: 0.62rem;
+                    color: #6b6080;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    max-width: 45%;
+                }
+                .devInstallCard__chip {
+                    display: inline-block;
+                    padding: 0 4px;
+                    border-radius: 3px;
+                    font-size: 0.56rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.03em;
+                    white-space: nowrap;
+                    background: transparent;
+                    line-height: 1.5;
+                }
+                .devInstallCard__chip--treatment { border: 1px solid rgba(108, 63, 196, 0.3); color: #8a74b5; }
+                .devInstallCard__chip--high { border: 1px solid rgba(38, 183, 106, 0.3); color: #5cc98e; }
+                .devInstallCard__chip--low  { border: 1px solid rgba(201, 168, 76, 0.4); color: #c9a84c; }
+                .devInstallCard__priceMeta {
+                    font-size: 0.6rem;
+                    color: #4d4565;
+                    margin-left: auto;
+                    flex-shrink: 0;
+                    white-space: nowrap;
+                }
+                /* Flagged-only visible status chip */
+                .devInstallCard__flagChip {
+                    display: inline-block;
+                    padding: 0 5px;
+                    border-radius: 3px;
+                    font-size: 0.56rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                    background: rgba(201, 168, 76, 0.14);
+                    border: 1px solid rgba(201, 168, 76, 0.4);
+                    color: #c9a84c;
+                    line-height: 1.5;
+                }
+
+                /* ── Segmented action footer ── */
+                .devInstallCard__footer {
+                    display: flex;
+                    border-top: 1px solid rgba(108, 63, 196, 0.10);
+                }
+                .devInstallCard__seg {
+                    flex: 1;
+                    padding: 6px 0;
+                    background: transparent;
+                    border: none;
+                    font-family: inherit;
+                    font-size: 0.62rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                    cursor: not-allowed;
+                    opacity: 0.35;
+                    color: #8a7fa0;
+                    text-align: center;
+                    min-height: 30px;
+                    transition: opacity 120ms;
+                }
+                .devInstallCard__seg + .devInstallCard__seg {
+                    border-left: 1px solid rgba(108, 63, 196, 0.10);
+                }
+                .devInstallCard__seg--approve { color: #5cc98e; }
+                .devInstallCard__seg--hold    { color: #c9a84c; }
+                .devInstallCard__seg--reject  { color: #c97070; }
+
+                /* ── Mobile price row ── */
+                .devInstallCard__row4 {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    flex-wrap: nowrap;
+                }
+                .devInstallCard__px {
+                    font-size: 0.62rem;
+                    color: #8a7fa0;
+                    white-space: nowrap;
+                    letter-spacing: -0.01em;
+                }
+                .devInstallCard__px b {
+                    font-weight: 600;
+                    color: #6b6080;
+                    margin-right: 1px;
+                }
+                .devInstallCard__px--low { color: #5cc98e; }
+                .devInstallCard__px--low b { color: #4aaf78; }
+                .devInstallCard__px--empty { color: #3d3554; }
+                .devInstallCard__pxDate {
+                    font-size: 0.56rem;
+                    color: #3d3554;
+                    margin-left: auto;
+                    flex-shrink: 0;
+                    white-space: nowrap;
+                }
+
+                /* ── Desktop price cells ── */
+                .devInstallCellPrice {
+                    white-space: nowrap;
+                    font-variant-numeric: tabular-nums;
+                    font-size: 0.8rem;
+                }
+
+                /* ── OP01 Conflict Dual-Image Review ── */
+                .devConflictPanel {
+                    margin: 16px;
+                    padding: 14px;
+                    border-radius: 12px;
+                    border: 1px solid rgba(201, 168, 76, 0.35);
+                    background: #13111a;
+                    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.38);
+                }
+                .devConflictTitle {
+                    color: #ffd487;
+                    margin: 0 0 6px;
+                    font-size: 1.1rem;
+                    font-weight: 700;
+                }
+                .devConflictNote {
+                    margin: 0 0 12px;
+                    color: #b7adca;
+                    font-size: 0.84rem;
+                }
+                .devConflictCard {
+                    background: #100e18;
+                    border: 1px solid rgba(201, 168, 76, 0.22);
+                    border-left: 2px solid #c9a84c;
+                    border-radius: 6px;
+                    padding: 10px;
+                    margin-bottom: 10px;
+                }
+                .devConflictCard--reference {
+                    border-left-color: rgba(38, 183, 106, 0.5);
+                    border-color: rgba(38, 183, 106, 0.18);
+                }
+                .devConflictCard__header {
+                    display: flex;
+                    align-items: baseline;
+                    gap: 6px;
+                    margin-bottom: 8px;
+                    flex-wrap: wrap;
+                }
+                .devConflictCard__code {
+                    font-weight: 700;
+                    font-size: 0.92rem;
+                    color: #f0edf8;
+                }
+                .devConflictCard__variant {
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    padding: 1px 6px;
+                    border-radius: 4px;
+                    background: rgba(108, 63, 196, 0.15);
+                    border: 1px solid rgba(108, 63, 196, 0.3);
+                    color: #8a74b5;
+                }
+                .devConflictCard__statusChip {
+                    font-size: 0.68rem;
+                    font-weight: 700;
+                    padding: 1px 8px;
+                    border-radius: 999px;
+                    white-space: nowrap;
+                }
+                .devConflictCard__statusChip--conflict {
+                    color: #ffd487;
+                    background: rgba(201, 168, 76, 0.18);
+                    border: 1px solid rgba(201, 168, 76, 0.45);
+                }
+                .devConflictCard__statusChip--reference {
+                    color: #9ef8c0;
+                    background: rgba(38, 183, 106, 0.15);
+                    border: 1px solid rgba(38, 183, 106, 0.4);
+                }
+                .devConflictCard__pid {
+                    font-size: 0.72rem;
+                    color: #8a7fa0;
+                    margin-left: auto;
+                }
+                .devConflictDual {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 10px;
+                }
+                .devConflictDual__col {
+                    text-align: center;
+                }
+                .devConflictDual__label {
+                    font-size: 0.72rem;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.04em;
+                    color: #b7adca;
+                    margin-bottom: 6px;
+                }
+                .devConflictDual__imgWrap {
+                    border-radius: 8px;
+                    border: 1px solid rgba(108, 63, 196, 0.35);
+                    background: rgba(8, 6, 14, 0.92);
+                    overflow: hidden;
+                    aspect-ratio: 63 / 88;
+                    max-width: 200px;
+                    margin: 0 auto;
+                }
+                .devConflictDual__img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: contain;
+                    display: block;
+                }
+                .devConflictDual__placeholder {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 100%;
+                    height: 100%;
+                    color: #8a7fa0;
+                    font-size: 0.72rem;
+                    padding: 8px;
+                    aspect-ratio: 63 / 88;
+                    max-width: 200px;
+                    margin: 0 auto;
+                    border-radius: 8px;
+                    border: 1px dashed rgba(108, 63, 196, 0.35);
+                }
+                .devConflictDual__caption {
+                    font-size: 0.72rem;
+                    color: #a899bf;
+                    margin-top: 4px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                .devConflictCandidates {
+                    margin-top: 8px;
+                }
+                .devConflictCandidate {
+                    display: grid;
+                    grid-template-columns: 1fr auto;
+                    gap: 8px;
+                    align-items: start;
+                    padding: 6px 0;
+                    border-top: 1px solid rgba(108, 63, 196, 0.12);
+                }
+                .devConflictCandidate__name {
+                    font-size: 0.78rem;
+                    color: #d3c9e6;
+                }
+                .devConflictCandidate__mpid {
+                    font-size: 0.72rem;
+                    color: #8a7fa0;
+                }
+                .devConflictCandidate__installedBadge {
+                    font-size: 0.62rem;
+                    font-weight: 700;
+                    padding: 1px 6px;
+                    border-radius: 4px;
+                    color: #9ef8c0;
+                    background: rgba(38, 183, 106, 0.15);
+                    border: 1px solid rgba(38, 183, 106, 0.3);
+                }
+
+                /* ── Lane 2 candidate review panel ── */
+                .devLane2Panel { margin:16px; padding:14px; border-radius:12px; border:1px solid rgba(66,135,245,.35); background:#13111a; box-shadow:0 2px 12px rgba(0,0,0,.38); position:relative; }
+                .devLane2Title { color:#87b8ff; margin:0 0 6px; font-size:1.1rem; font-weight:700; }
+                .devLane2StickyBar { position:sticky; top:0; z-index:90; background:#13111a; border-bottom:1px solid rgba(66,135,245,.25); padding:8px 0; margin-bottom:12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+                .devLane2Stat { font-size:.78rem; color:#b7adca; }
+                .devLane2Stat b { font-weight:700; }
+                .devLane2Stat--approved b { color:#9ef8c0; }
+                .devLane2Stat--held b { color:#ffd487; }
+                .devLane2Stat--unresolved b { color:#87b8ff; }
+                .devLane2ExportBtn { font-size:.72rem; font-weight:600; padding:6px 14px; border-radius:6px; border:1px solid rgba(66,135,245,.5); background:rgba(66,135,245,.15); color:#87b8ff; cursor:pointer; min-height:44px; margin-left:auto; }
+                .devLane2ExportBtn:hover { background:rgba(66,135,245,.3); }
+                .devLane2Card { background:#100e18; border:1px solid rgba(66,135,245,.22); border-left:2px solid #4287f5; border-radius:6px; padding:10px; margin-bottom:10px; transition:border-color .15s; }
+                .devLane2Card--clear { border-left-color:#42c986; border-color:rgba(66,201,134,.22); }
+                .devLane2Card--owned { border-left-color:#8a7fa0; border-color:rgba(138,127,160,.18); opacity:.55; }
+                .devLane2Card--decided { border-color:rgba(66,201,134,.45) !important; }
+                .devLane2Card__header { display:flex; align-items:baseline; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+                .devLane2Card__code { font-weight:700; font-size:.92rem; color:#f0edf8; }
+                .devLane2Card__variant { font-size:.72rem; font-weight:700; text-transform:uppercase; padding:1px 6px; border-radius:4px; background:rgba(108,63,196,.15); border:1px solid rgba(108,63,196,.3); color:#8a74b5; }
+                .devLane2Card__pid { font-size:.72rem; color:#8a7fa0; margin-left:auto; }
+                .devLane2Badge { font-size:.68rem; font-weight:700; padding:1px 8px; border-radius:999px; white-space:nowrap; }
+                .devLane2Badge--clear { color:#9ef8c0; background:rgba(38,183,106,.15); border:1px solid rgba(38,183,106,.4); }
+                .devLane2Badge--multi { color:#87b8ff; background:rgba(66,135,245,.15); border:1px solid rgba(66,135,245,.4); }
+                .devLane2Badge--owned { color:#8a7fa0; background:rgba(138,127,160,.12); border:1px solid rgba(138,127,160,.3); }
+                .devLane2Dual { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+                .devLane2Dual__col { text-align:center; }
+                .devLane2Dual__label { font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:#b7adca; margin-bottom:6px; }
+                .devLane2ImgWrap { border-radius:8px; border:1px solid rgba(108,63,196,.35); background:rgba(8,6,14,.92); overflow:hidden; aspect-ratio:63/88; max-width:140px; margin:0 auto; cursor:pointer; transition:border-color .15s; }
+                .devLane2ImgWrap:hover { border-color:rgba(108,63,196,.7); }
+                .devLane2ImgWrap img { width:100%; height:100%; object-fit:contain; display:block; }
+                .devLane2Placeholder { display:flex; align-items:center; justify-content:center; aspect-ratio:63/88; max-width:140px; margin:0 auto; border-radius:8px; border:1px dashed rgba(108,63,196,.35); color:#8a7fa0; font-size:.72rem; padding:8px; }
+                .devLane2Caption { font-size:.72rem; color:#a899bf; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+                .devLane2CandStack { display:flex; flex-direction:column; gap:8px; }
+                .devLane2CandBlock { border:1px solid rgba(66,135,245,.12); border-radius:6px; padding:8px; transition:border-color .15s, background .15s; }
+                .devLane2CandBlock--selected { border-color:rgba(66,201,134,.6); background:rgba(66,201,134,.06); }
+                .devLane2CandBlock__meta { display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; margin-bottom:4px; }
+                .devLane2CandBlock__name { font-size:.78rem; color:#d3c9e6; }
+                .devLane2CandBlock__mpid { font-size:.72rem; color:#8a7fa0; }
+                .devLane2CandBlock__owner { font-size:.68rem; color:#c9846e; font-weight:600; }
+                .devLane2Actions { display:flex; gap:6px; margin-top:6px; }
+                .devLane2Btn { font-size:.72rem; font-weight:600; padding:6px 14px; border-radius:6px; border:1px solid transparent; cursor:pointer; min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; transition:background .12s; }
+                .devLane2Btn--approve { color:#1a3a1a; background:rgba(66,201,134,.7); border-color:rgba(66,201,134,.9); }
+                .devLane2Btn--approve:hover { background:rgba(66,201,134,.9); }
+                .devLane2Btn--approve.active { background:rgba(66,201,134,1); box-shadow:0 0 6px rgba(66,201,134,.5); }
+                .devLane2Btn--hold { color:#b7adca; background:rgba(138,127,160,.15); border-color:rgba(138,127,160,.3); }
+                .devLane2Btn--hold:hover { background:rgba(138,127,160,.25); }
+                .devLane2Btn--hold.active { color:#ffd487; background:rgba(201,168,76,.25); border-color:rgba(201,168,76,.6); }
+                .devLane2Btn--select { color:#d3c9e6; background:rgba(66,135,245,.15); border-color:rgba(66,135,245,.35); font-size:.68rem; }
+                .devLane2Btn--select:hover { background:rgba(66,135,245,.3); }
+                .devLane2Btn--select.active { color:#1a3a1a; background:rgba(66,201,134,.7); border-color:rgba(66,201,134,.9); }
+                .devLane2OwnedRow { padding:6px 0; border-top:1px solid rgba(138,127,160,.1); font-size:.78rem; color:#8a7fa0; }
+                .devLane2OwnedDetails { display:none; }
+                .devLane2OwnedDetails.open { display:block; }
+                .devLane2ExpandBtn { font-size:.68rem; color:#8a7fa0; background:none; border:none; cursor:pointer; padding:2px 6px; text-decoration:underline; }
+                .devLane2Card--notready { border-left-color:#5a4e6e; border-color:rgba(90,78,110,.18); opacity:.45; }
+                .devLane2Card--notready .devLane2Card__header { cursor:pointer; }
+                .devLane2SectionHead { font-size:.82rem; font-weight:700; margin:14px 0 6px; padding:5px 8px; border-radius:4px; }
+                .devLane2SectionHead--ready { color:#9ef8c0; background:rgba(38,183,106,.08); border-left:3px solid #42c986; }
+                .devLane2SectionHead--notready { color:#b7adca; background:rgba(90,78,110,.08); border-left:3px solid #5a4e6e; }
+                .devLane2SectionHead--owned { color:#8a7fa0; background:rgba(138,127,160,.06); border-left:3px solid #8a7fa0; }
+                .devLane2Badge--notready { color:#b7adca; background:rgba(90,78,110,.15); border:1px solid rgba(90,78,110,.4); }
+                .devLane2NotReadyContext { font-size:.68rem; color:#8a7fa0; font-style:italic; margin-top:2px; }
+                /* Lightbox */
+                .devLane2Lightbox { display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:9999; background:rgba(0,0,0,.92); align-items:center; justify-content:center; }
+                .devLane2Lightbox.open { display:flex; }
+                .devLane2Lightbox img { max-width:92vw; max-height:92vh; object-fit:contain; border-radius:8px; }
+                .devLane2Lightbox__close { position:absolute; top:12px; right:16px; font-size:2rem; color:#fff; background:none; border:none; cursor:pointer; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; }
+
+                /* ── Desktop: two-column, hide tabs ── */
+                @media (min-width: 769px) {
+                    .devTabBar { display: none; }
+                    .devReviewColumns {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 16px;
+                    }
+                    .devReviewCol { display: block !important; }
+                    .devInstallCards { display: none !important; }
+                    .devInstallPanel { margin: 0; }
+                    .devConflictPanel { margin: 0; }
+                    .devLane2Panel { margin: 0; }
+                    .devImageReview { margin: 0; }
+                }
+
+                /* ── Mobile: single-column tabs ── */
                 @media (max-width: 768px) {
-                    .devSystemPulse {
-                        margin: 12px;
-                    }
-
+                    .devReviewColumns { display: block; }
+                    .devReviewCol { display: none; }
+                    .devReviewCol.devReviewPane--active { display: block; }
+                    .devInstallTableWrap { display: none; }
+                    .devInstallCards { display: block; }
+                    .devInstallPanel { margin: 0; }
+                    .devConflictPanel { margin: 0; }
+                    .devLane2Panel { margin: 0; }
+                    .devImageReview { margin: 0; }
+                    .devSystemPulse { margin: 12px; }
                     .devIntelligenceFeed,
-                    .devTriageStack {
-                        margin: 12px;
-                    }
-
-                    .devServiceGrid {
-                        grid-template-columns: 1fr;
-                    }
-
-                    .devTriageHeader {
-                        flex-direction: column;
-                        gap: 8px;
-                    }
-
-                    .devTriageImage {
-                        width: 100%;
-                        height: 120px;
-                    }
+                    .devTriageStack { margin: 12px; }
+                    .devServiceGrid { grid-template-columns: 1fr; }
+                    .devTriageHeader { flex-direction: column; gap: 8px; }
+                    .devTriageImage { width: 100%; height: 120px; }
+                    .devInstallStats { grid-template-columns: 1fr; }
+                    .devConflictDual { grid-template-columns: 1fr; }
+                    .devConflictDual__imgWrap { max-width: 160px; }
+                    /* Lane 2 stays two-panel on mobile — no override */
                 }
             </style>
 
@@ -1224,6 +1945,732 @@
                     </div>
                 </div>
 
+                <!-- Review Tabs (mobile segmented control) -->
+                <nav class="devTabBar" aria-label="Review sections">
+                    <button class="devTab devTab--active" data-dev-tab="install" type="button">Install Review</button>
+                    <button class="devTab" data-dev-tab="image" type="button">Image Review</button>
+                </nav>
+
+                <div class="devReviewColumns">
+                <div class="devReviewCol devReviewPane--active" id="devPaneInstall" data-tab-pane="install">
+                {% set install_panel = ready_install_panel or {} %}
+                <section class="devInstallPanel" aria-label="Chapter 19.11 ready to install">
+                    <h2 class="devInstallPanelTitle">Ready to Install</h2>
+                    <p class="devInstallPanelNote">Read-only Chapter 19.11 install-plan snapshot for operator confirmation.</p>
+                    <div class="devInstallStats">
+                        <article class="devInstallStat">
+                            <p class="devInstallStatLabel">Total Rows</p>
+                            <p class="devInstallStatValue">{{ install_panel.get('total_rows', 0) }}</p>
+                        </article>
+                        <article class="devInstallStat">
+                            <p class="devInstallStatLabel">CLEAR_TO_INSTALL</p>
+                            <p class="devInstallStatValue">{{ install_panel.get('clear_to_install_count', 0) }}</p>
+                        </article>
+                        <article class="devInstallStat">
+                            <p class="devInstallStatLabel">Flagged Rows</p>
+                            <p class="devInstallStatValue">{{ install_panel.get('flagged_count', 0) }}</p>
+                        </article>
+                    </div>
+                    {% if install_panel.get('available') and install_panel.get('rows') %}
+                    <!-- Mobile card view (hidden on desktop via CSS) -->
+                    <div class="devInstallCards">
+                        {% for row in install_panel.get('rows', []) %}
+                        <article class="devInstallCard {{ 'devInstallCard--clear' if row.get('is_clear_to_install') else 'devInstallCard--flagged' }}">
+                            <div class="devInstallCard__body">
+                                {% if row.get('is_clear_to_install') %}
+                                    {% set ipimg = row.get('install_panel_image') %}
+                                    {% if ipimg and ipimg.get('ok') and (ipimg.get('png_exists') or ipimg.get('webp_exists')) %}
+                                    <button type="button" class="devInstallCardThumbBtn devInstallCard__thumb"
+                                        data-dev-install-modal="{{ ipimg.get('modal_image_url', '') }}"
+                                        data-dev-install-label="{{ (row.get('canonical_code', '') ~ ' · ' ~ row.get('candidate_mp_name', ''))|e }}"
+                                        aria-label="Open image for {{ row.get('canonical_code', '')|e }}">
+                                        <span class="devInstallCardThumbFrame devInstallCard__thumbFrame">
+                                            <img class="devInstallCardThumbImg" src="{{ ipimg.get('thumb_url', '') }}" alt="" loading="lazy" decoding="async" />
+                                            <span class="devInstallCardThumbFallback" aria-hidden="true">—</span>
+                                        </span>
+                                    </button>
+                                    {% else %}
+                                    <div class="devInstallCardThumbMissing devInstallCard__thumbMissing">—</div>
+                                    {% endif %}
+                                {% else %}
+                                <div class="devInstallCard__thumbPlaceholder">&mdash;</div>
+                                {% endif %}
+                                <div class="devInstallCard__info">
+                                    <div class="devInstallCard__row1">
+                                        <span class="devInstallCard__code">{{ row.get('canonical_code', '') }}</span>
+                                        {% if row.get('variant_family') %}<span class="devInstallCard__variantBadge">{{ row.get('variant_family') }}</span>{% endif %}
+                                        {% if not row.get('is_clear_to_install') %}<span class="devInstallCard__flagChip">{{ row.get('pre_install_status', 'FLAGGED') }}</span>{% endif %}
+                                        <span class="devInstallCard__pid">#{{ row.get('printing_id', '') }}</span>
+                                    </div>
+                                    <div class="devInstallCard__name">{{ row.get('candidate_mp_name', '') }}</div>
+                                    {% set px = row.get('price', {}) %}
+                                    <div class="devInstallCard__row3">
+                                        <span class="devInstallCard__product">mp:{{ row.get('candidate_mp_id', '') }}</span>
+                                        {% if row.get('variant_family') %}<span class="devInstallCard__chip devInstallCard__chip--treatment">{{ row.get('variant_family') }}</span>{% endif %}
+                                        <span class="devInstallCard__chip {{ 'devInstallCard__chip--high' if row.get('is_clear_to_install') else 'devInstallCard__chip--low' }}">{{ 'HIGH' if row.get('is_clear_to_install') else 'REVIEW' }}</span>
+                                        {% if px.get('subtype') %}<span class="devInstallCard__chip devInstallCard__chip--treatment">{{ px.get('subtype') }}</span>{% endif %}
+                                    </div>
+                                    <div class="devInstallCard__row4">
+                                        {% if px.get('market_price') %}
+                                        <span class="devInstallCard__px"><b>M</b>${{ px.get('market_price') }}</span>
+                                        <span class="devInstallCard__px"><b>Md</b>${{ px.get('mid_price', '—') }}</span>
+                                        <span class="devInstallCard__px devInstallCard__px--low"><b>L</b>${{ px.get('low_price', '—') }}</span>
+                                        {% else %}
+                                        <span class="devInstallCard__px devInstallCard__px--empty">$&mdash;</span>
+                                        {% endif %}
+                                        {% if px.get('prices_updated_at') %}<span class="devInstallCard__pxDate" title="{{ px.get('prices_updated_at') }}">{{ px.get('prices_updated_at', '')[:10] }}</span>{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="devInstallCard__footer">
+                                <button class="devInstallCard__seg devInstallCard__seg--approve" type="button" disabled>Approve</button>
+                                <button class="devInstallCard__seg devInstallCard__seg--hold" type="button" disabled>Hold</button>
+                                <button class="devInstallCard__seg devInstallCard__seg--reject" type="button" disabled>Reject</button>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                    <!-- Desktop table view (hidden on mobile via CSS) -->
+                    <div class="devInstallTableWrap">
+                        <table class="devInstallTable">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Card</th>
+                                    <th>printing_id</th>
+                                    <th>canonical_code</th>
+                                    <th>variant_family</th>
+                                    <th>candidate_mp_id</th>
+                                    <th>candidate_mp_name</th>
+                                    <th>Market</th>
+                                    <th>Mid</th>
+                                    <th>Low</th>
+                                    <th>Subtype</th>
+                                    <th>pre_install_status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in install_panel.get('rows', []) %}
+                                <tr>
+                                    <td class="devInstallCellCard">
+                                        {% if row.get('is_clear_to_install') %}
+                                            {% set ipimg = row.get('install_panel_image') %}
+                                            {% if ipimg and ipimg.get('ok') and (ipimg.get('png_exists') or ipimg.get('webp_exists')) %}
+                                            <button type="button"
+                                                class="devInstallCardThumbBtn"
+                                                data-dev-install-modal="{{ ipimg.get('modal_image_url', '') }}"
+                                                data-dev-install-label="{{ (row.get('canonical_code', '') ~ ' · ' ~ row.get('candidate_mp_name', ''))|e }}"
+                                                aria-label="{{ ('Open full-size card image for ' ~ row.get('canonical_code', ''))|e }}">
+                                                <span class="devInstallCardThumbFrame">
+                                                    <img class="devInstallCardThumbImg" src="{{ ipimg.get('thumb_url', '') }}" alt="" loading="lazy" decoding="async" />
+                                                    <span class="devInstallCardThumbFallback" aria-hidden="true">No art</span>
+                                                </span>
+                                            </button>
+                                            {% else %}
+                                            <div class="devInstallCardThumbMissing" role="img" aria-label="No image file under Miru_Assets for this row">No image</div>
+                                            {% endif %}
+                                        {% else %}
+                                        <span class="devInstallCellCardDash">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ row.get('printing_id', '') }}</td>
+                                    <td>{{ row.get('canonical_code', '') }}</td>
+                                    <td>{{ row.get('variant_family', '') }}</td>
+                                    <td>{{ row.get('candidate_mp_id', '') }}</td>
+                                    <td>{{ row.get('candidate_mp_name', '') }}</td>
+                                    {% set tpx = row.get('price', {}) %}
+                                    <td class="devInstallCellPrice"{% if tpx.get('prices_updated_at') %} title="Updated: {{ tpx.get('prices_updated_at') }}"{% endif %}>{{ ('$' ~ tpx.get('market_price')) if tpx.get('market_price') else '$—' }}</td>
+                                    <td class="devInstallCellPrice">{{ ('$' ~ tpx.get('mid_price')) if tpx.get('mid_price') else '$—' }}</td>
+                                    <td class="devInstallCellPrice">{{ ('$' ~ tpx.get('low_price')) if tpx.get('low_price') else '$—' }}</td>
+                                    <td>{{ tpx.get('subtype', '') }}</td>
+                                    <td>
+                                        {% if row.get('is_clear_to_install') %}
+                                        <span class="devInstallStatus devInstallStatus--clear">{{ row.get('pre_install_status', '') }}</span>
+                                        {% else %}
+                                        <span class="devInstallStatus devInstallStatus--flagged">{{ row.get('pre_install_status', 'FLAGGED') }}</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="devInstallImageModal" class="devInstallImageModal" aria-hidden="true">
+                        <div class="devInstallImageModalBackdrop" data-dev-install-close="1"></div>
+                        <figure class="devInstallImageModalDialog" role="document">
+                            <button type="button" class="devInstallImageModalClose" data-dev-install-close="1" aria-label="Close preview">×</button>
+                            <img id="devInstallImageModalImg" src="" alt="" />
+                        </figure>
+                    </div>
+                    <script>
+                        (function () {
+                            var modal = document.getElementById('devInstallImageModal');
+                            var imgEl = document.getElementById('devInstallImageModalImg');
+                            if (!modal || !imgEl) return;
+
+                            function openModal(pngUrl, label) {
+                                imgEl.src = pngUrl;
+                                imgEl.alt = label || 'Card preview';
+                                modal.classList.add('devInstallImageModal--open');
+                                modal.setAttribute('aria-hidden', 'false');
+                            }
+
+                            function closeModal() {
+                                modal.classList.remove('devInstallImageModal--open');
+                                modal.setAttribute('aria-hidden', 'true');
+                                imgEl.removeAttribute('src');
+                                imgEl.alt = '';
+                            }
+
+                            document.querySelectorAll('.devInstallCardThumbBtn').forEach(function (btn) {
+                                btn.addEventListener('click', function () {
+                                    var u = btn.getAttribute('data-dev-install-modal') || '';
+                                    var lab = btn.getAttribute('data-dev-install-label') || '';
+                                    if (!u) return;
+                                    openModal(u, lab);
+                                });
+                            });
+
+                            modal.querySelectorAll('[data-dev-install-close]').forEach(function (el) {
+                                el.addEventListener('click', closeModal);
+                            });
+
+                            document.addEventListener('keydown', function (e) {
+                                if (e.key === 'Escape' && modal.classList.contains('devInstallImageModal--open')) {
+                                    closeModal();
+                                }
+                            });
+
+                            document.querySelectorAll('.devInstallCardThumbImg').forEach(function (im) {
+                                im.addEventListener('error', function () {
+                                    var frame = im.closest('.devInstallCardThumbFrame');
+                                    if (frame) frame.classList.add('devInstallCardThumb--broken');
+                                });
+                            });
+                        })();
+                    </script>
+                    {% elif install_panel.get('available') %}
+                    <div class="devInstallEmpty">Install-plan artifact loaded, but no rows were found.</div>
+                    {% else %}
+                    <div class="devInstallEmpty">
+                        Unable to load install-plan artifact safely. This panel remains read-only.
+                        {% if install_panel.get('error') %}<br>{{ install_panel.get('error') }}{% endif %}
+                    </div>
+                    {% endif %}
+                    <p class="devInstallSource">
+                        Truth root: <code>{{ install_panel.get('miru_assets_root_display', 'D:\\Miru_Assets') }}</code>
+                        · Thumbnails resolve under that folder and are served on 18765 as <code>/img/&lt;relative path&gt;</code>
+                        · Source artifact: <code>{{ install_panel.get('source_file', 'chapter19_11_install_plan.csv') }}</code>
+                        · Dataset: {{ install_panel.get('chapter_label', 'Chapter 19.11') }} · Visibility only (no install actions)
+                    </p>
+                </section>
+
+                {% set cp = op01_conflict_panel or {} %}
+                {% if cp.get('available') and cp.get('rows') %}
+                <section class="devConflictPanel" aria-label="OP01 conflict visual review">
+                    <h2 class="devConflictTitle">OP01 Conflict Review</h2>
+                    <p class="devConflictNote">{{ cp.get('conflict_count', 0) }} conflict rows pending visual disambiguation. {{ cp.get('reference_count', 0) }} reference row(s) shown for comparison.</p>
+
+                    {% for row in cp.get('rows', []) %}
+                    <article class="devConflictCard {{ 'devConflictCard--reference' if row.get('conflict_status') == 'REFERENCE' else '' }}">
+                        <div class="devConflictCard__header">
+                            <span class="devConflictCard__code">{{ row.get('card_code', '') }}</span>
+                            <span class="devConflictCard__variant">{{ row.get('variant_key', '') }}</span>
+                            {% if row.get('conflict_status') == 'CONFLICT_PENDING' %}
+                            <span class="devConflictCard__statusChip devConflictCard__statusChip--conflict">CONFLICT</span>
+                            {% else %}
+                            <span class="devConflictCard__statusChip devConflictCard__statusChip--reference">REFERENCE</span>
+                            {% endif %}
+                            <span class="devConflictCard__pid">#{{ row.get('printing_id', '') }}</span>
+                        </div>
+
+                        {% for cand in row.get('candidates', []) %}
+                        <div class="devConflictDual">
+                            <div class="devConflictDual__col">
+                                <div class="devConflictDual__label">Miru Asset</div>
+                                {% if row.get('has_miru_image') %}
+                                <div class="devConflictDual__imgWrap">
+                                    <img class="devConflictDual__img" src="{{ row.get('miru_image_url', '') }}" alt="Miru asset for {{ row.get('card_code', '') }}" loading="lazy" />
+                                </div>
+                                <div class="devConflictDual__caption">#{{ row.get('printing_id', '') }} {{ row.get('variant_key', '') }}</div>
+                                {% else %}
+                                <div class="devConflictDual__placeholder">No Miru asset</div>
+                                {% endif %}
+                            </div>
+                            <div class="devConflictDual__col">
+                                <div class="devConflictDual__label">TCGPlayer Product</div>
+                                {% if cand.get('tcg_image_url') %}
+                                <div class="devConflictDual__imgWrap">
+                                    <img class="devConflictDual__img" src="{{ cand.get('tcg_image_url', '') }}" alt="TCGPlayer image for {{ cand.get('product_name', '')|truncate(40) }}" loading="lazy" />
+                                </div>
+                                {% else %}
+                                <div class="devConflictDual__placeholder">No TCGPlayer image</div>
+                                {% endif %}
+                                <div class="devConflictDual__caption">{{ cand.get('product_name', '')|truncate(40) }}</div>
+                            </div>
+                        </div>
+                        <div class="devConflictCandidates">
+                            <div class="devConflictCandidate">
+                                <div>
+                                    <div class="devConflictCandidate__name">{{ cand.get('product_name', '') }}</div>
+                                    <div class="devConflictCandidate__mpid">mp:{{ cand.get('market_product_id', '') }}</div>
+                                </div>
+                                {% if cand.get('is_installed') %}
+                                <span class="devConflictCandidate__installedBadge">INSTALLED</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% if not loop.last %}<hr style="border:0;border-top:1px solid rgba(108,63,196,0.12);margin:8px 0;">{% endif %}
+                        {% endfor %}
+
+                        {% if not row.get('candidates') %}
+                        <div class="devConflictDual">
+                            <div class="devConflictDual__col">
+                                <div class="devConflictDual__label">Miru Asset</div>
+                                {% if row.get('has_miru_image') %}
+                                <div class="devConflictDual__imgWrap">
+                                    <img class="devConflictDual__img" src="{{ row.get('miru_image_url', '') }}" alt="Miru asset" loading="lazy" />
+                                </div>
+                                {% else %}
+                                <div class="devConflictDual__placeholder">No Miru asset</div>
+                                {% endif %}
+                            </div>
+                            <div class="devConflictDual__col">
+                                <div class="devConflictDual__label">TCGPlayer Product</div>
+                                <div class="devConflictDual__placeholder">No candidates found</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </article>
+                    {% endfor %}
+                </section>
+                {% endif %}
+
+                {# ── Lane 2: JS-driven review panel ── #}
+                <section class="devLane2Panel" id="devLane2Root" aria-label="Lane 2 candidate visual review" style="display:none;">
+                    <h2 class="devLane2Title">Lane 2 — Alt / SP / TR / MR Candidate Review</h2>
+                    <div class="devLane2StickyBar" id="l2StickyBar">
+                        <span class="devLane2Stat" style="color:#9ef8c0;">Ready: <b id="l2StatReady">0</b></span>
+                        <span class="devLane2Stat devLane2Stat--approved">Approved: <b id="l2StatApproved">0</b></span>
+                        <span class="devLane2Stat devLane2Stat--held">Held: <b id="l2StatHeld">0</b></span>
+                        <span class="devLane2Stat devLane2Stat--unresolved">Pending: <b id="l2StatUnresolved">0</b></span>
+                        <span class="devLane2Stat" style="color:#5a4e6e;">Not&nbsp;Ready: <b id="l2StatNotReady">0</b></span>
+                        <span class="devLane2Stat" style="color:#8a7fa0;">Owned: <b id="l2StatOwned">0</b></span>
+                        <button class="devLane2ExportBtn" id="l2ExportBtn">Export Decisions</button>
+                    </div>
+                    <div id="l2CardContainer"></div>
+                </section>
+
+                {# Lightbox overlay #}
+                <div class="devLane2Lightbox" id="l2Lightbox">
+                    <button class="devLane2Lightbox__close" id="l2LightboxClose" aria-label="Close">&times;</button>
+                    <img id="l2LightboxImg" src="" alt="Enlarged card image" />
+                </div>
+
+                <script>
+                (function(){
+                    /* ── Lane 2 reviewability-gated review panel ──
+                       API returns { ready:[], not_ready:[], already_owned:[], summary:{} }
+                       Only READY_FOR_REVIEW rows get full dual-image review cards.
+                       NOT_READY rows render as collapsed muted rows.
+                       ALREADY_OWNED rows render as collapsed muted rows.
+                       miru_image_source = 'local_asset' only — NO Bandai CDN fallback. */
+
+                    var L2_DATA = null;       // full API response
+                    var L2_ALL_ROWS = [];     // flat array of all ready rows for lookup
+                    var L2_DECISIONS = {};    // pid -> { decision: APPROVED|HELD|null, mpid: int|null, productName: str|null }
+                    var IMG_PREFIX = '/img/';
+
+                    function fetchData() {
+                        fetch('/api/dev/lane2-review')
+                            .then(function(r){ return r.json(); })
+                            .then(function(d){
+                                L2_DATA = d;
+                                L2_ALL_ROWS = (d.ready || []).slice();
+                                initDecisions(d.ready || []);
+                                renderAll(d);
+                                document.getElementById('devLane2Root').style.display = '';
+                            })
+                            .catch(function(e){ console.error('Lane 2 fetch failed:', e); });
+                    }
+
+                    function initDecisions(rows) {
+                        rows.forEach(function(r){
+                            L2_DECISIONS[r.printing_id] = { decision: null, mpid: null, productName: null };
+                        });
+                    }
+
+                    function updateStats() {
+                        var approved = 0, held = 0, pending = 0;
+                        for (var pid in L2_DECISIONS) {
+                            var d = L2_DECISIONS[pid].decision;
+                            if (d === 'APPROVED') approved++;
+                            else if (d === 'HELD') held++;
+                            else pending++;
+                        }
+                        document.getElementById('l2StatReady').textContent = L2_ALL_ROWS.length;
+                        document.getElementById('l2StatApproved').textContent = approved;
+                        document.getElementById('l2StatHeld').textContent = held;
+                        document.getElementById('l2StatUnresolved').textContent = pending;
+                        document.getElementById('l2StatNotReady').textContent = (L2_DATA && L2_DATA.not_ready ? L2_DATA.not_ready.length : 0);
+                        document.getElementById('l2StatOwned').textContent = (L2_DATA && L2_DATA.already_owned ? L2_DATA.already_owned.length : 0);
+                    }
+
+                    /* ── Render all three sections ── */
+                    function renderAll(data) {
+                        var container = document.getElementById('l2CardContainer');
+                        var html = '';
+
+                        // Section 1: READY_FOR_REVIEW
+                        var readyRows = data.ready || [];
+                        if (readyRows.length) {
+                            html += '<div class="devLane2SectionHead devLane2SectionHead--ready">READY FOR REVIEW (' + readyRows.length + ')</div>';
+                            readyRows.forEach(function(row){
+                                if (row.sub_classification === 'CLEAR') {
+                                    html += renderClear(row);
+                                } else {
+                                    html += renderMulti(row);
+                                }
+                            });
+                        }
+
+                        // Section 2: NOT_READY_FOR_REVIEW (collapsed muted rows)
+                        var notReadyRows = data.not_ready || [];
+                        if (notReadyRows.length) {
+                            html += '<div class="devLane2SectionHead devLane2SectionHead--notready">NOT READY (' + notReadyRows.length + ') — missing local asset or TCG image</div>';
+                            notReadyRows.forEach(function(row){
+                                html += renderNotReady(row);
+                            });
+                        }
+
+                        // Section 3: ALREADY_OWNED (collapsed muted rows)
+                        var ownedRows = data.already_owned || [];
+                        if (ownedRows.length) {
+                            html += '<div class="devLane2SectionHead devLane2SectionHead--owned">ALREADY OWNED (' + ownedRows.length + ')</div>';
+                            ownedRows.forEach(function(row){
+                                html += renderOwned(row);
+                            });
+                        }
+
+                        container.innerHTML = html;
+                        updateStats();
+                        bindCardEvents(container);
+                    }
+
+                    /* ── Helpers ── */
+                    function imgWrap(src, alt) {
+                        if (src) {
+                            return '<div class="devLane2ImgWrap" data-lightbox-src="' + escHtml(src) + '">' +
+                                '<img src="' + escHtml(src) + '" alt="' + escHtml(alt) + '" loading="lazy" />' +
+                                '</div>';
+                        }
+                        return '<div class="devLane2Placeholder">No image</div>';
+                    }
+
+                    function badgeClass(cls) {
+                        if (cls === 'CLEAR') return 'devLane2Badge--clear';
+                        if (cls === 'MULTI_MATCH') return 'devLane2Badge--multi';
+                        if (cls === 'NOT_READY_FOR_REVIEW') return 'devLane2Badge--notready';
+                        return 'devLane2Badge--owned';
+                    }
+
+                    function reviewBadge(row) {
+                        return '<span class="devLane2Badge ' + badgeClass(row.review_status || row.sub_classification) + '">' +
+                            escHtml(row.review_status || row.sub_classification) + '</span>';
+                    }
+
+                    function cardHeader(row) {
+                        return '<div class="devLane2Card__header">' +
+                            '<span class="devLane2Card__code">' + escHtml(row.card_code) + '</span>' +
+                            '<span class="devLane2Card__variant">' + escHtml(row.variant_key) + '</span>' +
+                            '<span class="devLane2Badge ' + badgeClass(row.sub_classification) + '">' + escHtml(row.sub_classification) + '</span>' +
+                            '<span class="devLane2Card__pid">#' + row.printing_id + '</span>' +
+                            '</div>';
+                    }
+
+                    function miruCol(row) {
+                        // Only use local_asset — NO CDN fallback
+                        var src = (row.miru_image_source === 'local_asset' && row.miru_image_path)
+                            ? (IMG_PREFIX + row.miru_image_path) : null;
+                        return '<div class="devLane2Dual__col">' +
+                            '<div class="devLane2Dual__label">Miru — ' + escHtml(row.variant_key) + '</div>' +
+                            imgWrap(src, 'Miru asset for ' + row.card_code) +
+                            (src ? '<div class="devLane2Caption">' + escHtml(row.miru_image_source || '') + '</div>' : '') +
+                            '</div>';
+                    }
+
+                    /* ── READY renderers ── */
+                    function renderClear(row) {
+                        var c = row.candidates[0] || {};
+                        var dec = L2_DECISIONS[row.printing_id] || {};
+                        var cardCls = 'devLane2Card devLane2Card--clear' + (dec.decision ? ' devLane2Card--decided' : '');
+                        return '<article class="' + cardCls + '" data-l2pid="' + row.printing_id + '">' +
+                            cardHeader(row) +
+                            '<div class="devLane2Dual">' +
+                            miruCol(row) +
+                            '<div class="devLane2Dual__col">' +
+                            '<div class="devLane2Dual__label">TCG — ' + escHtml(truncate(c.product_name || '', 30)) + '</div>' +
+                            imgWrap(c.tcg_image_url, c.product_name || '') +
+                            '<div class="devLane2Caption">mp:' + (c.market_product_id || '') + '</div>' +
+                            '</div></div>' +
+                            '<div class="devLane2Actions">' +
+                            '<button class="devLane2Btn devLane2Btn--approve' + (dec.decision === 'APPROVED' ? ' active' : '') + '" data-action="approve" data-pid="' + row.printing_id + '" data-mpid="' + c.market_product_id + '" data-pname="' + escHtml(c.product_name || '') + '">Approve mp:' + c.market_product_id + '</button>' +
+                            '<button class="devLane2Btn devLane2Btn--hold' + (dec.decision === 'HELD' ? ' active' : '') + '" data-action="hold" data-pid="' + row.printing_id + '">Hold</button>' +
+                            '</div>' +
+                            '</article>';
+                    }
+
+                    function renderMulti(row) {
+                        var dec = L2_DECISIONS[row.printing_id] || {};
+                        var cardCls = 'devLane2Card' + (dec.decision ? ' devLane2Card--decided' : '');
+                        var h = '<article class="' + cardCls + '" data-l2pid="' + row.printing_id + '">' +
+                            cardHeader(row) +
+                            '<div class="devLane2Dual">' +
+                            miruCol(row) +
+                            '<div class="devLane2Dual__col">' +
+                            '<div class="devLane2CandStack">';
+                        row.candidates.forEach(function(c){
+                            var isSelected = dec.decision === 'APPROVED' && dec.mpid === c.market_product_id;
+                            var blockCls = 'devLane2CandBlock' + (isSelected ? ' devLane2CandBlock--selected' : '');
+                            h += '<div class="' + blockCls + '" data-cand-mpid="' + c.market_product_id + '">' +
+                                '<div class="devLane2CandBlock__meta">' +
+                                '<span class="devLane2CandBlock__name">' + escHtml(c.product_name || '') + '</span>' +
+                                '<span class="devLane2CandBlock__mpid">mp:' + c.market_product_id + '</span>';
+                            if (c.existing_owner_pid) {
+                                h += '<span class="devLane2CandBlock__owner">LOCKED pid#' + c.existing_owner_pid + '</span>';
+                            }
+                            h += '</div>' + imgWrap(c.tcg_image_url, c.product_name || '');
+                            if (!c.existing_owner_pid) {
+                                h += '<div class="devLane2Actions">' +
+                                    '<button class="devLane2Btn devLane2Btn--select' + (isSelected ? ' active' : '') + '" data-action="select" data-pid="' + row.printing_id + '" data-mpid="' + c.market_product_id + '" data-pname="' + escHtml(c.product_name || '') + '">Select mp:' + c.market_product_id + '</button>' +
+                                    '</div>';
+                            }
+                            h += '</div>';
+                        });
+                        h += '</div>' +
+                            '</div></div>' +
+                            '<div class="devLane2Actions" style="margin-top:6px;">' +
+                            '<button class="devLane2Btn devLane2Btn--hold' + (dec.decision === 'HELD' ? ' active' : '') + '" data-action="hold" data-pid="' + row.printing_id + '">Hold</button>' +
+                            '</div>' +
+                            '</article>';
+                        return h;
+                    }
+
+                    /* ── NOT_READY renderer — collapsed muted row ── */
+                    function renderNotReady(row) {
+                        var uid = 'l2nr_' + row.printing_id;
+                        var h = '<article class="devLane2Card devLane2Card--notready" data-l2pid="' + row.printing_id + '">' +
+                            '<div class="devLane2Card__header" data-toggle="' + uid + '">' +
+                            '<span class="devLane2Card__code">' + escHtml(row.card_code) + '</span>' +
+                            '<span class="devLane2Card__variant">' + escHtml(row.variant_key) + '</span>' +
+                            '<span class="devLane2Badge devLane2Badge--notready">NOT READY</span>' +
+                            '<span class="devLane2Card__pid">#' + row.printing_id + '</span>' +
+                            '<button class="devLane2ExpandBtn" data-toggle="' + uid + '">expand</button>' +
+                            '</div>' +
+                            '<div class="devLane2NotReadyContext">' + escHtml(row.review_context || '') + '</div>' +
+                            '<div class="devLane2OwnedDetails" id="' + uid + '">' +
+                            '<div style="padding:6px 0;font-size:.72rem;color:#8a7fa0;">src: ' + escHtml(row.miru_image_source || 'none') +
+                            ' | candidates: ' + (row.candidates ? row.candidates.length : 0) + '</div>';
+                        (row.candidates || []).forEach(function(c){
+                            h += '<div class="devLane2OwnedRow">mp:' + c.market_product_id +
+                                ' &middot; ' + escHtml(truncate(c.product_name || '', 50)) +
+                                (c.tcg_image_url ? ' &middot; <span style="color:#42c986;">has img</span>' : ' &middot; <span style="color:#c9846e;">no img</span>') +
+                                '</div>';
+                        });
+                        h += '</div></article>';
+                        return h;
+                    }
+
+                    /* ── ALREADY_OWNED renderer — collapsed muted row ── */
+                    function renderOwned(row) {
+                        var uid = 'l2owned_' + row.printing_id;
+                        var h = '<article class="devLane2Card devLane2Card--owned" data-l2pid="' + row.printing_id + '">' +
+                            '<div class="devLane2Card__header">' +
+                            '<span class="devLane2Card__code">' + escHtml(row.card_code) + '</span>' +
+                            '<span class="devLane2Card__variant">' + escHtml(row.variant_key) + '</span>' +
+                            '<span class="devLane2Badge devLane2Badge--owned">ALREADY_OWNED</span>' +
+                            '<span class="devLane2Card__pid">#' + row.printing_id + '</span>' +
+                            '<button class="devLane2ExpandBtn" data-toggle="' + uid + '">expand</button>' +
+                            '</div>' +
+                            '<div class="devLane2OwnedDetails" id="' + uid + '">';
+                        (row.candidates || []).forEach(function(c){
+                            h += '<div class="devLane2OwnedRow">mp:' + c.market_product_id +
+                                ' &middot; ' + escHtml(truncate(c.product_name || '', 50));
+                            if (c.existing_owner_pid) {
+                                h += ' &middot; <span style="color:#c9846e;">owned by pid#' + c.existing_owner_pid + '</span>';
+                            }
+                            h += '</div>';
+                        });
+                        h += '</div></article>';
+                        return h;
+                    }
+
+                    /* ── Event binding ── */
+                    function bindCardEvents(container) {
+                        container.addEventListener('click', function(e){
+                            var btn = e.target.closest('[data-action]');
+                            if (btn) { handleAction(btn); return; }
+                            var toggle = e.target.closest('[data-toggle]');
+                            if (toggle) {
+                                var targetId = toggle.getAttribute('data-toggle');
+                                var el = document.getElementById(targetId);
+                                if (el) el.classList.toggle('open');
+                                // Update text on the expand button (find it by data-toggle match)
+                                var expandBtn = container.querySelector('button.devLane2ExpandBtn[data-toggle="' + targetId + '"]');
+                                if (expandBtn) expandBtn.textContent = (el && el.classList.contains('open')) ? 'collapse' : 'expand';
+                                return;
+                            }
+                            var wrap = e.target.closest('.devLane2ImgWrap');
+                            if (wrap) { openLightbox(wrap.getAttribute('data-lightbox-src')); }
+                        });
+                    }
+
+                    function handleAction(btn) {
+                        var action = btn.getAttribute('data-action');
+                        var pid = parseInt(btn.getAttribute('data-pid'), 10);
+                        var mpid = btn.getAttribute('data-mpid') ? parseInt(btn.getAttribute('data-mpid'), 10) : null;
+                        var pname = btn.getAttribute('data-pname') || null;
+
+                        if (action === 'approve' || action === 'select') {
+                            var cur = L2_DECISIONS[pid];
+                            if (cur && cur.decision === 'APPROVED' && cur.mpid === mpid) {
+                                L2_DECISIONS[pid] = { decision: null, mpid: null, productName: null };
+                            } else {
+                                L2_DECISIONS[pid] = { decision: 'APPROVED', mpid: mpid, productName: pname };
+                            }
+                        } else if (action === 'hold') {
+                            var cur2 = L2_DECISIONS[pid];
+                            if (cur2 && cur2.decision === 'HELD') {
+                                L2_DECISIONS[pid] = { decision: null, mpid: null, productName: null };
+                            } else {
+                                L2_DECISIONS[pid] = { decision: 'HELD', mpid: null, productName: null };
+                            }
+                        }
+                        rerenderCard(pid);
+                        updateStats();
+                    }
+
+                    function rerenderCard(pid) {
+                        if (!L2_DATA) return;
+                        var row = null;
+                        L2_ALL_ROWS.forEach(function(r){ if (r.printing_id === pid) row = r; });
+                        if (!row) return;
+                        var article = document.querySelector('[data-l2pid="' + pid + '"]');
+                        if (!article) return;
+                        var html = '';
+                        if (row.sub_classification === 'CLEAR') html = renderClear(row);
+                        else html = renderMulti(row);
+                        var temp = document.createElement('div');
+                        temp.innerHTML = html;
+                        var newArticle = temp.firstElementChild;
+                        article.parentNode.replaceChild(newArticle, article);
+                        newArticle.addEventListener('click', function(e){
+                            var btn = e.target.closest('[data-action]');
+                            if (btn) { handleAction(btn); return; }
+                            var wrap = e.target.closest('.devLane2ImgWrap');
+                            if (wrap) { openLightbox(wrap.getAttribute('data-lightbox-src')); }
+                        });
+                    }
+
+                    // Lightbox
+                    function openLightbox(src) {
+                        if (!src) return;
+                        document.getElementById('l2LightboxImg').src = src;
+                        document.getElementById('l2Lightbox').classList.add('open');
+                    }
+                    document.getElementById('l2LightboxClose').addEventListener('click', function(){
+                        document.getElementById('l2Lightbox').classList.remove('open');
+                        document.getElementById('l2LightboxImg').src = '';
+                    });
+                    document.getElementById('l2Lightbox').addEventListener('click', function(e){
+                        if (e.target === this) {
+                            this.classList.remove('open');
+                            document.getElementById('l2LightboxImg').src = '';
+                        }
+                    });
+                    document.addEventListener('keydown', function(e){
+                        if (e.key === 'Escape') {
+                            var lb = document.getElementById('l2Lightbox');
+                            if (lb.classList.contains('open')) {
+                                lb.classList.remove('open');
+                                document.getElementById('l2LightboxImg').src = '';
+                            }
+                        }
+                    });
+
+                    // Export — includes review_status + miru_image_source
+                    document.getElementById('l2ExportBtn').addEventListener('click', function(){
+                        if (!L2_DATA) return;
+                        var decisions = [];
+                        // Ready rows — have decisions
+                        L2_ALL_ROWS.forEach(function(r){
+                            var d = L2_DECISIONS[r.printing_id] || {};
+                            decisions.push({
+                                printing_id: r.printing_id,
+                                card_code: r.card_code,
+                                variant_key: r.variant_key,
+                                sub_classification: r.sub_classification,
+                                review_status: r.review_status,
+                                miru_image_source: r.miru_image_source,
+                                decision: d.decision || 'UNRESOLVED',
+                                selected_market_product_id: d.mpid || null,
+                                selected_product_name: d.productName || null
+                            });
+                        });
+                        // Not-ready rows — exported as NOT_ACTIONABLE
+                        (L2_DATA.not_ready || []).forEach(function(r){
+                            decisions.push({
+                                printing_id: r.printing_id,
+                                card_code: r.card_code,
+                                variant_key: r.variant_key,
+                                sub_classification: r.sub_classification,
+                                review_status: r.review_status,
+                                miru_image_source: r.miru_image_source,
+                                decision: 'NOT_ACTIONABLE',
+                                review_context: r.review_context,
+                                selected_market_product_id: null,
+                                selected_product_name: null
+                            });
+                        });
+                        var approved = 0, held = 0, unresolved = 0, not_actionable = 0;
+                        decisions.forEach(function(d){
+                            if (d.decision === 'APPROVED') approved++;
+                            else if (d.decision === 'HELD') held++;
+                            else if (d.decision === 'NOT_ACTIONABLE') not_actionable++;
+                            else unresolved++;
+                        });
+                        var blob = new Blob([JSON.stringify({
+                            generated_at: new Date().toISOString(),
+                            source_csv: 'data/overlays/op01_lane2_candidate_check.csv',
+                            decisions: decisions,
+                            summary: {
+                                approved: approved, held: held, unresolved: unresolved,
+                                not_actionable: not_actionable,
+                                already_owned: (L2_DATA.already_owned || []).length,
+                                total: decisions.length
+                            }
+                        }, null, 2)], { type: 'application/json' });
+                        var ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                        var a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = 'op01_lane2_review_decisions_' + ts + '.json';
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                    });
+
+                    function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+                    function truncate(s, n) { return s.length > n ? s.slice(0, n) + '...' : s; }
+
+                    if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', fetchData);
+                    } else {
+                        fetchData();
+                    }
+                })();
+                </script>
+
+                </div><!-- /devPaneInstall -->
+
+                <div class="devReviewCol" id="devPaneImage" data-tab-pane="image">
                 <!-- Zone 2: Image Review -->
                 <section class="devImageReview">
                     <h2 class="devSectionTitle">Image Review</h2>
@@ -1233,6 +2680,8 @@
                         <span class="devImageReviewBadge" id="imageReviewCount">713</span>
                     </a>
                 </section>
+                </div><!-- /devPaneImage -->
+                </div><!-- /devReviewColumns -->
 
                 <!-- Zone 3: Intelligence Feed -->
                 <section class="devIntelligenceFeed">
@@ -1605,6 +3054,18 @@
 
                     // Event handlers
                     function setupEventHandlers() {
+                        // Tab bar switching (mobile segmented control)
+                        document.querySelectorAll('.devTab[data-dev-tab]').forEach(function (tab) {
+                            tab.addEventListener('click', function () {
+                                var target = this.getAttribute('data-dev-tab');
+                                document.querySelectorAll('.devTab').forEach(function (t) { t.classList.remove('devTab--active'); });
+                                this.classList.add('devTab--active');
+                                document.querySelectorAll('.devReviewCol[data-tab-pane]').forEach(function (pane) {
+                                    pane.classList.toggle('devReviewPane--active', pane.getAttribute('data-tab-pane') === target);
+                                });
+                            });
+                        });
+
                         // System pulse toggle
                         document.getElementById('devSystemPulse').addEventListener('click', function (e) {
                             if (!e.target.closest('.devServiceActions')) {

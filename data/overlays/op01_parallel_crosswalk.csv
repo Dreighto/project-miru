@@ -1,0 +1,36 @@
+printing_id,card_code,variant_key,card_image_id,inferred_market_treatment,source_set,source_set_id,confidence,evidence_basis,notes
+736,OP01-006,parallel_3,OP01-006_p3,Jolly Roger Foil,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+737,OP01-006,parallel_4,OP01-006_p4,Full Art,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+738,OP01-006,parallel_5,OP01-006_p5,Alternate Art,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+747,OP01-008,parallel_1,OP01-008_p1,Box Topper,Romance Dawn,OP-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+789,OP01-016,parallel_2,OP01-016_p2,SP,Awakening of the New Era,OP-05,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,Distinct OP-05 SP product; not the Romance Dawn Parallel
+794,OP01-016,parallel_8,OP01-016_p8,Manga,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+831,OP01-024,parallel_3,OP01-024_p3,Alternate Art,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+853,OP01-029,parallel_2,OP01-029_p2,Jolly Roger Foil,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+854,OP01-029,parallel_3,OP01-029_p3,Textured Foil,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+872,OP01-033,parallel_3,OP01-033_p3,Jolly Roger Foil,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+874,OP01-033,parallel_5,OP01-033_p5,AMBIGUOUS (Alternate Art or Full Art),Premium Booster -The Best-,PRB-01,MEDIUM,SHARED_DUPLICATE_GROUP=1 in op01_registration_results.csv,"Two JustTCG products (593285=Alternate Art; 593284=Full Art) share one OPTCG image ID; internal image alone cannot distinguish"
+881,OP01-034,parallel_1,OP01-034_p1,Box Topper,Romance Dawn,OP-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+887,OP01-035,parallel_2,OP01-035_p2,SP,500 Years in the Future,OP-07,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+899,OP01-039,parallel_1,OP01-039_p1,Pirate Foil,Premium Booster -The Best- Vol. 2,PRB-02,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+908,OP01-041,parallel_1,OP01-041_p7,Jolly Roger Foil,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,variant_key parallel_1 maps to _p7 image suffix (not _p1) — numbering gap in OPTCG sequence
+911,OP01-041,parallel_5,OP01-041_p5,AMBIGUOUS (Alternate Art or Full Art),Premium Booster -The Best-,PRB-01,MEDIUM,SHARED_DUPLICATE_GROUP=2 in op01_registration_results.csv,"Two JustTCG products (586591=Alternate Art; 586590=Full Art) share one OPTCG image ID; internal image alone cannot distinguish"
+929,OP01-047,parallel_2,OP01-047_p2,SP,Kingdoms of Intrigue,OP-04,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+930,OP01-047,parallel_4,OP01-047_p4,Alternate Art,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+937,OP01-048,parallel_1,OP01-048_p1,Box Topper,Romance Dawn,OP-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+946,OP01-051,parallel_2,OP01-051_p2,SP (Wanted Poster),Pillars of Strength,OP-03,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,Treatment sub-label is Wanted Poster per OPTCG product name
+947,OP01-051,parallel_4,OP01-051_p4,Alternate Art,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+956,OP01-052,parallel_3,OP01-052_p3,Jolly Roger Foil,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+957,OP01-052,parallel_4,OP01-052_p4,Full Art,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+966,OP01-055,parallel_1,OP01-055_p1,Pirate Foil,Premium Booster -The Best- Vol. 2,PRB-02,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,NO_MATCH in JustTCG Pass 1 and Pass 2 — product name confirmed via OPTCG API only
+997,OP01-064,parallel_1,OP01-064_p1,Box Topper,Romance Dawn,OP-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+1016,OP01-070,parallel_4,OP01-070_p4,Alternate Art,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+1027,OP01-073,parallel_2,OP01-073_p2,SP,500 Years in the Future,OP-07,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+1041,OP01-077,parallel_1,OP01-077_p1,Box Topper,Romance Dawn,OP-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+1046,OP01-078,parallel_2,OP01-078_p2,SP,Kingdoms of Intrigue,OP-04,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+1047,OP01-078,parallel_4,OP01-078_p4,Alternate Art,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+1132,OP01-109,parallel_1,OP01-109_p1,Box Topper,Romance Dawn,OP-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+1159,OP01-120,parallel_2,OP01-120_p2,Manga (Alternate Art),Romance Dawn,OP-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,"Product: Shanks (Parallel) (Manga) (Alternate Art) — base OP-01 Manga variant with alternate art"
+1160,OP01-120,parallel_5,OP01-120_p5,Alternate Art,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+1170,OP01-121,parallel_2,OP01-121_p2,SP,Awakening of the New Era,OP-05,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,
+1171,OP01-121,parallel_4,OP01-121_p4,Alternate Art,Premium Booster -The Best-,PRB-01,HIGH,optcg_api_op01_normalized.csv local_variant_match_id,

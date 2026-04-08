@@ -1,0 +1,23 @@
+[
+  {
+    "inventory_price": 0.04,
+    "market_price": 0.07,
+    "card_name": "Elephant's Marchoo",
+    "set_name": "Romance Dawn",
+    "card_text": "[Main] K.O. up to 1 of your opponent's Characters with a cost of 2 or less, then add up to 1 DON!! card from your DON!! deck and set it as active. [Trigger] Activate this card's [Main] effect.  This card has been officially errata'd.",
+    "set_id": "OP-01",
+    "rarity": "C",
+    "card_set_id": "OP01-115",
+    "card_color": "Purple",
+    "card_type": "Event",
+    "life": null,
+    "card_cost": "4",
+    "card_power": null,
+    "sub_types": "Animal Kingdom Pirates SMILE",
+    "counter_amount": null,
+    "attribute": null,
+    "date_scraped": "2026-04-06",
+    "card_image_id": "OP01-115",
+    "card_image": "https://optcgapi.com/media/static/Card_Images/OP01-115.jpg"
+  }
+]

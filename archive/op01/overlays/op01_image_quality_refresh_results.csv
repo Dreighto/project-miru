@@ -1,0 +1,228 @@
+printing_id,card_code,variant_key,current_path,refreshed_path,old_byte_size,new_byte_size,old_dimensions,new_dimensions,refresh_status,source_used,notes
+706,OP01-001::25th,promo,OP01\ALTS\OP01-001(25th).png,P/base/OP01-001.png,13686306,153213,3357x4692,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (3357x4692, 13686306b) already better than fetched (600x838, 153213b)"
+707,OP01-001::alt,alt,OP01\ALTS\OP01-001(alt).jpg,,665107,0,1200x1676,,SKIPPED_BORDERLINE,,BORDERLINE at 1200x1676 via alts_highres. No better source available.
+708,OP01-001_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+709,OP01-001_p2,parallel_2,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+712,OP01-002::alt,alt,OP01\ALTS\OP01-002(alt).png,,10705249,0,3357x4692,,SKIPPED_GOOD_ENOUGH,,Already 3357x4692 (10705249b) via alts_highres
+713,OP01-002_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+716,OP01-003::alt,alt,OP01\ALTS\OP01-003(alt).png,,10982660,0,3357x4692,,SKIPPED_GOOD_ENOUGH,,Already 3357x4692 (10982660b) via alts_highres
+717,OP01-003_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+720,OP01-004::1st anniversary alt,promo,OP01\ALTS\OP01-004(1st anniversary alt).jpg,P/base/OP01-004.png,2968166,127601,1876x2619,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (1876x2619, 2968166b) already better than fetched (600x838, 127601b)"
+721,OP01-004::alt,alt,OP01\ALTS\OP01-004(alt).png,,13464885,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (13464885b) via alts_highres
+722,OP01-004_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+725,OP01-005::alt,alt,OP01\ALTS\OP01-005(alt2).png,,7396754,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (7396754b) via alts_highres
+726,OP01-005::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+727,OP01-005::film,promo,OP01\ALTS\OP01-005_Film.png,P/base/OP01-005.png,10277559,190160,3358x4692,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (3358x4692, 10277559b) already better than fetched (600x838, 190160b)"
+728,OP01-005::film2,promo,OP01\ALTS\OP01-005_Film2.jpg,P/base/OP01-005.png,607610,190160,600x838,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (600x838, 607610b) already better than fetched (600x838, 190160b)"
+729,OP01-005_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+730,OP01-005_p2,parallel_2,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+733,OP01-006::alt,alt,OP01\ALTS\OP01-006(alt).png,,13544645,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (13544645b) via alts_highres
+734,OP01-006::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+739,OP01-006::prb01alt1,alt,PRB01\Alts\OP01-006(PRB01alt1).jpg,,5683577,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5683577b) via alts_highres
+740,OP01-006::prb01alt2,alt,PRB01\Alts\OP01-006(PRB01alt2).jpg,,4842317,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (4842317b) via alts_highres
+735,OP01-006_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+736,OP01-006_p3,parallel_3,PRB01\parallel\OP01-006_p3.png,PRB01/parallel/OP01-006_p3.png,212357,212357,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+737,OP01-006_p4,parallel_4,PRB01\parallel\OP01-006_p4.png,PRB01/parallel/OP01-006_p4.png,204313,204313,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+738,OP01-006_p5,parallel_5,PRB01\parallel\OP01-006_p5.png,PRB01/parallel/OP01-006_p5.png,178618,178618,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+741,OP01-006_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+746,OP01-008::alt,alt,OP01\ALTS\OP01-008(alt).png,,252837,0,600x838,,SKIPPED_LOW_RES,,LOW_RES at 600x838 via alts_highres. No better source available.
+747,OP01-008_p1,parallel_1,OP01\parallel\OP01-008_p1.png,OP01/parallel/OP01-008_p1.png,211285,211285,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+758,OP01-013::1st anniversary alt,promo,OP01\ALTS\OP01-013(1st anniversary alt).jpg,P/base/OP01-013.png,866154,136259,600x838,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (600x838, 866154b) already better than fetched (600x838, 136259b)"
+759,OP01-013::25th,promo,OP01\ALTS\OP01-013(25th).png,P/base/OP01-013.png,10834646,136259,3358x4692,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (3358x4692, 10834646b) already better than fetched (600x838, 136259b)"
+760,OP01-013::alt,alt,OP01\ALTS\OP01-013(alt).png,,11775978,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (11775978b) via alts_highres
+761,OP01-013::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+762,OP01-013::alt art 3,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+767,OP01-013::tr alt,tr,OP01\ALTS\OP01-013(TR-alt).jpg,,5342438,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5342438b) via alts_highres
+763,OP01-013_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+764,OP01-013_p2,parallel_2,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+765,OP01-013_p3,parallel_3,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+766,OP01-013_p4,parallel_4,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+770,OP01-014::film,promo,OP01\ALTS\OP01-014_Film.png,P/base/OP01-014.png,10585693,152027,3358x4692,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (3358x4692, 10585693b) already better than fetched (600x838, 152027b)"
+771,OP01-014::film2,promo,OP01\ALTS\OP01-014_Film2.jpg,P/base/OP01-014.png,605797,152027,600x838,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (600x838, 605797b) already better than fetched (600x838, 152027b)"
+772,OP01-014_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+775,OP01-015::alt,alt,OP01\ALTS\OP01-015alt.jpg,,4696490,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (4696490b) via alts_highres
+776,OP01-015_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+779,OP01-016::1st anniversary alt,promo,OP01\ALTS\OP01-016(1st anniversary alt).jpg,P/base/OP01-016.png,3224874,185385,1876x2619,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (1876x2619, 3224874b) already better than fetched (600x838, 185385b)"
+780,OP01-016::25th,promo,OP01\ALTS\OP01-016 25th.png,P/base/OP01-016.png,11853310,185385,3358x4692,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (3358x4692, 11853310b) already better than fetched (600x838, 185385b)"
+781,OP01-016::alt,alt,OP01\ALTS\OP01-016(alt) (2).png,,14146196,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (14146196b) via alts_highres
+783,OP01-016::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+784,OP01-016::alt art 3,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+785,OP01-016::alt art 4,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+786,OP01-016::alt art 7,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+787,OP01-016::manga alt,mr,PRB01\Alts\OP01-016( manga alt ).jpg,,7071029,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (7071029b) via alts_highres
+795,OP01-016::st10 alt,alt,ST10\OP01-016(ST10 alt ).png,,12106841,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (12106841b) via highres_match
+788,OP01-016_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+789,OP01-016_p2,parallel_2,OP05\parallel\OP01-016_p2.png,OP05/parallel/OP01-016_p2.png,285621,285621,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+790,OP01-016_p3,parallel_3,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+791,OP01-016_p4,parallel_4,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+792,OP01-016_p5,parallel_5,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+793,OP01-016_p7,parallel_7,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+794,OP01-016_p8,parallel_8,PRB01\parallel\OP01-016_p8.png,PRB01/parallel/OP01-016_p8.png,226749,226749,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+798,OP01-017::1st anniversary alt,promo,OP01\ALTS\OP01-017(1st anniversary alt).jpg,P/base/OP01-017.png,1626264,151600,1200x1676,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (1200x1676, 1626264b) already better than fetched (600x838, 151600b)"
+799,OP01-017::alt,alt,OP01\ALTS\OP01-017(alt).png,,9335099,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (9335099b) via alts_highres
+800,OP01-017::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+801,OP01-017::film,promo,OP01\ALTS\OP01-017_Film.png,P/base/OP01-017.png,12970989,151600,3358x4692,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (3358x4692, 12970989b) already better than fetched (600x838, 151600b)"
+802,OP01-017::film2,promo,OP01\ALTS\OP01-017_Film2.jpg,P/base/OP01-017.png,713361,151600,600x838,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (600x838, 713361b) already better than fetched (600x838, 151600b)"
+803,OP01-017_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+804,OP01-017_p2,parallel_2,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+813,OP01-021::alt,alt,OP01\ALTS\OP01-021(alt2).png,,10164120,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (10164120b) via alts_highres
+814,OP01-021::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+815,OP01-021::film,promo,OP01\ALTS\OP01-021_Film.png,P/base/OP01-021.png,14091520,118259,3358x4692,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (3358x4692, 14091520b) already better than fetched (600x838, 118259b)"
+816,OP01-021::film2,promo,OP01\ALTS\OP01-021_Film2.jpg,P/base/OP01-021.png,737860,118259,600x838,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (600x838, 737860b) already better than fetched (600x838, 118259b)"
+817,OP01-021::fullalt,alt,OP01\ALTS\OP01-021(fullalt).jpg,,1483986,0,1465x2048,,SKIPPED_BORDERLINE,,BORDERLINE at 1465x2048 via alts_highres. No better source available.
+818,OP01-021_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+819,OP01-021_p2,parallel_2,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+820,OP01-021_p3,parallel_3,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+823,OP01-022::25th,promo,OP01\ALTS\OP01-022 25th.png,P/base/OP01-022.png,9362518,150377,3358x4692,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (3358x4692, 9362518b) already better than fetched (600x838, 150377b)"
+824,OP01-022_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+829,OP01-024::alt,alt,OP01\ALTS\OP01-024 (alt).png,,17174890,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (17174890b) via alts_highres
+832,OP01-024::prb01alt,alt,PRB01\Alts\OP01-024(PRB01alt).jpg,,5944541,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5944541b) via alts_highres
+830,OP01-024_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+831,OP01-024_p3,parallel_3,PRB01\parallel\OP01-024_p3.png,PRB01/parallel/OP01-024_p3.png,214926,214926,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+833,OP01-024_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+836,OP01-025::1st anniversary alt,promo,OP01\ALTS\OP01-025(1st anniversary alt).jpg,P/base/OP01-025.png,845184,166920,600x838,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (600x838, 845184b) already better than fetched (600x838, 166920b)"
+837,OP01-025::alt,alt,OP01\ALTS\OP01-025(alt).png,,15716882,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (15716882b) via alts_highres
+838,OP01-025::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+839,OP01-025::alt st10,alt,ST10\OP01-025(alt-st10).png,,12049276,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (12049276b) via highres_match
+843,OP01-025::winner alt,alt,OP01\ALTS\OP01-025 Winner_Alt.png,,1872203,0,1200x1674,,SKIPPED_BORDERLINE,,BORDERLINE at 1200x1674 via alts_highres. No better source available.
+840,OP01-025_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+841,OP01-025_p2,parallel_2,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+842,OP01-025_p3,parallel_3,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+852,OP01-029::alt,alt,OP01\ALTS\OP01-029alt.png,,11720511,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (11720511b) via alts_highres
+853,OP01-029_p2,parallel_2,PRB01\parallel\OP01-029_p2.png,PRB01/parallel/OP01-029_p2.png,175915,175915,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+854,OP01-029_p3,parallel_3,PRB01\parallel\OP01-029_p3.png,PRB01/parallel/OP01-029_p3.png,160803,160803,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+855,OP01-029_p4,parallel_4,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+856,OP01-029_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+859,OP01-030::2nd anniversary alt,promo,OP01\ALTS\OP01-030(2nd Anniversary alt).jpg,P/base/OP01-030.png,13638774,208451,5992x8334,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (5992x8334, 13638774b) already better than fetched (600x838, 208451b)"
+860,OP01-030_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+863,OP01-031::alt,alt,OP01\ALTS\OP01-031 (Alt).png,,8360084,0,3357x4692,,SKIPPED_GOOD_ENOUGH,,Already 3357x4692 (8360084b) via alts_highres
+864,OP01-031_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+869,OP01-033::alt,alt,OP01\ALTS\OP01-033alt2.jpg,,5288469,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5288469b) via alts_highres
+870,OP01-033::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+876,OP01-033::prb01alt,alt,PRB01\Alts\OP01-033(PRB01alt).jpg,,5720415,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5720415b) via alts_highres
+871,OP01-033_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+872,OP01-033_p3,parallel_3,PRB01\parallel\OP01-033_p3.png,PRB01/parallel/OP01-033_p3.png,148415,148415,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+873,OP01-033_p4,parallel_4,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+874,OP01-033_p5,parallel_5,PRB01\parallel\OP01-033_p5.png,PRB01/parallel/OP01-033_p5.png,224633,224633,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+875,OP01-033_p6,parallel_6,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+877,OP01-033_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+880,OP01-034::alt,alt,OP01\ALTS\OP01-034 (alt).jpg,,718287,0,600x838,,SKIPPED_LOW_RES,,LOW_RES at 600x838 via alts_highres. No better source available.
+881,OP01-034_p1,parallel_1,OP01\parallel\OP01-034_p1.png,OP01/parallel/OP01-034_p1.png,209542,209542,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+884,OP01-035::alt,alt,OP01\ALTS\op01-035alt.jpg,,4521509,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (4521509b) via alts_highres
+885,OP01-035::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+889,OP01-035::s p,sp,OP07\Alts\SP\OP01-035SP.jpg,,4850332,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (4850332b) via alts_highres
+886,OP01-035_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+887,OP01-035_p2,parallel_2,OP07\parallel\OP01-035_p2.png,OP07/parallel/OP01-035_p2.png,217137,217137,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+888,OP01-035_p3,parallel_3,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+898,OP01-039::alt,alt,OP01\ALTS\OP01-039alt.png,,12067987,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (12067987b) via alts_highres
+899,OP01-039_p1,parallel_1,PRB02\parallel\OP01-039_p1.png,PRB02/parallel/OP01-039_p1.png,1852761,1852761,868x1213,868x1213,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 868x1213 as supplemental to existing 868x1213
+900,OP01-039_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+903,OP01-040::alt,alt,OP01\ALTS\OP01-040 (Alt).png,,654593,0,600x838,,SKIPPED_LOW_RES,,LOW_RES at 600x838 via alts_highres. No better source available.
+904,OP01-040_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+907,OP01-041::alt,alt,OP01\ALTS\OP01-041alt.jpg,,5155493,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5155493b) via alts_highres
+912,OP01-041::prb01alt,alt,PRB01\Alts\OP01-041(PRB01alt).jpg,,5045720,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5045720b) via alts_highres
+914,OP01-041::w inner alt,alt,OP01\ALTS\OP01-041Winner alt.jpg,,9183992,0,5000x6984,,SKIPPED_GOOD_ENOUGH,,Already 5000x6984 (9183992b) via alts_highres
+908,OP01-041_p1,parallel_1,,PRB01/parallel/OP01-041_p7.png,0,79710,,600x838,FETCHED_NEW,optcg-api,"Was NO_FILE, now 600x838 from optcg-api"
+909,OP01-041_p3,parallel_3,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+910,OP01-041_p4,parallel_4,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+911,OP01-041_p5,parallel_5,PRB01\parallel\OP01-041_p5.png,PRB01/parallel/OP01-041_p5.png,195339,195339,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+913,OP01-041_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+927,OP01-047::alt,alt,OP01\ALTS\OP01-047 (alt).png,,10623624,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (10623624b) via alts_highres
+931,OP01-047::prb01alt2,alt,PRB01\Alts\OP01-047(PRB01alt2).jpg,,6498786,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (6498786b) via alts_highres
+933,OP01-047::s p,sp,OP04\ALTS\OP01-047SP.png,,12063252,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (12063252b) via alts_highres
+928,OP01-047_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+929,OP01-047_p2,parallel_2,OP04\parallel\OP01-047_p2.png,OP04/parallel/OP01-047_p2.png,199222,199222,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+930,OP01-047_p4,parallel_4,PRB01\parallel\OP01-047_p4.png,PRB01/parallel/OP01-047_p4.png,233918,233918,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+932,OP01-047_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+936,OP01-048::alt,alt,OP01\ALTS\OP01-048 (alt).jpg,,604404,0,1466x2048,,SKIPPED_BORDERLINE,,BORDERLINE at 1466x2048 via alts_highres. No better source available.
+937,OP01-048_p1,parallel_1,OP01\parallel\OP01-048_p1.png,OP01/parallel/OP01-048_p1.png,208671,208671,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+944,OP01-051::alt,alt,PRB01\Alts\OP01-051(PRB01alt).jpg,,5464904,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5464904b) via alts_highres
+948,OP01-051::prb01alt,alt,PRB01\Alts\OP01-051(PRB01alt).jpg,,5464904,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5464904b) via alts_highres
+950,OP01-051::wanted,promo,OP01\ALTS\OP01-051 wanted.png,P/base/OP01-051.png,19869561,175143,5509x7713,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (5509x7713, 19869561b) already better than fetched (600x838, 175143b)"
+945,OP01-051_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+946,OP01-051_p2,parallel_2,OP03\parallel\OP01-051_p2.png,OP03/parallel/OP01-051_p2.png,241401,241401,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+947,OP01-051_p4,parallel_4,PRB01\parallel\OP01-051_p4.png,PRB01/parallel/OP01-051_p4.png,189582,189582,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+949,OP01-051_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+953,OP01-052::alt,alt,OP01\ALTS\OP01-052(alt).png,,9447518,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (9447518b) via alts_highres
+954,OP01-052::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+958,OP01-052::prb01alt,alt,PRB01\Alts\OP01-052(PRB01alt).jpg,,5677024,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5677024b) via alts_highres
+955,OP01-052_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+956,OP01-052_p3,parallel_3,PRB01\parallel\OP01-052_p3.png,PRB01/parallel/OP01-052_p3.png,171761,171761,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+957,OP01-052_p4,parallel_4,PRB01\parallel\OP01-052_p4.png,PRB01/parallel/OP01-052_p4.png,152717,152717,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+959,OP01-052_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+966,OP01-055_p1,parallel_1,PRB02\parallel\OP01-055_p1.png,PRB02/parallel/OP01-055_p1.png,1232375,1232375,868x1213,868x1213,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 868x1213 as supplemental to existing 868x1213
+967,OP01-055_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+972,OP01-057::alt,alt,OP01\ALTS\OP01-057alt.png,,10239784,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (10239784b) via alts_highres
+973,OP01-057_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+980,OP01-060::alt,alt,OP01\ALTS\OP01-060 (alt).png,,11799236,0,3357x4692,,SKIPPED_GOOD_ENOUGH,,Already 3357x4692 (11799236b) via alts_highres
+983,OP01-060::st17alt,alt,ST17\OP01-060(ST17alt).jpg,,5580817,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5580817b) via highres_match
+981,OP01-060_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+982,OP01-060_p2,parallel_2,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+986,OP01-061::alt,alt,OP01\ALTS\OP01-061 (alt).png,,9626360,0,3357x4692,,SKIPPED_GOOD_ENOUGH,,Already 3357x4692 (9626360b) via alts_highres
+987,OP01-061_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+990,OP01-062::alt,alt,OP01\ALTS\OP01-062 (alt).png,,10400809,0,3357x4692,,SKIPPED_GOOD_ENOUGH,,Already 3357x4692 (10400809b) via alts_highres
+991,OP01-062_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+996,OP01-064::alt,alt,OP01\ALTS\OP01-064alt.jpg,,5237506,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5237506b) via alts_highres
+997,OP01-064_p1,parallel_1,OP01\parallel\OP01-064_p1.png,OP01/parallel/OP01-064_p1.png,228415,228415,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+1004,OP01-067::alt,alt,OP01\ALTS\OP01-067 (Alt).png,,332291,0,600x838,,SKIPPED_LOW_RES,,LOW_RES at 600x838 via alts_highres. No better source available.
+1005,OP01-067_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1012,OP01-070::alt,alt,OP01\ALTS\OP01-070 (alt).png,,10304819,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (10304819b) via alts_highres
+1013,OP01-070::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1017,OP01-070::prb01alt,alt,PRB01\Alts\OP01-070(PRB01alt).jpg,,6016792,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (6016792b) via alts_highres
+1014,OP01-070_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1015,OP01-070_p2,parallel_2,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1016,OP01-070_p4,parallel_4,PRB01\parallel\OP01-070_p4.png,PRB01/parallel/OP01-070_p4.png,202614,202614,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+1018,OP01-070_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1025,OP01-073::alt,alt,OP01\ALTS\OP01-073 (Alt).png,,304910,0,600x838,,SKIPPED_LOW_RES,,LOW_RES at 600x838 via alts_highres. No better source available.
+1029,OP01-073::s p,sp,OP07\Alts\SP\OP01-073SP.jpg,,6059194,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (6059194b) via alts_highres
+1026,OP01-073_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1027,OP01-073_p2,parallel_2,OP07\parallel\OP01-073_p2.png,OP07/parallel/OP01-073_p2.png,256745,256745,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+1028,OP01-073_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1038,OP01-077::alt,alt,OP01\ALTS\OP01-077alt2.jpg,,5465847,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5465847b) via alts_highres
+1039,OP01-077::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1040,OP01-077::alt art 3,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1041,OP01-077_p1,parallel_1,OP01\parallel\OP01-077_p1.png,OP01/parallel/OP01-077_p1.png,193231,193231,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+1044,OP01-078::alt,alt,OP01\ALTS\OP01-078 (Alt).png,,12499636,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (12499636b) via alts_highres
+1048,OP01-078::prb01alt,alt,PRB01\Alts\OP01-078(PRB01alt).jpg,,5767975,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5767975b) via alts_highres
+1050,OP01-078::s p,sp,OP04\ALTS\OP01-078SP.png,,9239696,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (9239696b) via alts_highres
+1045,OP01-078_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1046,OP01-078_p2,parallel_2,OP04\parallel\OP01-078_p2.png,OP04/parallel/OP01-078_p2.png,179235,179235,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+1047,OP01-078_p4,parallel_4,PRB01\parallel\OP01-078_p4.png,PRB01/parallel/OP01-078_p4.png,188687,188687,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+1049,OP01-078_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1053,OP01-079::alt,alt,OP01\ALTS\OP01-079(alt).jpg,,521649,0,1466x2048,,SKIPPED_BORDERLINE,,BORDERLINE at 1466x2048 via alts_highres. No better source available.
+1068,OP01-086_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1079,OP01-091::alt,alt,OP01\ALTS\OP01-091 (alt).png,,9654158,0,3357x4692,,SKIPPED_GOOD_ENOUGH,,Already 3357x4692 (9654158b) via alts_highres
+1080,OP01-091_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1085,OP01-093::alt,alt,OP01\ALTS\OP01-093 (alt).jpg,,737385,0,1465x2048,,SKIPPED_BORDERLINE,,BORDERLINE at 1465x2048 via alts_highres. No better source available.
+1086,OP01-093::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1087,OP01-093_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1090,OP01-094::alt,alt,OP01\ALTS\OP01-094 (alt).png,,11923595,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (11923595b) via alts_highres
+1091,OP01-094::alt art 2,alt,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1092,OP01-094_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1097,OP01-096::alt,alt,OP01\ALTS\OP01-096 (Alt).jpg,,5154957,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5154957b) via alts_highres
+1098,OP01-096_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1101,OP01-097_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1110,OP01-101::alt,alt,OP01\ALTS\OP01-101(alt).png,,9601461,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (9601461b) via alts_highres
+1111,OP01-101_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1114,OP01-102::alt,alt,OP01\ALTS\OP01-102 (Alt).png,,298538,0,600x838,,SKIPPED_LOW_RES,,LOW_RES at 600x838 via alts_highres. No better source available.
+1115,OP01-102_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1128,OP01-108::alt,alt,OP01\ALTS\OP01-108(ALT).png,,9186365,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (9186365b) via alts_highres
+1131,OP01-109::alt,alt,OP01\ALTS\OP01-109 (alt).png,,247679,0,600x838,,SKIPPED_LOW_RES,,LOW_RES at 600x838 via alts_highres. No better source available.
+1132,OP01-109_p1,parallel_1,OP01\parallel\OP01-109_p1.png,OP01/parallel/OP01-109_p1.png,203422,203422,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+1143,OP01-114::alt,alt,OP01\ALTS\OP01-114alt.png,,12657303,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (12657303b) via alts_highres
+1156,OP01-120::alt,alt,OP01\ALTS\OP01-120 (alt).png,,7280603,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (7280603b) via alts_highres
+1157,OP01-120::manga,mr,OP01\ALTS\OP01-120 Manga Rare.jpg,,5583178,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5583178b) via alts_highres
+1161,OP01-120::prb01alt,alt,PRB01\Alts\OP01-120(PRB01alt).jpg,,5128681,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (5128681b) via alts_highres
+1164,OP01-120::s n,promo,OP01\ALTS\OP01-120sn.png,P/base/OP01-120.png,4117300,215268,1460x2038,600x838,SKIPPED_BETTER_EXISTS,optcg-api,"ALTS highres (1460x2038, 4117300b) already better than fetched (600x838, 215268b)"
+1158,OP01-120_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1159,OP01-120_p2,parallel_2,OP01\parallel\OP01-120_p2.png,OP01/parallel/OP01-120_p2.png,194681,194681,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+1160,OP01-120_p5,parallel_5,PRB01\parallel\OP01-120_p5.png,PRB01/parallel/OP01-120_p5.png,194213,194213,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+1162,OP01-120_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1163,OP01-120_r2,r2,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1167,OP01-121::a t2,operator_review,OP05\ALTS\SP\OP01-121at2.png,,17362738,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (17362738b) via alts_highres
+1168,OP01-121::alt,alt,OP01\ALTS\OP01-121 (alt).png,,14720295,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (14720295b) via alts_highres
+1172,OP01-121::prb01alt,alt,PRB01\Alts\OP01-121(PRB01alt).jpg,,6500255,0,3358x4692,,SKIPPED_GOOD_ENOUGH,,Already 3358x4692 (6500255b) via alts_highres
+1169,OP01-121_p1,parallel_1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.
+1170,OP01-121_p2,parallel_2,OP05\parallel\OP01-121_p2.png,OP05/parallel/OP01-121_p2.png,227644,227644,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+1171,OP01-121_p4,parallel_4,PRB01\parallel\OP01-121_p4.png,PRB01/parallel/OP01-121_p4.png,245995,245995,600x838,600x838,FETCHED_SUPPLEMENTAL,optcg-api,Fetched 600x838 as supplemental to existing 600x838
+1173,OP01-121_r1,r1,,,0,0,,,GAP_NO_SOURCE,,No image file on disk. No source_url in image_assets. Needs new source discovery.

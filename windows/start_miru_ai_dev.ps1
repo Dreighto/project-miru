@@ -26,6 +26,32 @@ $devUrl = "http://127.0.0.1:$Port/dev"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 Repair-MiruAiDevPidState -RepoRoot $repoRoot -Port $Port | Out-Null
 
+function Get-MiruPortConnectionEntries {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+
+    try {
+        return @(Get-NetTCPConnection -LocalPort $Port -ErrorAction Stop)
+    }
+    catch {
+        return @()
+    }
+}
+
+function Get-MiruPortListenerEntries {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+
+    return @(
+        Get-MiruPortConnectionEntries -Port $Port |
+            Where-Object { [string]$_.State -eq "Listen" }
+    )
+}
+
 if (-not $Force) {
     if (Test-MiruAiDevHealthy -Port $Port) {
         $devOk = Test-MiruAiDevPageReachable -Port $Port
@@ -64,14 +90,12 @@ else {
 # --- Port-level cleanup: kill anything bound to 18765 before starting ---
 $portKillPids = @()
 try {
-    $portKillPids = (netstat -ano | Select-String ":$Port\s" | ForEach-Object {
-        $line = [string]$_.Line
-        if (-not $line) { return }
-        $parts = @($line -split "\s+" | Where-Object { $_ -ne "" })
-        if ($parts.Count -lt 5) { return }
-        $pid = $parts[$parts.Count - 1]
-        if ($pid -match '^\d+$') { [int]$pid }
-    } | Where-Object { $_ -and $_ -ne 0 } | Sort-Object -Unique)
+    $portKillPids = @(
+        Get-MiruPortConnectionEntries -Port $Port |
+            ForEach-Object { [int]$_.OwningProcess } |
+            Where-Object { $_ -and $_ -ne 0 } |
+            Sort-Object -Unique
+    )
 } catch {
     $portKillPids = @()
 }
@@ -81,10 +105,7 @@ foreach ($pid in $portKillPids) {
         Write-Host "Port cleanup: stopping PID $pid bound to $Port"
         Stop-Process -Id $pid -Force -ErrorAction Stop
     } catch {
-        try {
-            & taskkill.exe /F /PID $pid /T | Out-Null
-        } catch {
-        }
+        Write-Host "Port cleanup warning: failed to stop PID $pid bound to $Port via Stop-Process." -ForegroundColor Yellow
     }
 }
 
@@ -92,9 +113,9 @@ if (@($portKillPids).Count -gt 0) {
     Start-Sleep -Seconds 2
 }
 
-$stillListening = netstat -ano | Select-String ":18765\s.*LISTENING"
+$stillListening = @(Get-MiruPortListenerEntries -Port $Port)
 if ($stillListening) {
-    throw "Port 18765 still occupied after kill attempt. Run elevated PowerShell and manually kill the PID before starting Miru AI."
+    throw "Port $Port still occupied after kill attempt. Run elevated PowerShell and manually kill the PID before starting Miru AI."
 }
 
 $env:PROJECT_MIRU_PORT = "18080"
@@ -106,9 +127,9 @@ if ((Test-Path Env:PATH) -and (Test-Path Env:Path)) {
     Remove-Item Env:PATH -ErrorAction SilentlyContinue
 }
 Write-Host "Starting Miru AI Dev on port $Port."
-$stillListening = netstat -ano | Select-String ":18765\s.*LISTENING"
+$stillListening = @(Get-MiruPortListenerEntries -Port $Port)
 if ($stillListening) {
-    throw "Port 18765 still occupied. Clear the port before launching Miru AI."
+    throw "Port $Port still occupied. Clear the port before launching Miru AI."
 }
 $process = Start-Process `
     -FilePath $python.Source `

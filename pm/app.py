@@ -58,6 +58,15 @@ PRINTING_MARKET_MAP_OVERLAY_CSV = Path(
 _printing_overlay_map_cache: dict[int, int] | None = None
 _card_prices_cache: dict | None = None
 
+# Mismatch review queue — fail-closed price suppression for flagged variants.
+MISMATCH_REVIEW_QUEUE_CSV = Path(
+    os.getenv(
+        "PROJECT_MIRU_REVIEW_QUEUE_CSV",
+        str(PROJECT_ROOT / "data" / "overlays" / "op01_mismatch_review_queue.csv"),
+    )
+)
+_review_queue_cache: dict[int, dict] | None = None
+
 
 def load_card_prices() -> dict:
     global _card_prices_cache
@@ -330,6 +339,8 @@ def load_catalog_card_index(require_image_assets: bool = False) -> dict[str, dic
                     JOIN image_assets ia2 ON ia2.printing_id = cv2.id
                     WHERE cv2.card_id = c.id
                 )
+                -- TEMP OP01 VERIFICATION FILTER — REMOVE AFTER OP01 QA
+                AND c.canonical_code LIKE 'OP01-%'
                 ORDER BY c.canonical_code ASC
                 """
             ).fetchall()
@@ -352,6 +363,8 @@ def load_catalog_card_index(require_image_assets: bool = False) -> dict[str, dic
                     c.trigger_text,
                     c.set_code
                 FROM cards c
+                -- TEMP OP01 VERIFICATION FILTER — REMOVE AFTER OP01 QA
+                WHERE c.canonical_code LIKE 'OP01-%'
                 ORDER BY c.canonical_code ASC
                 """
             ).fetchall()
@@ -431,6 +444,43 @@ def _load_printing_market_overlay_map() -> dict[int, int]:
     return out
 
 
+def _load_mismatch_review_queue() -> dict[int, dict]:
+    """
+    Load the mismatch review queue CSV.
+    Returns {printing_id: {"review_status": str, "issue_type": str}}
+    for all non-RESOLVED rows.  Resolved rows no longer suppress prices.
+    """
+    global _review_queue_cache
+    if _review_queue_cache is not None:
+        return _review_queue_cache
+    out: dict[int, dict] = {}
+    path = MISMATCH_REVIEW_QUEUE_CSV
+    if not path.is_file():
+        _review_queue_cache = out
+        return out
+    try:
+        with path.open(newline="", encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            for raw in reader:
+                if not raw:
+                    continue
+                try:
+                    pid = int(str(raw.get("printing_id") or "").strip())
+                except ValueError:
+                    continue
+                status = (raw.get("review_status") or "").strip().upper()
+                if status == "RESOLVED":
+                    continue
+                out[pid] = {
+                    "review_status": status or "OPEN",
+                    "issue_type": (raw.get("issue_type") or "").strip(),
+                }
+    except Exception:
+        out = {}
+    _review_queue_cache = out
+    return out
+
+
 def _price_chain_row_usable(row: sqlite3.Row | None) -> bool:
     if row is None:
         return False
@@ -499,6 +549,80 @@ def _mapped_product_count(conn: sqlite3.Connection, printing_id: int) -> int:
         return 0
 
 
+# Variant indicators in market product names that signal non-base printings.
+_VARIANT_NAME_INDICATORS: tuple[str, ...] = (
+    "(Alternate Art)", "(Alt Art)", "(SP)", "(Reprint)", "(Manga)",
+    "(Pirate Foil)", "(Treasure)", "Treasure Cup", "Winner Pack",
+    "Tournament Pack", "Participation Pack", "Champion Card Set",
+    "Finalist Card Set", "Judge Pack", "Binder Set", "Celebration Pack",
+    "Premium Card", "Beginners Deck Party", "Chase Promo",
+    "Regional", "Textured", "Full Art", "Jolly Roger", "Box Topper",
+    "Event Pack", "Promotion Pack",
+)
+
+
+def _disambiguate_multi_mapped(conn: sqlite3.Connection, printing_id: int) -> int | None:
+    """
+    For a printing_id mapped to multiple market_products, attempt to pick
+    the correct one using name/set heuristics. Returns market_product.id
+    or None if disambiguation fails.
+    """
+    vi = conn.execute(
+        "SELECT cv.variant_key, c.set_code "
+        "FROM card_variants cv JOIN cards c ON c.id = cv.card_id "
+        "WHERE cv.id = ?",
+        (printing_id,),
+    ).fetchone()
+    if vi is None:
+        return None
+
+    variant_key = (vi["variant_key"] or "").strip()
+    set_code = (vi["set_code"] or "").strip().upper()
+
+    products = conn.execute(
+        "SELECT mp.id, mp.product_name, mp.market_set_code "
+        "FROM printing_market_map pmm "
+        "JOIN market_products mp ON mp.id = pmm.market_product_id "
+        "WHERE pmm.printing_id = ?",
+        (printing_id,),
+    ).fetchall()
+    if not products:
+        return None
+
+    # SP variant: match "(SP)" in name directly.
+    if variant_key == "sp":
+        sp_match = [p for p in products if "(SP)" in (p["product_name"] or "")]
+        if len(sp_match) == 1:
+            return sp_match[0]["id"]
+
+    # Base / general path: filter out variant-indicator products.
+    plain: list[sqlite3.Row] = []
+    for p in products:
+        name = (p["product_name"] or "").lower()
+        if not any(ind.lower() in name for ind in _VARIANT_NAME_INDICATORS):
+            plain.append(p)
+
+    if not plain:
+        # All products have variant indicators (common for promo cards).
+        # Fallback: shortest name, lowest id among all products.
+        fallback = sorted(products, key=lambda p: (len(p["product_name"] or ""), p["id"]))
+        return fallback[0]["id"]
+    if len(plain) == 1:
+        return plain[0]["id"]
+
+    # Multiple plain candidates: prefer matching set_code.
+    if set_code:
+        set_match = [p for p in plain if (p["market_set_code"] or "").upper() == set_code]
+        if len(set_match) == 1:
+            return set_match[0]["id"]
+        if set_match:
+            plain = set_match
+
+    # Tiebreak: shortest name, then lowest market_product id.
+    plain_sorted = sorted(plain, key=lambda p: (len(p["product_name"] or ""), p["id"]))
+    return plain_sorted[0]["id"]
+
+
 def get_card_price_chain(db_path, printing_id):
     """
     Walk the full price chain for a single printing_id.
@@ -532,7 +656,7 @@ def get_card_price_chain(db_path, printing_id):
             mapped_count = _mapped_product_count(conn, pid)
             if mapped_count > 1:
                 # Multiple market products mapped to one printing_id is ambiguous.
-                # Use explicit overlay disambiguation if available; otherwise fail closed.
+                # Resolution order: overlay CSV → name/set disambiguation → fail closed.
                 mpk = _load_printing_market_overlay_map().get(pid)
                 if mpk is not None:
                     orow = conn.execute(_overlay_price_sql(), (mpk,)).fetchone()
@@ -543,6 +667,18 @@ def get_card_price_chain(db_path, printing_id):
                             "market_variant_label": orow["market_variant_label"],
                             "mapping_confidence": "OVERLAY_V1_HIGH",
                             "captured_at": orow["captured_at"],
+                        }
+                # Attempt name/set heuristic disambiguation.
+                dis_mpk = _disambiguate_multi_mapped(conn, pid)
+                if dis_mpk is not None:
+                    drow = conn.execute(_overlay_price_sql(), (dis_mpk,)).fetchone()
+                    if _price_chain_row_usable(drow):
+                        return {
+                            "market_price": drow["market_price"],
+                            "mid_price": drow["mid_price"],
+                            "market_variant_label": drow["market_variant_label"],
+                            "mapping_confidence": "AUTO_DISAMBIG",
+                            "captured_at": drow["captured_at"],
                         }
                 out = dict(empty)
                 out["mapping_confidence"] = "AMBIGUOUS_PMM_MULTI"
@@ -786,6 +922,8 @@ def home():
     items = load_prices()
     catalog_cards = load_catalog_card_index()
     entries = build_watchlist_entries(items, catalog_cards)
+    # TEMP OP01 VERIFICATION FILTER — REMOVE AFTER OP01 QA
+    entries = [e for e in entries if e.get("code", "").startswith("OP01-")]
 
     watchlist_rows = []
     for entry in entries:
@@ -867,13 +1005,7 @@ def home():
 @app.get("/cards")
 @app.get("/library")
 def index():
-    items = load_prices()
-    catalog_cards = load_catalog_card_index()
-    library_cards = build_library_card_index(catalog_cards)
-    _watch_entries = build_watchlist_entries(items, catalog_cards)
-
-    filters = _normalize_library_filters(request.args)
-    filtered_cards = _filter_library_cards(library_cards, filters)
+    # Shell only: client loads /api/cards-json; fragment URL mirrors query args for /library-fragment.
     try:
         library_page = max(int(request.args.get("library_page", "1") or 1), 1)
     except Exception:
@@ -881,7 +1013,7 @@ def index():
 
     query_parts = []
     for key in ("q", "set", "color", "rarity", "card_type"):
-        value = str(filters.get(key) or "").strip()
+        value = str(request.args.get(key) or "").strip()
         if value:
             query_parts.append((key, value))
     query_suffix = "".join(f"&{k}={quote(v)}" for k, v in query_parts)
@@ -1250,7 +1382,8 @@ def api_card_variants(card_code: str):
         SELECT cv.id AS printing_id, cv.variant_key, cv.is_base, cv.is_sp, cv.is_tr, cv.is_alt, cv.is_manga_rare,
                cv.is_golden_manga_rare, cv.is_illustration_rare, cv.release_set_name,
                cv.image_path, cv.image_url, cv.source,
-               ia.local_path, ia.source_label
+               ia.local_path, ia.source_label,
+               EXISTS(SELECT 1 FROM printing_market_map pmm WHERE pmm.printing_id = cv.id) AS has_pmm_map
         FROM card_variants cv
         JOIN cards c ON c.id = cv.card_id
         LEFT JOIN (
@@ -1266,6 +1399,7 @@ def api_card_variants(card_code: str):
               EXISTS (SELECT 1 FROM image_assets ia WHERE ia.printing_id = cv.id)
               OR (cv.image_path IS NOT NULL AND cv.image_path != '')
               OR (cv.image_url IS NOT NULL AND cv.image_url != '')
+              OR EXISTS (SELECT 1 FROM printing_market_map pmm WHERE pmm.printing_id = cv.id)
           )
         ORDER BY
           CASE WHEN cv.variant_key = 'base' AND cv.is_base = 1 THEN 0 ELSE 1 END,
@@ -1349,17 +1483,21 @@ def api_card_variants(card_code: str):
             # Priority 1: ia.local_path non-null
             ia_local_path = str(row["local_path"] or "").strip()
             if ia_local_path:
-                image_path = "/img/" + ia_local_path.replace("\\", "/")
-                image_source = str(row["source_label"] or "").strip() or "image_assets"
+                rel_ia = _normalize_rel_image_path(ia_local_path)
+                if rel_ia:
+                    image_path = f"/img/{quote(rel_ia)}"
+                    image_source = str(row["source_label"] or "").strip() or "image_assets"
 
             # Priority 2: cv.image_path non-null and non-empty
             if not image_path:
                 cv_image_path = str(row["image_path"] or "").strip()
                 if cv_image_path:
-                    full_filesystem_path = MIRU_ASSETS / cv_image_path
-                    if full_filesystem_path.is_file():
-                        image_path = "/img/" + cv_image_path.replace("\\", "/")
-                        image_source = "legacy_fallback"
+                    rel_cv = _normalize_rel_image_path(cv_image_path)
+                    if rel_cv:
+                        full_filesystem_path = MIRU_ASSETS / rel_cv
+                        if full_filesystem_path.is_file():
+                            image_path = f"/img/{quote(rel_cv)}"
+                            image_source = "legacy_fallback"
                         app.logger.warning(
                             f"image_assets fallback: card={card_code} printing_id={row['printing_id']}"
                         )
@@ -1374,9 +1512,22 @@ def api_card_variants(card_code: str):
                         f"image_url fallback: card={card_code} printing_id={row['printing_id']}"
                     )
 
-            # Skip if no image found
-            if not image_path:
+            # Skip if no image found AND no confirmed PMM mapping (avoids surfacing broken-path unmapped variants)
+            if not image_path and not row["has_pmm_map"]:
                 continue
+
+            # -- Mismatch review queue: fail closed for flagged variants --
+            review_entry = _load_mismatch_review_queue().get(int(row["printing_id"]))
+            review_status = None
+            v_market_price = price_chain.get("market_price")
+            v_mid_price = price_chain.get("mid_price")
+            v_mapping_confidence = price_chain.get("mapping_confidence")
+            if review_entry:
+                review_status = review_entry["review_status"]
+                # Fail closed: suppress untrusted price for non-resolved rows
+                v_market_price = None
+                v_mid_price = None
+                v_mapping_confidence = "REVIEW_REQUIRED"
 
             variants.append(
                 {
@@ -1387,13 +1538,114 @@ def api_card_variants(card_code: str):
                     "is_base": is_base_flag,
                     "image_source": image_source,
                     "source": str(row["source"] or "").strip(),
-                    "market_price": price_chain.get("market_price"),
-                    "mid_price": price_chain.get("mid_price"),
+                    "market_price": v_market_price,
+                    "mid_price": v_mid_price,
                     "market_variant_label": price_chain.get("market_variant_label"),
-                    "mapping_confidence": price_chain.get("mapping_confidence"),
+                    "mapping_confidence": v_mapping_confidence,
                     "captured_at": price_chain.get("captured_at"),
+                    "review_status": review_status,
+                    "has_market_map": bool(row["has_pmm_map"]),
                 }
             )
+
+        # --- DEDUP PASS: collapse visually-redundant variant rows ---
+        # TEMP OP01 VERIFICATION FILTER — REMOVE AFTER OP01 QA
+
+        # 1. Find the base row's image_path + price for reprint comparison
+        base_image = None
+        base_price = None
+        for v in variants:
+            if v.get("variant_key") == "base" and v.get("is_base"):
+                base_image = v.get("image_path")
+                base_price = v.get("market_price")
+                break
+
+        # 2. Drop reprint rows (r1, r2, …) that duplicate base image AND price
+        if base_image is not None:
+            variants = [
+                v for v in variants
+                if not (
+                    v.get("variant_key", "").startswith("r")
+                    and v.get("variant_key") != "base"
+                    and v.get("image_path") == base_image
+                    and v.get("market_price") == base_price
+                )
+            ]
+
+        # 3. Dedup rows sharing the same image_path — keep the best one
+        #    Priority: has price > no price, then non-reprint > reprint, then lowest printing_id
+        seen_images: dict[str, int] = {}
+        deduped: list[dict] = []
+        for v in variants:
+            img = v.get("image_path") or ""
+            if img and img in seen_images:
+                # Compare with the already-kept row
+                kept_idx = seen_images[img]
+                kept = deduped[kept_idx]
+                # Score: has_price=2, is_not_reprint=1
+                def _score(row):
+                    s = 0
+                    if row.get("market_price") is not None:
+                        s += 2
+                    if not (row.get("variant_key", "").startswith("r") and row.get("variant_key") != "base"):
+                        s += 1
+                    return s
+                if _score(v) > _score(kept):
+                    deduped[kept_idx] = v  # replace with better row
+                # else: discard the duplicate
+            else:
+                if img:
+                    seen_images[img] = len(deduped)
+                deduped.append(v)
+        variants = deduped
+
+        # 4. Suppress legacy_url variants when a local-image variant already
+        #    exists for the same variant_type (e.g., "Parallel")
+        local_variant_types: set[str] = set()
+        for v in variants:
+            if v.get("image_source") not in ("legacy_url",):
+                local_variant_types.add(v.get("display_label", ""))
+        variants = [
+            v for v in variants
+            if v.get("image_source") != "legacy_url"
+            or v.get("display_label", "") not in local_variant_types
+        ]
+
+        # 5. Suppress placeholder promo rows: variant_key='promo' with
+        #    generic "Variant" label and no price, when other non-base variants exist
+        has_non_base_variant = any(
+            v for v in variants
+            if v.get("variant_key") != "base"
+            and v.get("variant_key") != "promo"
+            and not v.get("is_base")
+        )
+        if has_non_base_variant:
+            variants = [
+                v for v in variants
+                if not (
+                    v.get("variant_key") == "promo"
+                    and v.get("market_price") is None
+                    and "Variant" in v.get("display_label", "")
+                    and not v.get("has_market_map")
+                )
+            ]
+
+        # 6. Differentiate duplicate display_labels: when multiple variants
+        #    share the exact same label, append the parallel number suffix
+        label_counts: dict[str, int] = {}
+        for v in variants:
+            lbl = v.get("display_label", "")
+            label_counts[lbl] = label_counts.get(lbl, 0) + 1
+        for v in variants:
+            lbl = v.get("display_label", "")
+            if label_counts.get(lbl, 0) > 1:
+                vk = v.get("variant_key", "")
+                # Extract parallel number from variant_key like "parallel_2"
+                if vk.startswith("parallel_"):
+                    suffix = vk.replace("parallel_", "#")
+                    v["display_label"] = f"{lbl} ({suffix})"
+
+        # --- END DEDUP PASS ---
 
         # Base printing first, then all others in existing order (stable).
         base_first = [
@@ -1415,6 +1667,7 @@ def api_card_variants(card_code: str):
 @app.get("/api/cards-json")
 def api_cards_json():
     # Do not hard-gate the catalog on image_assets rows; cards can render via runtime thumbnail fallback.
+    # Grid-only JSON: omit drawer blobs (effect/trigger); use GET /api/card-detail/<code> when needed.
     catalog_cards = load_catalog_card_index(require_image_assets=False)
     library_cards = build_library_card_index(catalog_cards)
     cards = []
@@ -1432,14 +1685,48 @@ def api_cards_json():
                 "power": entry.get("power", ""),
                 "counter": entry.get("counter", ""),
                 "attribute": entry.get("attribute", ""),
-                "effect_text": entry.get("effect_text", ""),
-                "trigger_text": entry.get("trigger_text", ""),
                 "thumb_src": entry.get("thumb_src", ""),
             }
         )
     response = jsonify({"ok": True, "cards": cards})
     response.headers["Cache-Control"] = "private, max-age=60"
     return response
+
+
+@app.get("/api/card-detail/<canonical_code>")
+def api_card_detail(canonical_code: str):
+    """Read-only drawer detail from cards row. No prices or images."""
+    code = str(canonical_code or "").strip().upper()
+    if not code:
+        return jsonify({"error": "not found"}), 404
+    if not CATALOG_DB_PATH.is_file():
+        return jsonify({"error": "not found"}), 404
+    try:
+        conn = sqlite3.connect(str(CATALOG_DB_PATH))
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            """
+            SELECT effect_text, trigger_text, traits
+            FROM cards
+            WHERE canonical_code = ?
+            LIMIT 1
+            """,
+            (code,),
+        ).fetchone()
+        conn.close()
+    except Exception:
+        return jsonify({"error": "not found"}), 404
+    if not row:
+        return jsonify({"error": "not found"}), 404
+    return jsonify(
+        {
+            "ok": True,
+            "canonical_code": code,
+            "effect_text": str(row["effect_text"] or "").strip(),
+            "trigger_text": str(row["trigger_text"] or "").strip(),
+            "traits": str(row["traits"] or "").strip(),
+        }
+    )
 
 
 @app.get("/api/card-lookup")
