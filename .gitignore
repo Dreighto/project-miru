@@ -1,3 +1,35 @@
 .env
 .env.*
 !.env.example
+
+# Local secrets, editor config, and virtualenvs
+.venv/
+venv/
+env/
+secrets/
+.mcp.json
+mcp.json
+.cursor/mcp.json
+.cursor/
+.vscode/
+
+miru_ai/dev_review_hub_ui/node_modules/
+
+# Claude in Chrome / CDP temp files
+.edge-cdp-temp/
+
+# Local caches, temp build outputs, and runtime logs
+.npm-cache/
+.tmp-ui-build/
+.tmp-pip-cache/
+.playwright-browsers/
+logs/
+.cdp-edge-log.txt
+
+# Python temp and bytecode artifacts
+.pip-tmp/
+.tmp-pip/
+.tmp-pip-temp/
+miru_ai/dev_review_hub_ui/.tmp-build-test/
+__pycache__/
+*.pyc
