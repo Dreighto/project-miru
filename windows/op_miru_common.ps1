@@ -16,10 +16,10 @@ function Get-OpMiruPaths {
         DockerComposeFile     = Join-Path $repoRoot "docker-compose.yml"
         DockerConfigDirectory = Join-Path $repoRoot ".docker-config"
         MiruAiScript          = Join-Path $repoRoot "miru_ai\server.py"
-        MiruAiHealthUrlLocal  = "http://127.0.0.1:8765/api/health"
-        MiruAiRootUrlLocal    = "http://127.0.0.1:8765/"
+        MiruAiHealthUrlLocal  = "http://127.0.0.1:18765/api/health"
+        MiruAiRootUrlLocal    = "http://127.0.0.1:18765/"
         DashboardUrlLocal     = "http://127.0.0.1:8080/"
-        MiruAiPort            = 8765
+        MiruAiPort            = 18765
         DashboardPort         = 8080
     }
 }

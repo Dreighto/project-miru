@@ -1,181 +1,214 @@
-# NOTE (worktree authority): this is a Miru AI-only convenience launcher.
-# Canonical full worktree runtime startup is:
-#   windows/start_op_miru_worktree.ps1  (dashboard 18080 + Miru AI/Dev 18765)
-# This script defaults to port 8765 and is non-canonical for worktree full-stack startup.
+# Canonical Miru Dev runtime launcher + force-restart authority
+# Replaces the old convenience launcher.
+# Purpose:
+# - stop the active Miru server on the target port if it is already running
+# - start a fresh Miru server from the canonical repo root
+# - wait for /api/health
+# - prove the new PID is the active listener
+#
+# Usage:
+#   powershell -ExecutionPolicy Bypass -File .\run_miru_dev.ps1
+#   powershell -ExecutionPolicy Bypass -File .\run_miru_dev.ps1 -Force
+#   powershell -ExecutionPolicy Bypass -File .\run_miru_dev.ps1 -Port 18765 -BindHost 0.0.0.0
 
+[CmdletBinding()]
 param(
     [string]$BindHost = "0.0.0.0",
-    [int]$Port = 8765,
-    [string]$LogPath = ""
+    [int]$Port = 18765,
+    [switch]$Force,
+    [int]$StartupTimeoutSeconds = 45
 )
+
+$ErrorActionPreference = "Stop"
 
 $ProjectRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ProjectRoot
-. (Join-Path $ProjectRoot "windows\op_miru_common.ps1")
 
-function Test-IsPrivateLanIp {
-    param([string]$IpAddress)
+$PythonExe = "python"
+$HealthUrl = "http://127.0.0.1:$Port/api/health"
+$StdoutLog = Join-Path $ProjectRoot "data\startup-logs\miru_ai_worktree_stdout.log"
+$StderrLog = Join-Path $ProjectRoot "data\startup-logs\miru_ai_worktree_stderr.log"
+$PidFile   = Join-Path $ProjectRoot "data\startup-logs\miru_ai_worktree.pid"
 
-    if (-not $IpAddress) {
-        return $false
+New-Item -ItemType Directory -Force -Path (Split-Path $StdoutLog -Parent) | Out-Null
+
+function Write-Status {
+    param(
+        [string]$Message,
+        [string]$Color = "Gray"
+    )
+    Write-Host $Message -ForegroundColor $Color
+}
+
+function Get-ListenerInfo {
+    param([int]$ListenPort)
+
+    $connections = @(Get-NetTCPConnection -LocalPort $ListenPort -State Listen -ErrorAction SilentlyContinue)
+    foreach ($conn in $connections) {
+        $proc = Get-CimInstance Win32_Process -Filter "ProcessId = $($conn.OwningProcess)" -ErrorAction SilentlyContinue
+        [PSCustomObject]@{
+            Port        = $ListenPort
+            Pid         = $conn.OwningProcess
+            ProcessName = (Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue).ProcessName
+            CommandLine = $proc.CommandLine
+        }
     }
-    if ($IpAddress -like '10.*' -or $IpAddress -like '192.168.*') {
-        return $true
+}
+
+function Test-IsMiruProcess {
+    param($Listener)
+
+    if (-not $Listener) { return $false }
+    $cmd = [string]$Listener.CommandLine
+    if (-not $cmd) { return $false }
+
+    return (
+        $cmd -match 'miru_ai\.server' -and
+        $cmd -match [regex]::Escape($ProjectRoot)
+    )
+}
+
+function Stop-PortOwnerIfSafe {
+    param(
+        [int]$ListenPort,
+        [switch]$AllowForce
+    )
+
+    $listeners = @(Get-ListenerInfo -ListenPort $ListenPort)
+    if (-not $listeners.Count) {
+        Write-Status "No existing listener on port $ListenPort." "DarkGray"
+        return
     }
-    if ($IpAddress -match '^172\.(1[6-9]|2[0-9]|3[0-1])\.') {
-        return $true
+
+    foreach ($listener in $listeners) {
+        $isMiru = Test-IsMiruProcess -Listener $listener
+
+        if ($isMiru) {
+            Write-Status "Stopping existing Miru listener on $ListenPort (PID $($listener.Pid))." "Yellow"
+            Stop-Process -Id $listener.Pid -Force -ErrorAction Stop
+            continue
+        }
+
+        if ($AllowForce) {
+            Write-Status "Force-stopping non-Miru listener on $ListenPort (PID $($listener.Pid))." "Red"
+            Stop-Process -Id $listener.Pid -Force -ErrorAction Stop
+            continue
+        }
+
+        throw "Port $ListenPort is owned by PID $($listener.Pid) ($($listener.ProcessName)) and does not look like this repo's Miru server. Re-run with -Force only if you are sure."
+    }
+
+    Start-Sleep -Seconds 2
+}
+
+function Wait-ForPortRelease {
+    param(
+        [int]$ListenPort,
+        [int]$TimeoutSeconds = 15
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        $listeners = @(Get-ListenerInfo -ListenPort $ListenPort)
+        if (-not $listeners.Count) {
+            return $true
+        }
+        Start-Sleep -Milliseconds 400
     }
     return $false
 }
 
-function Test-IsVirtualAdapterName {
-    param([string]$Name)
-
-    if (-not $Name) {
-        return $false
-    }
-    return $Name -match 'Hyper-V|vEthernet|WSL|Docker|VMware|VirtualBox|Loopback|Tailscale|ZeroTier|WireGuard|VPN|TAP|TUN|Tunnel|Virtual|Bluetooth'
-}
-
-function Test-IsTailscaleIp {
-    param([string]$IpAddress)
-
-    if (-not $IpAddress) {
-        return $false
-    }
-    return $IpAddress -match '^100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.'
-}
-
-function Get-LanIp {
-    try {
-        $adapters = Get-NetAdapter -ErrorAction Stop | Where-Object { $_.Status -eq 'Up' }
-        $adapters = $adapters | Where-Object {
-            -not (Test-IsVirtualAdapterName $_.Name) -and
-            -not (Test-IsVirtualAdapterName $_.InterfaceDescription)
-        }
-        $preferredAdapters = $adapters | Where-Object {
-            $_.InterfaceDescription -match 'Wi-Fi|Wireless|Ethernet' -or
-            $_.Name -match 'Wi-Fi|Wireless|Ethernet'
-        }
-        if (-not $preferredAdapters) {
-            $preferredAdapters = $adapters
-        }
-
-        if ($preferredAdapters) {
-            $adapterIndexes = $preferredAdapters | Select-Object -ExpandProperty ifIndex
-            $candidates = Get-NetIPAddress -AddressFamily IPv4 -InterfaceIndex $adapterIndexes -ErrorAction Stop |
-                Where-Object {
-                    $_.IPAddress -notlike '127.*' -and
-                    $_.IPAddress -notlike '169.254.*' -and
-                    $_.PrefixOrigin -ne 'WellKnown'
-                } |
-                Select-Object -ExpandProperty IPAddress
-            $preferred = $candidates | Where-Object { Test-IsPrivateLanIp $_ } | Select-Object -First 1
-            if ($preferred) {
-                return $preferred
-            }
-            $fallback = $candidates | Select-Object -First 1
-            if ($fallback) {
-                return $fallback
-            }
-        }
-    } catch {
-    }
-
-    try {
-        $hostname = [System.Net.Dns]::GetHostName()
-        $candidates = [System.Net.Dns]::GetHostAddresses($hostname) |
-            Where-Object {
-                $_.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork -and
-                $_.IPAddressToString -notlike '127.*' -and
-                $_.IPAddressToString -notlike '169.254.*'
-            } |
-            Select-Object -ExpandProperty IPAddressToString
-        $preferred = $candidates | Where-Object { Test-IsPrivateLanIp $_ } | Select-Object -First 1
-        if ($preferred) {
-            return $preferred
-        }
-        $fallback = $candidates | Select-Object -First 1
-        if ($fallback) {
-            return $fallback
-        }
-    } catch {
-    }
-
-    return $null
-}
-
-function Get-TailscaleIp {
-    try {
-        $candidates = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
-            Where-Object {
-                ($_.InterfaceAlias -match 'Tailscale' -or $_.InterfaceDescription -match 'Tailscale') -and
-                (Test-IsTailscaleIp $_.IPAddress)
-            } |
-            Select-Object -ExpandProperty IPAddress
-        $preferred = $candidates | Select-Object -First 1
-        if ($preferred) {
-            return $preferred
-        }
-    } catch {
-    }
-    return $null
-}
-
-function Write-LaunchLine {
+function Start-MiruServer {
     param(
-        [string]$Message,
-        [string]$Color = ""
+        [string]$BindAddr,
+        [int]$ListenPort
     )
 
-    if ($Color) {
-        Write-Host $Message -ForegroundColor $Color
-    } else {
-        Write-Host $Message
+    if (Test-Path $PidFile) {
+        Remove-Item $PidFile -Force -ErrorAction SilentlyContinue
     }
-    if ($LogPath) {
+
+    Write-Status "Starting fresh Miru server from $ProjectRoot ..." "Cyan"
+
+    $proc = Start-Process `
+        -FilePath $PythonExe `
+        -ArgumentList @("-m", "miru_ai.server", "--host", $BindAddr, "--port", "$ListenPort") `
+        -WorkingDirectory $ProjectRoot `
+        -RedirectStandardOutput $StdoutLog `
+        -RedirectStandardError $StderrLog `
+        -PassThru `
+        -WindowStyle Hidden
+
+    Set-Content -Path $PidFile -Value $proc.Id
+    return $proc
+}
+
+function Wait-ForHealth {
+    param(
+        [string]$Url,
+        [int]$TimeoutSeconds
+    )
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+
+    while ((Get-Date) -lt $deadline) {
         try {
-            Add-Content -Path $LogPath -Value $Message
+            $response = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 4
+            if ($response.StatusCode -eq 200) {
+                return $true
+            }
         } catch {
         }
+        Start-Sleep -Milliseconds 750
     }
+
+    return $false
 }
 
-$lanIp = Get-LanIp
-$tailscaleIp = Get-TailscaleIp
-$localBase = "http://localhost:$Port"
-$localMiruUrl = "$localBase/"
-$localDevUrl = "$localBase/dev"
+function Get-ActiveListenerPid {
+    param([int]$ListenPort)
 
-Write-LaunchLine "Miru Dev Launcher" "Cyan"
-Write-LaunchLine "Project root: $ProjectRoot"
-$envLoad = Import-OpMiruDotEnv -RepoRoot $ProjectRoot
-$pushoverStatus = Get-OpMiruPushoverStatus
-if ($envLoad.Exists) {
-    Write-LaunchLine "Loaded local .env from $($envLoad.EnvPath)."
-} else {
-    Write-LaunchLine "Local .env not found at $($envLoad.EnvPath)." "Yellow"
+    $listener = @(Get-ListenerInfo -ListenPort $ListenPort) | Select-Object -First 1
+    if ($listener) { return $listener.Pid }
+    return $null
 }
-if ($pushoverStatus.Configured) {
-    Write-LaunchLine $pushoverStatus.Summary "Green"
-} elseif ($pushoverStatus.Enabled) {
-    Write-LaunchLine $pushoverStatus.Summary "Yellow"
-} else {
-    Write-LaunchLine $pushoverStatus.Summary "Yellow"
-}
-Write-LaunchLine "Miru AI URL: $localMiruUrl"
-Write-LaunchLine "Dev Monitor URL: $localDevUrl"
-if ($lanIp) {
-    Write-LaunchLine "LAN Miru AI URL: http://$lanIp`:$Port/"
-    Write-LaunchLine "LAN Dev Monitor URL: http://$lanIp`:$Port/dev"
-} else {
-    Write-LaunchLine "LAN URL: unavailable" "Yellow"
-}
-if ($tailscaleIp) {
-    Write-LaunchLine "Tailscale Miru AI URL: http://$tailscaleIp`:$Port/"
-    Write-LaunchLine "Tailscale Dev Monitor URL: http://$tailscaleIp`:$Port/dev"
-}
-Write-LaunchLine "Press CTRL+C to stop the server."
-Write-LaunchLine ""
 
-python -m miru_ai.server --host $BindHost --port $Port
+Write-Status "=== Miru Dev Restart Authority ===" "Cyan"
+Write-Status "Repo root: $ProjectRoot" "Gray"
+Write-Status "Target port: $Port" "Gray"
+Write-Status "Health URL: $HealthUrl" "Gray"
+
+Stop-PortOwnerIfSafe -ListenPort $Port -AllowForce:$Force
+
+if (-not (Wait-ForPortRelease -ListenPort $Port -TimeoutSeconds 15)) {
+    throw "Port $Port did not release after stop attempt."
+}
+
+$proc = Start-MiruServer -BindAddr $BindHost -ListenPort $Port
+
+if (-not (Wait-ForHealth -Url $HealthUrl -TimeoutSeconds $StartupTimeoutSeconds)) {
+    $stderrTail = ""
+    if (Test-Path $StderrLog) {
+        $stderrTail = (Get-Content $StderrLog -Tail 40 -ErrorAction SilentlyContinue) -join "`n"
+    }
+    throw "Miru server failed health check at $HealthUrl within $StartupTimeoutSeconds seconds.`n--- STDERR tail ---`n$stderrTail"
+}
+
+$activePid = Get-ActiveListenerPid -ListenPort $Port
+if (-not $activePid) {
+    throw "Health passed, but no active listener was found on port $Port."
+}
+
+if ($activePid -ne $proc.Id) {
+    $listenerInfo = @(Get-ListenerInfo -ListenPort $Port) | Select-Object -First 1
+    throw "Port $Port is not owned by the newly started process. Started PID=$($proc.Id), active PID=$activePid. CommandLine=$($listenerInfo.CommandLine)"
+}
+
+Write-Status ""
+Write-Status "Miru server restarted successfully." "Green"
+Write-Status "Active PID: $activePid" "Green"
+Write-Status "Miru AI URL: http://127.0.0.1:$Port/" "Green"
+Write-Status "Dev URL: http://127.0.0.1:$Port/dev" "Green"
+Write-Status "Operator Console: http://127.0.0.1:$Port/dev/operator-console" "Green"
+Write-Status "Stdout log: $StdoutLog" "DarkGray"
+Write-Status "Stderr log: $StderrLog" "DarkGray"

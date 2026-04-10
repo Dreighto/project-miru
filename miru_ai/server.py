@@ -100,6 +100,40 @@ from tools.miru_operator_handoff_resolution import (
     is_operator_handoff_acknowledged_for_fingerprint,
     save_operator_handoff_resolution,
 )
+from miru_ai.dev_training_review import (
+    build_training_review_queue_payload,
+    configure as configure_dev_training_review,
+    op01_throughput_stats,
+    persist_training_review_row,
+    verify_action_preflight,
+)
+from miru_ai.operator_price_context import (
+    build_operator_price_snapshot,
+    refresh_operator_price_from_tcgcsv,
+)
+from miru_ai.evidence_watchdog import (
+    configure as configure_evidence_watchdog,
+    init_evidence_schema,
+    watchdog_tick as evidence_watchdog_tick,
+)
+from miru_ai.recurrence import (
+    build_candidate_queue_payload,
+    configure as configure_recurrence,
+    init_recurrence_schema,
+    seed_recurrence_from_history,
+)
+from miru_ai.core.local_helper import (
+    draft_review_note,
+    explain_elevation,
+    helper_status,
+    set_helper_runtime_override,
+    suggest_correction_detail,
+    summarize_candidate_rationale,
+)
+from miru_ai.evidence_collectors import (
+    collect_evidence_for_review,
+    configure as configure_evidence_collectors,
+)
 
 
 TOOL_ROOT = Path(__file__).resolve().parent
@@ -156,7 +190,7 @@ APP_TAGLINE = "A One Piece Card Intelligence System"
 PROJECT_ENV_LOAD = load_project_env()
 _PUSHOVER_STATUS_LOCK = Lock()
 _PUSHOVER_STATUS_LOGGED = False
-CURRENT_SERVER_PORT = 8765
+CURRENT_SERVER_PORT = 18765
 _SERVER_STARTED_AT: str = ""  # ISO-8601 UTC; set in main() before create_app()
 _TTL_CACHE_LOCK = Lock()
 _TTL_CACHE: dict[str, dict[str, Any]] = {}
@@ -793,7 +827,7 @@ def read_port_env(name: str, default: int) -> int:
 
 PROJECT_MIRU_PORT = read_port_env("PROJECT_MIRU_PORT", 8080)
 PROJECT_MIRU_DEV_PORT = read_port_env("PROJECT_MIRU_DEV_PORT", 18080)
-RUNTIME_MONITOR_PORT = read_port_env("MIRU_RUNTIME_PORT", 8765)
+RUNTIME_MONITOR_PORT = read_port_env("MIRU_RUNTIME_PORT", 18765)
 RUNTIME_MONITOR_STATUS_URL = str(os.getenv("MIRU_RUNTIME_STATUS_URL", "") or "").strip()
 ACTIVITY_RECENT_WINDOW_SECONDS = 300
 
@@ -2519,6 +2553,74 @@ def build_resource_metrics() -> list[dict[str, Any]]:
     ]
 
 
+def _hub_pipeline_counts() -> dict[str, Any]:
+    """Read pipeline table counts from the catalog DB for the hub dashboard."""
+    out: dict[str, Any] = {
+        "image_variant_analysis_count": 0,
+        "market_prices_count": 0,
+        "review_queue_count": 0,
+        "publication_stage_count": 0,
+    }
+    db_path = FALLBACK_CATALOG_DB_PATH
+    if not db_path.is_file():
+        return out
+    try:
+        with closing(sqlite3.connect(str(db_path), timeout=5)) as conn:
+            conn.execute("PRAGMA journal_mode=WAL")
+            for key, table in (
+                ("image_variant_analysis_count", "image_variant_analysis"),
+                ("market_prices_count", "market_prices"),
+                ("review_queue_count", "miru_review_queue"),
+                ("publication_stage_count", "miru_publication_stage"),
+            ):
+                try:
+                    row = conn.execute(f"SELECT COUNT(*) FROM [{table}]").fetchone()
+                    out[key] = int(row[0]) if row else 0
+                except sqlite3.Error:
+                    pass
+    except sqlite3.Error:
+        pass
+    return out
+
+
+def build_hub_summary_payload() -> dict[str, Any]:
+    """Aggregate all hub dashboard metrics from existing data sources."""
+    training = build_training_status()
+    catalog_status = ensure_fallback_catalog_status()
+    resources = build_resource_metrics()
+    throughput = op01_throughput_stats()
+    issues = runtime_issue_messages()
+    pipeline = _hub_pipeline_counts()
+
+    return {
+        "catalog": {
+            "total_cards": int(catalog_status.get("cards", 0)),
+            "total_variants": int(catalog_status.get("variants", 0)),
+            "usable": bool(catalog_status.get("usable")),
+        },
+        "dossier": {
+            "dossiers_created": int(training.get("dossiers_created", 0)),
+            "verified_dossiers": int(training.get("verified_dossiers", 0)),
+            "remaining_gaps": int(training.get("remaining_gaps", 0)),
+            "verified_coverage_percent": float(training.get("verified_coverage_percent", 0)),
+            "dossier_coverage_percent": float(training.get("dossier_coverage_percent", 0)),
+        },
+        "pipeline": pipeline,
+        "throughput": {
+            "today_reviews": int(throughput.get("today_reviews", 0)),
+            "total_reviews": int(throughput.get("total_reviews", 0)),
+            "distinct_cards_reviewed": int(throughput.get("distinct_cards_reviewed", 0)),
+        },
+        "resources": resources,
+        "health": {
+            "issues": issues,
+            "issue_count": len(issues),
+        },
+        "server_started_at": _SERVER_STARTED_AT,
+        "updated_at": current_timestamp(),
+    }
+
+
 def build_route_url(path: str) -> str:
     route_path = path if path.startswith("/") else f"/{path}"
     return f"{request.url_root.rstrip('/')}" + route_path
@@ -3735,16 +3837,16 @@ def build_dev_bootstrap_status() -> dict[str, Any]:
 
 def resolve_runtime_monitor_status_url() -> str:
     """Remote runtime status URL. Non-empty only when explicitly set via MIRU_RUNTIME_STATUS_URL.
-    Default is local: worktree (18765) uses worktree data; main (8765) uses main data.
-    Set MIRU_RUNTIME_STATUS_URL (e.g. http://127.0.0.1:8765/api/dev-status) to make this
+    Default is local: worktree (18765) uses worktree data.
+    Set MIRU_RUNTIME_STATUS_URL (e.g. http://127.0.0.1:18765/api/dev-status) to make this
     server proxy status and control to that URL instead of using local runtime."""
     return str(RUNTIME_MONITOR_STATUS_URL or "").strip()
 
 
 def _is_worktree_runtime() -> bool:
-    """True when this server is the worktree instance (e.g. 18765), not main (8765) and not proxying."""
+    """True when this server is the worktree instance (e.g. 18765), not main, and not proxying."""
     current = int(CURRENT_SERVER_PORT or 0)
-    if current == 0 or current == int(RUNTIME_MONITOR_PORT or 8765):
+    if current == 0 or current == int(RUNTIME_MONITOR_PORT or 18765):
         return False
     return not bool(str(resolve_runtime_monitor_status_url() or "").strip())
 
@@ -4179,7 +4281,7 @@ def _reconcile_learner_status_with_process_truth(
 def build_dev_environment_descriptor() -> dict[str, Any]:
     """Label and ports for the Dev page so environment (worktree vs main) and runtime target are explicit."""
     current = int(CURRENT_SERVER_PORT or 0)
-    truth_port = int(RUNTIME_MONITOR_PORT or 8765)
+    truth_port = int(RUNTIME_MONITOR_PORT or 18765)
     is_worktree = current != 0 and current != truth_port
     remote_url = resolve_runtime_monitor_status_url()
     if remote_url:
@@ -7958,9 +8060,10 @@ def render_page(page_key: str, current_endpoint: str):
     elif page_key in ("dev", "dev_monitor"):
         dev_status = build_dev_bootstrap_status()
         if page_key == "dev":
-            ready_install_panel = load_chapter19_11_install_plan_panel()
-            op01_conflict_panel = load_op01_conflict_review_panel()
-            lane2_candidate_panel = load_lane2_candidate_review_panel()
+            # Unified /dev surface: heavy legacy panels are not rendered (avoid wasted work).
+            ready_install_panel = {}
+            op01_conflict_panel = {}
+            lane2_candidate_panel = {}
         runtime_restart_token = (
             os.environ.get("MIRU_RUNTIME_RESTART_TOKEN") or ""
         ).strip()
@@ -9180,6 +9283,13 @@ def execute_image_review_staged_commit() -> dict[str, Any]:
 
 
 def create_app() -> Flask:
+    configure_dev_training_review(PROJECT_ROOT, MIRU_ASSETS_ROOT)
+    configure_evidence_watchdog(PROJECT_ROOT)
+    configure_evidence_collectors(PROJECT_ROOT, MIRU_ASSETS_ROOT)
+    configure_recurrence(PROJECT_ROOT)
+    init_evidence_schema()
+    init_recurrence_schema()
+    seed_recurrence_from_history()
     app = Flask(
         __name__,
         template_folder=str(TEMPLATE_DIR),
@@ -9193,6 +9303,40 @@ def create_app() -> Flask:
     _image_fetch_state_lock = Lock()
     _image_fetch_state: dict[str, Any] = {"running": False}
     _image_fetch_schedule: dict[str, Timer | None] = {"timer": None}
+
+    def _safe_collect_evidence(review_id: int) -> None:
+        """Background evidence collection — swallows exceptions to avoid crash."""
+        try:
+            result = collect_evidence_for_review(review_id)
+            app.logger.info("Evidence collected for review %d: %s", review_id, result)
+        except Exception:
+            app.logger.exception("Evidence collection failed for review %d", review_id)
+
+    def _card_has_completed_evidence(card_code: str) -> bool:
+        """Check if a card already has non-PENDING evidence reconciliation.
+
+        Used to skip redundant re-collection when the operator explicitly
+        rejects/holds a card that already has completed evidence.
+        """
+        import sqlite3 as _sql
+        db = PROJECT_ROOT / "data" / "miru_dev_training_reviews.db"
+        if not db.is_file():
+            return False
+        try:
+            with closing(_sql.connect(str(db), timeout=5)) as conn:
+                conn.execute("PRAGMA journal_mode=WAL")
+                row = conn.execute(
+                    "SELECT er.reconciliation_status "
+                    "FROM dev_training_reviews dtr "
+                    "JOIN evidence_reconciliation er ON er.review_id = dtr.id "
+                    "WHERE dtr.card_code = ? "
+                    "AND er.reconciliation_status NOT IN ('PENDING') "
+                    "ORDER BY er.reconciled_at DESC LIMIT 1",
+                    (card_code.upper(),),
+                ).fetchone()
+                return row is not None
+        except _sql.Error:
+            return False
 
     def _append_image_fetch_log(line: str) -> None:
         stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -9284,6 +9428,25 @@ def create_app() -> Flask:
     # Re-enable by uncommenting the line below once OPTCG API cutover is fully validated.
     # _schedule_next_nightly_image_fetch()
 
+    # ── Evidence watchdog (5-min recurring timer) ────────────────────────
+    _EVIDENCE_WATCHDOG_INTERVAL = 300  # seconds
+
+    def _evidence_watchdog_loop() -> None:
+        try:
+            flipped = evidence_watchdog_tick()
+            if flipped:
+                app.logger.info("Evidence watchdog flipped %d row(s) to ERROR.", flipped)
+        except Exception:
+            app.logger.exception("Evidence watchdog tick failed.")
+        _schedule_evidence_watchdog()
+
+    def _schedule_evidence_watchdog() -> None:
+        t = Timer(_EVIDENCE_WATCHDOG_INTERVAL, _evidence_watchdog_loop)
+        t.daemon = True
+        t.start()
+
+    _schedule_evidence_watchdog()
+
     @app.after_request
     def _miru_cache_control_core_static(response):
         """Force revalidation for main JS/CSS so mobile clients pick up new builds after restart."""
@@ -9332,27 +9495,36 @@ def create_app() -> Flask:
 
     @app.get("/")
     def index():
-        return render_page("home", "index")
+        brand_assets = build_brand_assets()
+        return render_template(
+            "miru_hub.html",
+            app_name=APP_NAME,
+            app_tagline=APP_TAGLINE,
+            favicon_url=brand_assets["favicon_url"],
+            asset_version=compute_asset_version(),
+        )
 
     @app.get("/ask")
     def ask_page():
-        return render_page("ask", "ask_page")
+        # Retired legacy surface — redirected to Miru Hub (surface cleanup pass).
+        return redirect("/", code=302)
 
     @app.get("/dossiers")
     def dossiers_page():
-        return render_page("dossiers", "dossiers_page")
+        # Retired legacy surface — redirected to Miru Hub (surface cleanup pass).
+        return redirect("/", code=302)
 
     @app.get("/gaps")
     def gaps_page():
-        abort(404)
+        return redirect("/", code=302)
 
     @app.get("/training")
     def training_page():
-        abort(404)
+        return redirect("/", code=302)
 
     @app.get("/status")
     def status_page():
-        abort(404)
+        return redirect("/", code=302)
 
     @app.get("/dev")
     def dev_page():
@@ -9402,39 +9574,14 @@ def create_app() -> Flask:
     def serve_card_image(filename):
         return send_from_directory("F:/OPTCG_Images", filename)
 
-    @app.get("/dev/monitor")
-    def dev_monitor_page():
-        """Full Dev monitor (legacy tools, diagnostics). Main /dev is the compact cockpit."""
-        return render_page("dev_monitor", "dev_monitor_page")
-
-    @app.get("/dev/image-review")
-    def dev_image_review_page():
-        """OCR / vision mismatch review UI (same reachability as /dev: LAN + Tailscale)."""
-        if int(CURRENT_SERVER_PORT or 0) != 18765:
-            abort(404)
-        return render_template("image_review.html")
-
     @app.get("/leader/<leader_code>")
     def leader_hub(leader_code: str):
-        abort(404)
+        return redirect("/", code=302)
 
     @app.get("/card/<card_code>")
     def card_page(card_code: str):
-        card_data = load_card_page_data(card_code)
-        brand_assets = build_brand_assets()
-        return render_template(
-            "card_page.html",
-            app_name=APP_NAME,
-            app_tagline=APP_TAGLINE,
-            nav_items=build_nav("index"),
-            card_data=card_data,
-            asset_version=compute_asset_version(),
-            logo_url=brand_assets["logo_url"],
-            favicon_url=brand_assets["favicon_url"],
-            apple_icon_url=brand_assets["apple_icon_url"],
-            manifest_url=brand_assets["manifest_url"],
-            uses_inline_logo=brand_assets["uses_inline_logo"],
-        )
+        # Retired legacy surface — redirected to Miru Hub (surface cleanup pass).
+        return redirect("/", code=302)
 
     @app.get("/api/health")
     def health():
@@ -9575,6 +9722,13 @@ def create_app() -> Flask:
         """Runtime status for Dev page control: 18765 and 18080 health. Same as worktree-status with a checked_at timestamp."""
         payload = load_runtime_status_payload(force=True)
         payload["restart_allowed"] = _is_project_miru_dashboard_restart_allowed()
+        return jsonify(payload)
+
+    @app.get("/api/hub/summary")
+    def hub_summary():
+        """Aggregated hub dashboard data for the Miru Hub root page."""
+        payload = build_hub_summary_payload()
+        payload["restart_allowed"] = _is_runtime_control_allowed()
         return jsonify(payload)
 
     def _run_worktree_script(
@@ -10287,6 +10441,242 @@ def create_app() -> Flask:
     def dev_image_coverage():
         return jsonify(build_image_coverage_payload())
 
+    @app.get("/api/dev/training-review/queue")
+    def dev_training_review_queue():
+        """Catalog-backed training queue + Miru_Assets image URLs (18765 only)."""
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "error": "Training review is only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        set_code = request.args.get("set_code", "OP01").strip().upper()
+        limit = int(request.args.get("limit", "28"))
+        offset = int(request.args.get("offset", "0"))
+        return jsonify(build_training_review_queue_payload(
+            set_code_filter=set_code, limit=limit, offset=offset,
+        ))
+
+    @app.post("/api/dev/training-review/submit")
+    def dev_training_review_submit():
+        """Persist operator review decisions for later Miru use (localhost write)."""
+        if not _image_review_port_ok():
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Training review is only available on port 18765.",
+                    }
+                ),
+                403,
+            )
+        if not is_local_request():
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "Training review submit is only allowed from localhost.",
+                    }
+                ),
+                403,
+            )
+        payload = request.get_json(silent=True) or {}
+        card_code = str(payload.get("cardId") or "").strip().upper()
+        variant_id = str(payload.get("variantId") or "").strip()
+        verdict = str(payload.get("verdict") or "").strip()
+        action = str(payload.get("action") or "").strip().lower()
+        if not card_code or not verdict or action not in ("approve", "fix_it", "hold"):
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "cardId, verdict, and action are required.",
+                    }
+                ),
+                400,
+            )
+        printing_id: int | None = None
+        if variant_id.isdigit():
+            printing_id = int(variant_id)
+        # Accept optional structured correction detail array from enriched
+        # review payloads.  Falls back to empty list for coarse submissions.
+        raw_correction = payload.get("correctionDetail")
+        correction_detail = (
+            raw_correction
+            if isinstance(raw_correction, list)
+            else []
+        )
+        record = {
+            "card_code": card_code,
+            "printing_id": printing_id,
+            "variant_key": str(payload.get("variantKey") or ""),
+            "miru_image_relpath": str(payload.get("miruAssetsRelPath") or ""),
+            "verdict": verdict,
+            "issues": payload.get("issues") if isinstance(payload.get("issues"), list) else [],
+            "because": str(payload.get("because") or ""),
+            "source": str(payload.get("source") or ""),
+            "missing_image_source_url": str(payload.get("missingImageSourceUrl") or ""),
+            "missing_image_upload_name": str(payload.get("missingImageUploadName") or ""),
+            "action": action,
+            "client_payload": payload,
+            "correction_detail": correction_detail,
+        }
+        ok, msg, review_id = persist_training_review_row(record)
+        if not ok:
+            return jsonify({"ok": False, "error": msg}), 500
+        # Fire evidence collection in background (daemon thread, non-blocking).
+        # Skip re-collection when the operator explicitly rejects/holds a card
+        # that already has completed evidence — avoids the contradiction loop
+        # where reject → new evidence → re-contradiction → card re-appears.
+        should_collect = True
+        if review_id is not None and action in ("fix_it", "hold"):
+            should_collect = not _card_has_completed_evidence(card_code)
+        if review_id is not None and should_collect:
+            Thread(
+                target=_safe_collect_evidence,
+                args=(review_id,),
+                daemon=True,
+            ).start()
+        return jsonify({"ok": True, "stored": "dev_training_reviews", "detail": msg})
+
+    @app.get("/api/dev/candidate-queue")
+    def dev_candidate_queue():
+        """Candidate queue + history surface (18765 only, read-only)."""
+        if not _image_review_port_ok():
+            return (
+                jsonify({"error": "Candidate queue is only available on port 18765."}),
+                403,
+            )
+        return jsonify(build_candidate_queue_payload(card_code_prefix="OP01-"))
+
+    @app.get("/api/dev/op01/throughput")
+    def dev_op01_throughput():
+        """OP01-scoped throughput stats for the mission control surface."""
+        if not _image_review_port_ok():
+            return jsonify({"error": "Only available on port 18765."}), 403
+        return jsonify(op01_throughput_stats())
+
+    @app.get("/api/dev/helper/status")
+    def dev_helper_status():
+        """Local helper lane status (18765 only)."""
+        if not _image_review_port_ok():
+            return jsonify({"error": "Helper status is only available on port 18765."}), 403
+        return jsonify(helper_status())
+
+    @app.post("/api/dev/helper/lane")
+    def dev_helper_lane():
+        """Session helper lane on/off without restart (18765, localhost-only)."""
+        if not _image_review_port_ok():
+            return jsonify({"error": "Helper lane is only available on port 18765."}), 403
+        if not is_local_request():
+            return jsonify({"error": "Helper lane control is localhost-only."}), 403
+        payload = request.get_json(silent=True) or {}
+        if payload.get("reset"):
+            set_helper_runtime_override(None)
+        elif "enabled" in payload:
+            v = payload.get("enabled")
+            if not isinstance(v, bool):
+                return jsonify({"error": "enabled must be a boolean."}), 400
+            set_helper_runtime_override(v)
+        else:
+            return (
+                jsonify(
+                    {"error": 'Send {"enabled": true|false} or {"reset": true}.'}
+                ),
+                400,
+            )
+        return jsonify(helper_status())
+
+    @app.get("/api/dev/operator/price-context")
+    def dev_operator_price_context():
+        """Catalog-backed market price snapshot for operator review (18765)."""
+        if not _image_review_port_ok():
+            return (
+                jsonify({"error": "Price context is only available on port 18765."}),
+                403,
+            )
+        try:
+            pid = int(request.args.get("printing_id") or "0")
+        except ValueError:
+            return jsonify({"ok": False, "error": "printing_id required."}), 400
+        card_code = str(request.args.get("card_code") or "").strip()
+        variant_key = str(request.args.get("variant_key") or "").strip()
+        if not card_code:
+            return jsonify({"ok": False, "error": "card_code required."}), 400
+        out = build_operator_price_snapshot(
+            printing_id=pid, card_code=card_code, variant_key=variant_key
+        )
+        status = 200 if out.get("ok") else 400
+        return jsonify(out), status
+
+    @app.post("/api/dev/operator/price-refresh")
+    def dev_operator_price_refresh():
+        """Refresh one printing's price from local TCGCSV snapshot (localhost-only)."""
+        if not _image_review_port_ok():
+            return (
+                jsonify({"error": "Price refresh is only available on port 18765."}),
+                403,
+            )
+        if not is_local_request():
+            return jsonify({"error": "Price refresh is localhost-only."}), 403
+        payload = request.get_json(silent=True) or {}
+        try:
+            pid = int(payload.get("printing_id") or 0)
+        except ValueError:
+            return jsonify({"ok": False, "error": "printing_id required."}), 400
+        card_code = str(payload.get("card_code") or "").strip()
+        variant_key = str(payload.get("variant_key") or "").strip()
+        if not card_code:
+            return jsonify({"ok": False, "error": "card_code required."}), 400
+        out = refresh_operator_price_from_tcgcsv(
+            printing_id=pid, card_code=card_code, variant_key=variant_key
+        )
+        if out.get("ok"):
+            return jsonify(out)
+        return jsonify(out), 400
+
+    @app.post("/api/dev/helper/invoke")
+    def dev_helper_invoke():
+        """Invoke a local helper function (18765 only, advisory output).
+
+        Payload: {"task": "<task_name>", "params": {...}}
+        Supported tasks: summarize_candidate, explain_elevation,
+                         draft_note, suggest_correction
+        """
+        if not _image_review_port_ok():
+            return jsonify({"error": "Helper is only available on port 18765."}), 403
+        if not is_local_request():
+            return jsonify({"error": "Helper invoke is localhost-only."}), 403
+
+        payload = request.get_json(silent=True) or {}
+        task = str(payload.get("task") or "").strip()
+        params = payload.get("params") or {}
+        if not isinstance(params, dict):
+            params = {}
+
+        if task == "summarize_candidate":
+            return jsonify(summarize_candidate_rationale(params))
+        if task == "explain_elevation":
+            return jsonify(explain_elevation(params))
+        if task == "draft_note":
+            return jsonify(draft_review_note(
+                issue_type=str(params.get("issue_type") or ""),
+                because=str(params.get("because") or ""),
+                card_code=str(params.get("card_code") or ""),
+                variant_key=str(params.get("variant_key") or ""),
+            ))
+        if task == "suggest_correction":
+            return jsonify(suggest_correction_detail(
+                issue_type=str(params.get("issue_type") or ""),
+                card_code=str(params.get("card_code") or ""),
+                variant_key=str(params.get("variant_key") or ""),
+                because=str(params.get("because") or ""),
+            ))
+        return jsonify({"ok": False, "error": f"Unknown task: {task}"}), 400
+
     @app.get("/img/<path:relpath>")
     def dev_miru_assets_image(relpath: str):
         """Serve Miru_Assets images for image-review queue (18765 only)."""
@@ -10670,20 +11060,69 @@ def create_app() -> Flask:
             }
         )
 
-    @app.get("/api/dev/operator-console")
-    def dev_operator_console():
-        abort(404)
+    @app.get("/dev/operator-console")
+    def dev_operator_console_page():
+        """Operator console — mobile-first single-column review surface."""
+        if int(CURRENT_SERVER_PORT or 0) != 18765:
+            abort(404)
+        brand_assets = build_brand_assets()
+        return render_template(
+            "operator_console.html",
+            app_name=APP_NAME,
+            favicon_url=brand_assets["favicon_url"],
+            asset_version=compute_asset_version(),
+        )
 
-    @app.post("/api/dev/operator-console/action")
-    def dev_operator_console_action():
-        abort(404)
+    @app.post("/api/dev/training-review/verify-action")
+    def dev_training_review_verify_action():
+        """Pre-flight governance check before committing an operator action."""
+        if not _image_review_port_ok():
+            return jsonify({"ok": False, "error": "Only available on port 18765."}), 403
+        if not is_local_request():
+            return jsonify({"ok": False, "error": "Localhost only."}), 403
+        payload = request.get_json(silent=True) or {}
+        card_id = str(payload.get("cardId") or "").strip()
+        variant_id = str(payload.get("variantId") or "").strip()
+        action = str(payload.get("action") or "").strip().lower()
+        return jsonify(verify_action_preflight(card_id, variant_id, action))
 
-    @app.post("/api/dev/operator-console/query")
-    def dev_operator_console_query():
-        abort(404)
+    @app.get("/api/dev/operator-console/legend")
+    def dev_operator_console_legend():
+        """Badge/state/evidence metadata for operator legend modal."""
+        if not _image_review_port_ok():
+            return jsonify({"error": "Only available on port 18765."}), 403
+        return jsonify({
+            "badges": [
+                {"key": "false_parallel", "label": "False Parallel", "description": "Variant code issue — possible duplicate or mismatched parallel print.", "color": "#f87171"},
+                {"key": "name_mismatch", "label": "Name Mismatch", "description": "Card name differs across sources or prior reviews.", "color": "#fb923c"},
+                {"key": "stat_mismatch", "label": "Stat Mismatch", "description": "Stats or attributes conflict between evidence sources.", "color": "#fbbf24"},
+                {"key": "missing_art", "label": "Missing Art", "description": "No verified local artwork found for this card.", "color": "#a78bfa"},
+                {"key": "unverified", "label": "Unverified", "description": "Card exists in catalog but has no supporting evidence.", "color": "#94a3b8"},
+                {"key": "new_card", "label": "New Card", "description": "First appearance in review queue — no prior operator decisions.", "color": "#38bdf8"},
+            ],
+            "states": [
+                {"key": "live", "label": "Live", "description": "Card is active in catalog with no local image staged."},
+                {"key": "staged", "label": "Staged", "description": "Card has a verified local image ready for use."},
+            ],
+            "evidenceSources": [
+                {"key": "BANDAI_CDN_CHECK", "label": "Bandai CDN", "weight": 0.25, "canContradict": True},
+                {"key": "INTERNAL_ASSET_CHECK", "label": "Internal Asset", "weight": 0.25, "canContradict": False},
+                {"key": "PM_PARITY_CHECK", "label": "PM Parity", "weight": 0.20, "canContradict": False},
+                {"key": "JUSTTCG_CONSTRAINED", "label": "JustTCG", "weight": 0.15, "canContradict": True},
+                {"key": "OPTCGAPI_CROSS_CHECK", "label": "OPTCG API", "weight": 0.08, "canContradict": False},
+                {"key": "OPERATOR_URL", "label": "Operator URL", "weight": 0.15, "canContradict": False},
+                {"key": "PERPLEXITY", "label": "Perplexity", "weight": 0.05, "canContradict": False},
+                {"key": "YOUTUBE", "label": "YouTube", "weight": 0.03, "canContradict": False},
+            ],
+            "verdicts": [
+                {"key": "looks_correct", "label": "Looks Correct", "description": "Card data appears accurate across all checked fields."},
+                {"key": "needs_review", "label": "Needs Review", "description": "One or more issues identified — correction detail required."},
+                {"key": "not_sure", "label": "Not Sure", "description": "Insufficient evidence to make a confident determination."},
+            ],
+        })
 
     def _proxy_dev_action_to_main(path: str) -> tuple[bool, dict[str, Any]]:
-        """POST to main runtime (8765) and return (ok, body). Used when this server is worktree (e.g. 18765)."""
+        """POST to main runtime and return (ok, body). Used when this server is worktree (e.g. 18765)."""
         base = (
             (resolve_runtime_monitor_status_url() or "")
             .replace("/api/dev-status", "")
@@ -12150,7 +12589,7 @@ def parse_args() -> argparse.Namespace:
         "--host", default="0.0.0.0", help="Host to bind the Flask app to."
     )
     parser.add_argument(
-        "--port", type=int, default=8765, help="Port to bind the Flask app to."
+        "--port", type=int, default=18765, help="Port to bind the Flask app to."
     )
     parser.add_argument(
         "--debug",

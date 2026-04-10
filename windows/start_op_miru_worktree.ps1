@@ -526,7 +526,7 @@ if ($IncludeWatcher) {
 else {
     Write-OpMiruWorktreeLine "Watcher: not started. Re-run with -IncludeWatcher if you want the background watcher in the worktree too." "Yellow"
 }
-Write-OpMiruWorktreeLine "If your phone route or local proxy currently targets 8080/8765, point it to $DashboardPort/$MiruAiPort for the worktree."
+Write-OpMiruWorktreeLine "If your phone route or local proxy currently targets 8080, point it to $DashboardPort/$MiruAiPort for the worktree."
 
 return [pscustomobject]@{
     RepoRoot = $repoRoot

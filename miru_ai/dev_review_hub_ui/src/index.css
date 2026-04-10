@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    /* Shared tokens for Miru Hub / Operator / embedded surfaces (iPhone home-screen safe areas) */
+    --miru-safe-top: env(safe-area-inset-top, 0px);
+    --miru-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --miru-safe-left: env(safe-area-inset-left, 0px);
+    --miru-safe-right: env(safe-area-inset-right, 0px);
+    /* Canonical app canvas — matches Hub / Dev / Operator templates */
+    --miru-canvas: #0d0d0f;
+  }
+  html {
+    padding-left: var(--miru-safe-left);
+    padding-right: var(--miru-safe-right);
+    min-height: 100svh;
+    min-height: 100dvh;
+    overflow-x: clip;
+  }
+  body {
+    @apply bg-drh-bg text-drh-text;
+    min-height: 100svh;
+    min-height: 100dvh;
+    overflow-x: clip;
+  }
+}

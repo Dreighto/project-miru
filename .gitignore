@@ -7,6 +7,7 @@
 venv/
 env/
 secrets/
+.claude/
 .mcp.json
 mcp.json
 .cursor/mcp.json
@@ -25,6 +26,8 @@ miru_ai/dev_review_hub_ui/node_modules/
 .playwright-browsers/
 logs/
 .cdp-edge-log.txt
+data/startup-logs/
+windows/dispatcher_startup.log
 
 # Python temp and bytecode artifacts
 .pip-tmp/
@@ -33,3 +36,8 @@ logs/
 miru_ai/dev_review_hub_ui/.tmp-build-test/
 __pycache__/
 *.pyc
+
+# Local runtime databases and SQLite sidecars
+data/miru_dev_training_reviews.db
+*.db-shm
+*.db-wal

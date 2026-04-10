@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#0d0d0f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Operator Console — {{ app_name }}</title>
+    {% if favicon_url %}
+    <link rel="icon" href="{{ favicon_url }}{% if favicon_url.startswith('data:') %}{% else %}?v={{ asset_version }}{% endif %}">
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='dev_review_hub/assets/app.css') }}?v={{ asset_version }}">
+</head>
+<body class="min-h-dvh bg-[#0d0d0f] text-[#E4E4E4] antialiased">
+    <div id="operator-root"></div>
+    <script type="module" src="{{ url_for('static', filename='dev_review_hub/assets/app.js') }}?v={{ asset_version }}"></script>
+</body>
+</html>

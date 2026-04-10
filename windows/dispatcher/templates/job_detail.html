@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0d0d0f" />
+<title>Job {{ job_id_short }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="{{ url_for('static', filename='dispatcher.css') }}" />
+</head>
+<body>
+<main class="job-detail-main">
+  <a class="back" href="/">&larr; Dashboard</a>
+  <h1><span class="badge b-{{ status }}">{{ status }}</span> Job {{ job_id_short }}</h1>
+  <div class="field"><div class="field-label">ID</div><div class="field-value job-id">{{ job_id }}</div></div>
+  <div class="field"><div class="field-label">Model</div><div class="field-value">{{ model }}</div></div>
+  <div class="field"><div class="field-label">Effort</div><div class="field-value">{{ effort }}</div></div>
+  <div class="field"><div class="field-label">Created</div><div class="field-value">{{ created_at }}</div></div>
+  <div class="field"><div class="field-label">Finished</div><div class="field-value">{{ finished_at }}</div></div>
+  <div class="field"><div class="field-label">Duration</div><div class="field-value">{{ duration }}</div></div>
+  <div class="field"><div class="field-label">Execution</div><div class="field-value">{{ executor_mode }} ({{ handler_name }})</div></div>
+  {{ usage_block | safe }}
+  <div class="field"><div class="field-label">Prompt</div><pre>{{ prompt }}</pre></div>
+  <div class="field"><div class="field-label">Output</div><pre>{{ output }}</pre></div>
+</main>
+</body>
+</html>

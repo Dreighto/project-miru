@@ -718,7 +718,7 @@ class MiruAiServerTests(unittest.TestCase):
                 addEventListener: () => {{}},
                 scrollTo: () => {{}},
                 history: {{ pushState: () => {{}}, replaceState: () => {{}} }},
-                location: {{ origin: 'http://localhost:8765', href: 'http://localhost:8765/ask' }},
+                location: {{ origin: 'http://localhost:18765', href: 'http://localhost:18765/ask' }},
                 setInterval: () => 1,
                 clearInterval: () => {{}},
                 setTimeout: (fn) => 1,

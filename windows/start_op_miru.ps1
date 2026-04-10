@@ -1,5 +1,5 @@
 # LEGACY / NON-CANONICAL IN THIS WORKTREE
-# This launcher follows the main-runtime model (8080 dashboard, 8765 Miru AI).
+# This launcher follows the main-runtime model (8080 dashboard, 18765 Miru AI).
 # For Project Miru worktree runtime authority, use:
 #   windows/start_op_miru_worktree.ps1  (18080 dashboard, 18765 Miru AI/Dev)
 # Keep this script for compatibility only; do not use it as the default worktree start path.
