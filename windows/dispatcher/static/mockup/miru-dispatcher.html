@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Miru Task Dispatcher — Mockup</title>
+
+<!-- Fonts -->
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet"/>
+
+<style>
+/* ================================================================
+   NEXUS DARK — Design Tokens
+   ================================================================ */
+:root {
+  --color-bg:               #171614;
+  --color-surface:          #1c1b19;
+  --color-surface-2:        #201f1d;
+  --color-surface-offset:   #22211f;
+  --color-divider:          #262523;
+  --color-border:           #393836;
+  --color-text:             #cdccca;
+  --color-text-muted:       #797876;
+  --color-text-faint:       #5a5957;
+  --color-primary:          #4f98a3;
+  --color-primary-hover:    #227f8b;
+  --color-primary-highlight:#313b3b;
+  --color-success:          #6daa45;
+  --color-success-highlight:#3a4435;
+  --color-error:            #dd6974;
+  --color-error-highlight:  #574848;
+  --color-warning:          #fdab43;
+  --color-warning-highlight:#564b3e;
+  --color-text-inverse:     #2b2a28;
+
+  /* Spacing — 4px base */
+  --space-1:  4px;  --space-2:  8px;  --space-3: 12px;
+  --space-4: 16px;  --space-5: 20px;  --space-6: 24px;
+  --space-8: 32px;  --space-10:40px;  --space-12:48px;
+
+  /* Radius */
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:  12px;
+  --radius-full: 9999px;
+
+  /* Type scale */
+  --text-xs:   0.6875rem;
+  --text-sm:   0.8125rem;
+  --text-base: 0.9375rem;
+
+  /* Fonts */
+  --font-body: 'Satoshi', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Motion */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur:  150ms;
+
+  /* Layout */
+  --header-h: 48px;
+  --rail-w:   240px;
+}
+
+/* ================================================================
+   Reset
+   ================================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+html,body{background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:var(--text-base)}
+body{height:100dvh;line-height:1.5;overflow:hidden}
+a{color:var(--color-primary);text-decoration:none}
+pre{margin:0;font-family:var(--font-mono)}
+svg.lucide{width:16px;height:16px;flex-shrink:0}
+
+/* ================================================================
+   Header — 48px sticky, glass bg
+   ================================================================ */
+.header{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  height:var(--header-h);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 var(--space-4);
+  background:rgba(23,22,20,0.9);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--color-divider);
+}
+.header-left{display:flex;align-items:center;gap:var(--space-2)}
+.logo-mark{width:22px;height:22px;color:var(--color-text);flex-shrink:0}
+.wordmark{font-size:var(--text-sm);font-weight:500;color:var(--color-text);letter-spacing:-0.01em}
+.header-right{display:flex;align-items:center;gap:var(--space-3)}
+
+.status-pill{
+  display:inline-flex;align-items:center;gap:var(--space-1);
+  padding:2px 10px;border-radius:var(--radius-full);
+  font-size:var(--text-xs);font-weight:500;
+  background:var(--color-surface);border:1px solid var(--color-divider);
+}
+.status-pill.live .sp-dot{color:var(--color-success)}
+.status-pill.live .sp-label{color:var(--color-success)}
+.status-pill.offline .sp-dot{color:var(--color-error)}
+.status-pill.offline .sp-label{color:var(--color-error)}
+.sp-dot{font-size:10px;line-height:1}
+
+.avatar{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--color-primary-highlight);
+  display:flex;align-items:center;justify-content:center;
+  font-size:var(--text-xs);font-weight:600;color:var(--color-text);
+  flex-shrink:0;
+}
+
+/* ================================================================
+   Left Rail — 240px
+   ================================================================ */
+.rail{
+  position:fixed;top:var(--header-h);left:0;bottom:0;
+  width:var(--rail-w);
+  display:flex;flex-direction:column;
+  background:var(--color-surface);
+  border-right:1px solid var(--color-divider);
+  z-index:50;
+}
+.rail-label{
+  font-size:var(--text-xs);font-weight:500;color:var(--color-text-faint);
+  text-transform:uppercase;letter-spacing:0.08em;
+  padding:var(--space-4) var(--space-3) var(--space-2);
+}
+.rail-nav{display:flex;flex-direction:column;gap:var(--space-1);padding:0 var(--space-2);flex:1}
+
+.rail-item{
+  display:flex;align-items:center;gap:var(--space-2);
+  height:36px;padding:0 var(--space-3);
+  border:none;background:none;
+  color:var(--color-text-muted);
+  font-family:var(--font-body);font-size:var(--text-sm);font-weight:500;
+  cursor:default;border-radius:var(--radius-md);
+  transition:background var(--dur) var(--ease),color var(--dur) var(--ease);
+  border-left:2px solid transparent;
+  width:100%;text-align:left;
+}
+.rail-item:not(.active):not(.disabled):hover{
+  background:var(--color-surface-offset);color:var(--color-text);cursor:pointer;
+}
+.rail-item.active{
+  background:var(--color-primary-highlight);
+  color:var(--color-text);
+  border-left-color:var(--color-primary);
+}
+.rail-item.disabled{opacity:0.45;cursor:default}
+
+.rail-version{
+  padding:var(--space-4) var(--space-3);
+  font-size:var(--text-xs);color:var(--color-text-faint);
+}
+
+/* ================================================================
+   Main Content Area
+   ================================================================ */
+.main{
+  margin-left:var(--rail-w);
+  margin-top:var(--header-h);
+  height:calc(100dvh - var(--header-h));
+  overflow-y:auto;
+  background:var(--color-bg);
+}
+.main-inner{
+  max-width:720px;margin:0 auto;
+  padding:var(--space-6);
+}
+
+/* ================================================================
+   Live Running Banner
+   ================================================================ */
+.live-banner{
+  display:flex;align-items:center;gap:var(--space-2);
+  height:36px;padding:0 var(--space-4);
+  background:color-mix(in oklch, var(--color-primary) 10%, var(--color-surface));
+  border-left:2px solid var(--color-primary);
+  border-radius:var(--radius-md);
+  font-size:var(--text-sm);color:var(--color-text-muted);
+  margin-bottom:var(--space-4);
+  opacity:1;transform:translateY(0);
+  transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease);
+}
+.live-banner.hidden{opacity:0;transform:translateY(-4px);height:0;padding:0;margin:0;overflow:hidden}
+.pulse-dot{color:var(--color-primary);animation:pulse 2s ease-in-out infinite;font-size:12px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ================================================================
+   Stats Strip
+   ================================================================ */
+.stats-strip{
+  font-size:var(--text-sm);color:var(--color-text-muted);
+  margin-bottom:var(--space-6);
+}
+.stats-strip .sn{color:var(--color-text);font-weight:600;font-family:var(--font-mono)}
+
+/* ================================================================
+   Section Heading
+   ================================================================ */
+.section-heading{
+  font-size:var(--text-xs);font-weight:500;color:var(--color-text-muted);
+  text-transform:uppercase;letter-spacing:0.08em;
+  margin-bottom:var(--space-3);
+}
+
+/* ================================================================
+   Submit Job Card
+   ================================================================ */
+.card{
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-lg);
+  padding:var(--space-5);
+  margin-bottom:var(--space-6);
+}
+.field-label{
+  font-size:var(--text-xs);font-weight:500;color:var(--color-text-faint);
+  text-transform:uppercase;letter-spacing:0.06em;
+  margin-bottom:var(--space-2);display:block;
+}
+.field-group{margin-bottom:var(--space-4)}
+
+textarea.prompt-input{
+  width:100%;min-height:96px;resize:vertical;
+  font-family:var(--font-body);font-size:var(--text-base);
+  background:var(--color-bg);color:var(--color-text);
+  border:1px solid var(--color-border);border-radius:var(--radius-md);
+  padding:var(--space-3);line-height:1.5;
+  transition:border-color var(--dur) var(--ease);
+}
+textarea.prompt-input:focus{
+  outline:none;border-color:var(--color-primary);
+  box-shadow:0 0 0 1px rgba(79,152,163,0.15);
+}
+textarea.prompt-input::placeholder{color:var(--color-text-faint)}
+.char-counter{
+  text-align:right;font-family:var(--font-mono);
+  font-size:var(--text-xs);color:var(--color-text-faint);
+  margin-top:var(--space-1);
+}
+
+/* Segmented control */
+.seg-group{display:inline-flex;border:1px solid var(--color-border);border-radius:var(--radius-md);overflow:hidden}
+.seg{
+  padding:var(--space-1) var(--space-3);
+  border:none;background:none;color:var(--color-text-muted);
+  font-family:var(--font-body);font-size:var(--text-xs);font-weight:500;
+  cursor:pointer;transition:all var(--dur) var(--ease);
+  min-height:30px;white-space:nowrap;position:relative;
+  display:inline-flex;align-items:center;gap:var(--space-1);
+}
+.seg:not(:last-child)::after{
+  content:'';position:absolute;right:0;top:25%;height:50%;width:1px;
+  background:var(--color-border);
+}
+.seg:hover{background:var(--color-surface-2);color:var(--color-text)}
+.seg.active{background:var(--color-primary);color:var(--color-text-inverse);font-weight:600}
+.seg.active::after{display:none}
+
+.experimental-pill{
+  font-size:0.5625rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;
+  padding:1px 5px;border-radius:var(--radius-full);
+  background:rgba(253,171,67,0.15);color:var(--color-warning);
+  line-height:1.4;
+}
+
+.effort-hint{
+  font-size:var(--text-xs);color:var(--color-text-faint);
+  font-style:italic;margin-top:var(--space-1);min-height:1.2em;
+}
+
+.btn-dispatch{
+  width:100%;height:44px;
+  background:var(--color-primary);color:var(--color-text-inverse);
+  border:none;border-radius:var(--radius-md);
+  font-family:var(--font-body);font-size:var(--text-sm);font-weight:600;
+  cursor:pointer;transition:background var(--dur) var(--ease);
+}
+.btn-dispatch:hover{background:var(--color-primary-hover)}
+.btn-dispatch:disabled{opacity:0.5;cursor:not-allowed}
+
+/* ================================================================
+   Job Card
+   ================================================================ */
+.job-list{display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-6)}
+
+.job-card{
+  background:var(--color-surface);
+  border:1px solid var(--color-border);
+  border-radius:var(--radius-md);
+  padding:var(--space-3) var(--space-4);
+  cursor:pointer;
+  transition:border-color var(--dur) var(--ease);
+}
+.job-card:hover{border-color:color-mix(in oklch, var(--color-border) 100%, white 10%)}
+
+.jc-header{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}
+
+/* Status badges */
+.badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:var(--text-xs);font-weight:500;
+  padding:2px 8px;border-radius:var(--radius-sm);
+  white-space:nowrap;text-transform:capitalize;
+}
+.badge-pending{background:var(--color-surface-offset);color:var(--color-text-muted)}
+.badge-running{background:var(--color-primary-highlight);color:var(--color-primary)}
+.badge-done{background:var(--color-success-highlight);color:var(--color-success)}
+.badge-failed{background:var(--color-error-highlight);color:var(--color-error)}
+.badge-cancelled{background:var(--color-surface-offset);color:var(--color-text-faint)}
+.badge-cancel_requested{background:var(--color-warning-highlight);color:var(--color-warning)}
+.badge-running .badge-dot{animation:pulse 2s ease-in-out infinite}
+
+.model-chip,.effort-chip{
+  font-size:var(--text-xs);color:var(--color-text-muted);
+  background:var(--color-surface-offset);
+  padding:2px 7px;border-radius:var(--radius-sm);
+}
+.sim-chip{
+  font-size:var(--text-xs);font-weight:600;text-transform:uppercase;
+  letter-spacing:0.03em;
+  background:var(--color-warning-highlight);color:var(--color-warning);
+  padding:2px 6px;border-radius:var(--radius-sm);
+}
+
+.jc-time{
+  font-size:var(--text-xs);color:var(--color-text-faint);
+  font-family:var(--font-mono);margin-left:auto;white-space:nowrap;flex-shrink:0;
+}
+.jc-chevron{
+  color:var(--color-text-faint);transition:transform var(--dur) var(--ease);
+  flex-shrink:0;margin-left:var(--space-1);
+}
+.job-card.expanded .jc-chevron{transform:rotate(180deg)}
+
+.jc-preview{
+  font-size:var(--text-sm);color:var(--color-text-muted);
+  margin-top:var(--space-2);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;white-space:pre-wrap;
+}
+
+/* Expanded detail */
+.jc-detail{
+  max-height:0;overflow:hidden;
+  transition:max-height 250ms var(--ease),opacity 150ms var(--ease);
+  opacity:0;
+}
+.job-card.expanded .jc-detail{opacity:1}
+
+.jc-detail-inner{
+  padding-top:var(--space-3);margin-top:var(--space-3);
+  border-top:1px solid var(--color-divider);
+}
+.jc-pre{
+  font-family:var(--font-mono);font-size:var(--text-xs);
+  color:var(--color-text-muted);background:var(--color-surface-2);
+  padding:var(--space-3);border-radius:var(--radius-md);
+  max-height:280px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;
+  margin-top:var(--space-2);line-height:1.6;
+}
+.jc-detail-label{
+  font-size:var(--text-xs);font-weight:500;color:var(--color-text-faint);
+  text-transform:uppercase;letter-spacing:0.06em;margin-top:var(--space-3);
+}
+.jc-actions{
+  display:flex;gap:var(--space-2);margin-top:var(--space-3);
+  padding-top:var(--space-3);border-top:1px solid var(--color-divider);
+}
+
+/* Ghost buttons */
+.btn-ghost{
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--space-1);
+  min-height:30px;padding:var(--space-1) var(--space-3);
+  background:none;color:var(--color-text-muted);
+  border:1px solid var(--color-border);border-radius:var(--radius-md);
+  font-family:var(--font-body);font-size:var(--text-xs);font-weight:500;
+  cursor:pointer;transition:all var(--dur) var(--ease);white-space:nowrap;
+}
+.btn-ghost:hover{background:var(--color-surface-2);color:var(--color-text)}
+.btn-ghost.danger{color:var(--color-error);border-color:var(--color-error)}
+.btn-ghost.danger:hover{background:var(--color-error-highlight)}
+
+/* ================================================================
+   Operator Section
+   ================================================================ */
+.operator-buttons{display:flex;gap:var(--space-2);margin-bottom:var(--space-3)}
+
+/* Restart state machine */
+.restart-confirm{
+  display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-2) var(--space-3);
+  background:var(--color-surface-2);border-radius:var(--radius-md);
+  font-size:var(--text-sm);color:var(--color-text-muted);
+  margin-bottom:var(--space-3);
+}
+.restart-confirm .btn-confirm{
+  display:inline-flex;align-items:center;min-height:28px;
+  padding:var(--space-1) var(--space-3);
+  background:var(--color-error);color:var(--color-text-inverse);
+  border:none;border-radius:var(--radius-md);
+  font-family:var(--font-body);font-size:var(--text-xs);font-weight:600;
+  cursor:pointer;transition:opacity var(--dur) var(--ease);
+}
+.restart-confirm .btn-confirm:hover{opacity:0.85}
+.restart-confirm .btn-ghost{min-height:28px}
+.restart-verifying{
+  display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-2) var(--space-3);
+  font-size:var(--text-sm);color:var(--color-text-muted);
+  margin-bottom:var(--space-3);
+}
+.spinner{
+  width:16px;height:16px;border-radius:50%;
+  border:2px solid var(--color-divider);
+  border-top-color:var(--color-primary);
+  animation:spin 0.8s linear infinite;flex-shrink:0;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.restart-done{
+  display:flex;align-items:center;gap:var(--space-2);
+  padding:var(--space-2) var(--space-3);
+  font-size:var(--text-sm);color:var(--color-success);
+  margin-bottom:var(--space-3);
+}
+
+/* Log drawer (inline) */
+.log-drawer{
+  max-height:0;overflow:hidden;
+  transition:max-height 250ms var(--ease);
+}
+.log-drawer.open{max-height:400px}
+.log-pre{
+  font-family:var(--font-mono);font-size:var(--text-xs);
+  color:var(--color-text-muted);background:var(--color-surface-2);
+  padding:var(--space-3);border-radius:var(--radius-md);
+  max-height:320px;overflow-y:auto;white-space:pre-wrap;
+  word-break:break-word;line-height:1.7;margin-top:var(--space-2);
+}
+
+/* ================================================================
+   Toast System — bottom center
+   ================================================================ */
+.toast-rack{
+  position:fixed;bottom:var(--space-6);left:50%;transform:translateX(-50%);
+  z-index:200;display:flex;flex-direction:column-reverse;gap:var(--space-2);
+  pointer-events:none;
+}
+.toast{
+  background:var(--color-surface);border:1px solid var(--color-border);
+  border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);
+  font-size:var(--text-sm);color:var(--color-text);
+  box-shadow:0 4px 24px oklch(0 0 0 / 0.4);
+  opacity:0;transform:translateY(8px);
+  transition:all var(--dur) var(--ease);pointer-events:auto;
+  white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.t-ok{border-color:var(--color-success)}
+.toast.t-err{border-color:var(--color-error)}
+.toast.t-info{border-color:var(--color-primary)}
+
+/* ================================================================
+   Touch / a11y
+   ================================================================ */
+.seg,.btn-dispatch,.btn-ghost,.job-card,.rail-item{
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="header">
+  <div class="header-left">
+    <svg class="logo-mark" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="12" cy="12" r="4" fill="currentColor"/>
+    </svg>
+    <span class="wordmark">miru</span>
+  </div>
+  <div class="header-right">
+    <span class="status-pill live" id="status-pill">
+      <span class="sp-dot">●</span>
+      <span class="sp-label">LIVE</span>
+    </span>
+    <div class="avatar">D</div>
+  </div>
+</header>
+
+<!-- ============================================================
+     LEFT RAIL
+     ============================================================ -->
+<nav class="rail">
+  <span class="rail-label">Operator</span>
+  <div class="rail-nav">
+    <button class="rail-item active"><i data-lucide="zap"></i><span>Jobs</span></button>
+    <button class="rail-item disabled"><i data-lucide="activity"></i><span>Health</span></button>
+    <button class="rail-item disabled"><i data-lucide="cpu"></i><span>Executors</span></button>
+    <button class="rail-item disabled"><i data-lucide="list"></i><span>Runs</span></button>
+    <button class="rail-item disabled"><i data-lucide="bar-chart-2"></i><span>Usage</span></button>
+    <button class="rail-item disabled"><i data-lucide="folder"></i><span>File Browser</span></button>
+    <button class="rail-item disabled"><i data-lucide="settings"></i><span>Config</span></button>
+  </div>
+  <span class="rail-version">v0.5.0</span>
+</nav>
+
+<!-- ============================================================
+     MAIN
+     ============================================================ -->
+<main class="main">
+<div class="main-inner">
+
+  <!-- Live Running Banner -->
+  <div class="live-banner" id="live-banner">
+    <span class="pulse-dot">●</span>
+    <span id="banner-text">1 job running — dispatched 7m ago</span>
+  </div>
+
+  <!-- Stats Strip -->
+  <div class="stats-strip" id="stats-strip"></div>
+
+  <!-- ── Submit Job ── -->
+  <div class="section-heading">Submit Job</div>
+  <div class="card" id="submit-card">
+    <div class="field-group">
+      <label class="field-label" for="prompt">Prompt</label>
+      <textarea class="prompt-input" id="prompt" placeholder="Describe the task..." maxlength="2000"></textarea>
+      <div class="char-counter" id="char-counter">0 / 2000</div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Model</label>
+      <div class="seg-group" id="seg-model">
+        <button class="seg active" data-val="Claude Code">Claude Code</button>
+        <button class="seg" data-val="Cursor">Cursor <span class="experimental-pill">Experimental</span></button>
+        <button class="seg" data-val="ChatGPT">ChatGPT</button>
+        <button class="seg" data-val="Codex">Codex</button>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Effort</label>
+      <div class="seg-group" id="seg-effort">
+        <button class="seg" data-val="Quick">Quick</button>
+        <button class="seg active" data-val="Standard">Standard</button>
+        <button class="seg" data-val="Deep">Deep</button>
+      </div>
+      <div class="effort-hint" id="effort-hint">~medium token use</div>
+    </div>
+    <button class="btn-dispatch" id="btn-dispatch">Dispatch</button>
+  </div>
+
+  <!-- ── Live Jobs ── -->
+  <div class="section-heading" id="live-heading">Live Jobs</div>
+  <div class="job-list" id="live-list"></div>
+
+  <!-- ── Job History ── -->
+  <div class="section-heading" id="history-heading">Job History</div>
+  <div class="job-list" id="history-list"></div>
+
+  <!-- ── Operator ── -->
+  <div class="section-heading">Operator</div>
+  <div class="card" id="operator-card">
+    <div class="operator-buttons">
+      <button class="btn-ghost" id="btn-logs"><i data-lucide="file-text"></i>View Logs</button>
+      <button class="btn-ghost danger" id="btn-restart"><i data-lucide="refresh-cw"></i>Restart</button>
+    </div>
+    <div id="restart-state"></div>
+    <div class="log-drawer" id="log-drawer">
+      <pre class="log-pre" id="log-pre"></pre>
+    </div>
+  </div>
+
+</div>
+</main>
+
+<!-- Toast rack -->
+<div class="toast-rack" id="toast-rack"></div>
+
+<!-- Lucide CDN -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+<script>
+(function(){
+'use strict';
+
+/* ================================================================
+   Mock Data
+   ================================================================ */
+var nextId = 5;
+function uid(){ return 'job-' + String(nextId++).padStart(4,'0') }
+
+function ago(mins){
+  return new Date(Date.now() - mins * 60000).toISOString();
+}
+
+var jobs = [
+  { id:'job-0001', status:'running',  model:'Claude Code', effort:'Standard',
+    created_at:ago(7), executor_mode:'real',
+    prompt:'Analyze card pool for OP09 and recommend top-tier builds with synergy breakdowns.',
+    output_preview:'Analyzing card pool for OP09\u2026',
+    output:'## OP09 Analysis\n\nScanning 312 cards across 6 colors.\n\nTop synergies identified:\n- Red/Green aggro: 67% win rate in simulation\n- Blue/Purple control: 61% win rate\n- Yellow rush: 58% win rate\n\nRecommendation: Focus on Red/Green builds for competitive play.\nFull breakdown attached in data/op09_analysis.json.' },
+
+  { id:'job-0002', status:'done',     model:'Cursor',      effort:'Quick',
+    created_at:ago(22), executor_mode:'simulated',
+    prompt:'Refactor the card handler module to use async/await pattern throughout.',
+    output_preview:'Refactored handler, 3 files changed.',
+    output:'Refactored handler, 3 files changed.\n\n- handlers/card_handler.py: converted 4 sync functions to async\n- handlers/batch.py: updated batch processor\n- tests/test_handler.py: updated test fixtures\n\nAll 14 tests passing.' },
+
+  { id:'job-0003', status:'failed',   model:'ChatGPT',     effort:'Deep',
+    created_at:ago(60), executor_mode:'real',
+    prompt:'Generate comprehensive pricing models for all sets from OP01 to OP09 with market trend analysis.',
+    output_preview:'Error: rate limit exceeded on attempt 2.',
+    output:'Error: rate limit exceeded on attempt 2.\n\nTraceback:\n  File "workers/pricing.py", line 142\n    response = await client.chat(...)\n  openai.RateLimitError: Rate limit exceeded.\n\nRetry 1/3: waiting 30s... failed\nRetry 2/3: waiting 60s... failed\nAborting after 2 failed retries.' },
+
+  { id:'job-0004', status:'pending',  model:'Codex',       effort:'Standard',
+    created_at:ago(2), executor_mode:'real',
+    prompt:'Index all card images from the latest expansion set and generate thumbnails.',
+    output_preview:'(no output yet)',
+    output:'' }
+];
+
+var LIVE_STATES = new Set(['pending','running','cancel_requested']);
+
+var EFFORT_HINTS = {
+  'Quick':    '~low token use',
+  'Standard': '~medium token use',
+  'Deep':     '~high token use \u2014 use sparingly'
+};
+
+var MOCK_LOGS = [
+  '[2026-04-11 08:41:02] INFO  miru.dispatcher: Server started on port 19000',
+  '[2026-04-11 08:41:02] INFO  miru.dispatcher: Loaded environment (14 keys)',
+  '[2026-04-11 08:41:03] INFO  miru.dispatcher: SQLite DB ready at data/dispatcher.db',
+  '[2026-04-11 08:41:03] INFO  miru.dispatcher: Registered 3 executor backends',
+  '[2026-04-11 08:42:15] INFO  miru.worker: Job job-0004 queued (model=Codex, effort=Standard)',
+  '[2026-04-11 08:42:18] INFO  miru.worker: Job job-0001 started (model=Claude Code)',
+  '[2026-04-11 08:43:01] WARN  miru.worker: Job job-0003 retry 1/3 after RateLimitError',
+  '[2026-04-11 08:44:05] ERROR miru.worker: Job job-0003 failed after 2 retries',
+  '[2026-04-11 08:44:22] INFO  miru.worker: Job job-0002 completed in 8.4s (3 files)',
+  '[2026-04-11 08:47:31] INFO  miru.dispatcher: Health check OK (pm=up, miru_ai=up)'
+].join('\n');
+
+/* ================================================================
+   Helpers
+   ================================================================ */
+function esc(s){
+  return (s||'').replace(/[&<>"']/g,function(c){
+    return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function fmtTime(iso){
+  if(!iso) return '';
+  var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if(diff < 10) return 'now';
+  if(diff < 60) return Math.floor(diff)+'s ago';
+  if(diff < 3600) return Math.floor(diff/60)+'m ago';
+  if(diff < 86400) return Math.floor(diff/3600)+'h ago';
+  return new Date(iso).toLocaleDateString();
+}
+function $(id){ return document.getElementById(id) }
+function icons(){ try{if(window.lucide) lucide.createIcons()}catch(e){} }
+
+/* ================================================================
+   Toast
+   ================================================================ */
+var toastRack = $('toast-rack');
+function toast(msg, type){
+  type = type || 'info';
+  var el = document.createElement('div');
+  el.className = 'toast t-'+type;
+  el.textContent = (type==='ok'?'\u2713 ':type==='err'?'\u2717 ':'')+msg;
+  toastRack.appendChild(el);
+  requestAnimationFrame(function(){ el.classList.add('show') });
+  var all = toastRack.querySelectorAll('.toast');
+  while(all.length>3){ all[0].remove(); all=toastRack.querySelectorAll('.toast') }
+  setTimeout(function(){
+    el.classList.remove('show');
+    setTimeout(function(){ if(el.parentNode) el.remove() },300);
+  },2500);
+}
+
+/* ================================================================
+   Stats
+   ================================================================ */
+function renderStats(){
+  var total = jobs.length;
+  var done  = jobs.filter(function(j){return j.status==='done'}).length;
+  var active= jobs.filter(function(j){return LIVE_STATES.has(j.status)}).length;
+  $('stats-strip').innerHTML =
+    '<span class="sn">'+total+'</span> jobs today &middot; '+
+    '<span class="sn">'+done+'</span> done &middot; '+
+    '<span class="sn">'+active+'</span> active';
+}
+
+/* ================================================================
+   Live Banner
+   ================================================================ */
+function renderBanner(){
+  var running = jobs.filter(function(j){return j.status==='running'});
+  var banner = $('live-banner');
+  if(running.length === 0){
+    banner.classList.add('hidden');
+    return;
+  }
+  banner.classList.remove('hidden');
+  var t = fmtTime(running[0].created_at);
+  $('banner-text').textContent =
+    running.length + ' job' + (running.length>1?'s':'') +
+    ' running \u2014 dispatched ' + t;
+}
+
+/* ================================================================
+   Job Card Rendering
+   ================================================================ */
+function badgeClass(s){ return 'badge badge-'+s }
+
+function renderJobCard(j){
+  var sim = j.executor_mode==='simulated' ? '<span class="sim-chip">SIM</span>' : '';
+  var cancelable = j.status==='pending'||j.status==='running';
+  return '<div class="job-card" data-id="'+j.id+'" tabindex="0">' +
+    '<div class="jc-header">' +
+      '<span class="'+badgeClass(j.status)+'">' +
+        (j.status==='running'?'<span class="badge-dot">\u25CF </span>':'')+
+        esc(j.status) +
+      '</span>' +
+      '<span class="model-chip">'+esc(j.model)+'</span>' +
+      '<span class="effort-chip">'+esc(j.effort)+'</span>' +
+      sim +
+      '<span class="jc-time">'+fmtTime(j.created_at)+'</span>' +
+      '<i data-lucide="chevron-down" class="jc-chevron"></i>' +
+    '</div>' +
+    '<div class="jc-preview">'+esc(j.output_preview)+'</div>' +
+    '<div class="jc-detail">' +
+      '<div class="jc-detail-inner">' +
+        '<span class="jc-detail-label">Prompt</span>' +
+        '<pre class="jc-pre">'+esc(j.prompt)+'</pre>' +
+        '<span class="jc-detail-label">Output</span>' +
+        '<pre class="jc-pre">'+esc(j.output || '(no output yet)')+'</pre>' +
+        '<div class="jc-actions">' +
+          (cancelable ? '<button class="btn-ghost danger" data-cancel="'+j.id+'"><i data-lucide="x-circle"></i>Cancel</button>' : '') +
+          '<button class="btn-ghost" data-refresh="'+j.id+'"><i data-lucide="refresh-cw"></i>Refresh</button>' +
+          '<button class="btn-ghost" data-detail="'+j.id+'"><i data-lucide="external-link"></i>Detail</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderJobLists(){
+  var live = jobs.filter(function(j){return LIVE_STATES.has(j.status)});
+  var history = jobs.filter(function(j){return !LIVE_STATES.has(j.status)});
+
+  $('live-list').innerHTML = live.map(renderJobCard).join('');
+  $('history-list').innerHTML = history.map(renderJobCard).join('');
+
+  $('live-heading').classList.toggle('hidden', live.length===0);
+  $('live-list').classList.toggle('hidden', live.length===0);
+  $('history-heading').classList.toggle('hidden', history.length===0);
+  $('history-list').classList.toggle('hidden', history.length===0);
+
+  icons();
+}
+
+/* ================================================================
+   Card Expand / Collapse
+   ================================================================ */
+document.body.addEventListener('click', function(ev){
+  /* Cancel button */
+  var cancelBtn = ev.target.closest('[data-cancel]');
+  if(cancelBtn){
+    ev.stopPropagation();
+    var cid = cancelBtn.getAttribute('data-cancel');
+    var job = jobs.find(function(j){return j.id===cid});
+    if(job){
+      job.status = 'cancelled';
+      job.output_preview = 'Cancelled by operator.';
+      job.output = 'Cancelled by operator.';
+      renderAll();
+      toast('Job '+cid.substring(0,8)+' cancelled','info');
+    }
+    return;
+  }
+
+  /* Refresh button — no-op toast */
+  var refreshBtn = ev.target.closest('[data-refresh]');
+  if(refreshBtn){
+    ev.stopPropagation();
+    toast('Refreshed','ok');
+    return;
+  }
+
+  /* Detail button — no-op toast */
+  var detailBtn = ev.target.closest('[data-detail]');
+  if(detailBtn){
+    ev.stopPropagation();
+    toast('Detail view (mockup)','info');
+    return;
+  }
+
+  /* Card click — toggle expand */
+  var card = ev.target.closest('.job-card');
+  if(card){
+    var detail = card.querySelector('.jc-detail');
+    var isOpen = card.classList.contains('expanded');
+    /* Close all */
+    document.querySelectorAll('.job-card.expanded').forEach(function(c){
+      c.classList.remove('expanded');
+      c.querySelector('.jc-detail').style.maxHeight = '0';
+    });
+    if(!isOpen){
+      card.classList.add('expanded');
+      detail.style.maxHeight = detail.scrollHeight + 'px';
+    }
+  }
+});
+
+/* ================================================================
+   Segmented Controls
+   ================================================================ */
+document.querySelectorAll('.seg-group').forEach(function(g){
+  g.addEventListener('click',function(e){
+    var btn = e.target.closest('.seg');
+    if(!btn) return;
+    g.querySelectorAll('.seg').forEach(function(s){s.classList.remove('active')});
+    btn.classList.add('active');
+    /* Effort hint */
+    if(g.id==='seg-effort'){
+      $('effort-hint').textContent = EFFORT_HINTS[btn.getAttribute('data-val')] || '';
+    }
+  });
+});
+
+/* ================================================================
+   Char Counter
+   ================================================================ */
+$('prompt').addEventListener('input',function(){
+  $('char-counter').textContent = this.value.length + ' / 2000';
+});
+
+/* ================================================================
+   Dispatch (mock)
+   ================================================================ */
+$('btn-dispatch').addEventListener('click',function(){
+  var prompt = $('prompt').value.trim();
+  if(!prompt){ toast('Prompt required','err'); return; }
+  var modelEl = document.querySelector('#seg-model .seg.active');
+  var effortEl = document.querySelector('#seg-effort .seg.active');
+  var model  = modelEl  ? modelEl.getAttribute('data-val') : 'Claude Code';
+  var effort = effortEl ? effortEl.getAttribute('data-val') : 'Standard';
+
+  var btn = $('btn-dispatch');
+  btn.disabled = true; btn.textContent = 'Dispatching\u2026';
+
+  var newJob = {
+    id: uid(), status:'pending', model:model, effort:effort,
+    created_at: new Date().toISOString(), executor_mode:'real',
+    prompt: prompt, output_preview:'(no output yet)', output:''
+  };
+  jobs.unshift(newJob);
+  $('prompt').value = '';
+  $('char-counter').textContent = '0 / 2000';
+  renderAll();
+  toast('Dispatched '+newJob.id.substring(0,8),'ok');
+
+  setTimeout(function(){
+    btn.disabled = false; btn.textContent = 'Dispatch';
+  },600);
+
+  /* Simulate pending → running after 1.5s */
+  setTimeout(function(){
+    var j = jobs.find(function(x){return x.id===newJob.id});
+    if(j && j.status==='pending'){
+      j.status = 'running';
+      j.output_preview = 'Processing task\u2026';
+      j.output = 'Worker assigned. Processing task\u2026';
+      renderAll();
+    }
+  },1500);
+});
+
+/* ================================================================
+   Operator — Restart State Machine
+   ================================================================ */
+var restartState = 'idle';
+var restartEl = $('restart-state');
+var btnRestart = $('btn-restart');
+
+btnRestart.addEventListener('click',function(){
+  if(restartState !== 'idle') return;
+  restartState = 'confirm';
+  renderRestartState();
+});
+
+function renderRestartState(){
+  if(restartState === 'idle'){
+    restartEl.innerHTML = '';
+    btnRestart.classList.remove('hidden');
+    return;
+  }
+  if(restartState === 'confirm'){
+    btnRestart.classList.add('hidden');
+    restartEl.innerHTML =
+      '<div class="restart-confirm">' +
+        '<span>Restart dispatcher?</span>' +
+        '<button class="btn-confirm" id="rc-confirm">Confirm</button>' +
+        '<button class="btn-ghost" id="rc-cancel">Cancel</button>' +
+      '</div>';
+    $('rc-confirm').addEventListener('click',function(){
+      restartState = 'verifying';
+      renderRestartState();
+    });
+    $('rc-cancel').addEventListener('click',function(){
+      restartState = 'idle';
+      renderRestartState();
+    });
+    return;
+  }
+  if(restartState === 'verifying'){
+    restartEl.innerHTML =
+      '<div class="restart-verifying">' +
+        '<div class="spinner"></div>' +
+        '<span>Verifying restart\u2026</span>' +
+      '</div>';
+    setTimeout(function(){
+      restartState = 'done';
+      renderRestartState();
+      toast('\u2713 Dispatcher restarted','ok');
+    },2500);
+    return;
+  }
+  if(restartState === 'done'){
+    restartEl.innerHTML =
+      '<div class="restart-done">' +
+        '<i data-lucide="check-circle"></i>' +
+        '<span>Dispatcher restarted</span>' +
+      '</div>';
+    icons();
+    setTimeout(function(){
+      restartState = 'idle';
+      renderRestartState();
+    },4000);
+  }
+}
+
+/* ================================================================
+   Operator — Log Drawer
+   ================================================================ */
+var logOpen = false;
+$('btn-logs').addEventListener('click',function(){
+  logOpen = !logOpen;
+  var drawer = $('log-drawer');
+  var pre = $('log-pre');
+  if(logOpen){
+    pre.textContent = MOCK_LOGS;
+    drawer.classList.add('open');
+    drawer.style.maxHeight = drawer.scrollHeight + 'px';
+  } else {
+    drawer.classList.remove('open');
+    drawer.style.maxHeight = '0';
+  }
+});
+
+/* ================================================================
+   Render All
+   ================================================================ */
+function renderAll(){
+  renderStats();
+  renderBanner();
+  renderJobLists();
+}
+
+/* ================================================================
+   Init
+   ================================================================ */
+icons();
+renderAll();
+})();
+</script>
+</body>
+</html>

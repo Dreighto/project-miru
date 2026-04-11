@@ -2,28 +2,77 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0d0d0f" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#f7f6f2" />
 <title>Job {{ job_id_short }}</title>
+<script>
+(function(){
+  var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  var m = document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute('content', dark ? '#171614' : '#f7f6f2');
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="{{ url_for('static', filename='dispatcher.css') }}" />
 </head>
 <body>
-<main class="job-detail-main">
-  <a class="back" href="/">&larr; Dashboard</a>
-  <h1><span class="badge b-{{ status }}">{{ status }}</span> Job {{ job_id_short }}</h1>
-  <div class="field"><div class="field-label">ID</div><div class="field-value job-id">{{ job_id }}</div></div>
-  <div class="field"><div class="field-label">Model</div><div class="field-value">{{ model }}</div></div>
-  <div class="field"><div class="field-label">Effort</div><div class="field-value">{{ effort }}</div></div>
-  <div class="field"><div class="field-label">Created</div><div class="field-value">{{ created_at }}</div></div>
-  <div class="field"><div class="field-label">Finished</div><div class="field-value">{{ finished_at }}</div></div>
-  <div class="field"><div class="field-label">Duration</div><div class="field-value">{{ duration }}</div></div>
-  <div class="field"><div class="field-label">Execution</div><div class="field-value">{{ executor_mode }} ({{ handler_name }})</div></div>
+<div class="detail-page">
+  <a class="back-link" href="/">&larr; Dashboard</a>
+  <div class="dp-status">
+    <span class="dot dot-{{ status }}"></span>
+    <span class="dp-status-label">{{ status }}</span>
+  </div>
+  <h1>Job {{ job_id_short }}</h1>
+  <div class="dp-field"><span class="dp-label">ID</span><span class="dp-value dp-mono">{{ job_id }}</span></div>
+  <div class="dp-field"><span class="dp-label">Model</span><span class="dp-value">{{ model }}</span></div>
+  <div class="dp-field"><span class="dp-label">Effort</span><span class="dp-value">{{ effort }}</span></div>
+  <div class="dp-field"><span class="dp-label">Created</span><span class="dp-value">{{ created_at }}</span></div>
+  <div class="dp-field"><span class="dp-label">Finished</span><span class="dp-value">{{ finished_at }}</span></div>
+  <div class="dp-field"><span class="dp-label">Duration</span><span class="dp-value">{{ duration }}</span></div>
+  <div class="dp-field"><span class="dp-label">Execution</span><span class="dp-value">{{ executor_mode }} ({{ handler_name }})</span></div>
   {{ usage_block | safe }}
-  <div class="field"><div class="field-label">Prompt</div><pre>{{ prompt }}</pre></div>
-  <div class="field"><div class="field-label">Output</div><pre>{{ output }}</pre></div>
-</main>
+  <div class="dp-section">
+    <span class="dp-label">Prompt</span>
+    <pre class="dp-pre">{{ prompt }}</pre>
+  </div>
+  <div class="dp-section">
+    <div class="dp-section-head">
+      <span class="dp-label">Output</span>
+      <button class="btn-ghost btn-sm" id="btn-copy-output">Copy Output</button>
+    </div>
+    <pre class="dp-pre" id="output-pre">{{ output }}</pre>
+  </div>
+</div>
+<script>
+(function(){
+  var btn = document.getElementById('btn-copy-output');
+  var pre = document.getElementById('output-pre');
+  if(!btn || !pre) return;
+  function fb(ok, msg){
+    var cls = ok ? 'copy-ok' : 'copy-err';
+    btn.textContent = ok ? '\u2713 Copied' : (msg || '\u2717 Failed');
+    btn.classList.add(cls);
+    setTimeout(function(){ btn.textContent = 'Copy Output'; btn.classList.remove(cls); }, 2000);
+  }
+  btn.addEventListener('click', function(){
+    var text = pre.textContent || '';
+    if(!text) return;
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(text).then(function(){ fb(true); }).catch(function(){ fallback(text); });
+    } else { fallback(text); }
+  });
+  function fallback(text){
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly','');
+    ta.className = 'sr-only-offscreen';
+    document.body.appendChild(ta); ta.select();
+    try { fb(document.execCommand('copy')); } catch(e){ fb(false); }
+    document.body.removeChild(ta);
+  }
+})();
+</script>
 </body>
 </html>

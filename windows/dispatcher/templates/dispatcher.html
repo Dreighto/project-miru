@@ -2,77 +2,203 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#0d0d0f" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#f7f6f2" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>Miru Task Dispatcher</title>
+<script>
+(function(){
+  var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  var m = document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute('content', dark ? '#171614' : '#f7f6f2');
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="{{ url_for('static', filename='dispatcher.css') }}" />
 </head>
 <body>
+
 <header class="header">
-  <div class="header-inner">
-    <span class="header-dot"></span>
-    <span class="header-title">Miru Dispatcher</span>
-    <span class="header-port">:19000</span>
+  <div class="header-left">
+    <button class="icon-btn mobile-menu-btn" id="btn-mobile-menu" aria-label="Menu">
+      <i data-lucide="menu"></i>
+    </button>
+    <svg class="logo-mark" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="12" cy="12" r="4" fill="currentColor"/>
+    </svg>
+    <h1 class="header-title">Dispatcher</h1>
+  </div>
+  <div class="header-right">
+    <button class="icon-btn" id="btn-theme" aria-label="Toggle theme">
+      <i data-lucide="moon" class="theme-icon-dark"></i>
+      <i data-lucide="sun" class="theme-icon-light"></i>
+    </button>
   </div>
 </header>
 
-<main>
-  <div id="stats-bar" class="stats-bar" aria-live="polite"></div>
-
-  <section aria-label="Submit a new job">
-    <h2>Submit Job</h2>
-    <form id="job-form" autocomplete="off">
-      <label for="prompt">Prompt</label>
-      <textarea id="prompt" name="prompt" placeholder="Describe the task..." required aria-describedby="char-count"></textarea>
-      <div id="char-count" class="char-count" aria-live="off">0 / 2000</div>
-      <label id="lbl-model">Model</label>
-      <div class="seg-group" data-field="model" role="radiogroup" aria-labelledby="lbl-model">
-        <button type="button" class="seg active" role="radio" aria-checked="true">Claude Code</button>
-        <button type="button" class="seg" role="radio" aria-checked="false">Cursor</button>
-        <button type="button" class="seg" role="radio" aria-checked="false">ChatGPT</button>
-        <button type="button" class="seg" role="radio" aria-checked="false">Codex</button>
-      </div>
-      <label id="lbl-effort">Effort</label>
-      <div class="seg-group" data-field="effort" role="radiogroup" aria-labelledby="lbl-effort">
-        <button type="button" class="seg" role="radio" aria-checked="false">Quick</button>
-        <button type="button" class="seg active" role="radio" aria-checked="true">Standard</button>
-        <button type="button" class="seg" role="radio" aria-checked="false">Deep</button>
-      </div>
-      <button type="submit" class="primary">Dispatch</button>
-    </form>
-  </section>
-
-  <section aria-label="Active jobs">
-    <h2>Live Jobs</h2>
-    <div id="live-jobs" class="jobs"><div class="empty"><div class="empty-icon">&#9673;</div>No active jobs</div></div>
-  </section>
-
-  <section aria-label="Completed jobs">
-    <h2>Job History</h2>
-    <div id="hist-jobs" class="jobs"><div class="empty"><div class="empty-icon">&#9776;</div>No completed jobs yet</div></div>
-  </section>
-
-  <section aria-label="Operator controls">
-    <h2>Operator</h2>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="ghost" id="btn-logs">View Logs</button>
-      <button class="ghost danger" id="btn-restart">Restart</button>
+<div class="app">
+  <!-- Sidebar (220px) -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-nav">
+      <button class="nav-item active" data-nav="jobs"><i data-lucide="layers"></i><span>Jobs</span></button>
+      <button class="nav-item" data-nav="health"><i data-lucide="heart-pulse"></i><span>Health</span></button>
+      <button class="nav-item disabled"><i data-lucide="cpu"></i><span>Executors</span></button>
+      <button class="nav-item disabled"><i data-lucide="history"></i><span>Runs</span></button>
+      <button class="nav-item" data-nav="logs"><i data-lucide="terminal"></i><span>Logs</span><kbd class="kbd">L</kbd></button>
+      <button class="nav-item disabled"><i data-lucide="settings"></i><span>Config</span></button>
     </div>
-    <div id="log-view" style="display:none;margin-top:10px;">
-      <pre class="log-pre"></pre>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-bottom">
+      <button class="nav-item nav-danger" id="btn-restart-dispatcher"><i data-lucide="refresh-cw"></i><span>Restart</span></button>
     </div>
-  </section>
-</main>
+    <div class="sidebar-footer">
+      <span class="version-badge">PM 18080 &middot; MIRU 18765 &middot; DISP 19000</span>
+    </div>
+  </nav>
 
-<div class="toast-wrap">
-  <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
+  <!-- Main work area -->
+  <main class="main" id="main">
+    <!-- Jobs View -->
+    <div class="view active" id="view-jobs">
+      <div class="stats-bar" id="stats-bar"></div>
+
+      <div class="filter-bar" id="filter-chips" role="radiogroup" aria-label="Filter jobs">
+        <button class="chip active" data-filter="all" role="radio" aria-checked="true">All</button>
+        <button class="chip" data-filter="running" role="radio" aria-checked="false"><span class="dot dot-running"></span>Running</button>
+        <button class="chip" data-filter="done" role="radio" aria-checked="false"><span class="dot dot-done"></span>Done</button>
+        <button class="chip" data-filter="failed" role="radio" aria-checked="false"><span class="dot dot-failed"></span>Failed</button>
+        <button class="chip" data-filter="sim" role="radio" aria-checked="false">SIM</button>
+      </div>
+
+      <div class="submit-toggle">
+        <button class="btn-ghost" id="btn-toggle-form"><i data-lucide="plus"></i>New Task</button>
+      </div>
+      <div class="submit-wrap" id="submit-wrap">
+        <div class="submit-inner">
+          <section class="submit-section">
+            <form id="job-form" autocomplete="off">
+              <textarea id="prompt" name="prompt" placeholder="Describe the task..." rows="2" required maxlength="2000"></textarea>
+              <div class="form-bar">
+                <div class="form-controls">
+                  <div class="seg-group" data-field="model" role="radiogroup">
+                    <button type="button" class="seg active" role="radio" aria-checked="true">Ollama</button>
+                    <button type="button" class="seg" role="radio" aria-checked="false">Claude</button>
+                    <button type="button" class="seg" role="radio" aria-checked="false">Cursor</button>
+                  </div>
+                  <div class="seg-group" data-field="effort" role="radiogroup">
+                    <button type="button" class="seg" role="radio" aria-checked="false">Quick</button>
+                    <button type="button" class="seg active" role="radio" aria-checked="true">Standard</button>
+                    <button type="button" class="seg" role="radio" aria-checked="false">Deep</button>
+                  </div>
+                </div>
+                <div class="form-end">
+                  <span class="char-count" id="char-count">0 / 2000</span>
+                  <button type="submit" class="btn-primary" id="btn-dispatch"><i data-lucide="send"></i>Dispatch</button>
+                </div>
+              </div>
+            </form>
+          </section>
+        </div>
+      </div>
+
+      <!-- Live jobs -->
+      <div class="section-header hidden" id="live-header">
+        <span class="dot dot-pulse"></span>
+        <span>Live</span>
+        <span class="section-count" id="live-count">0</span>
+      </div>
+      <div class="job-list" id="live-list"></div>
+
+      <!-- History jobs -->
+      <div class="section-header hidden" id="history-header">
+        <i data-lucide="archive"></i>
+        <span>History</span>
+        <span class="section-count" id="history-count">0</span>
+      </div>
+      <div class="job-list" id="history-list"></div>
+
+      <!-- Empty state -->
+      <div class="empty-state hidden" id="job-empty">
+        <i data-lucide="inbox"></i>
+        <p>No jobs yet</p>
+      </div>
+
+      <!-- Skeleton loaders (shown during initial fetch) -->
+      <div class="skeleton-group" id="skeletons">
+        <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+      </div>
+    </div>
+
+    <!-- Health View -->
+    <div class="view" id="view-health">
+      <div class="view-title">Service Health</div>
+      <div class="health-grid">
+        <div class="h-card">
+          <div class="h-card-head"><i data-lucide="radio"></i><span>Dispatcher</span></div>
+          <div class="h-status"><span class="dot dot-up"></span><span>up</span></div>
+          <span class="h-port">:19000</span>
+        </div>
+        <div class="h-card">
+          <div class="h-card-head"><i data-lucide="eye"></i><span>Project Miru</span></div>
+          <div class="h-status"><span class="dot" id="dot-pm"></span><span id="health-pm">checking...</span></div>
+          <span class="h-port">:18080</span>
+          <div class="h-detail hidden" id="health-detail-pm"></div>
+          <button class="btn-ghost btn-sm h-restart" data-restart="pm" id="btn-restart-pm">Restart PM</button>
+        </div>
+        <div class="h-card">
+          <div class="h-card-head"><i data-lucide="message-square"></i><span>Miru AI</span></div>
+          <div class="h-status"><span class="dot" id="dot-ai"></span><span id="health-miru-ai">checking...</span></div>
+          <span class="h-port">:18765</span>
+          <div class="h-detail hidden" id="health-detail-miru-ai"></div>
+          <button class="btn-ghost btn-sm h-restart" data-restart="miru_ai" id="btn-restart-ai">Restart Miru AI</button>
+        </div>
+      </div>
+    </div>
+  </main>
 </div>
 
+<!-- Log drawer (slides from right) -->
+<div class="drawer" id="log-drawer">
+  <div class="drawer-backdrop" id="log-backdrop"></div>
+  <div class="drawer-panel">
+    <div class="drawer-header">
+      <span>Dispatcher Logs</span>
+      <button class="icon-btn" id="btn-close-logs" aria-label="Close logs"><i data-lucide="x"></i></button>
+    </div>
+    <pre class="drawer-content" id="log-content"></pre>
+  </div>
+</div>
+
+<!-- Floating restart verification card -->
+<div class="restart-card" id="restart-card">
+  <div class="restart-card-inner" id="restart-card-inner">
+    <svg class="countdown-ring" viewBox="0 0 36 36">
+      <circle class="ring-bg" cx="18" cy="18" r="16" fill="none" stroke-width="2"/>
+      <circle class="ring-fg" id="ring-fg" cx="18" cy="18" r="16" fill="none" stroke-width="2"
+        stroke-dasharray="100.53" stroke-dashoffset="0"/>
+    </svg>
+    <div class="restart-card-body">
+      <span class="restart-label" id="restart-label">Restart Dispatcher?</span>
+      <span class="restart-sub" id="restart-sub">Click to confirm</span>
+    </div>
+    <button class="icon-btn restart-close" id="restart-close" aria-label="Cancel restart">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
+</div>
+
+<!-- Toast rack (bottom-right) -->
+<div class="toast-rack" id="toast-rack" aria-live="polite"></div>
+
+<!-- Lucide Icons CDN -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="{{ url_for('static', filename='dispatcher.js') }}"></script>
 </body>
 </html>
