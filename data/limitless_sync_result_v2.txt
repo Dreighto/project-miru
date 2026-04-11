@@ -1,9 +1,0 @@
-﻿{
-  "mode": "sync_only",
-  "action": "sync_only",
-  "blocker": null,
-  "insight_count_after": 121,
-  "by_type": {},
-  "sync_ok": true,
-  "insight_count": 121
-}

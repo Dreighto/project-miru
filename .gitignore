@@ -14,6 +14,19 @@ mcp.json
 .cursor/
 .vscode/
 
+# Docker configuration (contains sensitive token seeds)
+.docker-config/
+
+# Codex agent temp files, playwright runner, and checkpoints
+.codex_playwright_tmp/
+.codex_checkpoints/
+
+# Pip cache
+.pip-cache/
+
+# Agent runtime lock file
+AGENT_REPO_LOCK.md
+
 miru_ai/dev_review_hub_ui/node_modules/
 
 # Claude in Chrome / CDP temp files
@@ -37,7 +50,55 @@ miru_ai/dev_review_hub_ui/.tmp-build-test/
 __pycache__/
 *.pyc
 
-# Local runtime databases and SQLite sidecars
-data/miru_dev_training_reviews.db
+# All runtime log files
+*.log
+
+# All runtime databases and SQLite sidecars
+*.db
 *.db-shm
 *.db-wal
+
+# Backup files
+*.backup
+*.bak
+
+# Root-level debug/crash logs
+debug.log
+
+# Downloaded and cached external data
+data/tcgcsv/
+data/api_exploration/
+archive/data_backups/
+
+# Runtime batch/autopilot report outputs
+data/governed_batch_*
+data/governed_autopilot_*
+
+# Temporary data run outputs and audit trails
+data/eb04_*
+data/eb_sp_*
+data/limitless_*
+data/insight_generation_*
+data/phase_*
+data/overlap_*
+data/optcgapi_*
+data/sync_result*
+data/cardsets_field_*
+data/catalog_name_*
+data/variant_schema_*
+data/sp_opst_*
+data/tr_mapping_*
+data/image_fetch_*
+data/empty_watchlist_count*
+data/crash_diag*
+
+# Runtime state and cache files
+data/card_prices.json
+data/prices.json
+data/product_cache.json
+data/state.json
+data/miru_*.json
+data/miru_worker_*
+data/official_cardlist_snapshot.json
+data/_test_*
+data/watchlist.json
