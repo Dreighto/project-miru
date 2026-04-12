@@ -111,15 +111,17 @@
     var el = document.createElement('div');
     el.className = 'toast t-' + type;
     el.textContent = prefix + msg;
-    /* M4 Anim 4: slide up from below */
-    if(!reduceMotion) el.style.animation = 'toast-in 220ms cubic-bezier(0.16,1,0.3,1)';
+    /* M4 Anim 4: slide up from below — keyframe handles full entry */
+    if(!reduceMotion){
+      el.style.animation = 'toast-in 220ms cubic-bezier(0.16,1,0.3,1) forwards';
+    }
     toastRack.appendChild(el);
-    requestAnimationFrame(function(){ el.classList.add('show'); });
     var all = toastRack.querySelectorAll('.toast');
     while(all.length > MAX_TOASTS){ all[0].remove(); all = toastRack.querySelectorAll('.toast'); }
     setTimeout(function(){
-      el.classList.remove('show');
-      setTimeout(function(){ if(el.parentNode) el.remove(); }, 300);
+      el.style.opacity = '0';
+      el.style.transition = 'opacity 200ms';
+      setTimeout(function(){ if(el.parentNode) el.remove(); }, 200);
     }, DISMISS_MS);
   }
 
