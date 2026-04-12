@@ -969,7 +969,7 @@ def admin_restart():
 
 @app.get("/")
 def index():
-    return render_template("dispatcher.html")
+    return render_template("dispatcher.html", cache_bust=int(time.time()))
 
 
 # ---------------------------------------------------------------------------
