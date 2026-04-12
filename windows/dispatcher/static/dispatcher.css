@@ -97,7 +97,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { height: 100%; -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 html, body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: var(--t-base); }
-body { min-height: 100dvh; line-height: 1.5; overflow: hidden; }
+body { min-height: 100dvh; line-height: 1.5; overflow: hidden; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 a { color: var(--primary); text-decoration: none; }
 a:hover { text-decoration: underline; }
 pre { margin: 0; font-family: var(--font-mono); }
@@ -653,13 +653,13 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* ── Bottom Nav (Phase 1) ── */
 .bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0;
   display: flex; align-items: center; justify-content: space-around;
   background: var(--bg);
   border-top: 0.5px solid var(--divider);
   padding-top: 10px;
-  padding-bottom: 0;
-  margin-top: 28px;
-  flex-shrink: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 100;
 }
 
 .bnav-tab {
