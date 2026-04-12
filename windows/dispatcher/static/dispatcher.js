@@ -165,6 +165,7 @@
     document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
     var target = $('view-' + name);
     if(target) target.classList.add('active');
+    window.scrollTo(0, 0);
     /* sidebar nav highlight (preserved for rollback) */
     document.querySelectorAll('.nav-item[data-nav]').forEach(function(b){
       var nav = b.getAttribute('data-nav');
@@ -577,6 +578,7 @@
       }
       promptEl.value = '';
       charEl.textContent = '0 / 2000';
+      submitWrap.classList.remove('open');
       toast('Dispatched', 'ok');
       fetchJobs();
       closeSidebar();
