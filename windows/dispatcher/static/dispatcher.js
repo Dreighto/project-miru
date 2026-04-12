@@ -1,6 +1,9 @@
 (function(){
   'use strict';
 
+  /* M4: reduced-motion gate — checked once at startup */
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   /* =============================================================
      STATE
      ============================================================= */
@@ -8,6 +11,7 @@
   var expandedJobId = null;
   var currentFilter = 'all';
   var statsAnimated = false;
+  var statsApiAnimated = false; /* M4: gates first-load counter animation from /api/stats */
   var initialLoad = true;
   var healthTimer = null;
   var restartTimers = {};
@@ -108,6 +112,8 @@
     var el = document.createElement('div');
     el.className = 'toast t-' + type;
     el.textContent = prefix + msg;
+    /* M4 Anim 4: slide up from below */
+    if(!reduceMotion) el.style.animation = 'toast-in 220ms cubic-bezier(0.16,1,0.3,1)';
     toastRack.appendChild(el);
     requestAnimationFrame(function(){ el.classList.add('show'); });
     var all = toastRack.querySelectorAll('.toast');
@@ -266,7 +272,8 @@
      ============================================================= */
   function animateNum(el, target){
     if(!el || typeof target !== 'number' || target === 0){ if(el) el.textContent = target || '0'; return; }
-    var dur = 300, start = performance.now();
+    if(reduceMotion){ el.textContent = target; return; } /* M4: skip animation if reduced-motion */
+    var dur = 600, start = performance.now(); /* M4: 600ms easeOut countup */
     function tick(now){
       var p = Math.min((now - start) / dur, 1);
       el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
@@ -298,7 +305,7 @@
     }
   }
 
-  /* /api/stats — use real server totals for the 3-card metrics strip */
+  /* /api/stats — real server totals; drives M4 counter animation + dispatch-pulse */
   async function fetchStatsEndpoint(){
     try {
       var r = await fetch('/api/stats', {cache:'no-store'});
@@ -307,10 +314,31 @@
       var total   = s.total_jobs    || 0;
       var running = s.running_count || 0;
       var queued  = s.pending_count || 0;
-      statsEl.innerHTML =
-        '<div class="kpi"><span class="kpi-num">' + total + '</span><span class="kpi-label">Total</span></div>' +
-        '<div class="kpi"><span class="kpi-num' + (running > 0 ? ' kpi-green' : '') + '">' + running + '</span><span class="kpi-label">Running</span></div>' +
-        '<div class="kpi"><span class="kpi-num">' + queued + '</span><span class="kpi-label">Queued</span></div>';
+      var runCls  = running > 0 ? ' kpi-green' : '';
+
+      /* M4 Anim 3: pulse Dispatch button while any job is running */
+      var dispBtn = $('btn-dispatch');
+      if(dispBtn){
+        if(running > 0) dispBtn.classList.add('is-running');
+        else dispBtn.classList.remove('is-running');
+      }
+
+      /* M4 Anim 1: count-up on first /api/stats response only */
+      if(!statsApiAnimated){
+        statsApiAnimated = true;
+        statsEl.innerHTML =
+          '<div class="kpi"><span class="kpi-num" data-n="' + total   + '">0</span><span class="kpi-label">Total</span></div>' +
+          '<div class="kpi"><span class="kpi-num' + runCls + '" data-n="' + running + '">0</span><span class="kpi-label">Running</span></div>' +
+          '<div class="kpi"><span class="kpi-num" data-n="' + queued  + '">0</span><span class="kpi-label">Queued</span></div>';
+        statsEl.querySelectorAll('.kpi-num[data-n]').forEach(function(el){
+          animateNum(el, parseInt(el.getAttribute('data-n'), 10));
+        });
+      } else {
+        statsEl.innerHTML =
+          '<div class="kpi"><span class="kpi-num">' + total   + '</span><span class="kpi-label">Total</span></div>' +
+          '<div class="kpi"><span class="kpi-num' + runCls + '">' + running + '</span><span class="kpi-label">Running</span></div>' +
+          '<div class="kpi"><span class="kpi-num">' + queued  + '</span><span class="kpi-label">Queued</span></div>';
+      }
     } catch(e){ /* silent */ }
   }
 
