@@ -97,7 +97,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { height: 100%; -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 html, body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: var(--t-base); }
-body { min-height: 100dvh; line-height: 1.5; overflow: hidden; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+body { min-height: 100dvh; line-height: 1.5; overflow-y: auto; padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 /* Prevent iOS Safari auto-zoom on focused inputs */
 input, textarea, select { font-size: 16px !important; }
 a { color: var(--primary); text-decoration: none; }
@@ -106,7 +106,7 @@ pre { margin: 0; font-family: var(--font-mono); }
 svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* ── Shell Layout — header + main + bottom nav ── */
-.app { display: flex; flex-direction: column; height: calc(100dvh - var(--header-h)); margin-top: var(--header-h); }
+.app { display: flex; flex-direction: column; min-height: calc(100dvh - var(--header-h)); margin-top: var(--header-h); }
 
 /* ── Header (85px fixed — 52px DI inset + 33px content) ── */
 .header {
@@ -155,6 +155,7 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   width: 32px; height: 32px; border-radius: 10px;
   background: var(--surface); border: 0.5px solid #26263A;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
+  font-size: 16px; touch-action: manipulation; /* prevent iOS zoom */
 }
 .settings-btn svg { width: 14px; height: 14px; stroke: var(--text-muted); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -239,7 +240,7 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
 }
 
 /* ── Main ── */
-.main { flex: 1; overflow-y: auto; min-width: 0; background: var(--bg); padding-bottom: 0; }
+.main { flex: 1; overflow: visible; min-width: 0; background: var(--bg); padding-bottom: 0; }
 
 /* ── Views ── */
 .view { display: none; }
@@ -736,6 +737,7 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   padding-top: 10px;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   z-index: 100;
+  -webkit-transform: translateZ(0); transform: translateZ(0); /* GPU layer — prevents nav jumping with keyboard */
 }
 
 .bnav-tab {

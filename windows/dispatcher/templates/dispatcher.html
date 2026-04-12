@@ -218,7 +218,7 @@
   </main>
 
   <!-- Bottom Navigation (Phase 1) -->
-  <nav class="bottom-nav" id="bottom-nav">
+  <nav class="bottom-nav" id="bottomNav">
     <button class="bnav-tab active" data-nav="jobs" aria-label="Dispatch">
       <div class="bnav-indicator"></div>
       <svg class="bnav-icon" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
@@ -278,5 +278,20 @@
 <!-- Lucide Icons CDN -->
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="{{ url_for('static', filename='dispatcher.js') }}"></script>
+<script>
+(function () {
+  if (!window.visualViewport) return;
+  var nav = document.getElementById("bottomNav");
+  if (!nav) return;
+  function pinNav() {
+    var vv = window.visualViewport;
+    var offsetBottom = window.innerHeight - (vv.offsetTop + vv.height);
+    nav.style.bottom = Math.max(0, offsetBottom) + "px";
+  }
+  window.visualViewport.addEventListener("resize", pinNav, { passive: true });
+  window.visualViewport.addEventListener("scroll", pinNav, { passive: true });
+  window.addEventListener("scroll", pinNav, { passive: true });
+})();
+</script>
 </body>
 </html>
