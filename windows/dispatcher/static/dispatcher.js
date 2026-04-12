@@ -165,15 +165,20 @@
     document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
     var target = $('view-' + name);
     if(target) target.classList.add('active');
+    /* sidebar nav highlight (preserved for rollback) */
     document.querySelectorAll('.nav-item[data-nav]').forEach(function(b){
       var nav = b.getAttribute('data-nav');
       if(nav === 'logs') return;
       b.classList.toggle('active', nav === name);
     });
+    /* bottom nav highlight */
+    document.querySelectorAll('.bnav-tab[data-nav]').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-nav') === name);
+    });
     if(name === 'health') fetchHealth();
   }
 
-  /* sidebar nav */
+  /* sidebar nav (preserved for rollback) */
   document.querySelectorAll('.nav-item[data-nav]').forEach(function(btn){
     btn.addEventListener('click', function(){
       var nav = btn.getAttribute('data-nav');
@@ -181,6 +186,14 @@
       if(nav === 'logs'){ toggleLogs(); return; }
       switchView(nav);
       closeSidebar();
+    });
+  });
+
+  /* bottom nav (Phase 1) */
+  document.querySelectorAll('.bnav-tab[data-nav]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var nav = btn.getAttribute('data-nav');
+      if(nav) switchView(nav);
     });
   });
 
@@ -835,18 +848,10 @@
     var next = cur === 'dark' ? 'light' : 'dark';
     html.setAttribute('data-theme', next);
     var meta = document.querySelector('meta[name="theme-color"]');
-    if(meta) meta.setAttribute('content', next === 'dark' ? '#171614' : '#f7f6f2');
+    if(meta) meta.setAttribute('content', next === 'dark' ? '#0D0D10' : '#f7f6f2');
   });
 
-  /* listen for system theme changes */
-  try {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e){
-      var theme = e.matches ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', theme);
-      var meta = document.querySelector('meta[name="theme-color"]');
-      if(meta) meta.setAttribute('content', theme === 'dark' ? '#171614' : '#f7f6f2');
-    });
-  } catch(e){ /* older browsers may not support addEventListener on matchMedia */ }
+  /* system theme change listener disabled — dark default in Phase 1 */
 
   /* =============================================================
      KEYBOARD SHORTCUTS
