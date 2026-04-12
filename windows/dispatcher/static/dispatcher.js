@@ -10,7 +10,6 @@
   var allJobs = [];
   var expandedJobId = null;
   var currentFilter = 'all';
-  var statsAnimated = false;
   var statsApiAnimated = false; /* M4: gates first-load counter animation from /api/stats */
   var initialLoad = true;
   var healthTimer = null;
@@ -283,26 +282,17 @@
   }
 
   function updateStats(){
-    /* derive 3-card metrics from allJobs (M3: Total / Running / Queued) */
+    /* derive 3-card metrics from allJobs — always snap, never animate.
+       Animation is handled solely by fetchStatsEndpoint() via statsApiAnimated. */
     var total   = allJobs.length;
     var running = allJobs.filter(function(j){ return j.status === 'running'; }).length;
     var queued  = allJobs.filter(function(j){ return j.status === 'pending'; }).length;
+    var runCls  = running > 0 ? ' kpi-green' : '';
 
     statsEl.innerHTML =
-      '<div class="kpi"><span class="kpi-num" data-n="' + total + '">0</span><span class="kpi-label">Total</span></div>' +
-      '<div class="kpi"><span class="kpi-num' + (running > 0 ? ' kpi-green' : '') + '" data-n="' + running + '">0</span><span class="kpi-label">Running</span></div>' +
-      '<div class="kpi"><span class="kpi-num" data-n="' + queued + '">0</span><span class="kpi-label">Queued</span></div>';
-
-    if(!statsAnimated){
-      statsAnimated = true;
-      statsEl.querySelectorAll('.kpi-num[data-n]').forEach(function(el){
-        animateNum(el, parseInt(el.getAttribute('data-n')));
-      });
-    } else {
-      statsEl.querySelectorAll('.kpi-num[data-n]').forEach(function(el){
-        el.textContent = el.getAttribute('data-n');
-      });
-    }
+      '<div class="kpi"><span class="kpi-num">' + total + '</span><span class="kpi-label">Total</span></div>' +
+      '<div class="kpi"><span class="kpi-num' + runCls + '">' + running + '</span><span class="kpi-label">Running</span></div>' +
+      '<div class="kpi"><span class="kpi-num">' + queued + '</span><span class="kpi-label">Queued</span></div>';
   }
 
   /* /api/stats — real server totals; drives M4 counter animation + dispatch-pulse */
