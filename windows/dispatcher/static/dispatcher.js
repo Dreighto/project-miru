@@ -176,9 +176,6 @@
     document.querySelectorAll('.bnav-tab[data-nav]').forEach(function(b){
       b.classList.toggle('active', b.getAttribute('data-nav') === name);
     });
-    /* M3: show dispatch button only on Dispatch view */
-    var dispBtn = $('btn-dispatch-pinned');
-    if(dispBtn) dispBtn.style.display = (name === 'jobs') ? '' : 'none';
     if(name === 'health') fetchHealth();
   }
 
@@ -580,7 +577,7 @@
     var m3EffortInput = $('m3-effort');
     var model  = m3ModelInput  ? m3ModelInput.value  : (modelEl  ? modelEl.textContent.trim()  : 'Claude');
     var effort = m3EffortInput ? m3EffortInput.value : (effortEl ? effortEl.textContent.trim() : 'Standard');
-    var btn = $('btn-dispatch-pinned') || form.querySelector('.btn-primary');
+    var btn = $('btn-dispatch') || form.querySelector('.pc-dispatch') || form.querySelector('.btn-primary');
     btn.disabled = true;
     btn.textContent = 'Dispatching\u2026';
     try {
@@ -1034,18 +1031,6 @@
       } else {
         toast('Clipboard not available', 'err');
       }
-    });
-  })();
-
-  /* =============================================================
-     M3: PINNED DISPATCH BUTTON
-     ============================================================= */
-  (function(){
-    var btn = $('btn-dispatch-pinned');
-    if(!btn || !form) return;
-    btn.addEventListener('click', function(){
-      try { form.requestSubmit(); }
-      catch(e) { form.dispatchEvent(new Event('submit', {bubbles:true, cancelable:true})); }
     });
   })();
 

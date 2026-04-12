@@ -141,7 +141,13 @@
                     Paste
                   </button>
                 </div>
-                <span class="cc" id="char-count">0 / 4000</span>
+                <div class="pf-right">
+                  <span class="cc" id="char-count">0 / 4000</span>
+                  <button type="submit" class="pc-dispatch" id="btn-dispatch" aria-label="Dispatch task">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Dispatch
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -296,9 +302,6 @@
     </button>
   </nav>
 </div>
-
-<!-- Fixed Dispatch button (M3 — visible only on Dispatch view) -->
-<button class="m3-dispatch-btn" id="btn-dispatch-pinned" aria-label="Dispatch task">Dispatch</button>
 
 <!-- Log drawer (slides from right) -->
 <div class="drawer" id="log-drawer">

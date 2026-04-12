@@ -97,7 +97,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { height: 100%; -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 html, body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: var(--t-base); }
-body { min-height: 100dvh; line-height: 1.5; overflow-y: auto; padding-bottom: calc(var(--bottomnav-h) + 52px + 26px + env(safe-area-inset-bottom, 0px)); } /* extra for M3 fixed dispatch btn */
+body { min-height: 100dvh; line-height: 1.5; overflow-y: auto; padding-bottom: calc(var(--bottomnav-h) + env(safe-area-inset-bottom, 0px) + 16px); }
 /* Prevent iOS Safari auto-zoom on focused inputs */
 input, textarea, select { font-size: 16px !important; }
 a { color: var(--primary); text-decoration: none; }
@@ -885,20 +885,21 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
 .ql-name { font-size: 12px; color: var(--text-muted); font-weight: 500; }
 .ql-sub  { font-size: 10px; color: var(--text-faint); margin-top: 1px; }
 
-/* ── M3: Fixed Dispatch Button ── */
-.m3-dispatch-btn {
-  position: fixed;
-  left: 16px; right: 16px;
-  bottom: calc(var(--bottomnav-h) + env(safe-area-inset-bottom, 0px) + 10px);
-  height: 52px;
-  background: #5B5BD6; border: none; border-radius: 14px;
-  font-size: 16px; font-weight: 600; color: #fff; letter-spacing: 0.02em;
-  cursor: pointer; z-index: 99;
+/* ── M3: Inline Dispatch Button (inside prompt card) ── */
+.pf-right { display: flex; align-items: center; gap: 8px; }
+.pc-dispatch {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #5B5BD6; border: none; border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 13px; font-weight: 600; color: #fff;
+  font-family: var(--font);
+  cursor: pointer;
   touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-  -webkit-transform: translateZ(0); transform: translateZ(0);
-  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  transition: opacity var(--dur-fast) var(--ease-out);
+  flex-shrink: 0;
 }
-.m3-dispatch-btn:active { opacity: 0.88; transform: scale(0.99) translateZ(0); }
+.pc-dispatch svg { width: 13px; height: 13px; flex-shrink: 0; }
+.pc-dispatch:active { opacity: 0.80; }
 
 /* ── Responsive ── */
 @media (max-width: 768px) {
