@@ -176,6 +176,9 @@
     document.querySelectorAll('.bnav-tab[data-nav]').forEach(function(b){
       b.classList.toggle('active', b.getAttribute('data-nav') === name);
     });
+    /* M3: show dispatch button only on Dispatch view */
+    var dispBtn = $('btn-dispatch-pinned');
+    if(dispBtn) dispBtn.style.display = (name === 'jobs') ? '' : 'none';
     if(name === 'health') fetchHealth();
   }
 
@@ -276,21 +279,15 @@
   }
 
   function updateStats(){
+    /* derive 3-card metrics from allJobs (M3: Total / Running / Queued) */
     var total   = allJobs.length;
-    var running = allJobs.filter(function(j){ return j.status === 'running' || j.status === 'pending'; }).length;
-    var done    = allJobs.filter(function(j){ return j.status === 'done'; }).length;
-    var failed  = allJobs.filter(function(j){ return j.status === 'failed' || j.status === 'cancelled'; }).length;
-
-    if(total === 0){
-      statsEl.innerHTML = '<span class="stats-empty">No jobs yet</span>';
-      return;
-    }
+    var running = allJobs.filter(function(j){ return j.status === 'running'; }).length;
+    var queued  = allJobs.filter(function(j){ return j.status === 'pending'; }).length;
 
     statsEl.innerHTML =
       '<div class="kpi"><span class="kpi-num" data-n="' + total + '">0</span><span class="kpi-label">Total</span></div>' +
-      '<div class="kpi"><span class="kpi-num" data-n="' + running + '">0</span><span class="kpi-label">Active</span></div>' +
-      '<div class="kpi"><span class="kpi-num" data-n="' + done + '">0</span><span class="kpi-label">Done</span></div>' +
-      '<div class="kpi"><span class="kpi-num" data-n="' + failed + '">0</span><span class="kpi-label">Failed</span></div>';
+      '<div class="kpi"><span class="kpi-num' + (running > 0 ? ' kpi-green' : '') + '" data-n="' + running + '">0</span><span class="kpi-label">Running</span></div>' +
+      '<div class="kpi"><span class="kpi-num" data-n="' + queued + '">0</span><span class="kpi-label">Queued</span></div>';
 
     if(!statsAnimated){
       statsAnimated = true;
@@ -304,9 +301,20 @@
     }
   }
 
-  /* also call /api/stats in the background to preserve the endpoint */
+  /* /api/stats — use real server totals for the 3-card metrics strip */
   async function fetchStatsEndpoint(){
-    try { await fetch('/api/stats', {cache:'no-store'}); } catch(e){ /* silent */ }
+    try {
+      var r = await fetch('/api/stats', {cache:'no-store'});
+      if(!r.ok) return;
+      var s = await r.json();
+      var total   = s.total_jobs    || 0;
+      var running = s.running_count || 0;
+      var queued  = s.pending_count || 0;
+      statsEl.innerHTML =
+        '<div class="kpi"><span class="kpi-num">' + total + '</span><span class="kpi-label">Total</span></div>' +
+        '<div class="kpi"><span class="kpi-num' + (running > 0 ? ' kpi-green' : '') + '">' + running + '</span><span class="kpi-label">Running</span></div>' +
+        '<div class="kpi"><span class="kpi-num">' + queued + '</span><span class="kpi-label">Queued</span></div>';
+    } catch(e){ /* silent */ }
   }
 
   /* =============================================================
@@ -566,11 +574,13 @@
     ev.preventDefault();
     var prompt = promptEl.value.trim();
     if(!prompt){ toast('Prompt required', 'err'); return; }
-    var modelEl = document.querySelector('.seg-group[data-field="model"] .seg.active');
+    var modelEl  = document.querySelector('.seg-group[data-field="model"] .seg.active');
     var effortEl = document.querySelector('.seg-group[data-field="effort"] .seg.active');
-    var model  = modelEl  ? modelEl.textContent.trim()  : 'Ollama';
-    var effort = effortEl ? effortEl.textContent.trim() : 'Standard';
-    var btn = form.querySelector('.btn-primary');
+    var m3ModelInput  = $('m3-model');
+    var m3EffortInput = $('m3-effort');
+    var model  = m3ModelInput  ? m3ModelInput.value  : (modelEl  ? modelEl.textContent.trim()  : 'Claude');
+    var effort = m3EffortInput ? m3EffortInput.value : (effortEl ? effortEl.textContent.trim() : 'Standard');
+    var btn = $('btn-dispatch-pinned') || form.querySelector('.btn-primary');
     btn.disabled = true;
     btn.textContent = 'Dispatching\u2026';
     try {
@@ -585,16 +595,14 @@
         return;
       }
       promptEl.value = '';
-      charEl.textContent = '0 / 2000';
-      submitWrap.classList.remove('open');
+      charEl.textContent = '0 / 4000';
       toast('Dispatched', 'ok');
       fetchJobs();
       closeSidebar();
     } catch(e){ toast('Network error', 'err'); }
     finally {
       btn.disabled = false;
-      btn.innerHTML = '<i data-lucide="send"></i>Dispatch';
-      icons();
+      btn.textContent = 'Dispatch';
     }
   });
 
@@ -618,7 +626,7 @@
      CHAR COUNT
      ============================================================= */
   promptEl.addEventListener('input', function(){
-    charEl.textContent = promptEl.value.length + ' / 2000';
+    charEl.textContent = promptEl.value.length + ' / 4000';
   });
 
   /* =============================================================
@@ -933,9 +941,119 @@
   });
 
   /* =============================================================
+     M3: ADVANCED OPTIONS TOGGLE
+     ============================================================= */
+  (function(){
+    var hd   = $('btn-adv');
+    var body = $('adv-body');
+    var chev = $('adv-chev');
+    if(!hd) return;
+    hd.addEventListener('click', function(){
+      if(body) body.classList.toggle('open');
+      if(chev) chev.classList.toggle('open');
+    });
+  })();
+
+  /* =============================================================
+     M3: RECENT COLLAPSIBLE + FETCH
+     ============================================================= */
+  function fmtTimeAgo(iso){
+    if(!iso) return '';
+    try {
+      var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+      if(diff < 60)    return 'just now';
+      if(diff < 3600)  return Math.floor(diff / 60) + 'm ago';
+      if(diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
+    } catch(e){ return ''; }
+  }
+
+  function renderRecent(jobs){
+    var countEl = $('rec-count');
+    var bodyEl  = $('rec-body');
+    if(countEl) countEl.textContent = jobs.length;
+    if(!bodyEl) return;
+    if(jobs.length === 0){
+      bodyEl.innerHTML = '<div class="ri"><div class="rt"><div class="rtm" style="color:var(--text-faint)">No recent jobs</div></div></div>';
+      return;
+    }
+    bodyEl.innerHTML = jobs.map(function(j){
+      var rdClass = j.status === 'done' ? 'done' : (j.status === 'running' ? 'run' : (j.status === 'failed' ? 'failed' : ''));
+      var promptText = esc(j.prompt ? j.prompt.substring(0, 60) : '(no prompt)');
+      var worker = esc(j.model || 'Unknown');
+      var ago    = fmtTimeAgo(j.created_at);
+      var status = esc(j.status || '');
+      return '<div class="ri">' +
+        '<div class="rd ' + rdClass + '"></div>' +
+        '<div class="rt">' +
+          '<div class="rtt">' + promptText + '</div>' +
+          '<div class="rtm">' + worker + (ago ? ' \u00b7 ' + ago : '') + '</div>' +
+        '</div>' +
+        '<span class="rtd">' + status + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  async function fetchRecent(){
+    try {
+      var r = await fetch('/api/history', {cache:'no-store'});
+      if(!r.ok) throw new Error('not ok');
+      var data = await r.json();
+      var jobs = data.jobs || (Array.isArray(data) ? data : []);
+      renderRecent(jobs.slice(0, 5));
+    } catch(e){
+      /* fallback: use already-fetched allJobs history */
+      renderRecent(allJobs.filter(function(j){ return !LIVE_STATES.has(j.status); }).slice(0, 5));
+    }
+  }
+
+  (function(){
+    var hd   = $('btn-rec');
+    var body = $('rec-body');
+    var chev = $('rec-chev');
+    if(!hd) return;
+    hd.addEventListener('click', function(){
+      if(body) body.classList.toggle('open');
+      if(chev) chev.classList.toggle('open');
+    });
+  })();
+
+  /* =============================================================
+     M3: PASTE TAG
+     ============================================================= */
+  (function(){
+    var btn = $('btn-paste');
+    if(!btn) return;
+    btn.addEventListener('click', function(){
+      if(navigator.clipboard && navigator.clipboard.readText){
+        navigator.clipboard.readText().then(function(text){
+          promptEl.value = text;
+          charEl.textContent = text.length + ' / 4000';
+          promptEl.focus({ preventScroll: true });
+        }).catch(function(){ toast('Clipboard access denied', 'err'); });
+      } else {
+        toast('Clipboard not available', 'err');
+      }
+    });
+  })();
+
+  /* =============================================================
+     M3: PINNED DISPATCH BUTTON
+     ============================================================= */
+  (function(){
+    var btn = $('btn-dispatch-pinned');
+    if(!btn || !form) return;
+    btn.addEventListener('click', function(){
+      try { form.requestSubmit(); }
+      catch(e) { form.dispatchEvent(new Event('submit', {bubbles:true, cancelable:true})); }
+    });
+  })();
+
+  /* =============================================================
      INIT
      ============================================================= */
   icons();
   fetchJobs();
+  fetchRecent();
   setInterval(fetchJobs, POLL_MS);
 })();
