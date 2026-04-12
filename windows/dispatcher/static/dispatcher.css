@@ -657,7 +657,7 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   background: var(--bg);
   border-top: 0.5px solid var(--divider);
   padding-top: 10px;
-  padding-bottom: 4px;
+  padding-bottom: 0;
   flex-shrink: 0;
 }
 
