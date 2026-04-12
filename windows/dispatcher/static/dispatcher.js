@@ -849,9 +849,49 @@
     html.setAttribute('data-theme', next);
     var meta = document.querySelector('meta[name="theme-color"]');
     if(meta) meta.setAttribute('content', next === 'dark' ? '#0D0D10' : '#f7f6f2');
+    /* update mode pill label + icon */
+    var lbl = document.getElementById('mode-label');
+    var icon = document.getElementById('mode-icon');
+    if(lbl) lbl.textContent = next === 'dark' ? 'Dark' : 'Light';
+    if(icon) icon.innerHTML = next === 'dark'
+      ? '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+      : '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
   });
 
   /* system theme change listener disabled — dark default in Phase 1 */
+
+  /* =============================================================
+     M2: WORKER SHEET
+     ============================================================= */
+  (function(){
+    var sheet = document.getElementById('worker-sheet');
+    var pill  = document.getElementById('btn-worker-pill');
+    var avatarEl = document.getElementById('worker-avatar');
+    var nameEl   = document.getElementById('worker-name');
+    if(!sheet || !pill) return;
+
+    pill.addEventListener('click', function(){ sheet.classList.add('open'); });
+    sheet.addEventListener('click', function(e){ if(e.target === sheet) sheet.classList.remove('open'); });
+
+    sheet.querySelectorAll('.ws-item').forEach(function(item){
+      item.addEventListener('click', function(){
+        sheet.querySelectorAll('.ws-item').forEach(function(i){
+          i.classList.remove('selected');
+          var chk = i.querySelector('.ws-check');
+          if(chk) chk.outerHTML = '<div class="ws-empty"></div>';
+        });
+        item.classList.add('selected');
+        var emp = item.querySelector('.ws-empty');
+        if(emp) emp.outerHTML = '<div class="ws-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke="#fff" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>';
+        if(avatarEl){
+          avatarEl.textContent = item.dataset.label || '?';
+          avatarEl.style.background = 'linear-gradient(135deg,' + item.dataset.colorA + ',' + item.dataset.colorB + ')';
+        }
+        if(nameEl) nameEl.textContent = item.dataset.name || '';
+        setTimeout(function(){ sheet.classList.remove('open'); }, 220);
+      });
+    });
+  })();
 
   /* =============================================================
      KEYBOARD SHORTCUTS
@@ -867,6 +907,8 @@
 
     if(ev.key === 'Escape'){
       if(restartState === 'verifying'){ hideRestartCard(); return; }
+      var wsheet = document.getElementById('worker-sheet');
+      if(wsheet && wsheet.classList.contains('open')){ wsheet.classList.remove('open'); return; }
       if(logDrawer.classList.contains('open')){ closeLogs(); return; }
       if(expandedJobId){ collapseCard(expandedJobId); return; }
       if(sidebar.classList.contains('open')){ closeSidebar(); return; }

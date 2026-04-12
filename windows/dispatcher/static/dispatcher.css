@@ -113,15 +113,80 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   display: flex; align-items: center; justify-content: space-between;
   padding: 52px var(--sp-4) 0;
   background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 0.5px solid var(--border-subtle);
 }
-.header-left { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
-.logo-mark { width: 20px; height: 20px; color: var(--primary); flex-shrink: 0; }
-.header-title {
-  font-size: var(--t-sm); font-weight: 600; color: var(--text);
-  letter-spacing: -0.01em; margin: 0;
+.header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+/* ── M2: Worker Pill ── */
+.worker-pill {
+  display: flex; align-items: center; gap: 9px;
+  background: var(--surface); border: 0.5px solid #26263A;
+  border-radius: 22px; padding: 5px 12px 5px 6px;
+  cursor: pointer; font-family: var(--font);
+  transition: border-color var(--dur-base) var(--ease-out);
 }
-.header-right { display: flex; align-items: center; gap: var(--sp-2); flex-shrink: 0; }
+.worker-pill:active { border-color: #3A3A58; }
+.wa {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, #5B5BD6, #3B82F6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.wi { display: flex; flex-direction: column; gap: 0; }
+.wn { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.2; }
+.ws-status { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--text-muted); }
+.sdot { width: 5px; height: 5px; border-radius: 50%; background: var(--ok); flex-shrink: 0; }
+.sw-chevron { width: 12px; height: 12px; stroke: var(--text-faint); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── M2: Mode Pill + Settings ── */
+.mode-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--surface); border: 0.5px solid #26263A;
+  border-radius: 20px; padding: 5px 10px;
+  cursor: pointer; font-size: 11px; color: var(--text-muted);
+  font-family: var(--font);
+}
+.mode-pill .mode-icon { width: 13px; height: 13px; stroke: var(--text-muted); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.settings-btn {
+  width: 32px; height: 32px; border-radius: 10px;
+  background: var(--surface); border: 0.5px solid #26263A;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.settings-btn svg { width: 14px; height: 14px; stroke: var(--text-muted); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── M2: Worker Sheet ── */
+.worker-sheet {
+  position: fixed; inset: 0; background: var(--overlay);
+  z-index: 300; display: none; align-items: flex-end;
+}
+.worker-sheet.open { display: flex; }
+.ws-inner {
+  background: var(--surface-raised); border-radius: 20px 20px 0 0;
+  border: 0.5px solid #22222E; width: 100%; padding: 20px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+.ws-handle { width: 36px; height: 3px; background: #2A2A38; border-radius: 2px; margin: 0 auto 16px; }
+.ws-title { font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; margin-bottom: 12px; }
+.ws-list { display: flex; flex-direction: column; gap: 6px; }
+.ws-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px;
+  background: #0F0F18; border: 0.5px solid #1E1E2A; border-radius: 12px; cursor: pointer;
+}
+.ws-item.selected { border-color: #3A3ABA; background: #111128; }
+.ws-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.ws-info { flex: 1; }
+.ws-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.ws-desc { font-size: 11px; color: var(--text-faint); margin-top: 1px; }
+.ws-check {
+  width: 18px; height: 18px; border-radius: 50%; background: var(--accent);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.ws-check svg { width: 10px; height: 10px; stroke: #fff; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.ws-empty { width: 18px; height: 18px; border-radius: 50%; border: 0.5px solid #2A2A38; flex-shrink: 0; }
 
 /* Theme icon visibility */
 [data-theme="dark"] .theme-icon-light { display: none; }

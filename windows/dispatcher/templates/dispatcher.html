@@ -23,23 +23,59 @@
 <body>
 
 <header class="header">
-  <div class="header-left">
-    <button class="icon-btn mobile-menu-btn" id="btn-mobile-menu" aria-label="Menu">
-      <i data-lucide="menu"></i>
-    </button>
-    <svg class="logo-mark" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
-      <circle cx="12" cy="12" r="4" fill="currentColor"/>
-    </svg>
-    <h1 class="header-title">Dispatcher</h1>
-  </div>
+  <!-- Worker pill -->
+  <button class="worker-pill" id="btn-worker-pill" aria-label="Switch worker">
+    <div class="wa" id="worker-avatar">C</div>
+    <div class="wi">
+      <div class="wn" id="worker-name">Claude Sonnet</div>
+      <div class="ws-status">
+        <span class="sdot"></span>
+        <span>online</span>
+        <svg class="sw-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+  </button>
+  <!-- Right controls -->
   <div class="header-right">
-    <button class="icon-btn" id="btn-theme" aria-label="Toggle theme">
-      <i data-lucide="moon" class="theme-icon-dark"></i>
-      <i data-lucide="sun" class="theme-icon-light"></i>
+    <button class="mode-pill" id="btn-theme" aria-label="Toggle theme">
+      <svg class="mode-icon" id="mode-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <span id="mode-label">Dark</span>
+    </button>
+    <button class="settings-btn" aria-label="Settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
   </div>
 </header>
+
+<!-- Worker picker sheet (fixed overlay) -->
+<div class="worker-sheet" id="worker-sheet">
+  <div class="ws-inner">
+    <div class="ws-handle"></div>
+    <div class="ws-title">Switch Worker</div>
+    <div class="ws-list">
+      <div class="ws-item selected" data-worker="claude" data-label="C" data-name="Claude Sonnet" data-color-a="#5B5BD6" data-color-b="#3B82F6">
+        <div class="ws-avatar" style="background:linear-gradient(135deg,#5B5BD6,#3B82F6)">C</div>
+        <div class="ws-info"><div class="ws-name">Claude Sonnet</div><div class="ws-desc">Anthropic · Best for reasoning + writing</div></div>
+        <div class="ws-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      </div>
+      <div class="ws-item" data-worker="cursor" data-label="Cr" data-name="Cursor" data-color-a="#1A1A2E" data-color-b="#2D2D5E">
+        <div class="ws-avatar" style="background:linear-gradient(135deg,#1A1A2E,#2D2D5E)">Cr</div>
+        <div class="ws-info"><div class="ws-name">Cursor</div><div class="ws-desc">Anysphere · Best for code edits in repo</div></div>
+        <div class="ws-empty"></div>
+      </div>
+      <div class="ws-item" data-worker="codex" data-label="Co" data-name="Codex CLI" data-color-a="#0D3320" data-color-b="#1A6640">
+        <div class="ws-avatar" style="background:linear-gradient(135deg,#0D3320,#1A6640)">Co</div>
+        <div class="ws-info"><div class="ws-name">Codex CLI</div><div class="ws-desc">OpenAI · Terminal-native code agent</div></div>
+        <div class="ws-empty"></div>
+      </div>
+      <div class="ws-item" data-worker="gemini" data-label="G" data-name="Gemini CLI" data-color-a="#1A2A0D" data-color-b="#2E5A1A">
+        <div class="ws-avatar" style="background:linear-gradient(135deg,#1A2A0D,#2E5A1A)">G</div>
+        <div class="ws-info"><div class="ws-name">Gemini CLI</div><div class="ws-desc">Google · Long context + multimodal</div></div>
+        <div class="ws-empty"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="app">
   <!-- Sidebar (220px) -->
