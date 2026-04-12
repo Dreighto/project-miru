@@ -1058,5 +1058,7 @@
   icons();
   fetchJobs();
   fetchRecent();
+  fetchStatsEndpoint();
   setInterval(fetchJobs, POLL_MS);
+  setInterval(fetchStatsEndpoint, POLL_MS);
 })();
