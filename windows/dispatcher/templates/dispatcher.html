@@ -336,20 +336,5 @@
 <!-- Lucide Icons CDN -->
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="{{ url_for('static', filename='dispatcher.js') }}"></script>
-<script>
-(function () {
-  if (!window.visualViewport) return;
-  var nav = document.getElementById("bottomNav");
-  if (!nav) return;
-  function pinNav() {
-    var vv = window.visualViewport;
-    var offsetBottom = window.innerHeight - (vv.offsetTop + vv.height);
-    nav.style.bottom = Math.max(0, offsetBottom) + "px";
-  }
-  window.visualViewport.addEventListener("resize", pinNav, { passive: true });
-  window.visualViewport.addEventListener("scroll", pinNav, { passive: true });
-  window.addEventListener("scroll", pinNav, { passive: true });
-})();
-</script>
 </body>
 </html>
