@@ -653,17 +653,18 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* ── Bottom Nav (Phase 1) ── */
 .bottom-nav {
-  display: flex; align-items: center; justify-content: space-around;
+  display: flex; align-items: flex-start; justify-content: space-around;
   min-height: var(--bottomnav-h);
+  max-height: 84px;
   background: var(--bg);
   border-top: 0.5px solid var(--divider);
-  padding: 6px 0 calc(env(safe-area-inset-bottom, 8px) + 6px);
+  padding: 8px 0 max(env(safe-area-inset-bottom), 8px);
   flex-shrink: 0;
 }
 
 .bnav-tab {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
-  padding: 4px 16px; border: none; background: none;
+  padding: 0 16px; border: none; background: none;
   cursor: pointer; position: relative;
   font-family: var(--font); -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
