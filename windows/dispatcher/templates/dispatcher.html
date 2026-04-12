@@ -18,12 +18,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark-dimmed.min.css" />
 <link rel="stylesheet" href="{{ url_for('static', filename='dispatcher.css') }}?v={{ cache_bust }}" />
 </head>
 <body>
 
 <header class="header">
-  <!-- Worker pill -->
   <button class="worker-pill" id="btn-worker-pill" aria-label="Switch worker">
     <div class="wa" id="worker-avatar">C</div>
     <div class="wi">
@@ -35,7 +35,6 @@
       </div>
     </div>
   </button>
-  <!-- Right controls -->
   <div class="header-right">
     <button class="mode-pill" id="btn-theme" aria-label="Toggle theme">
       <svg class="mode-icon" id="mode-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -47,7 +46,7 @@
   </div>
 </header>
 
-<!-- Worker picker sheet (fixed overlay) -->
+<!-- Worker picker sheet -->
 <div class="worker-sheet" id="worker-sheet">
   <div class="ws-inner">
     <div class="ws-handle"></div>
@@ -78,7 +77,7 @@
 </div>
 
 <div class="app">
-  <!-- Sidebar (220px) -->
+  <!-- Sidebar (hidden Phase 1, preserved for rollback) -->
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-nav">
       <button class="nav-item active" data-nav="jobs"><i data-lucide="layers"></i><span>Jobs</span></button>
@@ -97,13 +96,13 @@
     </div>
   </nav>
 
-  <!-- Main work area -->
   <main class="main" id="main">
-    <!-- Jobs View -->
+
+    <!-- Dispatch View -->
     <div class="view active" id="view-jobs">
       <div class="stats-bar" id="stats-bar"></div>
 
-      <!-- Filter chips (hidden M3 — preserved for JS) -->
+      <!-- Filter chips (hidden, preserved for JS) -->
       <div class="filter-bar" id="filter-chips" role="radiogroup" aria-label="Filter jobs" style="display:none">
         <button class="chip active" data-filter="all" role="radio" aria-checked="true">All</button>
         <button class="chip" data-filter="running" role="radio" aria-checked="false"><span class="dot dot-running"></span>Running</button>
@@ -112,15 +111,14 @@
         <button class="chip" data-filter="sim" role="radio" aria-checked="false">SIM</button>
       </div>
 
-      <!-- Submit toggle (hidden M3 — preserved for JS) -->
+      <!-- Submit toggle (hidden, preserved for JS) -->
       <div class="submit-toggle" style="display:none">
         <button class="btn-ghost" id="btn-toggle-form"><i data-lucide="plus"></i>New Task</button>
       </div>
 
-      <!-- M3 Main Content -->
       <div class="m3-content">
 
-        <!-- 2. Prompt card -->
+        <!-- Prompt card -->
         <div>
           <div class="m3-sl">What do you need done?</div>
           <div class="pc" id="submit-wrap">
@@ -153,7 +151,7 @@
           </div>
         </div>
 
-        <!-- 3. Advanced options -->
+        <!-- Advanced options -->
         <div class="adv">
           <div class="adv-hd" id="btn-adv">
             <span class="adv-lbl">
@@ -163,14 +161,33 @@
             <svg class="adv-chev" id="adv-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="adv-body" id="adv-body">
-            <div class="adv-row"><span class="adv-key">Model</span><span class="adv-val">claude-sonnet-4-5</span></div>
-            <div class="adv-row"><span class="adv-key">Thinking</span><span class="adv-val">Auto</span></div>
+
+            <!-- Model selector — updates hidden #m3-model field -->
+            <div class="adv-row">
+              <span class="adv-key">Model</span>
+              <div class="seg-group" data-field="model" role="radiogroup" aria-label="Model">
+                <button type="button" class="seg active" role="radio" aria-checked="true" data-value="Claude">Claude</button>
+                <button type="button" class="seg" role="radio" aria-checked="false" data-value="Ollama">Ollama</button>
+                <button type="button" class="seg" role="radio" aria-checked="false" data-value="Cursor">Cursor</button>
+              </div>
+            </div>
+
+            <!-- Effort selector — updates hidden #m3-effort field -->
+            <div class="adv-row">
+              <span class="adv-key">Effort</span>
+              <div class="seg-group" data-field="effort" role="radiogroup" aria-label="Effort">
+                <button type="button" class="seg" role="radio" aria-checked="false" data-value="Quick">Quick</button>
+                <button type="button" class="seg active" role="radio" aria-checked="true" data-value="Standard">Standard</button>
+                <button type="button" class="seg" role="radio" aria-checked="false" data-value="Deep">Deep</button>
+              </div>
+            </div>
+
             <div class="adv-row"><span class="adv-key">Max tokens</span><span class="adv-val">8 192</span></div>
             <div class="adv-row"><span class="adv-key">Priority</span><span class="adv-val">Normal</span></div>
           </div>
         </div>
 
-        <!-- 4. Recent collapsible -->
+        <!-- Recent collapsible -->
         <div class="rec">
           <div class="rec-hd" id="btn-rec">
             <span class="rec-lbl">RECENT <span class="rec-count" id="rec-count">0</span></span>
@@ -179,7 +196,7 @@
           <div class="rec-body" id="rec-body"></div>
         </div>
 
-        <!-- 5. Quick Links -->
+        <!-- Quick Links -->
         <div>
           <div class="m3-sl">Quick links</div>
           <div class="ql-grid">
@@ -212,7 +229,7 @@
 
       </div><!-- /.m3-content -->
 
-      <!-- Legacy job lists (hidden M3 — preserved for polling JS) -->
+      <!-- Legacy job lists (hidden, preserved for JS) -->
       <div style="display:none">
         <div class="section-header hidden" id="live-header">
           <span class="dot dot-pulse"></span><span>Live</span>
@@ -233,7 +250,7 @@
       </div>
     </div>
 
-    <!-- History View (Phase 1 — M5 will populate) -->
+    <!-- History View (M5) -->
     <div class="view" id="view-history">
       <div class="view-title">History</div>
       <div class="empty-state">
@@ -242,12 +259,17 @@
       </div>
     </div>
 
-    <!-- Files View (Phase 1 — M5 will populate) -->
+    <!-- Files View (M5) -->
     <div class="view" id="view-files">
-      <div class="view-title">Files</div>
-      <div class="empty-state">
-        <i data-lucide="folder-open"></i>
-        <p>File browser coming in Milestone 5</p>
+      <div class="fb-toolbar">
+        <div class="fb-search-wrap">
+          <svg class="fb-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="fb-search" id="fb-search" placeholder="Search files..." autocomplete="off" />
+        </div>
+      </div>
+      <div class="fb-pinned" id="fb-pinned"></div>
+      <div class="fb-tree" id="fb-tree">
+        <div class="fb-loading">Loading file tree&hellip;</div>
       </div>
     </div>
 
@@ -276,9 +298,10 @@
         </div>
       </div>
     </div>
+
   </main>
 
-  <!-- Bottom Navigation (Phase 1) -->
+  <!-- Bottom Navigation -->
   <nav class="bottom-nav" id="bottomNav">
     <button class="bnav-tab active" data-nav="jobs" aria-label="Dispatch">
       <div class="bnav-indicator"></div>
@@ -303,7 +326,7 @@
   </nav>
 </div>
 
-<!-- Log drawer (slides from right) -->
+<!-- Log drawer -->
 <div class="drawer" id="log-drawer">
   <div class="drawer-backdrop" id="log-backdrop"></div>
   <div class="drawer-panel">
@@ -315,7 +338,7 @@
   </div>
 </div>
 
-<!-- Floating restart verification card -->
+<!-- Restart card -->
 <div class="restart-card" id="restart-card">
   <div class="restart-card-inner" id="restart-card-inner">
     <svg class="countdown-ring" viewBox="0 0 36 36">
@@ -333,11 +356,62 @@
   </div>
 </div>
 
-<!-- Toast rack (bottom-right) -->
+<!-- File Viewer Sheet (M5) -->
+<div class="file-sheet" id="file-sheet">
+  <div class="file-sheet-inner">
+    <div class="ws-handle"></div>
+    <div class="file-sheet-hd">
+      <div class="file-sheet-titlewrap">
+        <span class="file-sheet-title" id="fs-title">file.py</span>
+        <span class="file-sheet-path" id="fs-path">/path</span>
+      </div>
+      <button class="icon-btn" id="fs-close" aria-label="Close file viewer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <pre class="file-sheet-code"><code id="fs-code"></code></pre>
+    <div class="file-sheet-actions">
+      <button class="btn-ghost" id="fs-copy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy
+      </button>
+      <button class="btn-ghost" id="fs-dl">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast rack -->
 <div class="toast-rack" id="toast-rack" aria-live="polite"></div>
 
+<!-- highlight.js for file viewer syntax highlighting (M5) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <!-- Lucide Icons CDN -->
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="{{ url_for('static', filename='dispatcher.js') }}?v={{ cache_bust }}"></script>
+
+<!-- Advanced options seg-group wiring -->
+<script>
+(function(){
+  document.querySelectorAll('.adv-body .seg-group').forEach(function(group){
+    var field = group.getAttribute('data-field');
+    var hidden = document.getElementById('m3-' + field);
+    group.querySelectorAll('.seg').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        group.querySelectorAll('.seg').forEach(function(b){
+          b.classList.remove('active');
+          b.setAttribute('aria-checked', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
+        if(hidden) hidden.value = btn.getAttribute('data-value');
+      });
+    });
+  });
+})();
+</script>
+
 </body>
 </html>

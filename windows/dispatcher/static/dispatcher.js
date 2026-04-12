@@ -1079,6 +1079,293 @@
   })();
 
   /* =============================================================
+     M5: FILE BROWSER
+     ============================================================= */
+  var fbTreeEl    = $('fb-tree');
+  var fbPinnedEl  = $('fb-pinned');
+  var fbSearchEl  = $('fb-search');
+  var fileSheetEl = $('file-sheet');
+  var fsCodeEl    = $('fs-code');
+  var fsTitleEl   = $('fs-title');
+  var fsPathEl    = $('fs-path');
+  var fsCopyBtn   = $('fs-copy');
+  var fsDlBtn     = $('fs-dl');
+  var fsCloseBtn  = $('fs-close');
+
+  var fbExpanded  = {};       /* path → true */
+  var fbCache     = {};       /* path → entries[] */
+  var fbActiveSet = new Set();
+  var fbFileText  = '';
+  var fbFileName  = '';
+  var fbSearchQ   = '';
+  var fbPollId    = null;
+  var fbLoaded    = false;
+
+  var FB_HIDE_DIR = new Set(['node_modules','.git','__pycache__','.venv','dist','build','.playwright-mcp','.mypy_cache','.pytest_cache','__snapshots__']);
+  var FB_HIDE_EXT = new Set(['pyc','log','pyo']);
+  var FB_PIN      = ['.mcp.json','.env'];
+
+  /* helpers */
+  function fbHide(e){
+    if(e.is_dir && FB_HIDE_DIR.has(e.name)) return true;
+    if(!e.is_dir){
+      var x = e.name.split('.').pop().toLowerCase();
+      if(FB_HIDE_EXT.has(x)) return true;
+      if(e.name.endsWith('~') || e.name.endsWith('.tmp') || e.name.endsWith('.bak')) return true;
+    }
+    return false;
+  }
+  function fbPin(e){ return !e.is_dir && FB_PIN.indexOf(e.name) !== -1; }
+  function fmtSize(b){
+    if(b == null) return '';
+    if(b < 1024) return b + ' B';
+    if(b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+  }
+  function extLang(name){
+    var x = (name||'').split('.').pop().toLowerCase();
+    return {py:'python',js:'javascript',ts:'typescript',tsx:'typescript',jsx:'javascript',
+      css:'css',scss:'css',html:'xml',htm:'xml',json:'json',md:'markdown',
+      yml:'yaml',yaml:'yaml',sh:'bash',bash:'bash',bat:'dos',ps1:'powershell',
+      sql:'sql',xml:'xml',toml:'toml',ini:'ini',env:'ini',cfg:'ini',
+      txt:'plaintext',csv:'plaintext',gitignore:'plaintext',dockerfile:'dockerfile'
+    }[x] || '';
+  }
+
+  var FB_CHEVRON = '<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>';
+
+  function fbIcon(e){
+    if(e.is_dir) return '<span class="fb-icon fb-icon-folder"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>';
+    var n = e.name.toLowerCase(), x = n.split('.').pop();
+    /* special file names */
+    if(n==='.env'||n==='.env.local'||n==='.env.example') return '<span class="fb-icon fb-icon-env"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>';
+    if(n==='.mcp.json') return '<span class="fb-icon fb-icon-cfg"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>';
+    /* ext → icon class + svg */
+    var codeIcon = '<svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+    var fileIcon = '<svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>';
+    var textIcon = '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
+    var clsMap = {py:'fb-icon-py',js:'fb-icon-js',jsx:'fb-icon-js',ts:'fb-icon-ts',tsx:'fb-icon-ts',
+      css:'fb-icon-css',scss:'fb-icon-css',html:'fb-icon-html',htm:'fb-icon-html',
+      json:'fb-icon-json',md:'fb-icon-md',env:'fb-icon-env'};
+    var cls = clsMap[x] || 'fb-icon-default';
+    var ico = fileIcon;
+    if(x==='py'||x==='js'||x==='ts'||x==='jsx'||x==='tsx'||x==='css'||x==='scss'||x==='html'||x==='htm'||x==='json') ico = codeIcon;
+    if(x==='md'||x==='txt'||x==='rst') ico = textIcon;
+    return '<span class="fb-icon ' + cls + '">' + ico + '</span>';
+  }
+
+  function fbRow(e, depth){
+    var pad = depth * 20;
+    var active = fbActiveSet.has(e.name) || fbActiveSet.has(e.path);
+    var chCls = e.is_dir ? ('fb-chev' + (fbExpanded[e.path] ? ' open' : '')) : 'fb-chev empty';
+    var h = '<div class="fb-row" data-path="' + esc(e.path) + '" data-dir="' + (e.is_dir?'1':'0') + '" data-name="' + esc(e.name) + '">';
+    h += '<span class="fb-indent" style="width:' + pad + 'px"></span>';
+    h += '<span class="' + chCls + '">' + (e.is_dir ? FB_CHEVRON : '') + '</span>';
+    h += fbIcon(e);
+    h += '<span class="fb-name' + (e.is_dir?' fb-name-dir':'') + '">' + esc(e.name) + '</span>';
+    if(active) h += '<span class="fb-active-dot"></span>';
+    if(!e.is_dir && e.size != null) h += '<span class="fb-size">' + fmtSize(e.size) + '</span>';
+    h += '</div>';
+    if(e.is_dir) h += '<div class="fb-children' + (fbExpanded[e.path]?' open':'') + '" data-parent="' + esc(e.path) + '"></div>';
+    return h;
+  }
+
+  function fbRenderInto(el, entries, depth){
+    var vis = entries.filter(function(e){ return !fbHide(e); });
+    if(fbSearchQ){
+      var q = fbSearchQ.toLowerCase();
+      vis = vis.filter(function(e){ return e.is_dir || e.name.toLowerCase().indexOf(q) !== -1; });
+    }
+    vis.sort(function(a,b){ if(a.is_dir!==b.is_dir) return a.is_dir?-1:1; return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+    if(vis.length === 0 && fbSearchQ){
+      el.innerHTML = depth === 0 ? '<div class="fb-no-results">No files match \u201c' + esc(fbSearchQ) + '\u201d</div>' : '';
+      return;
+    }
+    el.innerHTML = vis.map(function(e){ return fbRow(e, depth); }).join('');
+    vis.forEach(function(e){
+      if(e.is_dir && fbExpanded[e.path] && fbCache[e.path]){
+        var ch = el.querySelector('.fb-children[data-parent="' + CSS.escape(e.path) + '"]');
+        if(ch) fbRenderInto(ch, fbCache[e.path], depth + 1);
+      }
+    });
+  }
+
+  function fbRender(){
+    if(!fbTreeEl) return;
+    var root = fbCache[''] || fbCache['.'];
+    if(!root){ fbTreeEl.innerHTML = '<div class="fb-loading">Loading file tree\u2026</div>'; return; }
+    /* pinned */
+    if(fbPinnedEl){
+      var pinned = root.filter(fbPin);
+      if(pinned.length > 0){
+        fbPinnedEl.innerHTML = '<div class="fb-pin-label">Pinned</div>' + pinned.map(function(e){ return fbRow(e, 0); }).join('');
+      } else { fbPinnedEl.innerHTML = ''; }
+    }
+    /* main tree */
+    fbRenderInto(fbTreeEl, root.filter(function(e){ return !fbPin(e); }), 0);
+  }
+
+  async function fbFetch(path){
+    try {
+      var u = '/api/files' + (path ? '?path=' + encodeURIComponent(path) : '');
+      var r = await fetch(u, {cache:'no-store'});
+      if(!r.ok) return null;
+      var d = await r.json();
+      return d.entries || [];
+    } catch(e){ return null; }
+  }
+
+  async function fbLoad(){
+    var entries = await fbFetch('');
+    if(entries){
+      fbCache[''] = entries; fbCache['.'] = entries;
+      /* restore expanded dirs */
+      var keys = Object.keys(fbExpanded);
+      for(var i = 0; i < keys.length; i++){
+        if(!fbCache[keys[i]]){
+          var sub = await fbFetch(keys[i]);
+          if(sub) fbCache[keys[i]] = sub;
+        }
+      }
+      fbRender();
+    }
+    fbLoaded = true;
+  }
+
+  async function fbToggle(path){
+    if(fbExpanded[path]){
+      delete fbExpanded[path];
+      fbRender();
+    } else {
+      fbExpanded[path] = true;
+      if(!fbCache[path]){
+        var ch = document.querySelector('.fb-children[data-parent="' + CSS.escape(path) + '"]');
+        if(ch){ ch.classList.add('open'); ch.innerHTML = '<div class="fb-loading" style="padding:8px 16px">Loading\u2026</div>'; }
+        var entries = await fbFetch(path);
+        if(entries) fbCache[path] = entries;
+        else delete fbExpanded[path];
+      }
+      fbRender();
+    }
+  }
+
+  async function fbOpen(path, name){
+    if(!fileSheetEl) return;
+    fbFileName = name; fbFileText = '';
+    if(fsTitleEl) fsTitleEl.textContent = name;
+    var dir = path.replace(/[/\\][^/\\]*$/,'') || '.';
+    if(fsPathEl) fsPathEl.textContent = dir;
+    if(fsCodeEl){ fsCodeEl.textContent = 'Loading\u2026'; fsCodeEl.className = ''; }
+    fileSheetEl.classList.add('open');
+    try {
+      var r = await fetch('/api/file?path=' + encodeURIComponent(path), {cache:'no-store'});
+      if(!r.ok){ if(fsCodeEl) fsCodeEl.textContent = 'Failed to load file'; return; }
+      var d = await r.json();
+      if(d.error){ if(fsCodeEl) fsCodeEl.textContent = d.error; return; }
+      if(!d.is_text){ if(fsCodeEl) fsCodeEl.textContent = 'Binary file (' + fmtSize(d.size) + ')\nCannot preview binary files.'; return; }
+      fbFileText = d.content || '';
+      if(fsCodeEl){
+        fsCodeEl.textContent = fbFileText;
+        var lang = extLang(name);
+        if(lang && window.hljs){
+          fsCodeEl.className = 'language-' + lang;
+          try { hljs.highlightElement(fsCodeEl); } catch(e){}
+        }
+      }
+    } catch(e){ if(fsCodeEl) fsCodeEl.textContent = 'Network error loading file'; }
+  }
+
+  function fbCloseSheet(){ if(fileSheetEl) fileSheetEl.classList.remove('open'); }
+
+  /* sheet events */
+  if(fileSheetEl) fileSheetEl.addEventListener('click', function(e){ if(e.target === fileSheetEl) fbCloseSheet(); });
+  if(fsCloseBtn) fsCloseBtn.addEventListener('click', fbCloseSheet);
+  if(fsCopyBtn) fsCopyBtn.addEventListener('click', function(){
+    if(fbFileText) copyToClipboard(fbFileText, fsCopyBtn);
+    else toast('Nothing to copy','err');
+  });
+  if(fsDlBtn) fsDlBtn.addEventListener('click', function(){
+    if(!fbFileText){ toast('Nothing to download','err'); return; }
+    var blob = new Blob([fbFileText], {type:'text/plain'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = fbFileName || 'file.txt';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
+    toast('Downloaded ' + fbFileName, 'ok');
+  });
+
+  /* Escape closes file sheet (capture phase — fires before other handlers) */
+  document.addEventListener('keydown', function(ev){
+    if(ev.key === 'Escape' && fileSheetEl && fileSheetEl.classList.contains('open')){
+      fbCloseSheet(); ev.stopImmediatePropagation();
+    }
+  }, true);
+
+  /* tree row click */
+  document.addEventListener('click', function(ev){
+    var row = ev.target.closest('.fb-row');
+    if(!row) return;
+    if(row.getAttribute('data-dir') === '1') fbToggle(row.getAttribute('data-path'));
+    else fbOpen(row.getAttribute('data-path'), row.getAttribute('data-name'));
+  });
+
+  /* search */
+  if(fbSearchEl){
+    var fbSto = null;
+    fbSearchEl.addEventListener('input', function(){
+      clearTimeout(fbSto);
+      fbSto = setTimeout(function(){ fbSearchQ = fbSearchEl.value.trim(); fbRender(); }, 150);
+    });
+  }
+
+  /* active file indicator — extract file references from running jobs */
+  function fbUpdateActiveFiles(){
+    var nxt = new Set();
+    allJobs.forEach(function(j){
+      if(j.status !== 'running' && j.status !== 'pending') return;
+      var p = j.prompt || '';
+      var m = p.match(/[\w\-\.\/\\]+\.\w{1,10}/g);
+      if(m) m.forEach(function(f){
+        var c = f.replace(/\\/g,'/').replace(/^[./]+/,'');
+        nxt.add(c.split('/').pop());
+        nxt.add(c);
+      });
+    });
+    var changed = nxt.size !== fbActiveSet.size;
+    if(!changed) nxt.forEach(function(f){ if(!fbActiveSet.has(f)) changed = true; });
+    if(changed){ fbActiveSet = nxt; if(fbLoaded) fbRender(); }
+  }
+
+  /* poll file tree every 10s */
+  async function fbPoll(){
+    var entries = await fbFetch('');
+    if(!entries) return;
+    var old = fbCache[''] || fbCache['.'] || [];
+    var diff = entries.length !== old.length;
+    if(!diff) for(var i = 0; i < entries.length; i++){
+      if(!old[i] || entries[i].name !== old[i].name || entries[i].size !== old[i].size){ diff = true; break; }
+    }
+    if(diff){
+      fbCache[''] = entries; fbCache['.'] = entries;
+      var ep = Object.keys(fbExpanded);
+      for(var j = 0; j < ep.length; j++){
+        var sub = await fbFetch(ep[j]);
+        if(sub) fbCache[ep[j]] = sub;
+      }
+      fbRender();
+    }
+  }
+
+  /* lazy init: load tree on first Files tab visit */
+  document.querySelectorAll('[data-nav="files"]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      if(!fbLoaded) fbLoad();
+      if(!fbPollId) fbPollId = setInterval(fbPoll, 10000);
+    });
+  });
+
+  /* =============================================================
      INIT
      ============================================================= */
   icons();
@@ -1087,4 +1374,5 @@
   fetchStatsEndpoint();
   setInterval(fetchJobs, POLL_MS);
   setInterval(fetchStatsEndpoint, POLL_MS);
+  setInterval(fbUpdateActiveFiles, POLL_MS);
 })();

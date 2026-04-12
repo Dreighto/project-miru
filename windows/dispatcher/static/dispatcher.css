@@ -937,3 +937,170 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   .restart-card { right: var(--sp-4); bottom: calc(var(--bottomnav-h) + var(--sp-4)); min-width: 0; max-width: calc(100vw - var(--sp-8)); }
   .toast-rack { right: var(--sp-4); bottom: calc(var(--bottomnav-h) + var(--sp-4)); max-width: calc(100vw - var(--sp-8)); }
 }
+
+/* ── M5: File Browser ── */
+.fb-toolbar {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--divider);
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+}
+.fb-search-wrap { position: relative; display: flex; align-items: center; }
+.fb-search-icon {
+  position: absolute; left: 12px;
+  width: 15px; height: 15px;
+  stroke: var(--text-faint); fill: none;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  pointer-events: none;
+}
+.fb-search {
+  width: 100%; height: 40px;
+  background: var(--surface); border: 0.5px solid var(--border);
+  border-radius: var(--r-md); padding: 0 12px 0 36px;
+  font-size: 16px !important; /* prevent iOS zoom */
+  color: var(--text); font-family: var(--font);
+  outline: none;
+  transition: border-color var(--dur-base) var(--ease-out);
+}
+.fb-search:focus { border-color: var(--primary); }
+.fb-search::placeholder { color: var(--text-faint); }
+
+.fb-pinned { padding: 8px 16px; border-bottom: 1px solid var(--divider); }
+.fb-pinned:empty { display: none; padding: 0; border: none; }
+.fb-pin-label {
+  font-size: 10px; color: var(--text-faint);
+  text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;
+  padding: 4px 0 6px;
+}
+
+.fb-tree { padding: 4px 0; }
+.fb-loading, .fb-no-results {
+  padding: 32px 16px; text-align: center;
+  color: var(--text-faint); font-size: var(--t-sm);
+}
+
+.fb-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 16px; min-height: 44px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.fb-row:hover { background: var(--surface); }
+.fb-row:active { background: var(--surface-2); }
+.fb-indent { flex-shrink: 0; }
+
+.fb-chev {
+  width: 16px; height: 16px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.fb-chev svg {
+  width: 11px; height: 11px;
+  stroke: var(--text-faint); fill: none;
+  stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+}
+.fb-chev.open { transform: rotate(90deg); }
+.fb-chev.empty { visibility: hidden; }
+
+.fb-icon {
+  width: 18px; height: 18px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.fb-icon svg {
+  width: 16px; height: 16px;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; fill: none;
+}
+.fb-icon-folder svg { stroke: #6B8EFF; }
+.fb-icon-py svg     { stroke: #3B82F6; }
+.fb-icon-js svg     { stroke: #FBBF24; }
+.fb-icon-ts svg     { stroke: #3B82F6; }
+.fb-icon-css svg    { stroke: #A855F7; }
+.fb-icon-html svg   { stroke: #EF4444; }
+.fb-icon-json svg   { stroke: #22C55E; }
+.fb-icon-md svg     { stroke: #9CA3AF; }
+.fb-icon-env svg    { stroke: #F59E0B; }
+.fb-icon-cfg svg    { stroke: #F59E0B; }
+.fb-icon-default svg{ stroke: var(--text-faint); }
+
+.fb-name {
+  flex: 1; min-width: 0;
+  font-size: 14px; color: var(--text-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-weight: 500;
+}
+.fb-name-dir { color: var(--text); font-weight: 600; }
+.fb-size {
+  font-size: 10px; color: var(--text-faint);
+  font-family: var(--font-mono); flex-shrink: 0;
+}
+
+/* Active file indicator — amber pulsing glow */
+.fb-active-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #F59E0B; flex-shrink: 0;
+  animation: fb-glow 2s ease-in-out infinite;
+}
+@keyframes fb-glow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px 1px rgba(245, 158, 11, 0.5); }
+  50%      { opacity: 0.4; box-shadow: 0 0 8px 2px rgba(245, 158, 11, 0.15); }
+}
+
+/* Folder children */
+.fb-children { display: none; }
+.fb-children.open { display: block; animation: fb-expand 150ms var(--ease-out); }
+@keyframes fb-expand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── M5: File Viewer Sheet ── */
+.file-sheet {
+  position: fixed; inset: 0; background: var(--overlay);
+  z-index: 300; display: none; align-items: flex-end;
+}
+.file-sheet.open { display: flex; }
+.file-sheet-inner {
+  background: var(--surface-raised); border-radius: 20px 20px 0 0;
+  border-top: 0.5px solid #22222E; width: 100%;
+  padding: 12px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  max-height: 85vh;
+  display: flex; flex-direction: column;
+}
+.file-sheet-inner .ws-handle { margin-bottom: 8px; }
+.file-sheet-hd {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 0 20px 12px;
+  border-bottom: 0.5px solid var(--border-subtle);
+}
+.file-sheet-titlewrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.file-sheet-title {
+  font-size: 15px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.file-sheet-path {
+  font-size: 11px; color: var(--text-faint); font-family: var(--font-mono);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.file-sheet-code {
+  flex: 1; overflow: auto; margin: 0;
+  padding: 12px 16px;
+  font-family: var(--font-mono); font-size: 12px; line-height: 1.7;
+  background: var(--bg); border: none; color: var(--text-muted);
+  -webkit-overflow-scrolling: touch;
+}
+.file-sheet-code code {
+  display: block;
+  background: transparent !important;
+  padding: 0 !important;
+  font-size: 12px; line-height: 1.7;
+}
+.file-sheet-code code.hljs { background: transparent !important; padding: 0 !important; }
+.file-sheet-actions {
+  display: flex; gap: 8px;
+  padding: 12px 20px 8px;
+  border-top: 0.5px solid var(--border-subtle);
+}
+.file-sheet-actions .btn-ghost { flex: 1; justify-content: center; gap: 6px; min-height: 44px; }
