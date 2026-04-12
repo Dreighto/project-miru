@@ -582,6 +582,20 @@
       }
       return;
     }
+
+    /* recent row click → expand inline if card in DOM, else open detail page */
+    var ri = ev.target.closest('.ri[data-id]');
+    if(ri){
+      ev.stopPropagation();
+      var rid = ri.getAttribute('data-id');
+      var existingCard = document.querySelector('.job-card[data-id="' + rid + '"]');
+      if(existingCard){
+        if(expandedJobId === rid){ collapseCard(rid); } else { expandCard(rid); }
+      } else {
+        window.location.href = '/jobs/' + rid;
+      }
+      return;
+    }
   });
 
   /* keyboard nav on job cards */
@@ -1004,12 +1018,13 @@
       return;
     }
     bodyEl.innerHTML = jobs.map(function(j){
+      var jid    = j.id || j.job_id || '';  /* /api/jobs uses id; /api/history uses job_id */
       var rdClass = j.status === 'done' ? 'done' : (j.status === 'running' ? 'run' : (j.status === 'failed' ? 'failed' : ''));
       var promptText = esc(j.prompt ? j.prompt.substring(0, 60) : '(no prompt)');
       var worker = esc(j.model || 'Unknown');
       var ago    = fmtTimeAgo(j.created_at);
       var status = esc(j.status || '');
-      return '<div class="ri">' +
+      return '<div class="ri" data-id="' + esc(jid) + '">' +
         '<div class="rd ' + rdClass + '"></div>' +
         '<div class="rt">' +
           '<div class="rtt">' + promptText + '</div>' +
