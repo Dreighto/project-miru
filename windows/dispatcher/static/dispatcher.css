@@ -295,6 +295,10 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   padding: var(--sp-2) var(--sp-6);
   border-bottom: 1px solid var(--divider);
 }
+#submit-wrap, .submit-wrap {
+  scroll-margin-top: 0;   /* prevent iOS from scrolling this into view on open */
+  scroll-snap-align: none;
+}
 .submit-wrap {
   display: grid; grid-template-rows: 0fr;
   transition: grid-template-rows var(--dur-expand) var(--ease-out);

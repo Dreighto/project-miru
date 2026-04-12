@@ -253,7 +253,6 @@
       submitWrap.classList.toggle('open');
       if(!isOpen){
         promptEl.focus({ preventScroll: true });
-        promptEl.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       } else {
         var mainEl = document.querySelector('.main');
         if(mainEl) mainEl.scrollTop = 0;
@@ -930,7 +929,6 @@
       ev.preventDefault();
       submitWrap.classList.add('open');
       promptEl.focus({ preventScroll: true });
-      promptEl.scrollIntoView({ block: 'nearest', behavior: 'instant' });
     }
   });
 
