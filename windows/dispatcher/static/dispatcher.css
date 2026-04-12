@@ -106,11 +106,11 @@ pre { margin: 0; font-family: var(--font-mono); }
 svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* ── Shell Layout — header + main + bottom nav ── */
-.app { display: flex; flex-direction: column; height: calc(100dvh - var(--header-h)); }
+.app { display: flex; flex-direction: column; height: calc(100dvh - var(--header-h)); margin-top: var(--header-h); }
 
-/* ── Header (85px sticky — 52px DI inset + 33px content) ── */
+/* ── Header (85px fixed — 52px DI inset + 33px content) ── */
 .header {
-  position: sticky; top: 0; z-index: 200;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
   min-height: var(--header-h);
   display: flex; align-items: center; justify-content: space-between;
   padding: 52px var(--sp-4) 0;
@@ -466,7 +466,8 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
 .job-card.expanded .job-card-detail { grid-template-rows: 1fr; }
 
 .job-card-detail-inner {
-  overflow: hidden; min-height: 0;
+  overflow-y: auto; min-height: 0;
+  max-height: calc(100vh - 120px);
 }
 .jcd-body {
   padding: 0 var(--sp-6) var(--sp-4) calc(var(--sp-6) + 10px);

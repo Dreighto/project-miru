@@ -249,8 +249,15 @@
   var btnToggleForm = $('btn-toggle-form');
   if(btnToggleForm){
     btnToggleForm.addEventListener('click', function(){
+      var isOpen = submitWrap.classList.contains('open');
       submitWrap.classList.toggle('open');
-      if(submitWrap.classList.contains('open')) promptEl.focus();
+      if(!isOpen){
+        promptEl.focus();
+      } else {
+        var mainEl = document.querySelector('.main');
+        if(mainEl) mainEl.scrollTop = 0;
+        window.scrollTo(0, 0);
+      }
     });
   }
 
