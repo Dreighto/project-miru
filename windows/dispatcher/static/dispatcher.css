@@ -116,6 +116,8 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   padding: 52px var(--sp-4) 0;
   background: var(--bg);
   border-bottom: 0.5px solid var(--border-subtle);
+  transform: translateZ(0); /* force GPU layer — prevents iOS scroll-with-content */
+  -webkit-transform: translateZ(0);
 }
 .header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
@@ -256,6 +258,7 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   border-bottom: 1px solid var(--divider);
   flex-wrap: wrap; align-items: stretch;
   min-height: 44px;
+  margin-top: 12px; /* breathing room below fixed header */
 }
 .stats-bar:empty { display: none; }
 .stats-empty { font-size: var(--t-sm); color: var(--text-faint); align-self: center; }
@@ -445,6 +448,11 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   font-size: var(--t-xs); color: var(--text-faint);
   font-family: var(--font-mono); flex-shrink: 0; white-space: nowrap;
 }
+.jr-chevron {
+  flex-shrink: 0; width: 14px; height: 14px; margin-left: 4px;
+  color: var(--text-faint); transition: transform var(--dur-base) var(--ease-out);
+}
+.job-card.expanded .jr-chevron { transform: rotate(180deg); }
 
 .pill {
   font-size: var(--t-xs); color: var(--text-faint);
@@ -466,8 +474,8 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
 .job-card.expanded .job-card-detail { grid-template-rows: 1fr; }
 
 .job-card-detail-inner {
-  overflow-y: auto; min-height: 0;
-  max-height: calc(100vh - 120px);
+  overflow: hidden; min-height: 0;
+  /* No max-height — .main scrolls; nested scroll causes iOS spring-back */
 }
 .jcd-body {
   padding: 0 var(--sp-6) var(--sp-4) calc(var(--sp-6) + 10px);
