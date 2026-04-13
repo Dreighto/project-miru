@@ -630,9 +630,23 @@ def api_history():
 
 _FILE_ROOT = REPO_ROOT
 
+# External pinned directories (outside repo) that the file browser may access
+_EXTERNAL_PINS: dict[str, Path] = {
+    "__screenshots__": Path(r"C:\temp\playwright-shots"),
+}
+
 
 def _safe_resolve(rel_path: str) -> Path | None:
-    """Resolve a relative path under _FILE_ROOT. Returns None if it escapes."""
+    """Resolve a relative path under _FILE_ROOT or an allowed external pin.
+    Returns None if it escapes all allowed roots."""
+    # Check external pin prefixes first  (e.g. "__screenshots__/foo.png")
+    for prefix, ext_root in _EXTERNAL_PINS.items():
+        if rel_path == prefix or rel_path.startswith(prefix + "/") or rel_path.startswith(prefix + "\\"):
+            sub = rel_path[len(prefix):].lstrip("/\\")
+            target = (ext_root / sub).resolve() if sub else ext_root.resolve()
+            if not str(target).startswith(str(ext_root.resolve())):
+                return None
+            return target
     try:
         target = (_FILE_ROOT / rel_path).resolve()
         if not str(target).startswith(str(_FILE_ROOT.resolve())):
@@ -661,6 +675,18 @@ def _is_text_file(p: Path) -> bool:
     return mt is not None and mt.startswith("text/")
 
 
+def _child_rel_path(child: Path, rel: str) -> str:
+    """Build a browser-safe relative path for a child entry."""
+    # For external pins, prefix with the virtual mount name
+    for prefix, ext_root in _EXTERNAL_PINS.items():
+        try:
+            child_rel = child.relative_to(ext_root.resolve())
+            return (prefix + "/" + str(child_rel)).replace("\\", "/")
+        except ValueError:
+            continue
+    return str(child.relative_to(_FILE_ROOT)).replace("\\", "/")
+
+
 @app.get("/api/files")
 def api_files():
     rel = request.args.get("path", "").strip().lstrip("/\\")
@@ -682,7 +708,8 @@ def api_files():
                     "name": child.name,
                     "is_dir": child.is_dir(),
                     "size": st.st_size if child.is_file() else None,
-                    "path": str(child.relative_to(_FILE_ROOT)).replace("\\", "/"),
+                    "mtime": st.st_mtime,
+                    "path": _child_rel_path(child, rel),
                 })
             except OSError:
                 continue
@@ -969,7 +996,7 @@ def admin_restart():
 
 @app.get("/")
 def index():
-    return render_template("dispatcher.html")
+    return render_template("dispatcher.html", cache_bust=int(time.time()))
 
 
 # ---------------------------------------------------------------------------

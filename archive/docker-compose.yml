@@ -1,0 +1,30 @@
+services:
+  tcg-watcher:
+    build: ./app
+    container_name: tcg-watcher
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+      - F:/OPTCG_Images:/images:ro
+      - ./secrets/service_account.json:/run/secrets/service_account.json:ro
+    env_file:
+      - ./.env
+    environment:
+      - IMAGES_ROOT=/images
+      - IMPORT_WEBHOOK_URL=https://script.google.com/macros/s/AKfycbzJDXtAwsUrAAGZbAhOerIsLUJhiJXMZT2Jv6lvqOy5hlw8S9s805-HDPlTj7YwKmWBgA/exec
+      - IMPORT_WEBHOOK_TOKEN=OPTCG_import_8eF3kLm92QaTzX7vRw5Hp1YcN6uB4s
+      - SHEET_NAME=Watchlist
+      - TZ=America/Los_Angeles
+      - PYTHONUNBUFFERED=1
+
+  tcg-dashboard:
+    build: ./pm
+    container_name: tcg-dashboard
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data:ro
+      - F:/OPTCG_Images:/images:ro
+    environment:
+      - TZ=America/Los_Angeles

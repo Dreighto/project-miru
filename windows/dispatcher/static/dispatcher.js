@@ -1,13 +1,19 @@
 (function(){
   'use strict';
 
+  /* M4: reduced-motion gate — checked once at startup */
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* iOS detection — used for Web Share API vs anchor download */
+  var isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
   /* =============================================================
      STATE
      ============================================================= */
   var allJobs = [];
   var expandedJobId = null;
   var currentFilter = 'all';
-  var statsAnimated = false;
+  var statsApiAnimated = false; /* M4: gates first-load counter animation from /api/stats */
   var initialLoad = true;
   var healthTimer = null;
   var restartTimers = {};
@@ -104,17 +110,30 @@
      ============================================================= */
   function toast(msg, type){
     type = type || 'info';
-    var prefix = type === 'ok' ? '\u2713 ' : type === 'err' ? '\u2717 ' : '';
+    var prefix = type === 'ok' ? '\u2713 ' : type === 'err' ? '\u2717 ' : '\u2139 ';
     var el = document.createElement('div');
     el.className = 'toast t-' + type;
     el.textContent = prefix + msg;
-    toastRack.appendChild(el);
-    requestAnimationFrame(function(){ el.classList.add('show'); });
+    if(!reduceMotion){
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(20px) scale(0.97)';
+      toastRack.appendChild(el);
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          el.style.transition = 'opacity 220ms cubic-bezier(0.16,1,0.3,1), transform 220ms cubic-bezier(0.16,1,0.3,1)';
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0) scale(1)';
+        });
+      });
+    } else {
+      toastRack.appendChild(el);
+    }
     var all = toastRack.querySelectorAll('.toast');
     while(all.length > MAX_TOASTS){ all[0].remove(); all = toastRack.querySelectorAll('.toast'); }
     setTimeout(function(){
-      el.classList.remove('show');
-      setTimeout(function(){ if(el.parentNode) el.remove(); }, 300);
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(8px)';
+      setTimeout(function(){ if(el.parentNode) el.remove(); }, 220);
     }, DISMISS_MS);
   }
 
@@ -165,15 +184,21 @@
     document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
     var target = $('view-' + name);
     if(target) target.classList.add('active');
+    window.scrollTo(0, 0);
+    /* sidebar nav highlight (preserved for rollback) */
     document.querySelectorAll('.nav-item[data-nav]').forEach(function(b){
       var nav = b.getAttribute('data-nav');
       if(nav === 'logs') return;
       b.classList.toggle('active', nav === name);
     });
+    /* bottom nav highlight */
+    document.querySelectorAll('.bnav-tab[data-nav]').forEach(function(b){
+      b.classList.toggle('active', b.getAttribute('data-nav') === name);
+    });
     if(name === 'health') fetchHealth();
   }
 
-  /* sidebar nav */
+  /* sidebar nav (preserved for rollback) */
   document.querySelectorAll('.nav-item[data-nav]').forEach(function(btn){
     btn.addEventListener('click', function(){
       var nav = btn.getAttribute('data-nav');
@@ -181,6 +206,14 @@
       if(nav === 'logs'){ toggleLogs(); return; }
       switchView(nav);
       closeSidebar();
+    });
+  });
+
+  /* bottom nav (Phase 1) */
+  document.querySelectorAll('.bnav-tab[data-nav]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var nav = btn.getAttribute('data-nav');
+      if(nav) switchView(nav);
     });
   });
 
@@ -235,8 +268,15 @@
   var btnToggleForm = $('btn-toggle-form');
   if(btnToggleForm){
     btnToggleForm.addEventListener('click', function(){
+      var isOpen = submitWrap.classList.contains('open');
       submitWrap.classList.toggle('open');
-      if(submitWrap.classList.contains('open')) promptEl.focus();
+      if(!isOpen){
+        promptEl.focus({ preventScroll: true });
+      } else {
+        var mainEl = document.querySelector('.main');
+        if(mainEl) mainEl.scrollTop = 0;
+        window.scrollTo(0, 0);
+      }
     });
   }
 
@@ -245,7 +285,8 @@
      ============================================================= */
   function animateNum(el, target){
     if(!el || typeof target !== 'number' || target === 0){ if(el) el.textContent = target || '0'; return; }
-    var dur = 300, start = performance.now();
+    if(reduceMotion){ el.textContent = target; return; } /* M4: skip animation if reduced-motion */
+    var dur = 600, start = performance.now(); /* M4: 600ms easeOut countup */
     function tick(now){
       var p = Math.min((now - start) / dur, 1);
       el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
@@ -255,37 +296,54 @@
   }
 
   function updateStats(){
+    /* derive 3-card metrics from allJobs — always snap, never animate.
+       Animation is handled solely by fetchStatsEndpoint() via statsApiAnimated. */
     var total   = allJobs.length;
-    var running = allJobs.filter(function(j){ return j.status === 'running' || j.status === 'pending'; }).length;
-    var done    = allJobs.filter(function(j){ return j.status === 'done'; }).length;
-    var failed  = allJobs.filter(function(j){ return j.status === 'failed' || j.status === 'cancelled'; }).length;
-
-    if(total === 0){
-      statsEl.innerHTML = '<span class="stats-empty">No jobs yet</span>';
-      return;
-    }
+    var running = allJobs.filter(function(j){ return j.status === 'running'; }).length;
+    var queued  = allJobs.filter(function(j){ return j.status === 'pending'; }).length;
+    var runCls  = running > 0 ? ' kpi-green' : '';
 
     statsEl.innerHTML =
-      '<div class="kpi"><span class="kpi-num" data-n="' + total + '">0</span><span class="kpi-label">Total</span></div>' +
-      '<div class="kpi"><span class="kpi-num" data-n="' + running + '">0</span><span class="kpi-label">Active</span></div>' +
-      '<div class="kpi"><span class="kpi-num" data-n="' + done + '">0</span><span class="kpi-label">Done</span></div>' +
-      '<div class="kpi"><span class="kpi-num" data-n="' + failed + '">0</span><span class="kpi-label">Failed</span></div>';
-
-    if(!statsAnimated){
-      statsAnimated = true;
-      statsEl.querySelectorAll('.kpi-num[data-n]').forEach(function(el){
-        animateNum(el, parseInt(el.getAttribute('data-n')));
-      });
-    } else {
-      statsEl.querySelectorAll('.kpi-num[data-n]').forEach(function(el){
-        el.textContent = el.getAttribute('data-n');
-      });
-    }
+      '<div class="kpi"><span class="kpi-num">' + total + '</span><span class="kpi-label">Total</span></div>' +
+      '<div class="kpi"><span class="kpi-num' + runCls + '">' + running + '</span><span class="kpi-label">Running</span></div>' +
+      '<div class="kpi"><span class="kpi-num">' + queued + '</span><span class="kpi-label">Queued</span></div>';
   }
 
-  /* also call /api/stats in the background to preserve the endpoint */
+  /* /api/stats — real server totals; drives M4 counter animation + dispatch-pulse */
   async function fetchStatsEndpoint(){
-    try { await fetch('/api/stats', {cache:'no-store'}); } catch(e){ /* silent */ }
+    try {
+      var r = await fetch('/api/stats', {cache:'no-store'});
+      if(!r.ok) return;
+      var s = await r.json();
+      var total   = s.total_jobs    || 0;
+      var running = s.running_count || 0;
+      var queued  = s.pending_count || 0;
+      var runCls  = running > 0 ? ' kpi-green' : '';
+
+      /* M4 Anim 3: pulse Dispatch button while any job is running */
+      var dispBtn = $('btn-dispatch');
+      if(dispBtn){
+        if(running > 0) dispBtn.classList.add('is-running');
+        else dispBtn.classList.remove('is-running');
+      }
+
+      /* M4 Anim 1: count-up on first /api/stats response only */
+      if(!statsApiAnimated){
+        statsApiAnimated = true;
+        statsEl.innerHTML =
+          '<div class="kpi"><span class="kpi-num" data-n="' + total   + '">0</span><span class="kpi-label">Total</span></div>' +
+          '<div class="kpi"><span class="kpi-num' + runCls + '" data-n="' + running + '">0</span><span class="kpi-label">Running</span></div>' +
+          '<div class="kpi"><span class="kpi-num" data-n="' + queued  + '">0</span><span class="kpi-label">Queued</span></div>';
+        statsEl.querySelectorAll('.kpi-num[data-n]').forEach(function(el){
+          animateNum(el, parseInt(el.getAttribute('data-n'), 10));
+        });
+      } else {
+        statsEl.innerHTML =
+          '<div class="kpi"><span class="kpi-num">' + total   + '</span><span class="kpi-label">Total</span></div>' +
+          '<div class="kpi"><span class="kpi-num' + runCls + '">' + running + '</span><span class="kpi-label">Running</span></div>' +
+          '<div class="kpi"><span class="kpi-num">' + queued  + '</span><span class="kpi-label">Queued</span></div>';
+      }
+    } catch(e){ /* silent */ }
   }
 
   /* =============================================================
@@ -303,6 +361,7 @@
         simBadge +
       '</span>' +
       '<span class="jr-time">' + fmtTime(j.created_at) + '</span>' +
+      '<svg class="jr-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>' +
     '</div>' +
     '<div class="job-card-detail"><div class="job-card-detail-inner"></div></div>';
   }
@@ -526,6 +585,15 @@
       }
       return;
     }
+
+    /* recent row click → open job detail sheet */
+    var ri = ev.target.closest('.ri[data-id]');
+    if(ri){
+      ev.stopPropagation();
+      var rid = ri.getAttribute('data-id');
+      if(rid) loadJobDetail(rid);
+      return;
+    }
   });
 
   /* keyboard nav on job cards */
@@ -544,11 +612,13 @@
     ev.preventDefault();
     var prompt = promptEl.value.trim();
     if(!prompt){ toast('Prompt required', 'err'); return; }
-    var modelEl = document.querySelector('.seg-group[data-field="model"] .seg.active');
+    var modelEl  = document.querySelector('.seg-group[data-field="model"] .seg.active');
     var effortEl = document.querySelector('.seg-group[data-field="effort"] .seg.active');
-    var model  = modelEl  ? modelEl.textContent.trim()  : 'Ollama';
-    var effort = effortEl ? effortEl.textContent.trim() : 'Standard';
-    var btn = form.querySelector('.btn-primary');
+    var m3ModelInput  = $('m3-model');
+    var m3EffortInput = $('m3-effort');
+    var model  = m3ModelInput  ? m3ModelInput.value  : (modelEl  ? modelEl.textContent.trim()  : 'Claude');
+    var effort = m3EffortInput ? m3EffortInput.value : (effortEl ? effortEl.textContent.trim() : 'Standard');
+    var btn = $('btn-dispatch') || form.querySelector('.pc-dispatch') || form.querySelector('.btn-primary');
     btn.disabled = true;
     btn.textContent = 'Dispatching\u2026';
     try {
@@ -563,15 +633,14 @@
         return;
       }
       promptEl.value = '';
-      charEl.textContent = '0 / 2000';
+      charEl.textContent = '0 / 4000';
       toast('Dispatched', 'ok');
       fetchJobs();
       closeSidebar();
     } catch(e){ toast('Network error', 'err'); }
     finally {
       btn.disabled = false;
-      btn.innerHTML = '<i data-lucide="send"></i>Dispatch';
-      icons();
+      btn.textContent = 'Dispatch';
     }
   });
 
@@ -595,7 +664,7 @@
      CHAR COUNT
      ============================================================= */
   promptEl.addEventListener('input', function(){
-    charEl.textContent = promptEl.value.length + ' / 2000';
+    charEl.textContent = promptEl.value.length + ' / 4000';
   });
 
   /* =============================================================
@@ -835,18 +904,79 @@
     var next = cur === 'dark' ? 'light' : 'dark';
     html.setAttribute('data-theme', next);
     var meta = document.querySelector('meta[name="theme-color"]');
-    if(meta) meta.setAttribute('content', next === 'dark' ? '#171614' : '#f7f6f2');
+    if(meta) meta.setAttribute('content', next === 'dark' ? '#0D0D10' : '#f7f6f2');
+    /* update mode pill label + icon */
+    var lbl = document.getElementById('mode-label');
+    var icon = document.getElementById('mode-icon');
+    if(lbl) lbl.textContent = next === 'dark' ? 'Dark' : 'Light';
+    if(icon) icon.innerHTML = next === 'dark'
+      ? '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
+      : '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
   });
 
-  /* listen for system theme changes */
-  try {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e){
-      var theme = e.matches ? 'dark' : 'light';
-      document.documentElement.setAttribute('data-theme', theme);
-      var meta = document.querySelector('meta[name="theme-color"]');
-      if(meta) meta.setAttribute('content', theme === 'dark' ? '#171614' : '#f7f6f2');
+  /* system theme change listener disabled — dark default in Phase 1 */
+
+  /* =============================================================
+     M2: WORKER SHEET
+     ============================================================= */
+  (function(){
+    var sheet = document.getElementById('worker-sheet');
+    var pill  = document.getElementById('btn-worker-pill');
+    var avatarEl = document.getElementById('worker-avatar');
+    var nameEl   = document.getElementById('worker-name');
+    if(!sheet || !pill) return;
+
+    function openWorkerSheet(){ sheet.classList.add('open'); document.body.classList.add('sheet-open'); }
+    function closeWorkerSheet(){ sheet.classList.remove('open'); document.body.classList.remove('sheet-open'); }
+
+    pill.addEventListener('click', function(){ openWorkerSheet(); });
+    sheet.addEventListener('click', function(e){ if(e.target === sheet) closeWorkerSheet(); });
+
+    sheet.querySelectorAll('.ws-item').forEach(function(item){
+      item.addEventListener('click', function(){
+        sheet.querySelectorAll('.ws-item').forEach(function(i){
+          i.classList.remove('selected');
+          var chk = i.querySelector('.ws-check');
+          if(chk) chk.outerHTML = '<div class="ws-empty"></div>';
+        });
+        item.classList.add('selected');
+        var emp = item.querySelector('.ws-empty');
+        if(emp) emp.outerHTML = '<div class="ws-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" stroke="#fff" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>';
+        if(avatarEl){
+          avatarEl.textContent = item.dataset.label || '?';
+          avatarEl.style.background = 'linear-gradient(135deg,' + item.dataset.colorA + ',' + item.dataset.colorB + ')';
+        }
+        if(nameEl) nameEl.textContent = item.dataset.name || '';
+        setTimeout(function(){ closeWorkerSheet(); }, 220);
+      });
     });
-  } catch(e){ /* older browsers may not support addEventListener on matchMedia */ }
+
+    /* Swipe down to dismiss worker sheet (Standard 2) — full header gesture */
+    (function(){
+      var wsInner = sheet.querySelector('.ws-inner');
+      var wsHandle = sheet.querySelector('.ws-handle');
+      var wsTitle = sheet.querySelector('.ws-title');
+      if(!wsInner) return;
+      var startY = 0, dragging = false;
+
+      function onStart(e){ startY = e.touches[0].clientY; dragging = true; wsInner.style.transition = 'none'; }
+      function onMove(e){ if(!dragging) return; var d = e.touches[0].clientY - startY; if(d > 0) wsInner.style.transform = 'translateY(' + d + 'px)'; }
+      function onEnd(e){
+        if(!dragging) return; dragging = false;
+        var d = e.changedTouches[0].clientY - startY;
+        wsInner.style.transition = 'transform 280ms cubic-bezier(0.16,1,0.3,1)';
+        if(d > 60){ wsInner.style.transform = 'translateY(100%)'; setTimeout(function(){ closeWorkerSheet(); wsInner.style.transform = ''; wsInner.style.transition = ''; }, 280); }
+        else { wsInner.style.transform = 'translateY(0)'; setTimeout(function(){ wsInner.style.transition = ''; }, 280); }
+      }
+
+      [wsHandle, wsTitle].forEach(function(el){
+        if(!el) return;
+        el.addEventListener('touchstart', onStart, {passive: true});
+        el.addEventListener('touchmove', onMove, {passive: true});
+        el.addEventListener('touchend', onEnd, {passive: true});
+      });
+    })();
+  })();
 
   /* =============================================================
      KEYBOARD SHORTCUTS
@@ -862,6 +992,8 @@
 
     if(ev.key === 'Escape'){
       if(restartState === 'verifying'){ hideRestartCard(); return; }
+      var wsheet = document.getElementById('worker-sheet');
+      if(wsheet && wsheet.classList.contains('open')){ wsheet.classList.remove('open'); document.body.classList.remove('sheet-open'); return; }
       if(logDrawer.classList.contains('open')){ closeLogs(); return; }
       if(expandedJobId){ collapseCard(expandedJobId); return; }
       if(sidebar.classList.contains('open')){ closeSidebar(); return; }
@@ -871,14 +1003,843 @@
     if((ev.key === 'n' || ev.key === 'N') && !ev.ctrlKey && !ev.metaKey && !ev.altKey){
       ev.preventDefault();
       submitWrap.classList.add('open');
-      promptEl.focus();
+      promptEl.focus({ preventScroll: true });
     }
   });
 
   /* =============================================================
+     M3: ADVANCED OPTIONS TOGGLE
+     ============================================================= */
+  (function(){
+    var hd   = $('btn-adv');
+    var body = $('adv-body');
+    var chev = $('adv-chev');
+    if(!hd) return;
+    hd.addEventListener('click', function(){
+      if(body) body.classList.toggle('open');
+      if(chev) chev.classList.toggle('open');
+    });
+  })();
+
+  /* =============================================================
+     M3: RECENT COLLAPSIBLE + FETCH
+     ============================================================= */
+  function fmtTimeAgo(iso){
+    if(!iso) return '';
+    try {
+      var diff = (Date.now() - new Date(iso).getTime()) / 1000;
+      if(diff < 60)    return 'just now';
+      if(diff < 3600)  return Math.floor(diff / 60) + 'm ago';
+      if(diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
+    } catch(e){ return ''; }
+  }
+
+  function renderRecent(jobs){
+    var countEl = $('rec-count');
+    var bodyEl  = $('rec-body');
+    if(countEl) countEl.textContent = jobs.length;
+    if(!bodyEl) return;
+    if(jobs.length === 0){
+      bodyEl.innerHTML = '<div class="ri"><div class="rt"><div class="rtm" style="color:var(--text-faint)">No recent jobs</div></div></div>';
+      return;
+    }
+    bodyEl.innerHTML = jobs.map(function(j){
+      var jid    = j.id || j.job_id || '';  /* /api/jobs uses id; /api/history uses job_id */
+      var rdClass = j.status === 'done' ? 'done' : (j.status === 'running' ? 'run' : (j.status === 'failed' ? 'failed' : ''));
+      var promptText = esc(j.prompt ? j.prompt.substring(0, 60) : '(no prompt)');
+      var worker = esc(j.model || 'Unknown');
+      var ago    = fmtTimeAgo(j.created_at);
+      var status = esc(j.status || '');
+      return '<div class="ri" data-id="' + esc(jid) + '">' +
+        '<div class="rd ' + rdClass + '"></div>' +
+        '<div class="rt">' +
+          '<div class="rtt">' + promptText + '</div>' +
+          '<div class="rtm">' + worker + (ago ? ' \u00b7 ' + ago : '') + '</div>' +
+        '</div>' +
+        '<span class="rtd">' + status + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  async function fetchRecent(){
+    try {
+      var r = await fetch('/api/history', {cache:'no-store'});
+      if(!r.ok) throw new Error('not ok');
+      var data = await r.json();
+      var jobs = data.jobs || (Array.isArray(data) ? data : []);
+      renderRecent(jobs.slice(0, 5));
+    } catch(e){
+      /* fallback: use already-fetched allJobs history */
+      renderRecent(allJobs.filter(function(j){ return !LIVE_STATES.has(j.status); }).slice(0, 5));
+    }
+  }
+
+  (function(){
+    var hd   = $('btn-rec');
+    var body = $('rec-body');
+    var chev = $('rec-chev');
+    if(!hd) return;
+    hd.addEventListener('click', function(){
+      if(body) body.classList.toggle('open');
+      if(chev) chev.classList.toggle('open');
+    });
+  })();
+
+  /* =============================================================
+     M3: PASTE TAG
+     ============================================================= */
+  (function(){
+    var btn = $('btn-paste');
+    if(!btn) return;
+    btn.addEventListener('click', function(){
+      if(navigator.clipboard && navigator.clipboard.readText){
+        navigator.clipboard.readText().then(function(text){
+          promptEl.value = text;
+          charEl.textContent = text.length + ' / 4000';
+          promptEl.focus({ preventScroll: true });
+        }).catch(function(){ toast('Clipboard access denied', 'err'); });
+      } else {
+        toast('Clipboard not available', 'err');
+      }
+    });
+  })();
+
+  /* =============================================================
+     M5: FILE BROWSER
+     ============================================================= */
+  var fbTreeEl    = $('fb-tree');
+  var fbPinnedEl  = $('fb-pinned');
+  var fbSearchEl  = $('fb-search');
+  var fileSheetEl = $('file-sheet');
+  var fsCodeEl    = $('fs-code');
+  var fsTitleEl   = $('fs-title');
+  var fsPathEl    = $('fs-path');
+  var fsCopyBtn   = $('fs-copy');
+  var fsDlBtn     = $('fs-dl');
+  /* iOS: relabel Download → Share (Web Share API) */
+  if(fsDlBtn && isIOS){
+    var dlLabel = fsDlBtn.lastChild;
+    if(dlLabel && dlLabel.nodeType === 3) dlLabel.textContent = ' Share';
+  }
+  var fsCloseBtn  = $('fs-close');
+
+  var fbExpanded  = {};       /* path → true */
+  var fbCache     = {};       /* path → entries[] */
+  var fbActiveSet = new Set();
+  var fbFileText  = '';
+  var fbFileName  = '';
+  var fbSearchQ   = '';
+  var fbPollId    = null;
+  var fbLoaded    = false;
+  var fsSwipeEnabled = false;
+  var fbRecentViewed = [];    /* E5: recently viewed files [{path, name, mtime}] */
+  var fbRecentEl  = $('fb-recent-section');
+  var fsLinesEl   = $('fs-lines');
+  var fsMtimeEl   = $('fs-mtime');
+  var fsWrapBtn   = $('fs-wrap');
+  var fsWrapLabel = $('fs-wrap-label');
+  var fsDispatchBtn = $('fs-open-dispatch');
+  var fbLegendEl  = $('fb-legend');
+  var fbLegendToggle = $('fb-legend-toggle');
+  var fbWordWrap  = false;
+
+  var FB_HIDE_DIR = new Set(['node_modules','.git','__pycache__','.venv','dist','build','.playwright-mcp','.mypy_cache','.pytest_cache','__snapshots__','.codex_checkpoints','.codex_playwright_tmp','.cursor','.docker-config','.edge-cdp-temp','.npm-cache','.npm-tmp','.pip-cache','.pip-tmp','.playwright-browsers','.tmp-pip','.tmp-pip-cache','.tmp-pip-temp','.tmp-pydeps','.tmp-ui-build','.wheelhouse','.pip-tmp-downloads']);
+  var FB_HIDE_EXT = new Set(['pyc','log','pyo']);
+  var FB_PIN      = ['.mcp.json','.env'];
+  /* Synthetic pinned folders (external paths mounted via backend) */
+  var FB_EXT_PINS = [
+    {name:'Screenshots', path:'__screenshots__', is_dir:true, size:null, icon:'camera'}
+  ];
+
+  /* helpers */
+  function fbHide(e){
+    if(e.is_dir && FB_HIDE_DIR.has(e.name)) return true;
+    if(!e.is_dir){
+      var x = e.name.split('.').pop().toLowerCase();
+      if(FB_HIDE_EXT.has(x)) return true;
+      if(e.name.endsWith('~') || e.name.endsWith('.tmp') || e.name.endsWith('.bak')) return true;
+    }
+    return false;
+  }
+  function fbPin(e){ return !e.is_dir && FB_PIN.indexOf(e.name) !== -1; }
+  function fmtSize(b){
+    if(b == null) return '';
+    if(b < 1024) return b + ' B';
+    if(b < 1048576) return (b/1024).toFixed(1) + ' KB';
+    return (b/1048576).toFixed(1) + ' MB';
+  }
+  function fmtRelTime(epoch){
+    if(!epoch) return '';
+    var diff = (Date.now()/1000) - epoch;
+    if(diff < 60) return 'just now';
+    if(diff < 3600) return Math.floor(diff/60) + 'm ago';
+    if(diff < 86400) return Math.floor(diff/3600) + 'h ago';
+    if(diff < 604800) return Math.floor(diff/86400) + 'd ago';
+    var d = new Date(epoch * 1000);
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[d.getMonth()] + ' ' + d.getDate();
+  }
+  function fmtFullTime(epoch){
+    if(!epoch) return '';
+    var d = new Date(epoch * 1000);
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var h = d.getHours(), ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12 || 12;
+    var min = d.getMinutes();
+    return 'Modified ' + months[d.getMonth()] + ' ' + d.getDate() + ' at ' + h + ':' + (min < 10 ? '0' : '') + min + ' ' + ampm;
+  }
+  function isRecentlyModified(epoch){ return epoch && (Date.now()/1000 - epoch) < 1800; }
+  function extLang(name){
+    var x = (name||'').split('.').pop().toLowerCase();
+    return {py:'python',js:'javascript',ts:'typescript',tsx:'typescript',jsx:'javascript',
+      css:'css',scss:'css',html:'xml',htm:'xml',json:'json',md:'markdown',
+      yml:'yaml',yaml:'yaml',sh:'bash',bash:'bash',bat:'dos',ps1:'powershell',
+      sql:'sql',xml:'xml',toml:'toml',ini:'ini',env:'ini',cfg:'ini',
+      txt:'plaintext',csv:'plaintext',gitignore:'plaintext',dockerfile:'dockerfile'
+    }[x] || '';
+  }
+
+  var FB_CHEVRON = '<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>';
+
+  function fbIcon(e){
+    if(e.icon==='camera') return '<span class="fb-icon fb-icon-camera"><svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>';
+    if(e.is_dir) return '<span class="fb-icon fb-icon-folder"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>';
+    var n = e.name.toLowerCase(), x = n.split('.').pop();
+    /* special file names */
+    if(n==='.env'||n==='.env.local'||n==='.env.example') return '<span class="fb-icon fb-icon-env"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>';
+    if(n==='.mcp.json') return '<span class="fb-icon fb-icon-cfg"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>';
+    /* ext → icon class + svg */
+    var codeIcon = '<svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+    var fileIcon = '<svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>';
+    var textIcon = '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
+    var clsMap = {py:'fb-icon-py',js:'fb-icon-js',jsx:'fb-icon-js',ts:'fb-icon-ts',tsx:'fb-icon-ts',
+      css:'fb-icon-css',scss:'fb-icon-css',html:'fb-icon-html',htm:'fb-icon-html',
+      json:'fb-icon-json',md:'fb-icon-md',env:'fb-icon-env'};
+    var cls = clsMap[x] || 'fb-icon-default';
+    var ico = fileIcon;
+    if(x==='py'||x==='js'||x==='ts'||x==='jsx'||x==='tsx'||x==='css'||x==='scss'||x==='html'||x==='htm'||x==='json') ico = codeIcon;
+    if(x==='md'||x==='txt'||x==='rst') ico = textIcon;
+    return '<span class="fb-icon ' + cls + '">' + ico + '</span>';
+  }
+
+  function fbRow(e, depth){
+    var pad = depth * 20;
+    var active = fbActiveSet.has(e.name) || fbActiveSet.has(e.path);
+    var recent = !e.is_dir && isRecentlyModified(e.mtime);
+    var chCls = e.is_dir ? ('fb-chev' + (fbExpanded[e.path] ? ' open' : '')) : 'fb-chev empty';
+    var h = '<div class="fb-row" data-path="' + esc(e.path) + '" data-dir="' + (e.is_dir?'1':'0') + '" data-name="' + esc(e.name) + '" data-mtime="' + (e.mtime||'') + '">';
+    h += '<span class="fb-indent" style="width:' + pad + 'px"></span>';
+    h += '<span class="' + chCls + '">' + (e.is_dir ? FB_CHEVRON : '') + '</span>';
+    h += fbIcon(e);
+    if(active) h += '<span class="fb-active-dot"></span>';
+    else if(recent) h += '<span class="fb-recent-dot"></span>';
+    h += '<span class="fb-name' + (e.is_dir?' fb-name-dir':'') + '">' + esc(e.name) + '</span>';
+    /* E3: folder count badge (collapsed only) */
+    if(e.is_dir && !fbExpanded[e.path] && fbCache[e.path]){
+      h += '<span class="fb-count">' + fbCache[e.path].length + '</span>';
+    }
+    if(!e.is_dir && e.size != null) h += '<span class="fb-size">' + fmtSize(e.size) + '</span>';
+    if(!e.is_dir && e.mtime) h += '<span class="fb-mtime">' + fmtRelTime(e.mtime) + '</span>';
+    h += '</div>';
+    if(e.is_dir) h += '<div class="fb-children' + (fbExpanded[e.path]?' open':'') + '" data-parent="' + esc(e.path) + '"></div>';
+    return h;
+  }
+
+  function fbRenderInto(el, entries, depth){
+    var vis = entries.filter(function(e){ return !fbHide(e); });
+    if(fbSearchQ){
+      var q = fbSearchQ.toLowerCase();
+      vis = vis.filter(function(e){ return e.is_dir || e.name.toLowerCase().indexOf(q) !== -1; });
+    }
+    vis.sort(function(a,b){ if(a.is_dir!==b.is_dir) return a.is_dir?-1:1; return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
+    if(vis.length === 0 && fbSearchQ){
+      el.innerHTML = depth === 0 ? '<div class="fb-no-results">No files match \u201c' + esc(fbSearchQ) + '\u201d</div>' : '';
+      return;
+    }
+    el.innerHTML = vis.map(function(e){ return fbRow(e, depth); }).join('');
+    vis.forEach(function(e){
+      if(e.is_dir && fbExpanded[e.path] && fbCache[e.path]){
+        var ch = el.querySelector('.fb-children[data-parent="' + CSS.escape(e.path) + '"]');
+        if(ch) fbRenderInto(ch, fbCache[e.path], depth + 1);
+      }
+    });
+  }
+
+  function fbRenderRecent(){
+    if(!fbRecentEl) return;
+    if(fbRecentViewed.length === 0){ fbRecentEl.innerHTML = ''; return; }
+    var h = '<div class="fb-recent-label">Recent</div>';
+    fbRecentViewed.forEach(function(item){
+      h += '<div class="fb-recent-row" data-path="' + esc(item.path) + '" data-name="' + esc(item.name) + '">';
+      h += '<span class="fb-icon fb-icon-default"><svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg></span>';
+      h += '<div class="fb-recent-info"><div class="fb-recent-name">' + esc(item.name) + '</div>';
+      h += '<div class="fb-recent-path">' + esc(item.path) + '</div></div>';
+      if(item.mtime) h += '<span class="fb-mtime">' + fmtRelTime(item.mtime) + '</span>';
+      h += '</div>';
+    });
+    fbRecentEl.innerHTML = h;
+  }
+
+  function fbRender(){
+    if(!fbTreeEl) return;
+    var root = fbCache[''] || fbCache['.'];
+    if(!root){ fbTreeEl.innerHTML = '<div class="fb-loading">Loading file tree\u2026</div>'; return; }
+    fbRenderRecent();
+    /* pinned */
+    if(fbPinnedEl){
+      var pinned = root.filter(fbPin).concat(FB_EXT_PINS);
+      if(pinned.length > 0){
+        fbPinnedEl.innerHTML = '<div class="fb-pin-label">Pinned</div>' + pinned.map(function(e){ return fbRow(e, 0); }).join('');
+        /* render children for expanded pinned folders */
+        pinned.forEach(function(e){
+          if(e.is_dir && fbExpanded[e.path] && fbCache[e.path]){
+            var ch = fbPinnedEl.querySelector('.fb-children[data-parent="' + CSS.escape(e.path) + '"]');
+            if(ch) fbRenderInto(ch, fbCache[e.path], 1);
+          }
+        });
+      } else { fbPinnedEl.innerHTML = ''; }
+    }
+    /* main tree */
+    fbRenderInto(fbTreeEl, root.filter(function(e){ return !fbPin(e); }), 0);
+  }
+
+  async function fbFetch(path){
+    try {
+      var u = '/api/files' + (path ? '?path=' + encodeURIComponent(path) : '');
+      var r = await fetch(u, {cache:'no-store'});
+      if(!r.ok) return null;
+      var d = await r.json();
+      return d.entries || [];
+    } catch(e){ return null; }
+  }
+
+  async function fbLoad(){
+    var entries = await fbFetch('');
+    if(entries){
+      fbCache[''] = entries; fbCache['.'] = entries;
+      /* restore expanded dirs */
+      var keys = Object.keys(fbExpanded);
+      for(var i = 0; i < keys.length; i++){
+        if(!fbCache[keys[i]]){
+          var sub = await fbFetch(keys[i]);
+          if(sub) fbCache[keys[i]] = sub;
+        }
+      }
+      fbRender();
+    }
+    fbLoaded = true;
+  }
+
+  async function fbToggle(path){
+    if(fbExpanded[path]){
+      delete fbExpanded[path];
+      fbRender();
+    } else {
+      fbExpanded[path] = true;
+      if(!fbCache[path]){
+        var ch = document.querySelector('.fb-children[data-parent="' + CSS.escape(path) + '"]');
+        if(ch){ ch.classList.add('open'); ch.innerHTML = '<div class="fb-loading" style="padding:8px 16px">Loading\u2026</div>'; }
+        var entries = await fbFetch(path);
+        if(entries) fbCache[path] = entries;
+        else delete fbExpanded[path];
+      }
+      fbRender();
+    }
+  }
+
+  var fbCurrentPath = '';  /* track current file for Open in Dispatch */
+  var fbCurrentMtime = 0;
+
+  async function fbOpen(path, name, mtime){
+    if(!fileSheetEl) return;
+    fbFileName = name; fbFileText = ''; fbCurrentPath = path; fbCurrentMtime = mtime || 0;
+    if(fsTitleEl) fsTitleEl.textContent = name;
+    var dir = path.replace(/[/\\][^/\\]*$/,'') || '.';
+    if(fsPathEl) fsPathEl.textContent = dir;
+    if(fsLinesEl) fsLinesEl.textContent = '';
+    if(fsMtimeEl) fsMtimeEl.textContent = mtime ? fmtFullTime(mtime) : '';
+    if(fsCodeEl){ fsCodeEl.textContent = 'Loading\u2026'; fsCodeEl.className = ''; }
+    /* E5: track recently viewed */
+    fbRecentViewed = fbRecentViewed.filter(function(r){ return r.path !== path; });
+    fbRecentViewed.unshift({path: path, name: name, mtime: mtime || 0});
+    if(fbRecentViewed.length > 4) fbRecentViewed = fbRecentViewed.slice(0, 4);
+    /* reset wrap state */
+    fbWordWrap = false;
+    if(fsWrapLabel) fsWrapLabel.textContent = 'Wrap';
+    if(fsWrapBtn) fsWrapBtn.classList.remove('active');
+    var codeBlock = fileSheetEl.querySelector('.file-sheet-code');
+    if(codeBlock) codeBlock.style.whiteSpace = 'pre';
+
+    var fsInner = fileSheetEl.querySelector('.file-sheet-inner');
+    if(fsInner){ fsInner.style.transition = 'none'; fsInner.style.transform = 'translateY(100%)'; }
+    fileSheetEl.classList.add('open');
+    document.body.classList.add('sheet-open');
+    fsSwipeEnabled = false;
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      if(fsInner){ fsInner.style.transition = 'transform 300ms cubic-bezier(0.16,1,0.3,1)'; fsInner.style.transform = 'translateY(0)'; }
+      setTimeout(function(){ fsSwipeEnabled = true; if(fsInner){ fsInner.style.transition = ''; } }, 300);
+    }); });
+    try {
+      var r = await fetch('/api/file?path=' + encodeURIComponent(path), {cache:'no-store'});
+      if(!r.ok){ if(fsCodeEl) fsCodeEl.textContent = 'Failed to load file'; return; }
+      var d = await r.json();
+      if(d.error){ if(fsCodeEl) fsCodeEl.textContent = d.error; return; }
+      if(!d.is_text){ if(fsCodeEl) fsCodeEl.textContent = 'Binary file (' + fmtSize(d.size) + ')\nCannot preview binary files.'; return; }
+      fbFileText = d.content || '';
+      /* E4: line count */
+      var lineCount = fbFileText.split('\n').length;
+      if(fsLinesEl) fsLinesEl.textContent = lineCount + ' lines';
+      if(fsCodeEl){
+        fsCodeEl.textContent = fbFileText;
+        var lang = extLang(name);
+        if(lang && window.hljs){
+          fsCodeEl.className = 'language-' + lang;
+          try { hljs.highlightElement(fsCodeEl); } catch(e){}
+        }
+      }
+    } catch(e){ if(fsCodeEl) fsCodeEl.textContent = 'Network error loading file'; }
+  }
+
+  function fbCloseSheet(){
+    if(fileSheetEl){
+      fileSheetEl.classList.remove('open');
+      var fsInner = fileSheetEl.querySelector('.file-sheet-inner');
+      if(fsInner){ fsInner.style.transform = ''; fsInner.style.transition = ''; }
+    }
+    document.body.classList.remove('sheet-open');
+    fsSwipeEnabled = false;
+  }
+
+  /* sheet events */
+  if(fileSheetEl) fileSheetEl.addEventListener('click', function(e){ if(e.target === fileSheetEl) fbCloseSheet(); });
+  if(fsCloseBtn) fsCloseBtn.addEventListener('click', fbCloseSheet);
+  if(fsCopyBtn) fsCopyBtn.addEventListener('click', function(){
+    if(fbFileText) copyToClipboard(fbFileText, fsCopyBtn);
+    else toast('Nothing to copy','err');
+  });
+  if(fsDlBtn) fsDlBtn.addEventListener('click', function(){
+    if(!fbFileText){ toast('Nothing to download','err'); return; }
+    var fname = fbFileName || 'file.txt';
+
+    if(isIOS){
+      /* iOS PWA: Web Share API with File object → native share sheet (Save to Files, AirDrop, etc.) */
+      if(navigator.canShare){
+        var file = new File([fbFileText], fname, {type:'text/plain'});
+        if(navigator.canShare({files:[file]})){
+          navigator.share({files:[file]}).then(function(){
+            toast('Saved to Files or shared','ok');
+          }).catch(function(err){
+            if(err.name === 'AbortError') toast('Share cancelled','');
+            else toast('Share failed \u2014 try copying instead','err');
+          });
+        } else {
+          toast('Sharing not supported \u2014 copy the file instead','err');
+        }
+      } else {
+        toast('Sharing not supported \u2014 copy the file instead','err');
+      }
+    } else {
+      /* Desktop / Android: hidden anchor download */
+      var blob = new Blob([fbFileText], {type:'text/plain'});
+      var url = URL.createObjectURL(blob);
+      try {
+        var a = document.createElement('a');
+        a.href = url; a.download = fname;
+        document.body.appendChild(a); a.click();
+        setTimeout(function(){ URL.revokeObjectURL(url); document.body.removeChild(a); }, 200);
+        toast('Download started','ok');
+      } catch(e){
+        URL.revokeObjectURL(url);
+        toast('Download blocked \u2014 try copying instead','err');
+      }
+    }
+  });
+
+  /* E4: Word wrap toggle */
+  if(fsWrapBtn) fsWrapBtn.addEventListener('click', function(){
+    fbWordWrap = !fbWordWrap;
+    if(fsWrapLabel) fsWrapLabel.textContent = fbWordWrap ? 'Nowrap' : 'Wrap';
+    fsWrapBtn.classList.toggle('active', fbWordWrap);
+    var codeBlock = fileSheetEl ? fileSheetEl.querySelector('.file-sheet-code') : null;
+    if(codeBlock) codeBlock.style.whiteSpace = fbWordWrap ? 'pre-wrap' : 'pre';
+  });
+
+  /* E4: Open in Dispatch */
+  if(fsDispatchBtn) fsDispatchBtn.addEventListener('click', function(){
+    fbCloseSheet();
+    switchView('jobs');
+    if(promptEl){
+      promptEl.value = 'File: ' + fbCurrentPath + '\n\n';
+      promptEl.dispatchEvent(new Event('input'));
+      if(charEl) charEl.textContent = promptEl.value.length + ' / 4000';
+    }
+    toast('File path added to prompt', 'ok');
+  });
+
+  /* E6: Legend toggle */
+  if(fbLegendToggle) fbLegendToggle.addEventListener('click', function(){
+    if(fbLegendEl) fbLegendEl.classList.toggle('open');
+  });
+
+  /* E5: Recent file click delegation */
+  if(fbRecentEl) fbRecentEl.addEventListener('click', function(ev){
+    var row = ev.target.closest('.fb-recent-row');
+    if(!row) return;
+    fbOpen(row.getAttribute('data-path'), row.getAttribute('data-name'), 0);
+  });
+
+  /* Swipe down to dismiss file sheet (Standard 2) — 120px threshold + velocity */
+  (function(){
+    if(!fileSheetEl) return;
+    var inner = fileSheetEl.querySelector('.file-sheet-inner');
+    var handle = fileSheetEl.querySelector('.ws-handle');
+    var header = fileSheetEl.querySelector('.file-sheet-hd');
+    if(!inner) return;
+    var startY = 0, startTime = 0, dragging = false;
+
+    function onStart(e){
+      if(!fsSwipeEnabled) return;
+      startY = e.touches[0].clientY; startTime = Date.now(); dragging = true;
+      inner.style.transition = 'none';
+    }
+    function onMove(e){
+      if(!dragging) return;
+      var d = e.touches[0].clientY - startY;
+      if(d > 0) inner.style.transform = 'translateY(' + d + 'px)';
+    }
+    function onEnd(e){
+      if(!dragging) return; dragging = false;
+      var d = e.changedTouches[0].clientY - startY;
+      var elapsed = Date.now() - startTime;
+      var fastFlick = elapsed < 150 && d > 60;
+      var longDrag = d > 120;
+      inner.style.transition = 'transform 280ms cubic-bezier(0.16,1,0.3,1)';
+      if(fastFlick || longDrag){
+        inner.style.transform = 'translateY(100%)';
+        setTimeout(function(){ fbCloseSheet(); }, 280);
+      } else {
+        inner.style.transform = 'translateY(0)';
+        setTimeout(function(){ inner.style.transition = ''; }, 280);
+      }
+    }
+
+    [handle, header].forEach(function(el){
+      if(!el) return;
+      el.addEventListener('touchstart', onStart, {passive: true});
+      el.addEventListener('touchmove', onMove, {passive: true});
+      el.addEventListener('touchend', onEnd, {passive: true});
+    });
+  })();
+
+  /* Escape closes file sheet (capture phase — fires before other handlers) */
+  document.addEventListener('keydown', function(ev){
+    if(ev.key === 'Escape' && fileSheetEl && fileSheetEl.classList.contains('open')){
+      fbCloseSheet(); ev.stopImmediatePropagation();
+    }
+  }, true);
+
+  /* tree row click */
+  document.addEventListener('click', function(ev){
+    var row = ev.target.closest('.fb-row');
+    if(!row) return;
+    if(row.getAttribute('data-dir') === '1') fbToggle(row.getAttribute('data-path'));
+    else fbOpen(row.getAttribute('data-path'), row.getAttribute('data-name'), parseFloat(row.getAttribute('data-mtime')) || 0);
+  });
+
+  /* search */
+  if(fbSearchEl){
+    var fbSto = null;
+    fbSearchEl.addEventListener('input', function(){
+      clearTimeout(fbSto);
+      fbSto = setTimeout(function(){ fbSearchQ = fbSearchEl.value.trim(); fbRender(); }, 150);
+    });
+  }
+
+  /* active file indicator — extract file references from running jobs */
+  function fbUpdateActiveFiles(){
+    var nxt = new Set();
+    allJobs.forEach(function(j){
+      if(j.status !== 'running' && j.status !== 'pending') return;
+      var p = j.prompt || '';
+      var m = p.match(/[\w\-\.\/\\]+\.\w{1,10}/g);
+      if(m) m.forEach(function(f){
+        var c = f.replace(/\\/g,'/').replace(/^[./]+/,'');
+        nxt.add(c.split('/').pop());
+        nxt.add(c);
+      });
+    });
+    var changed = nxt.size !== fbActiveSet.size;
+    if(!changed) nxt.forEach(function(f){ if(!fbActiveSet.has(f)) changed = true; });
+    if(changed){ fbActiveSet = nxt; if(fbLoaded) fbRender(); }
+  }
+
+  /* poll file tree every 10s */
+  async function fbPoll(){
+    var entries = await fbFetch('');
+    if(!entries) return;
+    var old = fbCache[''] || fbCache['.'] || [];
+    var diff = entries.length !== old.length;
+    if(!diff) for(var i = 0; i < entries.length; i++){
+      if(!old[i] || entries[i].name !== old[i].name || entries[i].size !== old[i].size){ diff = true; break; }
+    }
+    if(diff){
+      fbCache[''] = entries; fbCache['.'] = entries;
+      var ep = Object.keys(fbExpanded);
+      for(var j = 0; j < ep.length; j++){
+        var sub = await fbFetch(ep[j]);
+        if(sub) fbCache[ep[j]] = sub;
+      }
+      fbRender();
+    }
+  }
+
+  /* lazy init: load tree on first Files tab visit */
+  document.querySelectorAll('[data-nav="files"]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      if(!fbLoaded) fbLoad();
+      if(!fbPollId) fbPollId = setInterval(fbPoll, 10000);
+    });
+  });
+
+  /* =============================================================
+     JOB DETAIL SHEET (shared: History + Recent)
+     iOS Bottom Sheet Standard: Fix 1 (scroll lock) + Fix 2 (swipe)
+     ============================================================= */
+  var jobSheetEl = $('job-sheet');
+  var jsBodyEl   = $('js-body');
+  var jsTitleEl  = $('js-title');
+  var jsMetaEl   = $('js-meta');
+  var jsCloseBtn = $('js-close');
+  var jsCopyBtn  = $('js-copy-output');
+  var jsOutputText = '';
+  var jsSwipeEnabled = false;
+
+  function openJobSheet(){
+    if(!jobSheetEl) return;
+    jsSwipeEnabled = false;
+    var inner = jobSheetEl.querySelector('.job-sheet-inner');
+    if(inner){ inner.style.transition = 'none'; inner.style.transform = 'translateY(100%)'; }
+    jobSheetEl.classList.add('open');
+    document.body.classList.add('sheet-open'); /* Fix 1 */
+    requestAnimationFrame(function(){ requestAnimationFrame(function(){
+      if(inner){ inner.style.transition = 'transform 300ms cubic-bezier(0.16,1,0.3,1)'; inner.style.transform = 'translateY(0)'; }
+      setTimeout(function(){ jsSwipeEnabled = true; if(inner){ inner.style.transition = ''; } }, 300);
+    }); });
+  }
+
+  function closeJobSheet(){
+    if(jobSheetEl){
+      jobSheetEl.classList.remove('open');
+      var inner = jobSheetEl.querySelector('.job-sheet-inner');
+      if(inner){ inner.style.transform = ''; inner.style.transition = ''; }
+    }
+    document.body.classList.remove('sheet-open'); /* Fix 1 */
+    jsSwipeEnabled = false;
+    jsOutputText = '';
+  }
+
+  async function loadJobDetail(id){
+    if(!jsBodyEl) return;
+    jsBodyEl.innerHTML = '<div class="js-loading">Loading\u2026</div>';
+    if(jsTitleEl) jsTitleEl.textContent = 'Job Detail';
+    if(jsMetaEl) jsMetaEl.textContent = '';
+    jsOutputText = '';
+    openJobSheet();
+    try {
+      var r = await fetch('/api/jobs/' + id, {cache:'no-store'});
+      if(!r.ok){ jsBodyEl.innerHTML = '<div class="js-loading">Failed to load job</div>'; return; }
+      var j = await r.json();
+      jsOutputText = j.output || '';
+      if(jsTitleEl) jsTitleEl.textContent = (j.prompt || '').substring(0, 50) || 'Job Detail';
+      if(jsMetaEl) jsMetaEl.textContent = esc(j.model || '') + ' \u00b7 ' + esc(j.effort || '') + ' \u00b7 ' + fmtTimeAgo(j.created_at);
+      var durationStr = j.duration || '';
+      if(!durationStr && j.created_at && j.finished_at){
+        try { var ds = (new Date(j.finished_at).getTime() - new Date(j.created_at).getTime()) / 1000; durationStr = ds.toFixed(1) + 's'; } catch(e){}
+      }
+      var html = '';
+      html += '<div class="js-field"><span class="js-label">Status</span><span class="js-value"><span class="' + dotClass(j.status) + '"></span>' + esc(j.status) + '</span></div>';
+      html += '<div class="js-field"><span class="js-label">Worker</span><span class="js-value">' + esc(j.model || '\u2014') + '</span></div>';
+      html += '<div class="js-field"><span class="js-label">Effort</span><span class="js-value">' + esc(j.effort || '\u2014') + '</span></div>';
+      html += '<div class="js-field"><span class="js-label">Started</span><span class="js-value">' + esc(j.created_at || '\u2014') + '</span></div>';
+      if(durationStr) html += '<div class="js-field"><span class="js-label">Duration</span><span class="js-value">' + esc(durationStr) + '</span></div>';
+      if(j.input_tokens != null) html += '<div class="js-field"><span class="js-label">Tokens</span><span class="js-value">' + j.input_tokens + ' in / ' + (j.output_tokens || 0) + ' out</span></div>';
+      html += '<div class="js-section"><div class="js-section-label">Prompt</div><pre class="js-pre">' + esc(j.prompt || '\u2014') + '</pre></div>';
+      html += '<div class="js-section"><div class="js-section-label">Output</div><pre class="js-pre">' + esc(j.output || '(no output yet)') + '</pre></div>';
+      jsBodyEl.innerHTML = html;
+    } catch(e){
+      jsBodyEl.innerHTML = '<div class="js-loading">Network error</div>';
+    }
+  }
+
+  /* Close events */
+  if(jobSheetEl) jobSheetEl.addEventListener('click', function(e){ if(e.target === jobSheetEl) closeJobSheet(); });
+  if(jsCloseBtn) jsCloseBtn.addEventListener('click', closeJobSheet);
+  if(jsCopyBtn) jsCopyBtn.addEventListener('click', function(){
+    if(jsOutputText) copyToClipboard(jsOutputText, jsCopyBtn);
+    else toast('No output to copy', 'err');
+  });
+
+  /* Escape closes job sheet */
+  document.addEventListener('keydown', function(ev){
+    if(ev.key === 'Escape' && jobSheetEl && jobSheetEl.classList.contains('open')){
+      closeJobSheet(); ev.stopImmediatePropagation();
+    }
+  }, true);
+
+  /* Fix 2: Swipe down to dismiss — 80px threshold + fast flick */
+  (function(){
+    if(!jobSheetEl) return;
+    var inner  = jobSheetEl.querySelector('.job-sheet-inner');
+    var handle = jobSheetEl.querySelector('.ws-handle');
+    var header = jobSheetEl.querySelector('.job-sheet-hd');
+    if(!inner) return;
+    var startY = 0, startTime = 0, dragging = false;
+
+    function onStart(e){
+      if(!jsSwipeEnabled) return;
+      startY = e.touches[0].clientY; startTime = Date.now(); dragging = true;
+      inner.style.transition = 'none';
+    }
+    function onMove(e){
+      if(!dragging) return;
+      var d = e.touches[0].clientY - startY;
+      if(d > 0) inner.style.transform = 'translateY(' + d + 'px)';
+    }
+    function onEnd(e){
+      if(!dragging) return; dragging = false;
+      var d = e.changedTouches[0].clientY - startY;
+      var elapsed = Date.now() - startTime;
+      var fastFlick = elapsed < 150 && d > 60;
+      var longDrag = d > 80;
+      inner.style.transition = 'transform 280ms cubic-bezier(0.16,1,0.3,1)';
+      if(fastFlick || longDrag){
+        inner.style.transform = 'translateY(100%)';
+        setTimeout(function(){ closeJobSheet(); }, 280);
+      } else {
+        inner.style.transform = 'translateY(0)';
+        setTimeout(function(){ inner.style.transition = ''; }, 280);
+      }
+    }
+
+    [handle, header].forEach(function(el){
+      if(!el) return;
+      el.addEventListener('touchstart', onStart, {passive: true});
+      el.addEventListener('touchmove', onMove, {passive: true});
+      el.addEventListener('touchend', onEnd, {passive: true});
+    });
+  })();
+
+  /* =============================================================
+     HISTORY TAB — full job list with filter pills + 10s poll
+     ============================================================= */
+  var histJobs = [];
+  var histFilter = 'all';
+  var histPollId = null;
+  var histLoaded = false;
+
+  function histDotClass(s){
+    if(s === 'done')    return 'hist-dot done';
+    if(s === 'running') return 'hist-dot running';
+    if(s === 'failed' || s === 'cancelled') return 'hist-dot failed';
+    if(s === 'pending') return 'hist-dot pending';
+    return 'hist-dot';
+  }
+
+  function histFiltered(){
+    if(histFilter === 'all') return histJobs;
+    if(histFilter === 'running') return histJobs.filter(function(j){ return LIVE_STATES.has(j.status); });
+    if(histFilter === 'done') return histJobs.filter(function(j){ return j.status === 'done'; });
+    if(histFilter === 'failed') return histJobs.filter(function(j){ return j.status === 'failed' || j.status === 'cancelled'; });
+    return histJobs;
+  }
+
+  function renderHistory(){
+    var listEl = $('hist-list');
+    if(!listEl) return;
+    var jobs = histFiltered();
+    if(jobs.length === 0){
+      listEl.innerHTML = '<div class="hist-empty">' + (histJobs.length === 0 ? 'No history yet' : 'No matching jobs') + '</div>';
+      return;
+    }
+    listEl.innerHTML = jobs.map(function(j){
+      var jid = j.id || j.job_id || '';
+      var status = j.status || '';
+      var promptText = esc((j.prompt || '(no prompt)').substring(0, 60));
+      var worker = esc(j.model || 'Unknown');
+      var ago = fmtTimeAgo(j.created_at);
+      return '<div class="hist-row" data-job-id="' + esc(jid) + '">' +
+        '<div class="' + histDotClass(status) + '"></div>' +
+        '<div class="hist-info">' +
+          '<div class="hist-prompt">' + promptText + '</div>' +
+          '<div class="hist-meta">' + worker + (ago ? ' \u00b7 ' + ago : '') + '</div>' +
+        '</div>' +
+        '<span class="hist-status">' + esc(status) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  async function fetchHistory(){
+    try {
+      var r = await fetch('/api/history', {cache:'no-store'});
+      if(!r.ok) return;
+      var data = await r.json();
+      histJobs = data.jobs || (Array.isArray(data) ? data : []);
+      renderHistory();
+    } catch(e){ /* silent */ }
+    histLoaded = true;
+  }
+
+  /* filter chip clicks */
+  document.querySelectorAll('.hist-chip').forEach(function(c){
+    c.addEventListener('click', function(){
+      histFilter = c.getAttribute('data-hfilter') || 'all';
+      document.querySelectorAll('.hist-chip').forEach(function(b){
+        var isActive = b === c;
+        b.classList.toggle('active', isActive);
+        b.setAttribute('aria-checked', isActive ? 'true' : 'false');
+      });
+      renderHistory();
+    });
+  });
+
+  /* history row click → open job detail sheet */
+  document.addEventListener('click', function(ev){
+    var row = ev.target.closest('.hist-row[data-job-id]');
+    if(!row) return;
+    var jid = row.getAttribute('data-job-id');
+    if(jid) loadJobDetail(jid);
+  });
+
+  /* start/stop polling based on active tab */
+  function histStartPoll(){
+    if(histPollId) clearInterval(histPollId);
+    fetchHistory();
+    histPollId = setInterval(fetchHistory, 10000);
+  }
+  function histStopPoll(){
+    if(histPollId){ clearInterval(histPollId); histPollId = null; }
+  }
+
+  /* =============================================================
      INIT
      ============================================================= */
+  /* Extend switchView to manage history polling */
+  var origSwitchView = switchView;
+  switchView = function(name){
+    origSwitchView(name);
+    if(name === 'history'){
+      histStartPoll();
+    } else {
+      histStopPoll();
+    }
+  };
+
   icons();
   fetchJobs();
+  fetchRecent();
+  fetchStatsEndpoint();
   setInterval(fetchJobs, POLL_MS);
+  setInterval(fetchStatsEndpoint, POLL_MS);
+  setInterval(fbUpdateActiveFiles, POLL_MS);
 })();

@@ -46,5 +46,25 @@ data/miru_dev_training_reviews.db
 windows/dispatcher/data/jobs.db
 windows/dispatcher_jobs.db
 
-# Runtime startup logs (written by live services — must not be tracked)
-data/startup-logs/*.log
+# Playwright / debug screenshots (must be saved outside the repo, e.g. C:\temp\playwright-shots\)
+/*.png
+/windows/restart_dispatcher_tmp.ps1
+
+# Junk / temp artifacts
+.playwright-mcp/
+.playwright-browsers/
+.codex_playwright_tmp/
+.codex_checkpoints/
+.tmp-*/
+.pip-*/
+.npm-*/
+.wheelhouse/
+.docker-config/
+debug.log
+*.log
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.pip-cache/
+.npm-tmp/
