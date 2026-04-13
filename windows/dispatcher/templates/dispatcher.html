@@ -250,12 +250,17 @@
       </div>
     </div>
 
-    <!-- History View (M5) -->
+    <!-- History View -->
     <div class="view" id="view-history">
       <div class="view-title">History</div>
-      <div class="empty-state">
-        <i data-lucide="archive"></i>
-        <p>History view coming in Milestone 5</p>
+      <div class="hist-filters" id="hist-filters" role="radiogroup" aria-label="Filter history">
+        <button class="hist-chip active" data-hfilter="all" role="radio" aria-checked="true">All</button>
+        <button class="hist-chip" data-hfilter="running" role="radio" aria-checked="false"><span class="dot dot-running" style="width:6px;height:6px"></span>Running</button>
+        <button class="hist-chip" data-hfilter="done" role="radio" aria-checked="false"><span class="dot dot-done" style="width:6px;height:6px"></span>Done</button>
+        <button class="hist-chip" data-hfilter="failed" role="radio" aria-checked="false"><span class="dot dot-failed" style="width:6px;height:6px"></span>Failed</button>
+      </div>
+      <div class="hist-list" id="hist-list">
+        <div class="hist-loading">Loading history…</div>
       </div>
     </div>
 
@@ -267,9 +272,25 @@
           <input type="text" class="fb-search" id="fb-search" placeholder="Search files..." autocomplete="off" />
         </div>
       </div>
+      <div class="fb-recent-section" id="fb-recent-section"></div>
       <div class="fb-pinned" id="fb-pinned"></div>
       <div class="fb-tree" id="fb-tree">
         <div class="fb-loading">Loading file tree&hellip;</div>
+      </div>
+      <!-- Legend (E6) -->
+      <div class="fb-legend" id="fb-legend">
+        <div class="fb-legend-hd" id="fb-legend-toggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>Legend</span>
+          <svg class="fb-legend-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="fb-legend-body" id="fb-legend-body">
+          <div class="fb-legend-row"><span class="fb-active-dot" style="animation-duration:2s"></span><span>File mentioned in a running job</span></div>
+          <div class="fb-legend-row"><span class="fb-recent-dot" style="animation-duration:2s"></span><span>Modified in the last 30 minutes</span></div>
+          <div class="fb-legend-row"><span class="fb-count-sample">[3]</span><span>Count of files directly inside folder</span></div>
+          <div class="fb-legend-row"><span class="fb-size" style="font-size:10px">1.2 KB</span><span>Size on disk</span></div>
+          <div class="fb-legend-row"><span class="fb-size" style="font-size:10px">5m ago</span><span>When the file was last changed</span></div>
+        </div>
       </div>
     </div>
 
@@ -363,7 +384,8 @@
     <div class="file-sheet-hd">
       <div class="file-sheet-titlewrap">
         <span class="file-sheet-title" id="fs-title">file.py</span>
-        <span class="file-sheet-path" id="fs-path">/path</span>
+        <span class="file-sheet-meta"><span class="file-sheet-path" id="fs-path">/path</span> <span class="file-sheet-lines" id="fs-lines"></span></span>
+        <span class="file-sheet-mtime" id="fs-mtime"></span>
       </div>
       <button class="icon-btn" id="fs-close" aria-label="Close file viewer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -378,6 +400,39 @@
       <button class="btn-ghost" id="fs-dl">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Download
+      </button>
+      <button class="btn-ghost" id="fs-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <span id="fs-wrap-label">Wrap</span>
+      </button>
+      <button class="btn-ghost" id="fs-open-dispatch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Dispatch
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Job Detail Sheet (shared: History + Recent) -->
+<div class="job-sheet" id="job-sheet">
+  <div class="job-sheet-inner">
+    <div class="ws-handle"></div>
+    <div class="job-sheet-hd">
+      <div class="job-sheet-titlewrap">
+        <span class="job-sheet-title" id="js-title">Job Detail</span>
+        <span class="job-sheet-meta" id="js-meta"></span>
+      </div>
+      <button class="icon-btn" id="js-close" aria-label="Close job detail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="job-sheet-body" id="js-body">
+      <div class="js-loading">Loading…</div>
+    </div>
+    <div class="job-sheet-actions" id="js-actions">
+      <button class="btn-ghost" id="js-copy-output">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy Output
       </button>
     </div>
   </div>
