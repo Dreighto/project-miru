@@ -1,4 +1,4 @@
-# Claude Chat + Claude Code — Project Miru
+# Copilot — Project Miru
 
 ## Ports — Permanent Reference
 
@@ -56,24 +56,28 @@
 
 ---
 
-## Worker-specific: Claude Chat + Claude Code
+## Worker-specific: Copilot
 
 ### Role
 
-- **Claude Chat:** Lead Architect. Architecture decisions, planning, worker prompt authoring, Notion read AND write, session continuity. The only worker that writes to Notion.
-- **Claude Code:** Primary Python execution worker. Complex multi-file Python refactoring, test writing, verification scripts.
+- Lightweight single-function fixes
+- Inline targeted edits only
+- Small, well-scoped tasks with clear boundaries
 
 ### File ownership
 
-- Claude Code owns: Python backend files, test scripts, verification scripts
-- Claude Chat owns: CLAUDE.md, GEMINI.md, CURSOR.md, CODEX.md, COPILOT.md, all worker prompts
+- Copilot handles targeted single-function fixes only
+- Never takes on structural or multi-file tasks
 
 ### Must never
 
-- Claude Code must never touch HTML/CSS/JS templates
-- Claude Code must never modify .mcp.json or any MCP config files
-- Claude Code must never write to card_catalog.db
-- Claude Chat must never execute code directly on the server
+- Never refactor across multiple files
+- Never modify .mcp.json or MCP config files
+- Never write to card_catalog.db
+- Never touch HTML/CSS/JS templates (Gemini CLI owns these)
+- Never modify context files
+- Never take on tasks that span more than one file
+- Always use inline completion mode — never rewrite entire files
 
 ## Completion Contract
 

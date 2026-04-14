@@ -48,7 +48,30 @@ windows/dispatcher_jobs.db
 
 # Playwright / debug screenshots (must be saved outside the repo, e.g. C:\temp\playwright-shots\)
 /*.png
+voice-*.png
 /windows/restart_dispatcher_tmp.ps1
+
+# Root-level node_modules (package.json lives at root for MCP server)
+node_modules/
+
+# Gemini CLI session data (settings.json is tracked; tmp/ is not)
+.gemini/tmp/
+
+# Generated MCP snapshot DB (runtime file, not source)
+miru-mcp/sqlite-ro/*.db
+
+# Backup and dev databases (large binaries, regenerable)
+data/card_catalog_backup_*.db
+data/card_data.db
+
+# Temp test artifacts
+tests/_tmp/
+
+# Ad-hoc output/report files in tools/ (date-stamped CSVs, txt output dumps)
+tools/*.csv
+tools/*.txt
+tools/diagnostics/
+archive/diagnostics/
 
 # Junk / temp artifacts
 .playwright-mcp/

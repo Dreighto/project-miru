@@ -1,4 +1,4 @@
-# Claude Chat + Claude Code — Project Miru
+# Cursor — Project Miru
 
 ## Ports — Permanent Reference
 
@@ -56,24 +56,38 @@
 
 ---
 
-## Worker-specific: Claude Chat + Claude Code
+## Worker-specific: Cursor
 
 ### Role
 
-- **Claude Chat:** Lead Architect. Architecture decisions, planning, worker prompt authoring, Notion read AND write, session continuity. The only worker that writes to Notion.
-- **Claude Code:** Primary Python execution worker. Complex multi-file Python refactoring, test writing, verification scripts.
+- Python execution and live verification
+- Database work and SQL queries via MCP
+- APScheduler and background job implementation
+- Live smoke testing after any Python change
 
 ### File ownership
 
-- Claude Code owns: Python backend files, test scripts, verification scripts
-- Claude Chat owns: CLAUDE.md, GEMINI.md, CURSOR.md, CODEX.md, COPILOT.md, all worker prompts
+- Cursor owns: Python execution tasks
+- Cursor owns: database query scripts
+- Cursor owns: scheduled job implementations
 
 ### Must never
 
-- Claude Code must never touch HTML/CSS/JS templates
-- Claude Code must never modify .mcp.json or any MCP config files
-- Claude Code must never write to card_catalog.db
-- Claude Chat must never execute code directly on the server
+- Never edit HTML/CSS/JS templates (Gemini CLI owns these)
+- Never modify .mcp.json master config
+- Never write to card_catalog.db directly
+- Never run commands that affect ports 18080 or 18765 without using the canonical restart scripts
+
+### MCP tools available
+
+- sqlite-ro-snapshot (read-only DB access)
+- sequential-thinking (use before complex tasks)
+- notion (read only — check current job state)
+- git (check file state before starting)
+- filesystem, playwright, git (system utilities)
+- fetch, perplexity, youtube (research)
+- magic-ui, shadcn (frontend components only)
+- justtcg (reference)
 
 ## Completion Contract
 

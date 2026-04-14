@@ -91,6 +91,26 @@
     } catch(e){ return iso; }
   }
 
+  /* CHANGE 3: LA timezone formatter for absolute timestamps */
+  function formatLATime(iso){
+    if(!iso) return '\u2014';
+    try {
+      var d = new Date(iso);
+      var now = new Date();
+      var opts = {
+        timeZone: 'America/Los_Angeles',
+        month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit',
+        hour12: true, timeZoneName: 'short'
+      };
+      /* Include year only if different from current */
+      var laYear = new Intl.DateTimeFormat('en-US', {timeZone:'America/Los_Angeles', year:'numeric'}).format(d);
+      var curYear = new Intl.DateTimeFormat('en-US', {timeZone:'America/Los_Angeles', year:'numeric'}).format(now);
+      if(laYear !== curYear) opts.year = 'numeric';
+      return new Intl.DateTimeFormat('en-US', opts).format(d);
+    } catch(e){ return iso; }
+  }
+
   function dotClass(status){
     if(status === 'running')          return 'dot dot-running';
     if(status === 'done')             return 'dot dot-done';
@@ -297,16 +317,21 @@
 
   function updateStats(){
     /* derive 3-card metrics from allJobs — always snap, never animate.
-       Animation is handled solely by fetchStatsEndpoint() via statsApiAnimated. */
+       After first load (statsApiAnimated), update in-place via stable IDs — no DOM rebuild, no flicker. */
     var total   = allJobs.length;
     var running = allJobs.filter(function(j){ return j.status === 'running'; }).length;
     var queued  = allJobs.filter(function(j){ return j.status === 'pending'; }).length;
-    var runCls  = running > 0 ? ' kpi-green' : '';
 
-    statsEl.innerHTML =
-      '<div class="kpi"><span class="kpi-num">' + total + '</span><span class="kpi-label">Total</span></div>' +
-      '<div class="kpi"><span class="kpi-num' + runCls + '">' + running + '</span><span class="kpi-label">Running</span></div>' +
-      '<div class="kpi"><span class="kpi-num">' + queued + '</span><span class="kpi-label">Queued</span></div>';
+    if(statsApiAnimated){
+      /* No-flicker path: update textContent in-place */
+      var elT = document.getElementById('stat-total');
+      var elR = document.getElementById('stat-running');
+      var elQ = document.getElementById('stat-queued');
+      if(elT) elT.textContent = total;
+      if(elR){ elR.textContent = running; elR.classList.toggle('sp-green', running > 0); }
+      if(elQ) elQ.textContent = queued;
+    }
+    /* If !statsApiAnimated, fetchStatsEndpoint() handles first render — nothing to do here */
   }
 
   /* /api/stats — real server totals; drives M4 counter animation + dispatch-pulse */
@@ -318,7 +343,7 @@
       var total   = s.total_jobs    || 0;
       var running = s.running_count || 0;
       var queued  = s.pending_count || 0;
-      var runCls  = running > 0 ? ' kpi-green' : '';
+      var runCls  = running > 0 ? ' sp-green' : '';
 
       /* M4 Anim 3: pulse Dispatch button while any job is running */
       var dispBtn = $('btn-dispatch');
@@ -327,21 +352,40 @@
         else dispBtn.classList.remove('is-running');
       }
 
-      /* M4 Anim 1: count-up on first /api/stats response only */
+      /* Fix 3: Running job cancel banner */
+      var banner = $('running-banner');
+      if(banner){
+        if(running > 0){
+          /* Find the most recent running job for the worker name */
+          var runningJob = allJobs.find(function(j){ return j.status === 'running'; });
+          var workerName = (runningJob && runningJob.model) ? runningJob.model : 'Job';
+          var rbText = $('rb-text');
+          if(rbText) rbText.textContent = workerName + ' is running\u2026';
+          banner.style.display = 'flex';
+        } else {
+          banner.style.display = 'none';
+        }
+      }
+
+      /* M4 Anim 1: count-up on first /api/stats response only.
+         Stable IDs (stat-total, stat-running, stat-queued) written once — never rebuilt. */
       if(!statsApiAnimated){
         statsApiAnimated = true;
         statsEl.innerHTML =
-          '<div class="kpi"><span class="kpi-num" data-n="' + total   + '">0</span><span class="kpi-label">Total</span></div>' +
-          '<div class="kpi"><span class="kpi-num' + runCls + '" data-n="' + running + '">0</span><span class="kpi-label">Running</span></div>' +
-          '<div class="kpi"><span class="kpi-num" data-n="' + queued  + '">0</span><span class="kpi-label">Queued</span></div>';
-        statsEl.querySelectorAll('.kpi-num[data-n]').forEach(function(el){
+          '<span class="stat-pill"><span class="stat-pill-num" id="stat-total" data-n="' + total   + '">0</span><span class="stat-pill-lbl">Total</span></span>' +
+          '<span class="stat-pill"><span class="stat-pill-num' + runCls + '" id="stat-running" data-n="' + running + '">0</span><span class="stat-pill-lbl">Running</span></span>' +
+          '<span class="stat-pill"><span class="stat-pill-num" id="stat-queued" data-n="' + queued  + '">0</span><span class="stat-pill-lbl">Queued</span></span>';
+        statsEl.querySelectorAll('.stat-pill-num[data-n]').forEach(function(el){
           animateNum(el, parseInt(el.getAttribute('data-n'), 10));
         });
       } else {
-        statsEl.innerHTML =
-          '<div class="kpi"><span class="kpi-num">' + total   + '</span><span class="kpi-label">Total</span></div>' +
-          '<div class="kpi"><span class="kpi-num' + runCls + '">' + running + '</span><span class="kpi-label">Running</span></div>' +
-          '<div class="kpi"><span class="kpi-num">' + queued  + '</span><span class="kpi-label">Queued</span></div>';
+        /* No-flicker path: update textContent in-place — no innerHTML rebuild */
+        var elT = document.getElementById('stat-total');
+        var elR = document.getElementById('stat-running');
+        var elQ = document.getElementById('stat-queued');
+        if(elT) elT.textContent = total;
+        if(elR){ elR.textContent = running; elR.classList.toggle('sp-green', running > 0); }
+        if(elQ) elQ.textContent = queued;
       }
     } catch(e){ /* silent */ }
   }
@@ -633,7 +677,7 @@
         return;
       }
       promptEl.value = '';
-      charEl.textContent = '0 / 4000';
+      charEl.textContent = '0';
       toast('Dispatched', 'ok');
       fetchJobs();
       closeSidebar();
@@ -664,7 +708,7 @@
      CHAR COUNT
      ============================================================= */
   promptEl.addEventListener('input', function(){
-    charEl.textContent = promptEl.value.length + ' / 4000';
+    charEl.textContent = promptEl.value.length + '';
   });
 
   /* =============================================================
@@ -896,22 +940,78 @@
   logBackdrop.addEventListener('click', closeLogs);
 
   /* =============================================================
-     THEME TOGGLE — system preference default, manual override
+     THEME SYSTEM — accent color + dark/light mode
      ============================================================= */
-  $('btn-theme').addEventListener('click', function(){
+  var THEMES = {
+    blue:       { swatch:'#6B8EFF',
+      dark:  {'--primary':'#6B8EFF','--accent':'#5B5BD6','--primary-dim':'rgba(107,142,255,0.1)','--primary-border':'rgba(107,142,255,0.25)','--primary-text':'#ffffff'},
+      light: {'--primary':'#4365C7','--accent':'#3347A8','--primary-dim':'rgba(67,101,199,0.08)','--primary-border':'rgba(67,101,199,0.2)','--primary-text':'#ffffff'} },
+    purple:     { swatch:'#A78BFA',
+      dark:  {'--primary':'#A78BFA','--accent':'#7C3AED','--primary-dim':'rgba(167,139,250,0.1)','--primary-border':'rgba(167,139,250,0.25)','--primary-text':'#ffffff'},
+      light: {'--primary':'#7C3AED','--accent':'#6D28D9','--primary-dim':'rgba(124,58,237,0.08)','--primary-border':'rgba(124,58,237,0.2)','--primary-text':'#ffffff'} },
+    teal:       { swatch:'#2DD4BF',
+      dark:  {'--primary':'#2DD4BF','--accent':'#0D9488','--primary-dim':'rgba(45,212,191,0.1)','--primary-border':'rgba(45,212,191,0.25)','--primary-text':'#ffffff'},
+      light: {'--primary':'#0D9488','--accent':'#0F766E','--primary-dim':'rgba(13,148,136,0.08)','--primary-border':'rgba(13,148,136,0.2)','--primary-text':'#ffffff'} },
+    green:      { swatch:'#4ADE80',
+      dark:  {'--primary':'#4ADE80','--accent':'#16A34A','--primary-dim':'rgba(74,222,128,0.1)','--primary-border':'rgba(74,222,128,0.25)','--primary-text':'#ffffff'},
+      light: {'--primary':'#16A34A','--accent':'#15803D','--primary-dim':'rgba(22,163,74,0.08)','--primary-border':'rgba(22,163,74,0.2)','--primary-text':'#ffffff'} },
+    red:        { swatch:'#F87171',
+      dark:  {'--primary':'#F87171','--accent':'#DC2626','--primary-dim':'rgba(248,113,113,0.1)','--primary-border':'rgba(248,113,113,0.25)','--primary-text':'#ffffff'},
+      light: {'--primary':'#DC2626','--accent':'#B91C1C','--primary-dim':'rgba(220,38,38,0.08)','--primary-border':'rgba(220,38,38,0.2)','--primary-text':'#ffffff'} },
+    claude:     { swatch:'#E8703A',
+      dark:  {'--primary':'#E8703A','--accent':'#C55A28','--primary-dim':'rgba(232,112,58,0.1)','--primary-border':'rgba(232,112,58,0.25)','--primary-text':'#ffffff'},
+      light: {'--primary':'#C55A28','--accent':'#A34722','--primary-dim':'rgba(197,90,40,0.08)','--primary-border':'rgba(197,90,40,0.2)','--primary-text':'#ffffff'} },
+    perplexity: { swatch:'#20B2AA',
+      dark:  {'--primary':'#20B2AA','--accent':'#0E7E78','--primary-dim':'rgba(32,178,170,0.1)','--primary-border':'rgba(32,178,170,0.25)','--primary-text':'#ffffff'},
+      light: {'--primary':'#0E7E78','--accent':'#0A6460','--primary-dim':'rgba(14,126,120,0.08)','--primary-border':'rgba(14,126,120,0.2)','--primary-text':'#ffffff'} },
+    gemini:     { swatch:'#4285F4',
+      dark:  {'--primary':'#4285F4','--accent':'#1A73E8','--primary-dim':'rgba(66,133,244,0.1)','--primary-border':'rgba(66,133,244,0.25)','--primary-text':'#ffffff'},
+      light: {'--primary':'#1A73E8','--accent':'#1557B0','--primary-dim':'rgba(26,115,232,0.08)','--primary-border':'rgba(26,115,232,0.2)','--primary-text':'#ffffff'} }
+  };
+
+  var activeThemeKey = localStorage.getItem('miru-theme') || 'blue';
+  var activeMode     = localStorage.getItem('miru-mode')  || 'dark';
+
+  function applyTheme(key, mode) {
+    var t = THEMES[key] || THEMES.blue;
+    var vars = t[mode] || t.dark;
     var html = document.documentElement;
-    var cur = html.getAttribute('data-theme') || 'dark';
-    var next = cur === 'dark' ? 'light' : 'dark';
-    html.setAttribute('data-theme', next);
+    Object.keys(vars).forEach(function(k){ html.style.setProperty(k, vars[k]); });
+  }
+
+  function applyMode(mode) {
+    activeMode = mode;
+    var html = document.documentElement;
+    html.setAttribute('data-theme', mode);
     var meta = document.querySelector('meta[name="theme-color"]');
-    if(meta) meta.setAttribute('content', next === 'dark' ? '#0D0D10' : '#f7f6f2');
-    /* update mode pill label + icon */
-    var lbl = document.getElementById('mode-label');
+    if(meta) meta.setAttribute('content', mode === 'dark' ? '#0D0D10' : '#f7f6f2');
+    var lbl  = document.getElementById('mode-label');
     var icon = document.getElementById('mode-icon');
-    if(lbl) lbl.textContent = next === 'dark' ? 'Dark' : 'Light';
-    if(icon) icon.innerHTML = next === 'dark'
+    if(lbl)  lbl.textContent = mode === 'dark' ? 'Dark' : 'Light';
+    if(icon) icon.innerHTML  = mode === 'dark'
       ? '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'
       : '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+    applyTheme(activeThemeKey, mode);
+    localStorage.setItem('miru-mode', mode);
+    document.querySelectorAll('.ss-mode-btn').forEach(function(btn){
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+  }
+
+  function updateHeaderDot(key) {
+    var dot = document.getElementById('settings-dot');
+    if(dot) dot.style.display = key === 'blue' ? 'none' : 'block';
+  }
+
+  function updateSwatchActive(key) {
+    document.querySelectorAll('.ss-swatch-btn').forEach(function(btn){
+      btn.classList.toggle('active', btn.dataset.themeKey === key);
+    });
+  }
+
+  /* Mode pill toggles dark/light */
+  $('btn-theme').addEventListener('click', function(){
+    applyMode(activeMode === 'dark' ? 'light' : 'dark');
   });
 
   /* system theme change listener disabled — dark default in Phase 1 */
@@ -947,6 +1047,22 @@
           avatarEl.style.background = 'linear-gradient(135deg,' + item.dataset.colorA + ',' + item.dataset.colorB + ')';
         }
         if(nameEl) nameEl.textContent = item.dataset.name || '';
+
+        /* Feature 2: Sync worker picker → model hidden field + seg-group */
+        var workerToModel = {claude:'Claude', cursor:'Cursor', codex:'Codex', gemini:'Gemini'};
+        var selModel = workerToModel[item.dataset.worker] || '';
+        if(selModel){
+          var m3Input = document.getElementById('m3-model');
+          if(m3Input) m3Input.value = selModel;
+          /* Also update seg-group visual state */
+          var segs = document.querySelectorAll('.seg-group[data-field="model"] .seg');
+          segs.forEach(function(s){
+            var isMatch = (s.getAttribute('data-value') || s.textContent.trim()) === selModel;
+            s.classList.toggle('active', isMatch);
+            s.setAttribute('aria-checked', isMatch ? 'true' : 'false');
+          });
+        }
+
         setTimeout(function(){ closeWorkerSheet(); }, 220);
       });
     });
@@ -957,15 +1073,17 @@
       var wsHandle = sheet.querySelector('.ws-handle');
       var wsTitle = sheet.querySelector('.ws-title');
       if(!wsInner) return;
-      var startY = 0, dragging = false;
+      var startY = 0, startTime = 0, dragging = false;
 
-      function onStart(e){ startY = e.touches[0].clientY; dragging = true; wsInner.style.transition = 'none'; }
+      function onStart(e){ startY = e.touches[0].clientY; startTime = Date.now(); dragging = true; wsInner.style.transition = 'none'; }
       function onMove(e){ if(!dragging) return; var d = e.touches[0].clientY - startY; if(d > 0) wsInner.style.transform = 'translateY(' + d + 'px)'; }
       function onEnd(e){
         if(!dragging) return; dragging = false;
         var d = e.changedTouches[0].clientY - startY;
+        var elapsed = Date.now() - startTime;
+        var fastFlick = elapsed < 150 && d > 60;
         wsInner.style.transition = 'transform 280ms cubic-bezier(0.16,1,0.3,1)';
-        if(d > 60){ wsInner.style.transform = 'translateY(100%)'; setTimeout(function(){ closeWorkerSheet(); wsInner.style.transform = ''; wsInner.style.transition = ''; }, 280); }
+        if(fastFlick || d > 80){ wsInner.style.transform = 'translateY(100%)'; setTimeout(function(){ closeWorkerSheet(); wsInner.style.transform = ''; wsInner.style.transition = ''; }, 280); }
         else { wsInner.style.transform = 'translateY(0)'; setTimeout(function(){ wsInner.style.transition = ''; }, 280); }
       }
 
@@ -975,6 +1093,73 @@
         el.addEventListener('touchmove', onMove, {passive: true});
         el.addEventListener('touchend', onEnd, {passive: true});
       });
+    })();
+  })();
+
+  /* =============================================================
+     SETTINGS SHEET
+     ============================================================= */
+  (function(){
+    var sheet   = document.getElementById('settings-sheet');
+    var inner   = document.getElementById('ss-inner');
+    var btnOpen = document.getElementById('btn-settings');
+    var btnClose = document.getElementById('ss-close');
+    if(!sheet || !inner || !btnOpen) return;
+
+    function openSettingsSheet(){
+      sheet.classList.add('open');
+      document.body.classList.add('sheet-open');
+      updateSwatchActive(activeThemeKey);
+      document.querySelectorAll('.ss-mode-btn').forEach(function(btn){
+        btn.classList.toggle('active', btn.dataset.mode === activeMode);
+      });
+    }
+    function closeSettingsSheet(){
+      sheet.classList.remove('open');
+      document.body.classList.remove('sheet-open');
+    }
+
+    btnOpen.addEventListener('click', function(){ openSettingsSheet(); });
+    if(btnClose) btnClose.addEventListener('click', function(){ closeSettingsSheet(); });
+    sheet.addEventListener('click', function(e){ if(e.target === sheet) closeSettingsSheet(); });
+
+    /* Swatch clicks */
+    document.querySelectorAll('.ss-swatch-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var key = btn.dataset.themeKey;
+        if(!key || !THEMES[key]) return;
+        activeThemeKey = key;
+        applyTheme(key, activeMode);
+        localStorage.setItem('miru-theme', key);
+        updateSwatchActive(key);
+        updateHeaderDot(key);
+      });
+    });
+
+    /* Mode buttons */
+    document.querySelectorAll('.ss-mode-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){ applyMode(btn.dataset.mode); });
+    });
+
+    /* Swipe down to dismiss */
+    (function(){
+      var handle = document.getElementById('ss-handle');
+      if(!handle) return;
+      var startY = 0, startTime = 0, dragging = false;
+      function onStart(e){ startY = e.touches[0].clientY; startTime = Date.now(); dragging = true; inner.style.transition = 'none'; }
+      function onMove(e){ if(!dragging) return; var d = e.touches[0].clientY - startY; if(d > 0) inner.style.transform = 'translateY(' + d + 'px)'; }
+      function onEnd(e){
+        if(!dragging) return; dragging = false;
+        var d = e.changedTouches[0].clientY - startY;
+        var elapsed = Date.now() - startTime;
+        var fastFlick = elapsed < 150 && d > 60;
+        inner.style.transition = 'transform 280ms cubic-bezier(0.16,1,0.3,1)';
+        if(fastFlick || d > 80){ inner.style.transform = 'translateY(100%)'; setTimeout(function(){ closeSettingsSheet(); inner.style.transform = ''; inner.style.transition = ''; }, 280); }
+        else { inner.style.transform = 'translateY(0)'; setTimeout(function(){ inner.style.transition = ''; }, 280); }
+      }
+      handle.addEventListener('touchstart', onStart, {passive: true});
+      handle.addEventListener('touchmove',  onMove,  {passive: true});
+      handle.addEventListener('touchend',   onEnd,   {passive: true});
     })();
   })();
 
@@ -992,6 +1177,8 @@
 
     if(ev.key === 'Escape'){
       if(restartState === 'verifying'){ hideRestartCard(); return; }
+      var ssheet = document.getElementById('settings-sheet');
+      if(ssheet && ssheet.classList.contains('open')){ ssheet.classList.remove('open'); document.body.classList.remove('sheet-open'); return; }
       var wsheet = document.getElementById('worker-sheet');
       if(wsheet && wsheet.classList.contains('open')){ wsheet.classList.remove('open'); document.body.classList.remove('sheet-open'); return; }
       if(logDrawer.classList.contains('open')){ closeLogs(); return; }
@@ -1046,15 +1233,15 @@
     }
     bodyEl.innerHTML = jobs.map(function(j){
       var jid    = j.id || j.job_id || '';  /* /api/jobs uses id; /api/history uses job_id */
-      var rdClass = j.status === 'done' ? 'done' : (j.status === 'running' ? 'run' : (j.status === 'failed' ? 'failed' : ''));
-      var promptText = esc(j.prompt ? j.prompt.substring(0, 60) : '(no prompt)');
+      var rdClass = j.status === 'done' ? 'done' : (j.status === 'running' || j.status === 'cancel_requested' ? 'run' : (j.status === 'pending' ? 'pending' : (j.status === 'failed' ? 'failed' : '')));
+      var displayText = esc(j.title || (j.prompt ? j.prompt.substring(0, 60) : '(no prompt)'));
       var worker = esc(j.model || 'Unknown');
       var ago    = fmtTimeAgo(j.created_at);
       var status = esc(j.status || '');
       return '<div class="ri" data-id="' + esc(jid) + '">' +
         '<div class="rd ' + rdClass + '"></div>' +
         '<div class="rt">' +
-          '<div class="rtt">' + promptText + '</div>' +
+          '<div class="rtt">' + displayText + '</div>' +
           '<div class="rtm">' + worker + (ago ? ' \u00b7 ' + ago : '') + '</div>' +
         '</div>' +
         '<span class="rtd">' + status + '</span>' +
@@ -1064,14 +1251,24 @@
 
   async function fetchRecent(){
     try {
-      var r = await fetch('/api/history', {cache:'no-store'});
-      if(!r.ok) throw new Error('not ok');
-      var data = await r.json();
-      var jobs = data.jobs || (Array.isArray(data) ? data : []);
-      renderRecent(jobs.slice(0, 5));
+      /* Fetch both live jobs and history so running/pending appear at top */
+      var results = await Promise.all([
+        fetch('/api/jobs', {cache:'no-store'}).then(function(r){ return r.ok ? r.json() : {jobs:[]}; }).catch(function(){ return {jobs:[]}; }),
+        fetch('/api/history', {cache:'no-store'}).then(function(r){ return r.ok ? r.json() : {jobs:[]}; }).catch(function(){ return {jobs:[]}; })
+      ]);
+      var liveJobs = (results[0].jobs || []).filter(function(j){ return LIVE_STATES.has(j.status); });
+      var histJobs = results[1].jobs || (Array.isArray(results[1]) ? results[1] : []);
+      /* De-duplicate: remove any history entries that are already in liveJobs */
+      var liveIds = new Set(liveJobs.map(function(j){ return j.id || j.job_id; }));
+      var uniqueHist = histJobs.filter(function(j){ return !liveIds.has(j.id || j.job_id); });
+      /* Running/pending first (newest first), then completed (newest first) — 5 total */
+      var merged = liveJobs.concat(uniqueHist).slice(0, 5);
+      renderRecent(merged);
     } catch(e){
-      /* fallback: use already-fetched allJobs history */
-      renderRecent(allJobs.filter(function(j){ return !LIVE_STATES.has(j.status); }).slice(0, 5));
+      /* fallback: use already-fetched allJobs */
+      var live = allJobs.filter(function(j){ return LIVE_STATES.has(j.status); });
+      var done = allJobs.filter(function(j){ return !LIVE_STATES.has(j.status); });
+      renderRecent(live.concat(done).slice(0, 5));
     }
   }
 
@@ -1096,12 +1293,188 @@
       if(navigator.clipboard && navigator.clipboard.readText){
         navigator.clipboard.readText().then(function(text){
           promptEl.value = text;
-          charEl.textContent = text.length + ' / 4000';
+          charEl.textContent = text.length + '';
           promptEl.focus({ preventScroll: true });
         }).catch(function(){ toast('Clipboard access denied', 'err'); });
       } else {
         toast('Clipboard not available', 'err');
       }
+    });
+  })();
+
+  /* =============================================================
+     M4: VOICE INPUT (AssemblyAI Universal Streaming / u3-rt-pro)
+     ============================================================= */
+  (function(){
+    var btn = $('btn-voice');
+    if(!btn) return;
+
+    var isRecording           = false;
+    var audioCtx              = null;
+    var micStream             = null;
+    var voiceWs               = null;
+    var processor             = null;
+    var wsReadyToSend         = false;   // FIX 2: delay first audio send
+    var voiceStoppingNormally = false;   // FIX 5: suppress false error toast on normal stop
+
+    function startRecording(){
+      if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+        toast('Microphone not available', 'err');
+        return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(function(stream){
+          micStream = stream;
+
+          // FIX 1: Build WebSocket BEFORE creating AudioContext
+          var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+          var wsUrl = proto + '//' + location.host + '/api/voice/stream';
+          voiceWs = new WebSocket(wsUrl);
+          voiceWs.binaryType = 'arraybuffer';
+          console.log('[Voice] WebSocket created, connecting...');  // FIX 3
+
+          // FIX 1: ALL AudioContext/node creation lives inside onopen
+          voiceWs.onopen = function(){
+            console.log('[Voice] WebSocket open, starting AudioContext');  // FIX 3
+
+            // Create AudioContext at 16kHz
+            try {
+              audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+            } catch(e) {
+              toast('Voice not supported on this device', 'err');
+              micStream.getTracks().forEach(function(t){ t.stop(); });
+              micStream = null;
+              return;
+            }
+
+            // FIX 4: Resume AudioContext — iOS Safari PWA suspends it until user gesture completes
+            audioCtx.resume().then(function(){
+              console.log('[Voice] AudioContext resumed, state:', audioCtx.state);  // FIX 3
+            });
+
+            // Create nodes
+            var source = audioCtx.createMediaStreamSource(micStream);
+            processor  = audioCtx.createScriptProcessor(4096, 1, 1);
+
+            // FIX 2: Only send audio after WS has been open 500ms
+            wsReadyToSend = false;
+            setTimeout(function(){ wsReadyToSend = true; }, 500);
+
+            var firstChunkSent = false;
+
+            // Float32 → Int16 PCM, send over WebSocket
+            processor.onaudioprocess = function(e){
+              if(!wsReadyToSend) return;  // FIX 2
+              if(!voiceWs || voiceWs.readyState !== WebSocket.OPEN) return;
+              var f32 = e.inputBuffer.getChannelData(0);
+              var i16 = new Int16Array(f32.length);
+              for(var i = 0; i < f32.length; i++){
+                i16[i] = Math.max(-32768, Math.min(32767, f32[i] * 32768));
+              }
+              if(!firstChunkSent){
+                console.log('[Voice] First audio chunk sent, size:', i16.buffer.byteLength);  // FIX 3
+                firstChunkSent = true;
+              }
+              voiceWs.send(i16.buffer);
+            };
+
+            source.connect(processor);
+            processor.connect(audioCtx.destination);
+
+            isRecording = true;
+            btn.classList.add('recording');
+            toast('Listening\u2026');
+          };
+
+          voiceWs.onmessage = function(e){
+            try {
+              var data = JSON.parse(e.data);
+              var preview = document.getElementById('voice-preview');
+              if(data.is_final === false){
+                // Partial — show in preview area
+                if(preview) preview.textContent = data.text || '';
+              } else if(data.is_final === true && data.text && data.text.trim()){
+                // Final — append to prompt textarea
+                if(promptEl){
+                  if(promptEl.value && !promptEl.value.endsWith(' ')) promptEl.value += ' ';
+                  promptEl.value += data.text.trim();
+                  if(charEl) charEl.textContent = promptEl.value.length + '';
+                }
+                if(preview) preview.textContent = '';
+              }
+            } catch(err) { /* ignore parse errors */ }
+          };
+
+          voiceWs.onerror = function(e){
+            console.log('[Voice] WebSocket error', e);  // FIX 3
+            toast('Voice connection lost', 'err');
+            stopRecording();
+          };
+
+          // FIX 5: Only show error toast and call stopRecording on unexpected close
+          voiceWs.onclose = function(e){
+            console.log('[Voice] WebSocket closed', e.code, e.reason);  // FIX 3
+            if(isRecording && !voiceStoppingNormally){
+              toast('Voice connection lost', 'err');
+              stopRecording();
+            }
+          };
+        })
+        .catch(function(err){
+          if(err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'){
+            toast('Microphone access denied \u2014 check Settings \u203A Safari \u203A Microphone', 'err');
+          } else {
+            toast('Voice unavailable', 'err');
+          }
+        });
+    }
+
+    function stopRecording(){
+      voiceStoppingNormally = true;  // FIX 5: signal that this is an intentional stop
+      isRecording = false;
+
+      // Disconnect audio nodes
+      if(processor){
+        try { processor.disconnect(); } catch(e){}
+        processor = null;
+      }
+
+      // Stop mic tracks
+      if(micStream){
+        micStream.getTracks().forEach(function(t){ t.stop(); });
+        micStream = null;
+      }
+
+      // Close AudioContext
+      if(audioCtx){
+        try { audioCtx.close(); } catch(e){}
+        audioCtx = null;
+      }
+
+      // Close WebSocket
+      if(voiceWs){
+        try {
+          if(voiceWs.readyState === WebSocket.OPEN ||
+             voiceWs.readyState === WebSocket.CONNECTING){
+            voiceWs.close();
+          }
+        } catch(e){}
+        voiceWs = null;
+      }
+
+      wsReadyToSend = false;
+      voiceStoppingNormally = false;
+
+      // Clear preview
+      var preview = document.getElementById('voice-preview');
+      if(preview) preview.textContent = '';
+
+      // Reset button state
+      btn.classList.remove('recording');
+    }
+
+    btn.addEventListener('click', function(){
+      if(isRecording){ stopRecording(); } else { startRecording(); }
     });
   })();
 
@@ -1117,11 +1490,7 @@
   var fsPathEl    = $('fs-path');
   var fsCopyBtn   = $('fs-copy');
   var fsDlBtn     = $('fs-dl');
-  /* iOS: relabel Download → Share (Web Share API) */
-  if(fsDlBtn && isIOS){
-    var dlLabel = fsDlBtn.lastChild;
-    if(dlLabel && dlLabel.nodeType === 3) dlLabel.textContent = ' Share';
-  }
+  /* Download button always says "Download" on all platforms */
   var fsCloseBtn  = $('fs-close');
 
   var fbExpanded  = {};       /* path → true */
@@ -1132,6 +1501,9 @@
   var fbSearchQ   = '';
   var fbPollId    = null;
   var fbLoaded    = false;
+  /* Batch selection state */
+  var fbSelectionMode = false;
+  var fbSelected = new Set();
   var fsSwipeEnabled = false;
   var fbRecentViewed = [];    /* E5: recently viewed files [{path, name, mtime}] */
   var fbRecentEl  = $('fb-recent-section');
@@ -1176,18 +1548,25 @@
     if(diff < 3600) return Math.floor(diff/60) + 'm ago';
     if(diff < 86400) return Math.floor(diff/3600) + 'h ago';
     if(diff < 604800) return Math.floor(diff/86400) + 'd ago';
-    var d = new Date(epoch * 1000);
-    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return months[d.getMonth()] + ' ' + d.getDate();
+    try {
+      var d = new Date(epoch * 1000);
+      return new Intl.DateTimeFormat('en-US', {timeZone:'America/Los_Angeles', month:'short', day:'numeric'}).format(d);
+    } catch(e){ return ''; }
   }
   function fmtFullTime(epoch){
     if(!epoch) return '';
-    var d = new Date(epoch * 1000);
-    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    var h = d.getHours(), ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
-    var min = d.getMinutes();
-    return 'Modified ' + months[d.getMonth()] + ' ' + d.getDate() + ' at ' + h + ':' + (min < 10 ? '0' : '') + min + ' ' + ampm;
+    try {
+      var d = new Date(epoch * 1000);
+      var fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Los_Angeles',
+        month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit',
+        hour12: true, timeZoneName: 'short'
+      });
+      return 'Modified ' + fmt.format(d);
+    } catch(e){
+      return '';
+    }
   }
   function isRecentlyModified(epoch){ return epoch && (Date.now()/1000 - epoch) < 1800; }
   function extLang(name){
@@ -1228,7 +1607,13 @@
     var active = fbActiveSet.has(e.name) || fbActiveSet.has(e.path);
     var recent = !e.is_dir && isRecentlyModified(e.mtime);
     var chCls = e.is_dir ? ('fb-chev' + (fbExpanded[e.path] ? ' open' : '')) : 'fb-chev empty';
-    var h = '<div class="fb-row" data-path="' + esc(e.path) + '" data-dir="' + (e.is_dir?'1':'0') + '" data-name="' + esc(e.name) + '" data-mtime="' + (e.mtime||'') + '">';
+    var selected = !e.is_dir && fbSelected.has(e.path);
+    var rowCls = 'fb-row' + (selected ? ' fb-row-selected' : '');
+    var h = '<div class="' + rowCls + '" data-path="' + esc(e.path) + '" data-dir="' + (e.is_dir?'1':'0') + '" data-name="' + esc(e.name) + '" data-mtime="' + (e.mtime||'') + '">';
+    /* checkbox — visible only in selection mode, only for files */
+    if(!e.is_dir){
+      h += '<span class="fb-checkbox" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.5"/>' + (selected ? '<polyline points="3,8 6.5,11.5 13,4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' : '') + '</svg></span>';
+    }
     h += '<span class="fb-indent" style="width:' + pad + 'px"></span>';
     h += '<span class="' + chCls + '">' + (e.is_dir ? FB_CHEVRON : '') + '</span>';
     h += fbIcon(e);
@@ -1421,38 +1806,18 @@
   if(fsDlBtn) fsDlBtn.addEventListener('click', function(){
     if(!fbFileText){ toast('Nothing to download','err'); return; }
     var fname = fbFileName || 'file.txt';
-
-    if(isIOS){
-      /* iOS PWA: Web Share API with File object → native share sheet (Save to Files, AirDrop, etc.) */
-      if(navigator.canShare){
-        var file = new File([fbFileText], fname, {type:'text/plain'});
-        if(navigator.canShare({files:[file]})){
-          navigator.share({files:[file]}).then(function(){
-            toast('Saved to Files or shared','ok');
-          }).catch(function(err){
-            if(err.name === 'AbortError') toast('Share cancelled','');
-            else toast('Share failed \u2014 try copying instead','err');
-          });
-        } else {
-          toast('Sharing not supported \u2014 copy the file instead','err');
-        }
-      } else {
-        toast('Sharing not supported \u2014 copy the file instead','err');
-      }
-    } else {
-      /* Desktop / Android: hidden anchor download */
-      var blob = new Blob([fbFileText], {type:'text/plain'});
-      var url = URL.createObjectURL(blob);
-      try {
-        var a = document.createElement('a');
-        a.href = url; a.download = fname;
-        document.body.appendChild(a); a.click();
-        setTimeout(function(){ URL.revokeObjectURL(url); document.body.removeChild(a); }, 200);
-        toast('Download started','ok');
-      } catch(e){
-        URL.revokeObjectURL(url);
-        toast('Download blocked \u2014 try copying instead','err');
-      }
+    /* Direct Blob download — works on iOS Safari PWA and desktop */
+    var blob = new Blob([fbFileText], {type:'text/plain'});
+    var url = URL.createObjectURL(blob);
+    try {
+      var a = document.createElement('a');
+      a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); document.body.removeChild(a); }, 200);
+      toast('Download started','ok');
+    } catch(e){
+      URL.revokeObjectURL(url);
+      toast('Download blocked \u2014 try copying instead','err');
     }
   });
 
@@ -1472,7 +1837,7 @@
     if(promptEl){
       promptEl.value = 'File: ' + fbCurrentPath + '\n\n';
       promptEl.dispatchEvent(new Event('input'));
-      if(charEl) charEl.textContent = promptEl.value.length + ' / 4000';
+      if(charEl) charEl.textContent = promptEl.value.length + '';
     }
     toast('File path added to prompt', 'ok');
   });
@@ -1539,12 +1904,134 @@
     }
   }, true);
 
+  /* =============================================================
+     BATCH SELECTION MODE
+     ============================================================= */
+  var fbBatchBar    = $('fb-batch-bar');
+  var fbBatchCount  = $('fb-batch-count');
+  var fbBatchDlBtn  = $('fb-batch-dl');
+  var fbBatchCancel = $('fb-batch-cancel');
+
+  function fbUpdateBatchBar(){
+    var n = fbSelected.size;
+    if(fbBatchCount) fbBatchCount.textContent = n + ' file' + (n === 1 ? '' : 's') + ' selected';
+    if(fbBatchBar){
+      if(n > 0){ fbBatchBar.classList.add('visible'); }
+      else { fbBatchBar.classList.remove('visible'); }
+    }
+  }
+
+  function fbEnterSelection(path){
+    fbSelectionMode = true;
+    fbSelected.add(path);
+    if(fbTreeEl) fbTreeEl.classList.add('fb-selection-mode');
+    if(fbPinnedEl) fbPinnedEl.classList.add('fb-selection-mode');
+    if(typeof navigator.vibrate === 'function') navigator.vibrate(40);
+    fbRender();
+    fbUpdateBatchBar();
+  }
+
+  function fbExitSelection(){
+    fbSelectionMode = false;
+    fbSelected.clear();
+    if(fbTreeEl) fbTreeEl.classList.remove('fb-selection-mode');
+    if(fbPinnedEl) fbPinnedEl.classList.remove('fb-selection-mode');
+    if(fbBatchBar) fbBatchBar.classList.remove('visible');
+    fbRender();
+  }
+
+  /* Long-press on file tree: 500ms hold → enter selection mode */
+  (function(){
+    var lpTimer = null;
+    var lpPath  = null;
+    var lpMoved = false;
+
+    document.addEventListener('touchstart', function(ev){
+      var row = ev.target.closest('.fb-row');
+      if(!row || row.getAttribute('data-dir') === '1') return;
+      if(fbSelectionMode) return;   /* already in selection mode */
+      lpMoved = false;
+      lpPath  = row.getAttribute('data-path');
+      lpTimer = setTimeout(function(){
+        lpTimer = null;
+        if(!lpMoved && lpPath) fbEnterSelection(lpPath);
+      }, 500);
+    }, {passive: true});
+
+    document.addEventListener('touchmove', function(){
+      lpMoved = true;
+      if(lpTimer){ clearTimeout(lpTimer); lpTimer = null; }
+    }, {passive: true});
+
+    document.addEventListener('touchend', function(){
+      if(lpTimer){ clearTimeout(lpTimer); lpTimer = null; }
+    }, {passive: true});
+
+    document.addEventListener('touchcancel', function(){
+      if(lpTimer){ clearTimeout(lpTimer); lpTimer = null; }
+    }, {passive: true});
+  })();
+
   /* tree row click */
   document.addEventListener('click', function(ev){
     var row = ev.target.closest('.fb-row');
     if(!row) return;
-    if(row.getAttribute('data-dir') === '1') fbToggle(row.getAttribute('data-path'));
-    else fbOpen(row.getAttribute('data-path'), row.getAttribute('data-name'), parseFloat(row.getAttribute('data-mtime')) || 0);
+    var isDir  = row.getAttribute('data-dir') === '1';
+    var path   = row.getAttribute('data-path');
+    var name   = row.getAttribute('data-name');
+    var mtime  = parseFloat(row.getAttribute('data-mtime')) || 0;
+
+    if(fbSelectionMode){
+      if(isDir){
+        /* folder: still expand/collapse normally */
+        fbToggle(path);
+      } else {
+        /* file: toggle selection */
+        if(fbSelected.has(path)) fbSelected.delete(path);
+        else fbSelected.add(path);
+        if(fbSelected.size === 0) fbExitSelection();
+        else { fbRender(); fbUpdateBatchBar(); }
+      }
+      return;
+    }
+
+    if(isDir) fbToggle(path);
+    else fbOpen(path, name, mtime);
+  });
+
+  /* Batch cancel button */
+  if(fbBatchCancel) fbBatchCancel.addEventListener('click', function(){ fbExitSelection(); });
+
+  /* Batch download ZIP */
+  if(fbBatchDlBtn) fbBatchDlBtn.addEventListener('click', function(){
+    var paths = Array.from(fbSelected);
+    if(!paths.length) return;
+    fbBatchDlBtn.disabled = true;
+    fbBatchDlBtn.textContent = 'Downloading\u2026';
+    fetch('/api/files/download-zip', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({paths: paths})
+    }).then(function(r){
+      if(!r.ok) throw new Error('Server error ' + r.status);
+      return r.blob();
+    }).then(function(blob){
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'dispatch-export.zip';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); document.body.removeChild(a); }, 200);
+      toast('ZIP download started', 'ok');
+      fbExitSelection();
+    }).catch(function(err){
+      toast('ZIP download failed \u2014 ' + err.message, 'err');
+    }).finally(function(){
+      if(fbBatchDlBtn){
+        fbBatchDlBtn.disabled = false;
+        fbBatchDlBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download ZIP';
+      }
+    });
   });
 
   /* search */
@@ -1612,8 +2099,12 @@
   var jsMetaEl   = $('js-meta');
   var jsCloseBtn = $('js-close');
   var jsCopyBtn  = $('js-copy-output');
+  var jsCancelBtn = $('js-cancel');
   var jsOutputText = '';
   var jsSwipeEnabled = false;
+  var jsEventSource = null; /* SSE connection for live log */
+  var jsCurrentJobId = null;
+  var jsAutoScroll = true;
 
   function openJobSheet(){
     if(!jobSheetEl) return;
@@ -1629,6 +2120,11 @@
   }
 
   function closeJobSheet(){
+    /* Close SSE connection cleanly */
+    if(jsEventSource){ try { jsEventSource.close(); } catch(e){} jsEventSource = null; }
+    jsCurrentJobId = null;
+    jsAutoScroll = true;
+    if(jsCancelBtn) jsCancelBtn.style.display = 'none';
     if(jobSheetEl){
       jobSheetEl.classList.remove('open');
       var inner = jobSheetEl.querySelector('.job-sheet-inner');
@@ -1639,34 +2135,175 @@
     jsOutputText = '';
   }
 
+  /* Feature 3: classify log line for color coding */
+  function llClass(text){
+    if(!text) return 'll-raw';
+    if(text.indexOf('\u2699') === 0 || text.indexOf('tool_use') !== -1) return 'll-tool';
+    if(/\berror\b/i.test(text) || /\bfailed\b/i.test(text) || /\bException\b/.test(text)) return 'll-err';
+    if(/\bdone\b/i.test(text) || /\bsuccess\b/i.test(text) || /\bcomplete\b/i.test(text)) return 'll-ok';
+    if(/^\[.*\]$/.test(text.trim()) || /^#/.test(text.trim())) return 'll-meta';
+    return 'll-raw';
+  }
+
+  /* Feature 3: start SSE stream for live log */
+  function startJobStream(id, logPre, logPanel){
+    if(jsEventSource){ try { jsEventSource.close(); } catch(e){} }
+    jsAutoScroll = true;
+    jsCurrentJobId = id;
+
+    /* Track manual scroll-up → stop auto-scroll */
+    logPanel.addEventListener('scroll', function(){
+      var atBottom = logPanel.scrollHeight - logPanel.scrollTop - logPanel.clientHeight < 40;
+      jsAutoScroll = atBottom;
+      var jumpBtn = logPanel.querySelector('.ll-jump-btn');
+      if(jumpBtn) jumpBtn.style.display = atBottom ? 'none' : 'block';
+    });
+
+    function connect(){
+      var es = new EventSource('/api/jobs/' + id + '/stream');
+      jsEventSource = es;
+
+      es.addEventListener('log', function(e){
+        try {
+          var d = JSON.parse(e.data);
+          /* Extract text — d comes from SSE JSON envelope */
+          var text = '';
+          if(typeof d === 'object' && d !== null){
+            /* If d.text exists, use it; otherwise derive from known shapes */
+            if(typeof d.text === 'string'){
+              text = d.text;
+            } else if(typeof d.line === 'string'){
+              text = d.line;
+            } else {
+              /* Unknown JSON structure — skip raw rendering */
+              return;
+            }
+            /* Skip empty or whitespace-only messages */
+            if(!text.trim()) return;
+          } else if(typeof d === 'string'){
+            text = d;
+            if(!text.trim()) return;
+          } else {
+            return; /* Skip non-text data */
+          }
+          var cls = llClass(text);
+          var span = document.createElement('span');
+          span.className = 'll-line ' + cls;
+          span.textContent = text + '\n';
+          logPre.appendChild(span);
+          if(jsAutoScroll) logPanel.scrollTop = logPanel.scrollHeight;
+        } catch(ex){}
+      });
+
+      es.addEventListener('done', function(){
+        es.close(); jsEventSource = null;
+        /* Update cancel button visibility */
+        if(jsCancelBtn) jsCancelBtn.style.display = 'none';
+        /* Add done marker */
+        var marker = document.createElement('span');
+        marker.className = 'll-line ll-ok';
+        marker.textContent = '\n--- stream ended ---\n';
+        logPre.appendChild(marker);
+      });
+
+      es.addEventListener('heartbeat', function(){});
+
+      es.onerror = function(){
+        es.close();
+        /* Auto-reconnect after 2s (iOS kills SSE on screen lock) */
+        if(jsCurrentJobId === id){
+          setTimeout(function(){ if(jsCurrentJobId === id) connect(); }, 2000);
+        }
+      };
+    }
+    connect();
+  }
+
   async function loadJobDetail(id){
     if(!jsBodyEl) return;
     jsBodyEl.innerHTML = '<div class="js-loading">Loading\u2026</div>';
     if(jsTitleEl) jsTitleEl.textContent = 'Job Detail';
     if(jsMetaEl) jsMetaEl.textContent = '';
     jsOutputText = '';
+    jsCurrentJobId = id;
+    if(jsEventSource){ try { jsEventSource.close(); } catch(e){} jsEventSource = null; }
     openJobSheet();
     try {
       var r = await fetch('/api/jobs/' + id, {cache:'no-store'});
       if(!r.ok){ jsBodyEl.innerHTML = '<div class="js-loading">Failed to load job</div>'; return; }
       var j = await r.json();
       jsOutputText = j.output || '';
-      if(jsTitleEl) jsTitleEl.textContent = (j.prompt || '').substring(0, 50) || 'Job Detail';
+      if(jsTitleEl) jsTitleEl.textContent = j.title || (j.prompt || '').substring(0, 50) || 'Job Detail';
       if(jsMetaEl) jsMetaEl.textContent = esc(j.model || '') + ' \u00b7 ' + esc(j.effort || '') + ' \u00b7 ' + fmtTimeAgo(j.created_at);
       var durationStr = j.duration || '';
       if(!durationStr && j.created_at && j.finished_at){
         try { var ds = (new Date(j.finished_at).getTime() - new Date(j.created_at).getTime()) / 1000; durationStr = ds.toFixed(1) + 's'; } catch(e){}
       }
+      var isLive = (j.status === 'running' || j.status === 'pending' || j.status === 'cancel_requested');
       var html = '';
-      html += '<div class="js-field"><span class="js-label">Status</span><span class="js-value"><span class="' + dotClass(j.status) + '"></span>' + esc(j.status) + '</span></div>';
-      html += '<div class="js-field"><span class="js-label">Worker</span><span class="js-value">' + esc(j.model || '\u2014') + '</span></div>';
-      html += '<div class="js-field"><span class="js-label">Effort</span><span class="js-value">' + esc(j.effort || '\u2014') + '</span></div>';
-      html += '<div class="js-field"><span class="js-label">Started</span><span class="js-value">' + esc(j.created_at || '\u2014') + '</span></div>';
-      if(durationStr) html += '<div class="js-field"><span class="js-label">Duration</span><span class="js-value">' + esc(durationStr) + '</span></div>';
-      if(j.input_tokens != null) html += '<div class="js-field"><span class="js-label">Tokens</span><span class="js-value">' + j.input_tokens + ' in / ' + (j.output_tokens || 0) + ' out</span></div>';
-      html += '<div class="js-section"><div class="js-section-label">Prompt</div><pre class="js-pre">' + esc(j.prompt || '\u2014') + '</pre></div>';
-      html += '<div class="js-section"><div class="js-section-label">Output</div><pre class="js-pre">' + esc(j.output || '(no output yet)') + '</pre></div>';
+
+      /* PART A — compact 2×2 metadata grid */
+      var workerEffort = esc(j.model || '\u2014') + ' \u00b7 ' + esc(j.effort || '\u2014');
+      html += '<div class="js-meta-grid">';
+      html += '<div class="js-meta-cell"><div class="js-meta-cell-lbl">Status</div><div class="js-meta-cell-val"><span class="' + dotClass(j.status) + '"></span>' + esc(j.status) + '</div></div>';
+      html += '<div class="js-meta-cell"><div class="js-meta-cell-lbl">Worker</div><div class="js-meta-cell-val">' + workerEffort + '</div></div>';
+      html += '<div class="js-meta-cell"><div class="js-meta-cell-lbl">Duration</div><div class="js-meta-cell-val">' + esc(durationStr || '\u2014') + '</div></div>';
+      html += '<div class="js-meta-cell"><div class="js-meta-cell-lbl">Started</div><div class="js-meta-cell-val jv-ts">' + formatLATime(j.created_at) + '</div></div>';
+      html += '</div>';
+
+      /* PART B — Prompt section */
+      html += '<div class="js-section"><div class="js-section-label">Prompt</div><pre class="js-pre-prompt">' + esc(j.prompt || '\u2014') + '</pre></div>';
+
+      /* PART C — Output section (dominant) */
+      if(isLive){
+        html += '<div class="js-section"><div class="js-section-label">Live Output</div>';
+        html += '<div class="live-log-panel" id="js-live-log"><pre id="js-live-pre"></pre>';
+        html += '<button class="ll-jump-btn" id="ll-jump" style="display:none">Jump to bottom</button>';
+        html += '</div></div>';
+      } else {
+        html += '<div class="js-section"><div class="js-section-label">Output</div><pre class="js-pre-output">' + esc(j.output || '(no output yet)') + '</pre></div>';
+      }
+
+      /* PART D — Token usage (done jobs only) */
+      if(j.status === 'done'){
+        var tokIn  = j.input_tokens  || 0;
+        var tokOut = j.output_tokens || 0;
+        var tokTotal = tokIn + tokOut;
+        var estCost = ((tokIn * 0.003 + tokOut * 0.015) / 1000).toFixed(3);
+        html += '<div class="js-section"><div class="js-section-label">Token Usage</div>';
+        html += '<div class="js-token-row">';
+        html += '<div class="js-token-cell"><div class="js-token-num">' + tokIn + '</div><div class="js-token-lbl">In</div></div>';
+        html += '<div class="js-token-cell"><div class="js-token-num">' + tokOut + '</div><div class="js-token-lbl">Out</div></div>';
+        html += '<div class="js-token-cell"><div class="js-token-num">' + tokTotal + '</div><div class="js-token-lbl">Total</div></div>';
+        html += '</div>';
+        html += '<div class="js-token-cost">Est. cost: $' + estCost + '</div>';
+        html += '</div>';
+      }
+
       jsBodyEl.innerHTML = html;
+
+      /* Feature 4: Show cancel button for live jobs */
+      if(jsCancelBtn){
+        jsCancelBtn.style.display = isLive ? '' : 'none';
+        jsCancelBtn.setAttribute('data-job-id', id);
+      }
+
+      /* Feature 3: Start SSE stream for live jobs */
+      if(isLive){
+        var liveLog = $('js-live-log');
+        var livePre = $('js-live-pre');
+        if(liveLog && livePre) startJobStream(id, livePre, liveLog);
+
+        /* Jump to bottom button */
+        var jumpBtn = $('ll-jump');
+        if(jumpBtn && liveLog){
+          jumpBtn.addEventListener('click', function(){
+            liveLog.scrollTop = liveLog.scrollHeight;
+            jsAutoScroll = true;
+            jumpBtn.style.display = 'none';
+          });
+        }
+      }
     } catch(e){
       jsBodyEl.innerHTML = '<div class="js-loading">Network error</div>';
     }
@@ -1678,6 +2315,33 @@
   if(jsCopyBtn) jsCopyBtn.addEventListener('click', function(){
     if(jsOutputText) copyToClipboard(jsOutputText, jsCopyBtn);
     else toast('No output to copy', 'err');
+  });
+
+  /* Feature 4: Cancel button in job detail sheet */
+  if(jsCancelBtn) jsCancelBtn.addEventListener('click', async function(){
+    var jid = jsCancelBtn.getAttribute('data-job-id');
+    if(!jid) return;
+    jsCancelBtn.disabled = true;
+    jsCancelBtn.textContent = 'Cancelling\u2026';
+    try {
+      var r = await fetch('/api/jobs/' + jid + '/cancel', {method:'POST'});
+      if(r.ok){
+        toast('Job cancelled', 'ok');
+        /* Close SSE stream */
+        if(jsEventSource){ try { jsEventSource.close(); } catch(e){} jsEventSource = null; }
+        jsCancelBtn.style.display = 'none';
+        /* Refresh sheet to show cancelled status */
+        loadJobDetail(jid);
+        fetchJobs();
+      } else {
+        var err = await r.json().catch(function(){ return {}; });
+        toast('Cancel failed: ' + (err.error || r.status), 'err');
+      }
+    } catch(e){ toast('Network error', 'err'); }
+    finally {
+      jsCancelBtn.disabled = false;
+      jsCancelBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg> Cancel';
+    }
   });
 
   /* Escape closes job sheet */
@@ -1765,13 +2429,13 @@
     listEl.innerHTML = jobs.map(function(j){
       var jid = j.id || j.job_id || '';
       var status = j.status || '';
-      var promptText = esc((j.prompt || '(no prompt)').substring(0, 60));
+      var displayText = esc(j.title || (j.prompt || '(no prompt)').substring(0, 60));
       var worker = esc(j.model || 'Unknown');
       var ago = fmtTimeAgo(j.created_at);
       return '<div class="hist-row" data-job-id="' + esc(jid) + '">' +
         '<div class="' + histDotClass(status) + '"></div>' +
         '<div class="hist-info">' +
-          '<div class="hist-prompt">' + promptText + '</div>' +
+          '<div class="hist-prompt">' + displayText + '</div>' +
           '<div class="hist-meta">' + worker + (ago ? ' \u00b7 ' + ago : '') + '</div>' +
         '</div>' +
         '<span class="hist-status">' + esc(status) + '</span>' +
@@ -1835,11 +2499,60 @@
     }
   };
 
+  /* =============================================================
+     CONTEXT BAR — branch + repo (Feature 1)
+     ============================================================= */
+  var ctxBranchEl  = $('ctx-branch');
+  var ctxBranchName = $('ctx-branch-name');
+  var ctxRepoEl    = $('ctx-repo');
+
+  async function fetchGitContext(){
+    try {
+      var r = await fetch('/api/git/context', {cache:'no-store'});
+      if(!r.ok) return;
+      var d = await r.json();
+      if(ctxBranchName) ctxBranchName.textContent = d.branch || 'unknown';
+      if(ctxRepoEl) ctxRepoEl.textContent = d.repo || 'unknown';
+      /* Color code: red for main/master (danger), green otherwise (safe) */
+      if(ctxBranchEl){
+        var isDanger = (d.branch === 'main' || d.branch === 'master');
+        ctxBranchEl.classList.remove('safe', 'danger');
+        ctxBranchEl.classList.add(isDanger ? 'danger' : 'safe');
+      }
+    } catch(e){ /* silent */ }
+  }
+
+  /* Fix 3: Running-banner cancel button */
+  (function(){
+    var rbCancel = $('rb-cancel');
+    if(!rbCancel) return;
+    rbCancel.addEventListener('click', function(){
+      var runningJob = allJobs.find(function(j){ return j.status === 'running'; });
+      if(!runningJob){ toast('No running job found', 'err'); return; }
+      rbCancel.disabled = true;
+      toast('Cancelling\u2026', 'ok');
+      fetch('/api/jobs/' + runningJob.id + '/cancel', {method:'POST'})
+        .then(function(r){ if(!r.ok) throw new Error('cancel failed'); })
+        .catch(function(){ toast('Cancel failed', 'err'); })
+        .finally(function(){ setTimeout(function(){ rbCancel.disabled = false; }, 3000); });
+    });
+  })();
+
+  window.addEventListener('focusin', function(){ document.body.classList.add('keyboard-open'); });
+  window.addEventListener('focusout', function(){ document.body.classList.remove('keyboard-open'); });
+
+  /* Sync mode pill + header dot with saved preferences */
+  applyMode(activeMode);
+  updateHeaderDot(activeThemeKey);
+
   icons();
   fetchJobs();
   fetchRecent();
   fetchStatsEndpoint();
+  fetchGitContext();
   setInterval(fetchJobs, POLL_MS);
+  setInterval(fetchRecent, POLL_MS);
   setInterval(fetchStatsEndpoint, POLL_MS);
   setInterval(fbUpdateActiveFiles, POLL_MS);
+  setInterval(fetchGitContext, 30000); /* refresh every 30s */
 })();

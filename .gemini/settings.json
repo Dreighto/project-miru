@@ -1,0 +1,92 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ],
+      "env": {},
+      "trust": false
+    },
+    "justtcg": {
+      "url": "https://mcp.justtcg.com",
+      "headers": {
+        "x-api-key": "${env:JUSTTCG_API_KEY}"
+      },
+      "trust": false
+    },
+    "perplexity": {
+      "command": "powershell.exe",
+      "args": [
+        "-NoLogo",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$ErrorActionPreference='Stop'; $envPath='D:\\dev\\tcg-watcher-worktree\\.env'; $line=Get-Content -LiteralPath $envPath | Where-Object { $_ -match '^\\s*PERPLEXITY_API_KEY\\s*=' } | Select-Object -First 1; if (-not $line) { Write-Error 'PERPLEXITY_API_KEY missing'; exit 1 }; $value=($line -split '=',2)[1].Trim(); $env:PERPLEXITY_API_KEY=$value; & 'C:\\Program Files\\nodejs\\node.exe' 'D:\\dev\\tcg-watcher-worktree\\node_modules\\@perplexity-ai\\mcp-server\\dist\\index.js'"
+      ],
+      "trust": true
+    },
+    "sequential-thinking": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ],
+      "env": {},
+      "trust": false
+    },
+    "sqlite-ro-snapshot": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx.cmd",
+        "-y",
+        "@mokei/mcp-sqlite",
+        "--db",
+        "D:\\dev\\tcg-watcher-worktree\\miru-mcp\\sqlite-ro\\card_catalog.snapshot.db"
+      ],
+      "env": {},
+      "trust": false,
+      "includeTools": [
+        "read_query",
+        "get_schema_ddl"
+      ]
+    },
+    "git": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@cyanheads/git-mcp-server@latest"
+      ],
+      "env": {
+        "MCP_TRANSPORT_TYPE": "stdio",
+        "GIT_BASE_DIR": "D:\\dev\\tcg-watcher-worktree",
+        "npm_config_cache": "D:\\dev\\tcg-watcher-worktree\\.npm-cache"
+      },
+      "trust": false
+    },
+    "notion": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@notionhq/notion-mcp-server"
+      ],
+      "env": {
+        "NOTION_TOKEN": "${env:NOTION_TOKEN}"
+      },
+      "trust": false
+    },
+    "youtube": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@a.ardeshir/youtube-mcp"
+      ],
+      "env": {
+        "YOUTUBE_API_KEY": "${env:YOUTUBE_API_KEY}"
+      },
+      "trust": false
+    }
+  }
+}

@@ -59,16 +59,43 @@ def handler(job) -> None:
             env=cli_env,
         )
 
-        # Poll for cancel while waiting for the process.
+        # Stream stdout lines into job.output_lines for SSE streaming.
+        collected = []
         poll_interval = 0.5
         elapsed = 0.0
+
+        import select as _sel  # noqa: E402
+        import io
+
+        # Non-blocking read via thread
+        _stdout_lines: list[str] = []
+        _read_done = False
+
+        def _reader():
+            nonlocal _read_done
+            for raw_line in proc.stdout:
+                _stdout_lines.append(raw_line)
+            _read_done = True
+
+        import threading as _th
+        rt = _th.Thread(target=_reader, daemon=True)
+        rt.start()
+
         while elapsed < timeout:
             if job.cancel_event.is_set():
                 proc.kill()
                 job.status = "cancelled"
-                job.output = "[cancelled by operator]\n" + (proc.stdout.read() or "")
+                job.output = "[cancelled by operator]\n" + "".join(collected)
                 log.info("Job %s cancelled mid-run; Claude CLI killed", job.id)
                 return
+
+            # Drain buffered lines
+            while _stdout_lines:
+                line = _stdout_lines.pop(0)
+                collected.append(line)
+                if hasattr(job, "output_lines"):
+                    job.output_lines.append(line.rstrip("\n"))
+
             ret = proc.poll()
             if ret is not None:
                 break
@@ -77,25 +104,33 @@ def handler(job) -> None:
         else:
             proc.kill()
             job.status = "failed"
-            job.output = f"[timeout after {timeout}s]\n" + (proc.stdout.read() or "")
+            job.output = f"[timeout after {timeout}s]\n" + "".join(collected)
             log.warning("Job %s timed out after %ds", job.id, timeout)
             return
 
-        stdout, stderr = proc.communicate()
+        # Drain remaining lines after process exits
+        rt.join(timeout=5)
+        while _stdout_lines:
+            line = _stdout_lines.pop(0)
+            collected.append(line)
+            if hasattr(job, "output_lines"):
+                job.output_lines.append(line.rstrip("\n"))
+
+        stderr_text = proc.stderr.read() or ""
         if proc.returncode == 0:
-            job.output = stdout.strip() or "[claude_cli] (no output)"
+            job.output = "".join(collected).strip() or "[claude_cli] (no output)"
             job.status = "done"
             log.info("Job %s completed successfully (rc=0)", job.id)
         else:
             job.status = "failed"
             job.output = (
                 f"[claude_cli] exit code {proc.returncode}\n"
-                f"stdout: {stdout.strip()}\n"
-                f"stderr: {stderr.strip()}"
+                f"stdout: {''.join(collected).strip()}\n"
+                f"stderr: {stderr_text.strip()}"
             )
             log.warning(
                 "Job %s failed: rc=%d stderr=%s",
-                job.id, proc.returncode, stderr[:200],
+                job.id, proc.returncode, stderr_text[:200],
             )
 
     except FileNotFoundError:

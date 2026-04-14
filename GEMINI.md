@@ -1,4 +1,4 @@
-# Claude Chat + Claude Code — Project Miru
+# Gemini CLI (gemini-2.5-pro) — Project Miru
 
 ## Ports — Permanent Reference
 
@@ -56,24 +56,39 @@
 
 ---
 
-## Worker-specific: Claude Chat + Claude Code
+## Worker-specific: Gemini CLI
 
 ### Role
 
-- **Claude Chat:** Lead Architect. Architecture decisions, planning, worker prompt authoring, Notion read AND write, session continuity. The only worker that writes to Notion.
-- **Claude Code:** Primary Python execution worker. Complex multi-file Python refactoring, test writing, verification scripts.
+- Large HTML/CSS/JS template editing
+- Full codebase reads and analysis
+- Image and vision tasks
+- Log file review and summarization
+- Long context tasks requiring full repo awareness
 
 ### File ownership
 
-- Claude Code owns: Python backend files, test scripts, verification scripts
-- Claude Chat owns: CLAUDE.md, GEMINI.md, CURSOR.md, CODEX.md, COPILOT.md, all worker prompts
+- Gemini owns: HTML/CSS/JS templates in `dashboard/templates/` and `tools/templates/`
+- Gemini owns: image processing scripts
+- Gemini owns: log analysis tasks
 
 ### Must never
 
-- Claude Code must never touch HTML/CSS/JS templates
-- Claude Code must never modify .mcp.json or any MCP config files
-- Claude Code must never write to card_catalog.db
-- Claude Chat must never execute code directly on the server
+- Never edit Python backend files without explicit operator authorization
+- Never modify .mcp.json or any MCP config files
+- Never write to card_catalog.db
+- Never modify CLAUDE.md — that is Claude Chat only
+- Use default approval mode (not auto) for all file writes — operator approves each change
+- Use `/restore` if any template edit breaks structure
+
+### MCP tools available
+
+- sqlite-ro-snapshot (read-only, approved)
+- sequential-thinking (use for complex template work)
+- notion (read only)
+- git (check current state before editing)
+- fetch, youtube, perplexity (research only)
+- justtcg (reference only)
 
 ## Completion Contract
 

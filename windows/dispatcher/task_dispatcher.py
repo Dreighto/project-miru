@@ -9,6 +9,7 @@ Pushover notifications, operator dashboard UI.
 from __future__ import annotations
 
 import atexit
+import io
 import json
 import logging
 import mimetypes
@@ -20,12 +21,13 @@ import time
 import urllib.error
 import urllib.request
 import uuid
+import zipfile
 from concurrent.futures import ThreadPoolExecutor, Future
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, send_file, stream_with_context
 
 try:
     from dotenv import load_dotenv
@@ -36,6 +38,8 @@ try:
     import requests
 except ImportError:  # pragma: no cover
     requests = None  # type: ignore
+
+from flask_sock import Sock
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +110,7 @@ if not PUSHOVER_ENABLED:
 
 DISPATCHER_BASE_URL = os.environ.get("DISPATCHER_BASE_URL", "").strip()
 
-VALID_MODELS = {"Ollama", "Claude", "Cursor"}
+VALID_MODELS = {"Ollama", "Claude", "Cursor", "Gemini"}
 VALID_EFFORTS = {"Quick", "Standard", "Deep"}
 JOB_LIMIT = 50
 
@@ -132,17 +136,25 @@ CREATE TABLE IF NOT EXISTS job_history (
     input_tokens   INTEGER,
     output_tokens  INTEGER,
     estimated_cost REAL,
-    run_duration_ms REAL
+    run_duration_ms REAL,
+    title          TEXT
 )
 """
 
+_MIGRATE_TITLE = "ALTER TABLE job_history ADD COLUMN title TEXT"
+
 
 def _init_db() -> None:
-    """Create the job_history table if it does not exist."""
+    """Create the job_history table if it does not exist. Migrate if needed."""
     try:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(str(DB_PATH)) as conn:
             conn.execute(_CREATE_TABLE)
+            # Migrate: add title column if missing (Fix 4)
+            try:
+                conn.execute(_MIGRATE_TITLE)
+            except sqlite3.OperationalError:
+                pass  # column already exists
             conn.commit()
         log.info("Job history DB ready at %s", DB_PATH)
     except Exception as exc:
@@ -171,8 +183,8 @@ def _db_upsert_job(job: Job) -> None:
                    (job_id,created_at,finished_at,prompt,model,effort,
                     handler_name,executor_mode,status,result_text,
                     error_message,input_tokens,output_tokens,
-                    estimated_cost,run_duration_ms)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    estimated_cost,run_duration_ms,title)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(job_id) DO UPDATE SET
                     finished_at=excluded.finished_at,
                     handler_name=excluded.handler_name,
@@ -183,13 +195,15 @@ def _db_upsert_job(job: Job) -> None:
                     input_tokens=excluded.input_tokens,
                     output_tokens=excluded.output_tokens,
                     estimated_cost=excluded.estimated_cost,
-                    run_duration_ms=excluded.run_duration_ms
+                    run_duration_ms=excluded.run_duration_ms,
+                    title=excluded.title
                 """,
                 (
                     job.id, job.created_at, job.finished_at, job.prompt,
                     job.model, job.effort, job.handler_name, job.executor_mode,
                     job.status, result_text, err_msg,
                     job.input_tokens, job.output_tokens, job.estimated_cost, dur,
+                    job.title,
                 ),
             )
             conn.commit()
@@ -280,6 +294,8 @@ class Job:
         "estimated_cost",
         "cancel_event",
         "future",
+        "output_lines",
+        "title",
     )
 
     def __init__(self, prompt: str, model: str, effort: str) -> None:
@@ -298,6 +314,8 @@ class Job:
         self.estimated_cost: float | None = None
         self.cancel_event: threading.Event = threading.Event()
         self.future: Future | None = None
+        self.output_lines: list[str] = []
+        self.title: str | None = None
 
     @property
     def output_preview(self) -> str:
@@ -316,6 +334,8 @@ class Job:
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
             "estimated_cost": self.estimated_cost,
+            "title": self.title,
+            "prompt": (self.prompt or "")[:120],
         }
 
     def to_detail(self) -> dict[str, Any]:
@@ -389,6 +409,92 @@ def send_pushover(title: str, message: str, url: str = "") -> None:
 
 
 # ---------------------------------------------------------------------------
+# Auto-generated job titles via Gemini CLI (Fix 4)
+# ---------------------------------------------------------------------------
+
+
+def _generate_title_background(job: Job) -> None:
+    """Background thread: ask Gemini CLI for a 4-6 word job title."""
+    import shutil
+
+    cli = shutil.which("gemini")
+    if cli is None:
+        appdata = os.environ.get("APPDATA", "")
+        if appdata:
+            candidate = os.path.join(appdata, "npm", "gemini.cmd")
+            if os.path.isfile(candidate):
+                cli = candidate
+    if cli is None:
+        job.title = (job.prompt or "")[:50].strip() or "Untitled"
+        _db_upsert_job(job)
+        log.info("Title fallback (no CLI) for job %s: %s", job.id[:8], job.title)
+        return
+
+    prompt_snippet = (job.prompt or "")[:200].replace('"', "'")
+    gen_prompt = (
+        "Generate a 4-6 word title for this task. "
+        "Reply with ONLY the title, no punctuation, no quotes, no explanation: "
+        + prompt_snippet
+    )
+    cli_env = os.environ.copy()
+    cli_env["NO_COLOR"] = "1"
+    cli_env["TERM"] = "dumb"
+
+    try:
+        # Use Popen + manual timeout so we can kill the entire process tree
+        # on Windows (subprocess.run timeout leaves orphan node.exe children).
+        _cflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        proc = subprocess.Popen(
+            [cli, "-p", gen_prompt],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            cwd=str(_REPO_ROOT),
+            creationflags=_cflags,
+            env=cli_env,
+        )
+        try:
+            stdout, _stderr = proc.communicate(timeout=30)
+            raw = stdout.strip() if proc.returncode == 0 else ""
+        except subprocess.TimeoutExpired:
+            log.warning("Title gen timeout for job %s — killing process tree", job.id[:8])
+            # Kill entire process tree (node.exe children) on Windows
+            try:
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                    timeout=5, creationflags=_cflags,
+                )
+            except Exception:
+                proc.kill()
+            try:
+                proc.communicate(timeout=5)
+            except Exception:
+                pass
+            raw = ""
+    except Exception as exc:
+        log.warning("Title gen error for job %s: %s", job.id[:8], exc)
+        raw = ""
+
+    # Sanitize: strip quotes, newlines, JSON artifacts, limit length
+    title = raw.replace('"', "").replace("'", "").replace("\n", " ").strip()
+    # Remove any JSON-like wrapping
+    if title.startswith("{") or title.startswith("["):
+        title = ""
+    # Truncate to reasonable length
+    if len(title) > 60:
+        title = title[:57] + "..."
+    # Fallback
+    if not title:
+        title = (job.prompt or "")[:50].strip() or "Untitled"
+
+    job.title = title
+    _db_upsert_job(job)
+    log.info("Title generated for job %s: %s", job.id[:8], job.title)
+
+
+# ---------------------------------------------------------------------------
 # Job execution
 # ---------------------------------------------------------------------------
 
@@ -420,6 +526,11 @@ def run_job(job: Job) -> None:
             message=job.output_preview,
             url=job_url,
         )
+        # Fix 4: Auto-generate title in background daemon thread
+        t = threading.Thread(
+            target=_generate_title_background, args=(job,), daemon=True
+        )
+        t.start()
 
 
 # ---------------------------------------------------------------------------
@@ -432,6 +543,13 @@ app = Flask(
     static_folder=str(DISPATCHER_STATIC_DIR),
     static_url_path="/static",
 )
+sock = Sock(app)
+
+# ---------------------------------------------------------------------------
+# AssemblyAI Universal Streaming config
+# ---------------------------------------------------------------------------
+
+ASSEMBLYAI_API_KEY = os.environ.get("ASSEMBLY_AI_API_KEY", "").strip()
 
 
 @app.errorhandler(404)
@@ -496,6 +614,7 @@ def api_get_job(job_id: str):
         "prompt": row["prompt"] or "",
         "output": row["result_text"] or "",
         "handler_name": row["handler_name"] or "",
+        "title": row.get("title") or None,
     })
 
 
@@ -741,6 +860,36 @@ def api_file():
     return jsonify({"path": rel, "is_text": True, "size": len(content), "content": content})
 
 
+@app.post("/api/files/download-zip")
+def api_download_zip():
+    """Accept a JSON list of relative paths, return a ZIP."""
+    payload = request.get_json(force=True, silent=True) or {}
+    paths = payload.get("paths", [])
+    if not paths or not isinstance(paths, list):
+        return jsonify(error="paths list required"), 400
+    if len(paths) > 50:
+        return jsonify(error="too many files (max 50)"), 400
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for rel in paths:
+            rel = str(rel).lstrip("/")
+            target = _safe_resolve(rel)
+            if target is None or not target.is_file():
+                continue
+            if target.stat().st_size > 50 * 1024 * 1024:
+                continue
+            zf.write(target, arcname=target.name)
+
+    buf.seek(0)
+    return send_file(
+        buf,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name="dispatch-export-" + datetime.now().strftime("%Y-%m-%d") + ".zip",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Runtime health + restart
 # ---------------------------------------------------------------------------
@@ -786,6 +935,146 @@ def _poll_until_up(service: str, url: str, max_wait: int = 30):
             "detail": f"Restart timed out — {label} still unreachable on :{port} after {max_wait}s",
         }
     log.warning("%s did not come up within %ds", service, max_wait)
+
+
+@sock.route("/api/voice/stream")
+def api_voice_stream(ws):
+    """Browser WebSocket → AssemblyAI Universal Streaming proxy (u3-rt-pro)."""
+    from urllib.parse import urlencode as _urlencode
+    import websockets.sync.client as _wss_client
+
+    print("[Voice] Client connected", flush=True)  # LOG 1
+
+    if not ASSEMBLYAI_API_KEY:
+        try:
+            ws.send(json.dumps({"error": "AssemblyAI API key not configured"}))
+        except Exception:
+            pass
+        return
+
+    keyterms = [
+        "Flask", "Python", "Tailscale", "camelCase", "dispatcher", "worktree",
+        "phase2", "Claude", "Gemini", "Codex", "Cursor", "Ollama",
+        "18765", "19000", "18080", "git branch", "SSE", "WebSocket", "subprocess",
+    ]
+    params = [
+        ("sample_rate", "16000"),
+        ("encoding", "pcm_s16le"),
+        ("speech_model", "u3-rt-pro"),
+    ] + [("word_boost", t) for t in keyterms]
+    aai_url = f"wss://streaming.assemblyai.com/v3/ws?{_urlencode(params)}"
+
+    try:
+        aai_ws = _wss_client.connect(
+            aai_url,
+            additional_headers={"Authorization": ASSEMBLYAI_API_KEY},
+        )
+    except Exception as exc:
+        log.error("AssemblyAI connect failed: %s", exc)
+        print("[Voice] Exception: AAI connect failed:", str(exc), flush=True)  # LOG 6
+        try:
+            ws.send(json.dumps({"error": f"Could not connect to transcription service: {exc}"}))
+        except Exception:
+            pass
+        return
+
+    stop_evt = threading.Event()
+    ws_send_lock = threading.Lock()  # protect flask-sock ws.send() from relay thread
+
+    def _relay_from_aai():
+        """Forward AssemblyAI transcript messages to the browser WebSocket."""
+        try:
+            while not stop_evt.is_set():
+                try:
+                    raw = aai_ws.recv(timeout=1)
+                except TimeoutError:
+                    continue
+                except Exception as e:
+                    print("[Voice] Exception: AAI recv failed:", str(e), flush=True)  # LOG 6
+                    break
+                try:
+                    msg = json.loads(raw)
+                except Exception:
+                    continue
+                msg_type = msg.get("type", "")
+                transcript_preview = (msg.get("transcript") or msg.get("text") or "")[:50]
+                print("[Voice] AAI message type:", msg_type, "transcript:", transcript_preview, flush=True)  # LOG 3
+                if msg_type == "Begin":
+                    print("[Voice] AssemblyAI connected, Begin received:", raw[:100], flush=True)  # LOG 2
+                elif msg_type == "Turn":
+                    # AAI v3 Universal Streaming uses Turn messages (not PartialTranscript/FinalTranscript)
+                    # transcript field contains cumulative text; end_of_turn=True means utterance is complete
+                    text = (msg.get("transcript") or "").strip()
+                    is_final = bool(msg.get("end_of_turn", False))
+                    if text:
+                        try:
+                            json_payload = json.dumps({"text": text, "is_final": is_final})
+                            print("[Voice] Sending to browser:", json_payload[:100], flush=True)  # LOG 4
+                            with ws_send_lock:
+                                ws.send(json_payload)
+                        except Exception as e:
+                            print("[Voice] Exception: browser send failed:", str(e), flush=True)  # LOG 6
+                            break
+                elif msg_type == "PartialTranscript":
+                    # v2 fallback — kept for compatibility
+                    text = (msg.get("text") or "").strip()
+                    if text:
+                        try:
+                            json_payload = json.dumps({"text": text, "is_final": False})
+                            print("[Voice] Sending to browser:", json_payload[:100], flush=True)  # LOG 4
+                            with ws_send_lock:
+                                ws.send(json_payload)
+                        except Exception as e:
+                            print("[Voice] Exception: browser send failed:", str(e), flush=True)  # LOG 6
+                            break
+                elif msg_type == "FinalTranscript":
+                    # v2 fallback — kept for compatibility
+                    text = (msg.get("text") or "").strip()
+                    try:
+                        json_payload = json.dumps({"text": text, "is_final": True})
+                        print("[Voice] Sending to browser:", json_payload[:100], flush=True)  # LOG 4
+                        with ws_send_lock:
+                            ws.send(json_payload)
+                    except Exception as e:
+                        print("[Voice] Exception: browser send failed:", str(e), flush=True)  # LOG 6
+                        break
+        except Exception as e:
+            print("[Voice] Exception: relay thread outer:", str(e), flush=True)  # LOG 6
+
+    relay_thread = threading.Thread(target=_relay_from_aai, daemon=True)
+    relay_thread.start()
+
+    _chunk_count = 0  # LOG 5: counter for first-3 audio chunk logging
+    try:
+        while True:
+            try:
+                data = ws.receive()
+            except Exception as e:
+                print("[Voice] Exception: browser receive failed:", str(e), flush=True)  # LOG 6
+                break
+            if data is None:
+                break
+            if _chunk_count < 3:  # LOG 5
+                print("[Voice] Received audio chunk, size:", len(data), flush=True)
+                _chunk_count += 1
+            try:
+                aai_ws.send(data)
+            except Exception as exc:
+                log.warning("AssemblyAI send failed: %s", exc)
+                print("[Voice] Exception: AAI send failed:", str(exc), flush=True)  # LOG 6
+                break
+    finally:
+        stop_evt.set()
+        try:
+            aai_ws.send(json.dumps({"type": "Terminate"}))
+        except Exception:
+            pass
+        try:
+            aai_ws.close()
+        except Exception:
+            pass
+        relay_thread.join(timeout=3)
+        log.info("Voice stream session closed")
 
 
 @app.get("/api/health")
@@ -990,6 +1279,79 @@ def admin_restart():
 
 
 # ---------------------------------------------------------------------------
+# Git context (Feature 1: Context Bar)
+# ---------------------------------------------------------------------------
+
+_REPO_ROOT = r"D:\dev\tcg-watcher-worktree"
+
+
+@app.get("/api/git/context")
+def api_git_context():
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=_REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        branch = result.stdout.strip() or "unknown"
+    except Exception:
+        branch = "unknown"
+    repo_name = os.path.basename(_REPO_ROOT)
+    return jsonify({"branch": branch, "repo": repo_name, "path": _REPO_ROOT})
+
+
+# ---------------------------------------------------------------------------
+# Live log stream (Feature 3: SSE)
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/jobs/<job_id>/stream")
+def api_job_stream(job_id: str):
+    with jobs_lock:
+        job = jobs.get(job_id)
+    if job is None:
+        return jsonify({"error": "job not found or no longer in memory"}), 404
+
+    def generate():
+        idx = 0
+        while True:
+            # Replay any lines we haven't sent yet
+            lines = job.output_lines
+            while idx < len(lines):
+                line_text = lines[idx]
+                # Try to parse as JSON for Claude Code structured output
+                payload = None
+                try:
+                    parsed = json.loads(line_text)
+                    payload = json.dumps(parsed)
+                except (json.JSONDecodeError, TypeError):
+                    payload = json.dumps({"type": "raw", "text": line_text})
+                yield f"event: log\ndata: {payload}\n\n"
+                idx += 1
+
+            # Check if job is terminal
+            if job.status in ("done", "failed", "cancelled"):
+                yield "event: done\ndata: {}\n\n"
+                return
+
+            # Heartbeat to keep iOS connection alive
+            yield "event: heartbeat\ndata: ping\n\n"
+            time.sleep(1)
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
 # UI
 # ---------------------------------------------------------------------------
 
@@ -1010,4 +1372,5 @@ if __name__ == "__main__":
         "no auth layer; intended for private Tailscale / trusted network only",
         PUSHOVER_ENABLED,
     )
-    app.run(host="0.0.0.0", port=19000, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=19000, debug=False, use_reloader=False,
+            threaded=True)

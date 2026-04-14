@@ -1,4 +1,4 @@
-# Claude Chat + Claude Code — Project Miru
+# Codex — Project Miru
 
 ## Ports — Permanent Reference
 
@@ -56,24 +56,29 @@
 
 ---
 
-## Worker-specific: Claude Chat + Claude Code
+## Worker-specific: Codex
 
 ### Role
 
-- **Claude Chat:** Lead Architect. Architecture decisions, planning, worker prompt authoring, Notion read AND write, session continuity. The only worker that writes to Notion.
-- **Claude Code:** Primary Python execution worker. Complex multi-file Python refactoring, test writing, verification scripts.
+- Complex multi-file analysis
+- Heavy reasoning tasks
+- Architecture review and code quality analysis
+- Tasks requiring deep understanding of entire codebase structure
 
 ### File ownership
 
-- Claude Code owns: Python backend files, test scripts, verification scripts
-- Claude Chat owns: CLAUDE.md, GEMINI.md, CURSOR.md, CODEX.md, COPILOT.md, all worker prompts
+- Codex is an analysis and reasoning worker
+- Codex proposes changes — Cursor or Claude Code executes them
+- Codex does not own any files directly
 
 ### Must never
 
-- Claude Code must never touch HTML/CSS/JS templates
-- Claude Code must never modify .mcp.json or any MCP config files
-- Claude Code must never write to card_catalog.db
-- Claude Chat must never execute code directly on the server
+- Never execute changes directly without operator confirmation
+- Never modify .mcp.json or MCP config files
+- Never write to card_catalog.db
+- Never touch HTML/CSS/JS templates
+- Never modify context files (CLAUDE.md, GEMINI.md, CURSOR.md, CODEX.md, COPILOT.md)
+- Avoid em dashes in any PowerShell or script files — use plain ASCII hyphens only
 
 ## Completion Contract
 
