@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+<meta name="theme-color" content="#0D0D10" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>Miru Task Dispatcher</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E⚡%3C/text%3E%3C/svg%3E">
+<script>
+(function(){
+  var THEMES = {
+    blue:       { dark:  {'--primary':'#6B8EFF','--accent':'#5B5BD6','--primary-dim':'rgba(107,142,255,0.1)','--primary-border':'rgba(107,142,255,0.25)','--primary-text':'#ffffff'},
+                  light: {'--primary':'#4365C7','--accent':'#3347A8','--primary-dim':'rgba(67,101,199,0.08)','--primary-border':'rgba(67,101,199,0.2)','--primary-text':'#ffffff'} },
+    purple:     { dark:  {'--primary':'#A78BFA','--accent':'#7C3AED','--primary-dim':'rgba(167,139,250,0.1)','--primary-border':'rgba(167,139,250,0.25)','--primary-text':'#ffffff'},
+                  light: {'--primary':'#7C3AED','--accent':'#6D28D9','--primary-dim':'rgba(124,58,237,0.08)','--primary-border':'rgba(124,58,237,0.2)','--primary-text':'#ffffff'} },
+    teal:       { dark:  {'--primary':'#2DD4BF','--accent':'#0D9488','--primary-dim':'rgba(45,212,191,0.1)','--primary-border':'rgba(45,212,191,0.25)','--primary-text':'#ffffff'},
+                  light: {'--primary':'#0D9488','--accent':'#0F766E','--primary-dim':'rgba(13,148,136,0.08)','--primary-border':'rgba(13,148,136,0.2)','--primary-text':'#ffffff'} },
+    green:      { dark:  {'--primary':'#4ADE80','--accent':'#16A34A','--primary-dim':'rgba(74,222,128,0.1)','--primary-border':'rgba(74,222,128,0.25)','--primary-text':'#ffffff'},
+                  light: {'--primary':'#16A34A','--accent':'#15803D','--primary-dim':'rgba(22,163,74,0.08)','--primary-border':'rgba(22,163,74,0.2)','--primary-text':'#ffffff'} },
+    red:        { dark:  {'--primary':'#F87171','--accent':'#DC2626','--primary-dim':'rgba(248,113,113,0.1)','--primary-border':'rgba(248,113,113,0.25)','--primary-text':'#ffffff'},
+                  light: {'--primary':'#DC2626','--accent':'#B91C1C','--primary-dim':'rgba(220,38,38,0.08)','--primary-border':'rgba(220,38,38,0.2)','--primary-text':'#ffffff'} },
+    claude:     { dark:  {'--primary':'#E8703A','--accent':'#C55A28','--primary-dim':'rgba(232,112,58,0.1)','--primary-border':'rgba(232,112,58,0.25)','--primary-text':'#ffffff'},
+                  light: {'--primary':'#C55A28','--accent':'#A34722','--primary-dim':'rgba(197,90,40,0.08)','--primary-border':'rgba(197,90,40,0.2)','--primary-text':'#ffffff'} },
+    perplexity: { dark:  {'--primary':'#20B2AA','--accent':'#0E7E78','--primary-dim':'rgba(32,178,170,0.1)','--primary-border':'rgba(32,178,170,0.25)','--primary-text':'#ffffff'},
+                  light: {'--primary':'#0E7E78','--accent':'#0A6460','--primary-dim':'rgba(14,126,120,0.08)','--primary-border':'rgba(14,126,120,0.2)','--primary-text':'#ffffff'} },
+    gemini:     { dark:  {'--primary':'#4285F4','--accent':'#1A73E8','--primary-dim':'rgba(66,133,244,0.1)','--primary-border':'rgba(66,133,244,0.25)','--primary-text':'#ffffff'},
+                  light: {'--primary':'#1A73E8','--accent':'#1557B0','--primary-dim':'rgba(26,115,232,0.08)','--primary-border':'rgba(26,115,232,0.2)','--primary-text':'#ffffff'} }
+  };
+  var mode  = localStorage.getItem('miru-mode')  || 'dark';
+  var theme = localStorage.getItem('miru-theme') || 'blue';
+  var html  = document.documentElement;
+  html.setAttribute('data-theme', mode);
+  var m = document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute('content', mode === 'dark' ? '#0D0D10' : '#f7f6f2');
+  var t = THEMES[theme] || THEMES.blue;
+  var vars = t[mode] || t.dark;
+  Object.keys(vars).forEach(function(k){ html.style.setProperty(k, vars[k]); });
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark-dimmed.min.css" />
+<link rel="stylesheet" href="{{ url_for('static', filename='dispatcher.css') }}?v={{ cache_bust }}" />
+</head>
+<body>
+
+<header class="header">
+  <button class="worker-pill" id="btn-worker-pill" aria-label="Switch worker">
+    <div class="wa" id="worker-avatar">C</div>
+    <div class="wi">
+      <div class="wn" id="worker-name">Claude Sonnet</div>
+      <div class="ws-status">
+        <span class="sdot"></span>
+        <span>online</span>
+        <svg class="sw-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+  </button>
+  <div class="header-right">
+    <button class="mode-pill" id="btn-theme" aria-label="Toggle theme">
+      <svg class="mode-icon" id="mode-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <span id="mode-label">Dark</span>
+    </button>
+    <button class="settings-btn" id="btn-settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span class="settings-dot" id="settings-dot"></span>
+    </button>
+  </div>
+</header>
+
+<!-- Worker picker sheet -->
+<div class="worker-sheet" id="worker-sheet">
+  <div class="ws-inner">
+    <div class="ws-handle"></div>
+    <div class="ws-title">Switch Worker</div>
+    <div class="ws-list">
+      <div class="ws-item selected" data-worker="claude" data-label="C" data-name="Claude Sonnet" data-color-a="#5B5BD6" data-color-b="#3B82F6">
+        <div class="ws-avatar" style="background:linear-gradient(135deg,#5B5BD6,#3B82F6)">C</div>
+        <div class="ws-info"><div class="ws-name">Claude Sonnet</div><div class="ws-desc">Anthropic · Best for reasoning + writing</div></div>
+        <div class="ws-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      </div>
+      <div class="ws-item" data-worker="cursor" data-label="Cr" data-name="Cursor" data-color-a="#1A1A2E" data-color-b="#2D2D5E">
+        <div class="ws-avatar" style="background:linear-gradient(135deg,#1A1A2E,#2D2D5E)">Cr</div>
+        <div class="ws-info"><div class="ws-name">Cursor</div><div class="ws-desc">Anysphere · Best for code edits in repo</div></div>
+        <div class="ws-empty"></div>
+      </div>
+      <div class="ws-item" data-worker="codex" data-label="Co" data-name="Codex CLI" data-color-a="#0D3320" data-color-b="#1A6640">
+        <div class="ws-avatar" style="background:linear-gradient(135deg,#0D3320,#1A6640)">Co</div>
+        <div class="ws-info"><div class="ws-name">Codex CLI</div><div class="ws-desc">OpenAI · Terminal-native code agent</div></div>
+        <div class="ws-empty"></div>
+      </div>
+      <div class="ws-item" data-worker="gemini" data-label="G" data-name="Gemini CLI" data-color-a="#1A2A0D" data-color-b="#2E5A1A">
+        <div class="ws-avatar" style="background:linear-gradient(135deg,#1A2A0D,#2E5A1A)">G</div>
+        <div class="ws-info"><div class="ws-name">Gemini CLI</div><div class="ws-desc">Google · Long context + multimodal</div></div>
+        <div class="ws-empty"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Context Bar (Feature 1: branch + folder always visible) -->
+<div class="context-bar" id="context-bar">
+  <span class="ctx-chip ctx-repo" id="ctx-repo">tcg-watcher-worktree</span>
+  <span class="ctx-chip ctx-branch" id="ctx-branch">
+    <svg class="ctx-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+    <span id="ctx-branch-name">...</span>
+  </span>
+</div>
+
+<div class="app">
+  <!-- Sidebar (hidden Phase 1, preserved for rollback) -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-nav">
+      <button class="nav-item active" data-nav="jobs"><i data-lucide="layers"></i><span>Jobs</span></button>
+      <button class="nav-item" data-nav="health"><i data-lucide="heart-pulse"></i><span>Health</span></button>
+      <button class="nav-item disabled"><i data-lucide="cpu"></i><span>Executors</span></button>
+      <button class="nav-item disabled"><i data-lucide="history"></i><span>Runs</span></button>
+      <button class="nav-item" data-nav="logs"><i data-lucide="terminal"></i><span>Logs</span><kbd class="kbd">L</kbd></button>
+      <button class="nav-item disabled"><i data-lucide="settings"></i><span>Config</span></button>
+    </div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-bottom">
+      <button class="nav-item nav-danger" id="btn-restart-dispatcher"><i data-lucide="refresh-cw"></i><span>Restart</span></button>
+    </div>
+    <div class="sidebar-footer">
+      <span class="version-badge">PM 18080 &middot; MIRU 18765 &middot; DISP 19000</span>
+    </div>
+  </nav>
+
+  <main class="main" id="main">
+
+    <!-- Dispatch View -->
+    <div class="view active" id="view-jobs">
+
+      <!-- Running job cancel banner — shown when a job is actively running -->
+      <div class="running-banner" id="running-banner" style="display:none">
+        <span class="rb-dot"></span>
+        <span class="rb-text" id="rb-text">Running...</span>
+        <button class="rb-cancel" id="rb-cancel" type="button">Cancel</button>
+      </div>
+
+      <div class="stats-pills" id="stats-bar"></div>
+
+      <!-- Filter chips (hidden, preserved for JS) -->
+      <div class="filter-bar" id="filter-chips" role="radiogroup" aria-label="Filter jobs" style="display:none">
+        <button class="chip active" data-filter="all" role="radio" aria-checked="true">All</button>
+        <button class="chip" data-filter="running" role="radio" aria-checked="false"><span class="dot dot-running"></span>Running</button>
+        <button class="chip" data-filter="done" role="radio" aria-checked="false"><span class="dot dot-done"></span>Done</button>
+        <button class="chip" data-filter="failed" role="radio" aria-checked="false"><span class="dot dot-failed"></span>Failed</button>
+        <button class="chip" data-filter="sim" role="radio" aria-checked="false">SIM</button>
+      </div>
+
+      <!-- Submit toggle (hidden, preserved for JS) -->
+      <div class="submit-toggle" style="display:none">
+        <button class="btn-ghost" id="btn-toggle-form"><i data-lucide="plus"></i>New Task</button>
+      </div>
+
+      <div class="m3-content">
+
+        <!-- Prompt card -->
+        <div>
+          <div class="m3-sl">What do you need done?</div>
+          <div class="pc" id="submit-wrap">
+            <form id="job-form" autocomplete="off">
+              <input type="hidden" id="m3-model" name="model" value="Claude">
+              <input type="hidden" id="m3-effort" name="effort" value="Standard">
+              <textarea id="prompt" name="prompt"
+                placeholder="Paste a prompt, describe a task, or speak it..."
+                rows="4" required></textarea>
+              <div id="voice-preview" class="voice-preview" aria-live="polite"></div>
+              <div class="pf">
+                <div class="ptags">
+                  <button type="button" class="ptag" id="btn-voice" aria-label="Voice input">
+                    <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                    Voice
+                  </button>
+                  <button type="button" class="ptag" id="btn-paste" aria-label="Paste from clipboard">
+                    <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Paste
+                  </button>
+                </div>
+                <div class="pf-right">
+                  <span class="cc" id="char-count">0</span>
+                  <button type="submit" class="pc-dispatch" id="btn-dispatch" aria-label="Dispatch task">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    Dispatch
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Advanced options -->
+        <div class="adv">
+          <div class="adv-hd" id="btn-adv">
+            <span class="adv-lbl">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              Advanced options
+            </span>
+            <svg class="adv-chev" id="adv-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="adv-body" id="adv-body">
+
+            <!-- Model selector — updates hidden #m3-model field -->
+            <div class="adv-row">
+              <span class="adv-key">Model</span>
+              <div class="seg-group" data-field="model" role="radiogroup" aria-label="Model">
+                <button type="button" class="seg active" role="radio" aria-checked="true" data-value="Claude">Claude</button>
+                <button type="button" class="seg" role="radio" aria-checked="false" data-value="Ollama">Ollama</button>
+                <button type="button" class="seg" role="radio" aria-checked="false" data-value="Cursor">Cursor</button>
+                <button type="button" class="seg" role="radio" aria-checked="false" data-value="Gemini">Gemini</button>
+              </div>
+            </div>
+
+            <!-- Effort selector — updates hidden #m3-effort field -->
+            <div class="adv-row">
+              <span class="adv-key">Effort</span>
+              <div class="seg-group" data-field="effort" role="radiogroup" aria-label="Effort">
+                <button type="button" class="seg" role="radio" aria-checked="false" data-value="Quick">Quick</button>
+                <button type="button" class="seg active" role="radio" aria-checked="true" data-value="Standard">Standard</button>
+                <button type="button" class="seg" role="radio" aria-checked="false" data-value="Deep">Deep</button>
+              </div>
+            </div>
+
+            <div class="adv-row"><span class="adv-key">Max tokens</span><span class="adv-val">8 192</span></div>
+            <div class="adv-row"><span class="adv-key">Priority</span><span class="adv-val">Normal</span></div>
+          </div>
+        </div>
+
+        <!-- Recent collapsible -->
+        <div class="rec">
+          <div class="rec-hd" id="btn-rec">
+            <span class="rec-lbl">RECENT <span class="rec-count" id="rec-count">0</span></span>
+            <svg class="rec-chev" id="rec-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="rec-body" id="rec-body"></div>
+        </div>
+
+        <!-- Quick Links -->
+        <div>
+          <div class="m3-sl">Quick links</div>
+          <div class="ql-grid">
+            <button class="ql-item" onclick="window.open('https://claude.ai','_blank')" aria-label="Claude">
+              <div class="ql-dot" style="background:#1A1A30;color:#8888FF">C</div>
+              <div><div class="ql-name">Claude</div><div class="ql-sub">claude.ai</div></div>
+            </button>
+            <button class="ql-item" onclick="window.open('https://gemini.google.com','_blank')" aria-label="Gemini">
+              <div class="ql-dot" style="background:#1A2A1A;color:#66BB66">G</div>
+              <div><div class="ql-name">Gemini</div><div class="ql-sub">gemini.google.com</div></div>
+            </button>
+            <button class="ql-item" onclick="window.open('https://chat.openai.com','_blank')" aria-label="ChatGPT">
+              <div class="ql-dot" style="background:#1A1A1A;color:#AAAAAA">GP</div>
+              <div><div class="ql-name">ChatGPT</div><div class="ql-sub">chat.openai.com</div></div>
+            </button>
+            <button class="ql-item" onclick="window.open('https://notion.so','_blank')" aria-label="Notion">
+              <div class="ql-dot" style="background:#1E1A10;color:#CCAA44">N</div>
+              <div><div class="ql-name">Notion</div><div class="ql-sub">notion.so</div></div>
+            </button>
+            <button class="ql-item" onclick="window.open('http://100.104.150.125:18080','_blank')" aria-label="PM Console">
+              <div class="ql-dot" style="background:#10181A;color:#44AACC">PM</div>
+              <div><div class="ql-name">PM Console</div><div class="ql-sub">:18080</div></div>
+            </button>
+            <button class="ql-item" onclick="window.open('http://100.104.150.125:18765','_blank')" aria-label="Miru Dev">
+              <div class="ql-dot" style="background:#1A1020;color:#AA66CC">M</div>
+              <div><div class="ql-name">Miru Dev</div><div class="ql-sub">:18765</div></div>
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /.m3-content -->
+
+      <!-- Legacy job lists (hidden, preserved for JS) -->
+      <div style="display:none">
+        <div class="section-header hidden" id="live-header">
+          <span class="dot dot-pulse"></span><span>Live</span>
+          <span class="section-count" id="live-count">0</span>
+        </div>
+        <div class="job-list" id="live-list"></div>
+        <div class="section-header hidden" id="history-header">
+          <i data-lucide="archive"></i><span>History</span>
+          <span class="section-count" id="history-count">0</span>
+        </div>
+        <div class="job-list" id="history-list"></div>
+        <div class="empty-state hidden" id="job-empty"><i data-lucide="inbox"></i><p>No jobs yet</p></div>
+        <div class="skeleton-group" id="skeletons">
+          <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+          <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+          <div class="skeleton-card"><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History View -->
+    <div class="view" id="view-history">
+      <div class="view-title">History</div>
+      <div class="hist-filters" id="hist-filters" role="radiogroup" aria-label="Filter history">
+        <button class="hist-chip active" data-hfilter="all" role="radio" aria-checked="true">All</button>
+        <button class="hist-chip" data-hfilter="running" role="radio" aria-checked="false"><span class="dot dot-running" style="width:6px;height:6px"></span>Running</button>
+        <button class="hist-chip" data-hfilter="done" role="radio" aria-checked="false"><span class="dot dot-done" style="width:6px;height:6px"></span>Done</button>
+        <button class="hist-chip" data-hfilter="failed" role="radio" aria-checked="false"><span class="dot dot-failed" style="width:6px;height:6px"></span>Failed</button>
+      </div>
+      <div class="hist-list" id="hist-list">
+        <div class="hist-loading">Loading history…</div>
+      </div>
+    </div>
+
+    <!-- Files View (M5) -->
+    <div class="view" id="view-files">
+      <div class="fb-toolbar">
+        <div class="fb-search-wrap">
+          <svg class="fb-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" class="fb-search" id="fb-search" placeholder="Search files..." autocomplete="off" />
+        </div>
+      </div>
+      <div class="fb-recent-section" id="fb-recent-section"></div>
+      <div class="fb-pinned" id="fb-pinned"></div>
+      <div class="fb-tree" id="fb-tree">
+        <div class="fb-loading">Loading file tree&hellip;</div>
+      </div>
+      <!-- Batch action bar (selection mode) -->
+      <div id="fb-batch-bar" class="fb-batch-bar" aria-live="polite">
+        <span id="fb-batch-count" class="fb-batch-count">0 files selected</span>
+        <button id="fb-batch-dl" class="fb-batch-btn fb-batch-dl-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download ZIP
+        </button>
+        <button id="fb-batch-cancel" class="fb-batch-btn fb-batch-cancel-btn">Cancel</button>
+      </div>
+      <!-- Legend (E6) -->
+      <div class="fb-legend" id="fb-legend">
+        <div class="fb-legend-hd" id="fb-legend-toggle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>Legend</span>
+          <svg class="fb-legend-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="fb-legend-body" id="fb-legend-body">
+          <div class="fb-legend-row"><span class="fb-active-dot" style="animation-duration:2s"></span><span>File mentioned in a running job</span></div>
+          <div class="fb-legend-row"><span class="fb-recent-dot" style="animation-duration:2s"></span><span>Modified in the last 30 minutes</span></div>
+          <div class="fb-legend-row"><span class="fb-count-sample">[3]</span><span>Count of files directly inside folder</span></div>
+          <div class="fb-legend-row"><span class="fb-size" style="font-size:10px">1.2 KB</span><span>Size on disk</span></div>
+          <div class="fb-legend-row"><span class="fb-size" style="font-size:10px">5m ago</span><span>When the file was last changed</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Health View -->
+    <div class="view" id="view-health">
+      <div class="view-title">Service Health</div>
+      <div class="health-grid">
+        <div class="h-card">
+          <div class="h-card-head"><i data-lucide="radio"></i><span>Dispatcher</span></div>
+          <div class="h-status"><span class="dot dot-up"></span><span>up</span></div>
+          <span class="h-port">:19000</span>
+        </div>
+        <div class="h-card">
+          <div class="h-card-head"><i data-lucide="eye"></i><span>Project Miru</span></div>
+          <div class="h-status"><span class="dot" id="dot-pm"></span><span id="health-pm">checking...</span></div>
+          <span class="h-port">:18080</span>
+          <div class="h-detail hidden" id="health-detail-pm"></div>
+          <button class="btn-ghost btn-sm h-restart" data-restart="pm" id="btn-restart-pm">Restart PM</button>
+        </div>
+        <div class="h-card">
+          <div class="h-card-head"><i data-lucide="message-square"></i><span>Miru AI</span></div>
+          <div class="h-status"><span class="dot" id="dot-ai"></span><span id="health-miru-ai">checking...</span></div>
+          <span class="h-port">:18765</span>
+          <div class="h-detail hidden" id="health-detail-miru-ai"></div>
+          <button class="btn-ghost btn-sm h-restart" data-restart="miru_ai" id="btn-restart-ai">Restart Miru AI</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="bnav-tab active" data-nav="jobs" aria-label="Dispatch">
+      <div class="bnav-indicator"></div>
+      <svg class="bnav-icon" viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      <span class="bnav-label">Dispatch</span>
+    </button>
+    <button class="bnav-tab" data-nav="history" aria-label="History">
+      <div class="bnav-indicator"></div>
+      <svg class="bnav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
+      <span class="bnav-label">History</span>
+    </button>
+    <button class="bnav-tab" data-nav="files" aria-label="Files">
+      <div class="bnav-indicator"></div>
+      <svg class="bnav-icon" viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+      <span class="bnav-label">Files</span>
+    </button>
+    <button class="bnav-tab" data-nav="health" aria-label="Health">
+      <div class="bnav-indicator"></div>
+      <svg class="bnav-icon" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <span class="bnav-label">Health</span>
+    </button>
+  </nav>
+</div>
+
+<!-- Log drawer -->
+<div class="drawer" id="log-drawer">
+  <div class="drawer-backdrop" id="log-backdrop"></div>
+  <div class="drawer-panel">
+    <div class="drawer-header">
+      <span>Dispatcher Logs</span>
+      <button class="icon-btn" id="btn-close-logs" aria-label="Close logs"><i data-lucide="x"></i></button>
+    </div>
+    <pre class="drawer-content" id="log-content"></pre>
+  </div>
+</div>
+
+<!-- Restart card -->
+<div class="restart-card" id="restart-card">
+  <div class="restart-card-inner" id="restart-card-inner">
+    <svg class="countdown-ring" viewBox="0 0 36 36">
+      <circle class="ring-bg" cx="18" cy="18" r="16" fill="none" stroke-width="2"/>
+      <circle class="ring-fg" id="ring-fg" cx="18" cy="18" r="16" fill="none" stroke-width="2"
+        stroke-dasharray="100.53" stroke-dashoffset="0"/>
+    </svg>
+    <div class="restart-card-body">
+      <span class="restart-label" id="restart-label">Restart Dispatcher?</span>
+      <span class="restart-sub" id="restart-sub">Click to confirm</span>
+    </div>
+    <button class="icon-btn restart-close" id="restart-close" aria-label="Cancel restart">
+      <i data-lucide="x"></i>
+    </button>
+  </div>
+</div>
+
+<!-- File Viewer Sheet (M5) -->
+<div class="file-sheet" id="file-sheet">
+  <div class="file-sheet-inner">
+    <div class="ws-handle"></div>
+    <div class="file-sheet-hd">
+      <div class="file-sheet-titlewrap">
+        <span class="file-sheet-title" id="fs-title">file.py</span>
+        <span class="file-sheet-meta"><span class="file-sheet-path" id="fs-path">/path</span> <span class="file-sheet-lines" id="fs-lines"></span></span>
+        <span class="file-sheet-mtime" id="fs-mtime"></span>
+      </div>
+      <button class="icon-btn" id="fs-close" aria-label="Close file viewer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <pre class="file-sheet-code"><code id="fs-code"></code></pre>
+    <div class="file-sheet-actions">
+      <button class="btn-ghost" id="fs-copy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy
+      </button>
+      <button class="btn-ghost" id="fs-dl">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download
+      </button>
+      <button class="btn-ghost" id="fs-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        <span id="fs-wrap-label">Wrap</span>
+      </button>
+      <button class="btn-ghost" id="fs-open-dispatch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Dispatch
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Job Detail Sheet (shared: History + Recent) -->
+<div class="job-sheet" id="job-sheet">
+  <div class="job-sheet-inner">
+    <div class="ws-handle"></div>
+    <div class="job-sheet-hd">
+      <div class="job-sheet-titlewrap">
+        <span class="job-sheet-title" id="js-title">Job Detail</span>
+        <span class="job-sheet-meta" id="js-meta"></span>
+      </div>
+      <button class="icon-btn" id="js-close" aria-label="Close job detail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="job-sheet-body" id="js-body">
+      <div class="js-loading">Loading…</div>
+    </div>
+    <div class="job-sheet-actions" id="js-actions">
+      <button class="btn-ghost btn-cancel-job" id="js-cancel" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        Cancel
+      </button>
+      <button class="btn-ghost" id="js-copy-output">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copy Output
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Sheet -->
+<div class="settings-sheet" id="settings-sheet">
+  <div class="ss-inner" id="ss-inner">
+    <div class="ws-handle" id="ss-handle"></div>
+    <div class="ss-hd">
+      <div class="ss-title">Appearance</div>
+      <button class="icon-btn" id="ss-close" aria-label="Close settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="ss-section">
+      <div class="ss-section-lbl">Accent Color</div>
+      <div class="ss-swatches" id="ss-swatches">
+        <button class="ss-swatch-btn" data-theme-key="blue" aria-label="Blue"><span class="ss-swatch" style="background:#6B8EFF"></span></button>
+        <button class="ss-swatch-btn" data-theme-key="purple" aria-label="Purple"><span class="ss-swatch" style="background:#A78BFA"></span></button>
+        <button class="ss-swatch-btn" data-theme-key="teal" aria-label="Teal"><span class="ss-swatch" style="background:#2DD4BF"></span></button>
+        <button class="ss-swatch-btn" data-theme-key="green" aria-label="Green"><span class="ss-swatch" style="background:#4ADE80"></span></button>
+        <button class="ss-swatch-btn" data-theme-key="red" aria-label="Red"><span class="ss-swatch" style="background:#F87171"></span></button>
+        <button class="ss-swatch-btn" data-theme-key="claude" aria-label="Claude"><span class="ss-swatch" style="background:#E8703A"></span></button>
+        <button class="ss-swatch-btn" data-theme-key="perplexity" aria-label="Perplexity"><span class="ss-swatch" style="background:#20B2AA"></span></button>
+        <button class="ss-swatch-btn" data-theme-key="gemini" aria-label="Gemini"><span class="ss-swatch" style="background:#4285F4"></span></button>
+      </div>
+    </div>
+    <div class="ss-section">
+      <div class="ss-section-lbl">Mode</div>
+      <div class="ss-mode-row">
+        <button class="ss-mode-btn" id="ss-mode-dark" data-mode="dark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          Dark
+        </button>
+        <button class="ss-mode-btn" id="ss-mode-light" data-mode="light">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          Light
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast rack -->
+<div class="toast-rack" id="toast-rack" aria-live="polite"></div>
+
+<!-- highlight.js for file viewer syntax highlighting (M5) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<!-- Lucide Icons CDN -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="{{ url_for('static', filename='dispatcher.js') }}?v={{ cache_bust }}"></script>
+
+<!-- Advanced options seg-group wiring -->
+<script>
+(function(){
+  document.querySelectorAll('.adv-body .seg-group').forEach(function(group){
+    var field = group.getAttribute('data-field');
+    var hidden = document.getElementById('m3-' + field);
+    group.querySelectorAll('.seg').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        group.querySelectorAll('.seg').forEach(function(b){
+          b.classList.remove('active');
+          b.setAttribute('aria-checked', 'false');
+        });
+        btn.classList.add('active');
+        btn.setAttribute('aria-checked', 'true');
+        if(hidden) hidden.value = btn.getAttribute('data-value');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

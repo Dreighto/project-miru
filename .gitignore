@@ -43,7 +43,7 @@ data/miru_dev_training_reviews.db
 *.db-wal
 
 # Dispatcher runtime databases (job history — regenerated at startup)
-windows/dispatcher/data/jobs.db
+dispatcher/data/jobs.db
 windows/dispatcher_jobs.db
 
 # Playwright / debug screenshots (must be saved outside the repo, e.g. C:\temp\playwright-shots\)

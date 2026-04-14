@@ -29,7 +29,7 @@ if (-not (Test-Path $LogDir)) {
 }
 
 $Port = 19000
-$DispatcherScript = Join-Path $RepoRoot 'windows\dispatcher\task_dispatcher.py'
+$DispatcherScript = Join-Path $RepoRoot 'dispatcher\task_dispatcher.py'
 $PidFile = Join-Path $LogDir 'dispatcher_19000.pid'
 $StdoutLog = Join-Path $LogDir 'dispatcher_19000_stdout.log'
 $StderrLog = Join-Path $LogDir 'dispatcher_19000_stderr.log'
