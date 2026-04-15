@@ -560,6 +560,17 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="{{ url_for('static', filename='dispatcher.js') }}?v={{ cache_bust }}"></script>
 
+<!-- SVG noise filter (P3-0 — applied to surface cards for depth texture) -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <filter id="noise-filter" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" stitchTiles="stitch" result="n"/>
+      <feColorMatrix type="saturate" values="0" in="n" result="grey"/>
+      <feBlend in="SourceGraphic" in2="grey" mode="soft-light"/>
+    </filter>
+  </defs>
+</svg>
+
 <!-- Advanced options seg-group wiring -->
 <script>
 (function(){

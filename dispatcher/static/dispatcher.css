@@ -1910,3 +1910,119 @@ a.h-port-link:active .h-port { opacity: 0.85; }
 [data-theme="light"] .pc,
 [data-theme="light"] .rec,
 [data-theme="light"] .adv { box-shadow: var(--shadow-md); }
+
+/* ── P3-0 Commit 3: SVG noise texture on surface cards ── */
+/* DO NOT apply to .live-log-panel — breaks ANSI color rendering */
+.ws-item, .hist-row, .h-card { filter: url(#noise-filter); }
+
+/* ── P3-0 Commit 3: Backdrop blur on sheet overlays (iOS Safari safe) ── */
+/* CRITICAL: fixed pixel values — CSS vars NOT supported in -webkit-backdrop-filter */
+.worker-sheet,
+.settings-sheet,
+.file-sheet {
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+.job-sheet {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+/* ── P3-0 Commit 3: Terminal / Log view upgrades ── */
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: rgba(13,17,23,0.95);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--terminal-text);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
+}
+.log-job-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  color: var(--terminal-text);
+}
+.log-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.log-timer {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--terminal-gutter);
+  font-feature-settings: "tnum" 1;
+}
+.log-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.log-status-dot.running {
+  background: var(--ok);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ── P3-0 Commit 3: Log line hover + ANSI bold fix ── */
+.log-line:hover { background: rgba(255,255,255,0.03); }
+.js-term-body b, .js-term-body strong { font-weight: 600; }
+
+/* ── P3-0 Commit 3: Scroll-to-bottom button ── */
+.log-scroll-btn {
+  position: sticky;
+  bottom: 8px;
+  display: block;
+  margin: 4px auto 0;
+  padding: 5px 12px;
+  background: var(--surface-raised);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r-full);
+  font-family: var(--font);
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+}
+.log-scroll-btn.visible { opacity: 1; pointer-events: auto; }
+@media (prefers-reduced-motion: no-preference) {
+  .log-scroll-btn { transition: opacity 150ms ease-out; }
+}
+
+/* ── P3-0 Commit 3: Geist Mono on all terminal/log panels ── */
+.live-log-panel pre,
+.js-term-body,
+.js-pre-output,
+.js-pre-prompt,
+.js-pre { font-family: var(--font-mono); }
+
+/* ── P3-0 Commit 3: Live log panel restructure for sticky header ── */
+.live-log-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+.live-log-panel .js-term-body {
+  flex: 1;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--terminal-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.live-log-panel pre {
+  padding: 12px;
+}

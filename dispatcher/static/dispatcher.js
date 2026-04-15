@@ -2300,12 +2300,12 @@
     jsAutoScroll = true;
     jsCurrentJobId = id;
 
-    /* Track manual scroll-up → stop auto-scroll */
+    /* Track manual scroll-up → stop auto-scroll; show/hide scroll-to-bottom button */
     logPanel.addEventListener('scroll', function(){
       var atBottom = logPanel.scrollHeight - logPanel.scrollTop - logPanel.clientHeight < 40;
       jsAutoScroll = atBottom;
-      var jumpBtn = logPanel.querySelector('.ll-jump-btn');
-      if(jumpBtn) jumpBtn.style.display = atBottom ? 'none' : 'block';
+      var jumpBtn = logPanel.querySelector('.log-scroll-btn');
+      if(jumpBtn) jumpBtn.classList.toggle('visible', !atBottom);
     }, { signal: jsLiveLogScrollAbort.signal });
 
     function connect(){
@@ -2410,9 +2410,10 @@
 
       /* PART C — Output section (dominant) */
       if(isLive){
-        html += '<div class="js-section"><div class="js-section-label">Live Output</div>';
+        html += '<div class="js-section">';
+        html += '<div class="log-header"><span class="log-job-name">' + esc(j.prompt || 'Running...').substring(0,40) + '</span><div class="log-header-right"><span class="log-timer" id="log-timer-disp">0:00</span><span class="log-status-dot running"></span></div></div>';
         html += '<div class="live-log-panel" id="js-live-log"><div id="js-live-pre" class="js-term-body"></div>';
-        html += '<button class="ll-jump-btn" id="ll-jump" style="display:none">Jump to bottom</button>';
+        html += '<button class="log-scroll-btn" id="ll-jump">&#8595; scroll to bottom</button>';
         html += '</div></div>';
       } else {
         html += '<div class="js-section"><div class="js-section-label">Output</div>';
@@ -2521,13 +2522,13 @@
         var livePre = $('js-live-pre');
         if(liveLog && livePre) startJobStream(id, livePre, liveLog);
 
-        /* Jump to bottom button */
+        /* Scroll-to-bottom button */
         var jumpBtn = $('ll-jump');
         if(jumpBtn && liveLog){
           jumpBtn.addEventListener('click', function(){
             liveLog.scrollTop = liveLog.scrollHeight;
             jsAutoScroll = true;
-            jumpBtn.style.display = 'none';
+            jumpBtn.classList.remove('visible');
           });
         }
       }
