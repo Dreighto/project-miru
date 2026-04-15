@@ -1,11 +1,16 @@
 """
-Gemini CLI handler.
+OpenAI Codex CLI handler.
 
-Invokes the Gemini CLI (installed via ``npm install -g @google/gemini-cli``)
-in non-interactive ``-p`` mode with ``--yolo`` for auto-approval.
+Invokes the Codex CLI (installed via npm install -g @openai/codex)
+using the non-interactive `exec` subcommand.  Output is captured
+line by line via Popen + reader thread for real-time SSE streaming.
 
-Output is streamed line-by-line via Popen + reader thread for real-time
-SSE delivery (instead of waiting for subprocess.run to finish).
+Flags used:
+  exec          -- non-interactive subcommand (no TUI, no stdin wait)
+  --full-auto   -- sets --sandbox workspace-write (sandboxed auto)
+  --color never -- suppresses ANSI colour codes in output
+
+Requires: OPENAI_API_KEY in .env
 """
 
 from __future__ import annotations
@@ -13,15 +18,39 @@ from __future__ import annotations
 import logging
 import os
 import re
-import re as _re
-import shutil
 import subprocess
 import threading
 import time
+from pathlib import Path
 
-log = logging.getLogger("miru.dispatcher.handler.gemini")
+log = logging.getLogger("miru.dispatcher.handler.codex")
 
-_REPO_ROOT = r"D:\dev\tcg-watcher-worktree"
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+_CODEX_NOISE_RE = re.compile(
+    r'(?:'
+    r'Reading additional input from stdin'
+    r'|OpenAI Codex v\d'
+    r'|^-{4,}$'
+    r'|^workdir:'
+    r'|^model:'
+    r'|^provider:'
+    r'|^approval:'
+    r'|^sandbox:'
+    r'|^reasoning effort:'
+    r'|^reasoning summaries:'
+    r'|^session id:'
+    r'|^tokens used$'
+    r'|^\d{1,3},\d{3}$'
+    r'|ERROR rmcp::transport'
+    r'|worker quit with fatal'
+    r'|Unexpected content type'
+    r'|AuthRequired'
+    r'|huggingface\.co'
+    r'|send initialized notification'
+    r')',
+    re.IGNORECASE | re.MULTILINE,
+)
 
 APPROVAL_PATTERNS = [
     r"\(y/n\)",
@@ -32,54 +61,51 @@ APPROVAL_PATTERNS = [
     r"1\.\s+Allow",
 ]
 _APPROVAL_RE = re.compile("|".join(APPROVAL_PATTERNS), re.IGNORECASE)
-_GEMINI_NOISE_RE = _re.compile(
-    r'(?:'
-    r'\[WARN\]\s+Skipping unreadable directory'
-    r'|YOLO mode is enabled'
-    r'|All tool calls will be automatically approved'
-    r'|MCP issues detected\. Run /mcp list'
-    r')',
-    _re.IGNORECASE,
-)
 
 
-def _find_gemini_cli() -> str | None:
-    """Locate the ``gemini`` binary on PATH (or common npm global paths)."""
-    found = shutil.which("gemini")
+def _find_codex_cli() -> str | None:
+    """Locate the codex binary on PATH or common npm global paths."""
+    import shutil
+    found = shutil.which("codex")
     if found:
         return found
-    # Fallback: check the npm global bin directory on Windows
     appdata = os.environ.get("APPDATA", "")
     if appdata:
-        candidate = os.path.join(appdata, "npm", "gemini.cmd")
+        candidate = os.path.join(appdata, "npm", "codex.cmd")
         if os.path.isfile(candidate):
             return candidate
     return None
 
 
 def handler(job) -> None:
-    """Real handler: invokes the Gemini CLI via Popen + reader thread."""
-    cli = _find_gemini_cli()
+    """Real handler: invokes OpenAI Codex CLI via subprocess."""
+    cli = _find_codex_cli()
     if cli is None:
         job.status = "failed"
         job.output = (
-            "[gemini_cli] Gemini CLI not found on PATH or in npm globals.\n"
-            "Install with: npm install -g @google/gemini-cli"
+            "[codex_cli] Codex CLI not found on PATH or in npm globals.\n"
+            "Install with: npm install -g @openai/codex"
         )
-        log.error("Gemini CLI not found for job %s", job.id)
+        log.error("Codex CLI not found for job %s", job.id)
+        return
+
+    openai_key = os.environ.get("OPENAI_API_KEY", "").strip()
+    if not openai_key:
+        job.status = "failed"
+        job.output = "[codex_cli] OPENAI_API_KEY not set in environment"
+        log.error("OPENAI_API_KEY missing for job %s", job.id)
         return
 
     timeout_seconds = {"Quick": 120, "Standard": 300, "Deep": 600}
     timeout = timeout_seconds.get(job.effort, 300)
 
-    cmd = [cli, "-p", job.prompt, "--yolo"]
-    log.info("Launching Gemini CLI for job %s (timeout=%ds)", job.id, timeout)
+    cmd = [cli, "exec", "--full-auto", "--color", "never", job.prompt]
+    log.info("Launching Codex CLI for job %s (timeout=%ds)", job.id, timeout)
 
-    # Build env: suppress ANSI codes for clean text output.
     cli_env = os.environ.copy()
+    cli_env["OPENAI_API_KEY"] = openai_key
     cli_env["NO_COLOR"] = "1"
     cli_env["TERM"] = "dumb"
-    cli_env["PYTHONUNBUFFERED"] = "1"
 
     try:
         proc = subprocess.Popen(
@@ -91,20 +117,17 @@ def handler(job) -> None:
             encoding="utf-8",
             errors="replace",
             bufsize=1,
-            cwd=_REPO_ROOT,
+            cwd=str(_REPO_ROOT),
             creationflags=subprocess.CREATE_NO_WINDOW,
             env=cli_env,
         )
 
         # Store proc on job for stdin injection endpoint access.
         job.proc = proc
-
-        # Close stdin — with --yolo, Gemini never prompts for input;
-        # keeping stdin open can cause the process to hang on some platforms.
-        try:
+        # Close stdin immediately — codex exec is non-interactive; keeping
+        # the pipe open causes it to block waiting for a stdin EOF.
+        if proc.stdin:
             proc.stdin.close()
-        except Exception:
-            pass
 
         _stdout_lines: list[str] = []
         _read_done = False
@@ -113,8 +136,11 @@ def handler(job) -> None:
             nonlocal _read_done
             for raw_line in proc.stdout:
                 clean = raw_line.replace('\r', '')
-                if not _GEMINI_NOISE_RE.search(clean):
+                stripped_clean = clean.strip()
+                # Append only if non-empty, not a separator, and not noise
+                if stripped_clean and stripped_clean != '--------' and not _CODEX_NOISE_RE.search(clean):
                     _stdout_lines.append(clean)
+                # Approval check runs regardless of noise filter
                 stripped = raw_line.strip()
                 if _APPROVAL_RE.search(stripped):
                     try:
@@ -140,13 +166,11 @@ def handler(job) -> None:
         while elapsed < timeout:
             if job.cancel_event.is_set():
                 proc.kill()
-                _kill_gemini_children()
                 job.status = "cancelled"
                 job.output = "[cancelled by operator]\n" + "".join(collected)
-                log.info("Job %s cancelled; Gemini CLI killed", job.id)
+                log.info("Job %s cancelled; Codex CLI killed", job.id)
                 return
 
-            # Drain buffered lines → real-time SSE
             while _stdout_lines:
                 line = _stdout_lines.pop(0)
                 collected.append(line)
@@ -160,13 +184,11 @@ def handler(job) -> None:
             elapsed += poll_interval
         else:
             proc.kill()
-            _kill_gemini_children()
             job.status = "failed"
             job.output = f"[timeout after {timeout}s]\n" + "".join(collected)
             log.warning("Job %s timed out after %ds", job.id, timeout)
             return
 
-        # Drain remaining lines after process exits
         rt.join(timeout=5)
         while _stdout_lines:
             line = _stdout_lines.pop(0)
@@ -175,37 +197,22 @@ def handler(job) -> None:
                 job.output_lines.append(line.rstrip("\n"))
 
         if proc.returncode == 0:
-            job.output = "".join(collected).strip() or "[gemini_cli] (no output)"
+            job.output = "".join(collected).strip() or "[codex_cli] (no output)"
             job.status = "done"
             log.info("Job %s completed successfully (rc=0)", job.id)
         else:
             job.status = "failed"
             job.output = (
-                f"[gemini_cli] exit code {proc.returncode}\n"
+                f"[codex_cli] exit code {proc.returncode}\n"
                 f"output: {''.join(collected).strip()}"
             )
             log.warning("Job %s failed: rc=%d", job.id, proc.returncode)
 
     except FileNotFoundError:
         job.status = "failed"
-        job.output = f"[gemini_cli] CLI executable not found: {cli}"
-        log.error("Gemini CLI FileNotFoundError for job %s", job.id)
+        job.output = f"[codex_cli] CLI executable not found: {cli}"
+        log.error("Codex CLI FileNotFoundError for job %s", job.id)
     except Exception as exc:
         job.status = "failed"
-        job.output = f"[gemini_cli] unexpected error: {exc}"
-        log.exception("Unexpected error in gemini handler for job %s", job.id)
-
-
-def _kill_gemini_children():
-    """Best-effort kill of any running gemini-cli node.exe processes."""
-    try:
-        subprocess.run(
-            ["powershell", "-Command",
-             "Get-Process -Name node -EA SilentlyContinue "
-             "| Where-Object { $_.CommandLine -match 'gemini' } "
-             "| Stop-Process -Force -EA SilentlyContinue"],
-            timeout=10,
-            creationflags=subprocess.CREATE_NO_WINDOW,
-        )
-    except Exception:
-        pass
+        job.output = f"[codex_cli] unexpected error: {exc}"
+        log.exception("Unexpected error in codex handler for job %s", job.id)

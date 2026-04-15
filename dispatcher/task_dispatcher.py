@@ -14,6 +14,7 @@ import json
 import logging
 import mimetypes
 import os
+import re as _re_noise
 import sqlite3
 import subprocess
 import threading
@@ -33,11 +34,6 @@ try:
     from dotenv import load_dotenv
 except ImportError:  # pragma: no cover
     load_dotenv = None  # type: ignore
-
-try:
-    import requests
-except ImportError:  # pragma: no cover
-    requests = None  # type: ignore
 
 from flask_sock import Sock
 
@@ -68,8 +64,7 @@ log = logging.getLogger("miru.dispatcher")
 
 if load_dotenv is None:
     log.warning(
-        "python-dotenv not installed; .env at %s will NOT be auto-loaded "
-        "(Pushover will be disabled unless PUSHOVER_* keys are already in the process env)",
+        "python-dotenv not installed; .env at %s will NOT be auto-loaded",
         ENV_PATH,
     )
 elif not ENV_PATH.exists():
@@ -87,31 +82,60 @@ else:
 from handlers import get_handler, resolve_executor_mode  # noqa: E402
 
 # ---------------------------------------------------------------------------
+# Slack configuration
+# ---------------------------------------------------------------------------
+
+try:
+    from slack_bolt import App as SlackApp
+    from slack_bolt.adapter.socket_mode import SocketModeHandler
+    from slack_sdk import WebClient as SlackWebClient
+    _slack_imported = True
+except ImportError:
+    _slack_imported = False
+    log.warning("slack-bolt not installed; Slack notifications disabled")
+
+SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "").strip()
+SLACK_APP_TOKEN = os.environ.get("SLACK_APP_TOKEN", "").strip()
+SLACK_CHANNEL_ID = os.environ.get("SLACK_CHANNEL_ID", "").strip()
+SLACK_ENABLED = bool(
+    _slack_imported and SLACK_BOT_TOKEN and
+    SLACK_APP_TOKEN and SLACK_CHANNEL_ID
+)
+
+if not SLACK_ENABLED:
+    _missing = []
+    if not _slack_imported:
+        _missing.append("slack-bolt package")
+    if not SLACK_BOT_TOKEN:
+        _missing.append("SLACK_BOT_TOKEN")
+    if not SLACK_APP_TOKEN:
+        _missing.append("SLACK_APP_TOKEN")
+    if not SLACK_CHANNEL_ID:
+        _missing.append("SLACK_CHANNEL_ID")
+    log.warning("Slack disabled - notifications will be skipped (missing: %s)",
+                ", ".join(_missing))
+
+# Slack clients (only initialized if SLACK_ENABLED)
+_slack_app = SlackApp(token=SLACK_BOT_TOKEN) if SLACK_ENABLED else None
+_slack_client = SlackWebClient(token=SLACK_BOT_TOKEN) if SLACK_ENABLED else None
+
+# Maps Slack thread_ts → {"event": threading.Event, "holder": {"value": str|None}, "job_id": str}
+_pending_approvals: dict[str, dict] = {}
+_pending_approvals_lock = threading.Lock()
+
+# ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
 
-PUSHOVER_USER_KEY = os.environ.get("PUSHOVER_USER_KEY", "").strip()
-PUSHOVER_API_TOKEN = os.environ.get("PUSHOVER_API_TOKEN", "").strip()
-PUSHOVER_ENABLED = bool(PUSHOVER_USER_KEY and PUSHOVER_API_TOKEN and requests is not None)
-
-if not PUSHOVER_ENABLED:
-    _missing = []
-    if not PUSHOVER_USER_KEY:
-        _missing.append("PUSHOVER_USER_KEY")
-    if not PUSHOVER_API_TOKEN:
-        _missing.append("PUSHOVER_API_TOKEN")
-    if requests is None:
-        _missing.append("requests module")
-    log.warning(
-        "Pushover disabled - notifications will be skipped (missing: %s)",
-        ", ".join(_missing),
-    )
-
 DISPATCHER_BASE_URL = os.environ.get("DISPATCHER_BASE_URL", "").strip()
 
-VALID_MODELS = {"Ollama", "Claude", "Cursor", "Gemini"}
+VALID_MODELS = {"Ollama", "Claude", "Cursor", "Gemini", "Codex"}
 VALID_EFFORTS = {"Quick", "Standard", "Deep"}
 JOB_LIMIT = 50
+_NOISE_LINE_RE = _re_noise.compile(
+    r"\[WARN\]\s+Skipping unreadable directory",
+    _re_noise.IGNORECASE,
+)
 
 # ---------------------------------------------------------------------------
 # SQLite persistence
@@ -295,6 +319,7 @@ class Job:
         "future",
         "output_lines",
         "title",
+        "proc",
     )
 
     def __init__(self, prompt: str, model: str, effort: str) -> None:
@@ -315,15 +340,21 @@ class Job:
         self.future: Future | None = None
         self.output_lines: list[str] = []
         self.title: str | None = None
+        self.proc = None  # subprocess.Popen ref — set by handlers for stdin injection
 
     @property
     def output_preview(self) -> str:
         return self.output[:200]
 
+    @property
+    def approval_pending(self) -> bool:
+        return self.status == "waiting_approval"
+
     def to_summary(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "status": self.status,
+            "approval_pending": self.approval_pending,
             "model": self.model,
             "effort": self.effort,
             "created_at": self.created_at,
@@ -379,32 +410,362 @@ def _listed_jobs() -> list[Job]:
 
 
 # ---------------------------------------------------------------------------
-# Pushover
+# Slack notifications + approval bridge
 # ---------------------------------------------------------------------------
 
 
-def send_pushover(title: str, message: str, url: str = "") -> None:
-    if not PUSHOVER_ENABLED:
+def send_slack_notification(title: str, message: str) -> None:
+    """Send a one-way notification to the Slack channel."""
+    if not SLACK_ENABLED:
         return
     try:
-        data: dict[str, str] = {
-            "token": PUSHOVER_API_TOKEN,
-            "user": PUSHOVER_USER_KEY,
-            "title": title[:250],
-            "message": message[:1024],
-        }
-        if url:
-            data["url"] = url[:512]
-            data["url_title"] = "View job"
-        resp = requests.post(
-            "https://api.pushover.net/1/messages.json",
-            data=data,
-            timeout=8,
+        _slack_client.chat_postMessage(
+            channel=SLACK_CHANNEL_ID,
+            text=f"*{title}*\n{message[:500]}",
         )
-        if resp.status_code != 200:
-            log.warning("Pushover non-200: %s", resp.status_code)
-    except Exception as exc:  # noqa: BLE001
-        log.warning("Pushover send failed: %s", exc)
+    except Exception as exc:
+        log.warning("Slack notification failed: %s", exc)
+
+
+class ApprovalBridge:
+    """Two-way Slack approval bridge for headless worker subprocesses."""
+
+    def __init__(self, timeout_seconds: int = 600):
+        self.timeout = timeout_seconds
+
+    def ask(self, job, prompt_text: str) -> str | None:
+        """
+        Post a Block Kit approval card to Slack with Approve / Deny / Review buttons.
+        Blocks until operator clicks a button or timeout.
+        Returns 'y' (approve), 'n' (deny), 'review' (deny + flag), or None on timeout.
+        """
+        if not SLACK_ENABLED:
+            log.warning("Approval prompt received but Slack disabled — auto-denying")
+            return None
+
+        job.status = "waiting_approval"
+        log.info("Job %s waiting for Slack approval: %s", job.id[:8], prompt_text[:100])
+
+        _MODEL_EMOJI = {
+            "Claude": ":robot_face:",
+            "Gemini": ":sparkles:",
+            "Codex": ":hammer_and_wrench:",
+            "Cursor": ":cursor_default:",
+            "Ollama": ":llama:",
+        }
+        model_emoji = _MODEL_EMOJI.get(job.model, ":robot_face:")
+
+        # Generate a plain-English summary of what the worker wants to do
+        why_sentence = _generate_approval_summary(prompt_text)
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": (
+                        f"{model_emoji} *Approval needed* — "
+                        f"Job `{job.id[:8]}` · {job.model} · {job.effort}\n"
+                        f"*Why:* {why_sentence}"
+                    ),
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"```{prompt_text[:600]}```",
+                },
+            },
+            {
+                "type": "actions",
+                "block_id": f"approval_{job.id[:8]}",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "✅ Approve", "emoji": True},
+                        "style": "primary",
+                        "action_id": "approval_approve",
+                        "value": job.id,
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "❌ Deny", "emoji": True},
+                        "style": "danger",
+                        "action_id": "approval_deny",
+                        "value": job.id,
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "🔍 Deny + Review", "emoji": True},
+                        "action_id": "approval_review",
+                        "value": job.id,
+                    },
+                ],
+            },
+        ]
+
+        try:
+            result = _slack_client.chat_postMessage(
+                channel=SLACK_CHANNEL_ID,
+                text=(
+                    f"{model_emoji} Job `{job.id[:8]}` ({job.model} · {job.effort}) "
+                    f"needs your approval — {why_sentence}"
+                ),
+                blocks=blocks,
+            )
+            thread_ts = result["ts"]
+        except Exception as exc:
+            log.error("Failed to post approval to Slack: %s", exc)
+            job.status = "running"
+            return None
+
+        event = threading.Event()
+        holder: dict = {"value": None, "raw_prompt": prompt_text}
+        with _pending_approvals_lock:
+            _pending_approvals[thread_ts] = {
+                "event": event,
+                "holder": holder,
+                "job_id": job.id,
+            }
+
+        job.output_lines.append(
+            f"[APPROVAL REQUIRED] Sent Block Kit card to Slack (ts={thread_ts}) — "
+            f"waiting up to {self.timeout}s for button click..."
+        )
+
+        responded = event.wait(timeout=self.timeout)
+
+        with _pending_approvals_lock:
+            _pending_approvals.pop(thread_ts, None)
+
+        if not responded:
+            job.output_lines.append(
+                "[TIMEOUT] No Slack response received — treating as deny"
+            )
+            try:
+                _slack_client.chat_postMessage(
+                    channel=SLACK_CHANNEL_ID,
+                    thread_ts=thread_ts,
+                    text=":warning: No response received — approval timed out. Treating as deny.",
+                )
+            except Exception:
+                pass
+            job.status = "running"
+            return None
+
+        reply = holder["value"]
+        job.output_lines.append(f"[APPROVAL] Operator decision: {reply}")
+        job.status = "running"
+        return reply
+
+
+def _setup_slack_listener() -> None:
+    """Register Slack message event handler and start Socket Mode in daemon thread."""
+    if not SLACK_ENABLED or _slack_app is None:
+        return
+
+    @_slack_app.event("message")
+    def _handle_slack_message(event, say):
+        if event.get("bot_id"):
+            return  # ignore bot's own messages
+
+        reply_text = event.get("text", "").strip()
+        if not reply_text:
+            return
+
+        thread_ts = event.get("thread_ts")
+
+        # Route 1: thread reply — match by thread_ts
+        if thread_ts:
+            with _pending_approvals_lock:
+                pending = _pending_approvals.get(thread_ts)
+            if pending is None:
+                return
+            pending["holder"]["value"] = reply_text
+            pending["event"].set()
+            try:
+                say(
+                    text=f":white_check_mark: Got it — sending `{reply_text}` to worker.",
+                    thread_ts=thread_ts,
+                )
+            except Exception as exc:
+                log.warning("Failed to send Slack acknowledgement: %s", exc)
+            return
+
+        # Route 2: channel-level reply — if exactly one pending approval,
+        # route it there (supports mobile where threading is awkward)
+        with _pending_approvals_lock:
+            if len(_pending_approvals) == 1:
+                ts, pending = next(iter(_pending_approvals.items()))
+            else:
+                return  # ambiguous or no pending approvals
+
+        pending["holder"]["value"] = reply_text
+        pending["event"].set()
+        try:
+            say(
+                text=f":white_check_mark: Got it — sending `{reply_text}` to worker.",
+                thread_ts=ts,
+            )
+        except Exception as exc:
+            log.warning("Failed to send Slack acknowledgement: %s", exc)
+
+    # ------------------------------------------------------------------
+    # Button action handlers (Block Kit interactive components)
+    # ------------------------------------------------------------------
+
+    def _resolve_button(ack, body, decision: str) -> None:
+        """Shared logic for all three approval button actions."""
+        ack()
+
+        # The message ts is the key into _pending_approvals
+        message_ts = body.get("message", {}).get("ts")
+        user_id = body.get("user", {}).get("id", "unknown")
+        job_id_short = (
+            body.get("actions", [{}])[0].get("value", "")[:8]
+            if body.get("actions")
+            else "unknown"
+        )
+
+        with _pending_approvals_lock:
+            pending = _pending_approvals.get(message_ts)
+
+        if pending is None:
+            log.warning(
+                "Button action '%s' received but no pending approval at ts=%s",
+                decision,
+                message_ts,
+            )
+            return
+
+        # Map button decision to reply value recognised by handlers
+        reply_map = {"approve": "y", "deny": "n", "review": "review"}
+        pending["holder"]["value"] = reply_map.get(decision, "n")
+        pending["event"].set()
+
+        # Replace action buttons with a single decision line so the card can't be
+        # clicked twice (best-effort — Slack returns 200 regardless)
+        _DECISION_EMOJI = {"approve": ":white_check_mark:", "deny": ":x:", "review": ":mag:"}
+        _DECISION_LABEL = {"approve": "Approved", "deny": "Denied", "review": "Denied — flagged for review"}
+        decision_text = (
+            f"{_DECISION_EMOJI.get(decision, ':grey_question:')} "
+            f"*{_DECISION_LABEL.get(decision, decision.capitalize())}* "
+            f"by <@{user_id}>"
+        )
+
+        # Rebuild blocks: keep section(s), replace actions with a plain text marker
+        orig_blocks = body.get("message", {}).get("blocks", [])
+        new_blocks = [b for b in orig_blocks if b.get("type") != "actions"]
+        new_blocks.append(
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": decision_text},
+            }
+        )
+        try:
+            channel_id = body.get("container", {}).get("channel_id") or SLACK_CHANNEL_ID
+            _slack_client.chat_update(
+                channel=channel_id,
+                ts=message_ts,
+                blocks=new_blocks,
+                text=decision_text,
+            )
+        except Exception as exc:
+            log.warning("Failed to update approval message after button click: %s", exc)
+
+        log.info(
+            "Approval button '%s' for job %s by Slack user %s",
+            decision,
+            job_id_short,
+            user_id,
+        )
+
+    @_slack_app.action("approval_approve")
+    def _btn_approve(ack, body):
+        _resolve_button(ack, body, "approve")
+
+    @_slack_app.action("approval_deny")
+    def _btn_deny(ack, body):
+        _resolve_button(ack, body, "deny")
+
+    @_slack_app.action("approval_review")
+    def _btn_review(ack, body):
+        _resolve_button(ack, body, "review")
+
+    # ------------------------------------------------------------------
+
+    def _start_socket_mode():
+        try:
+            handler = SocketModeHandler(_slack_app, SLACK_APP_TOKEN)
+            handler.connect()
+            # Block forever — connect() returns immediately, the WebSocket
+            # runs on its own internal threads. We just need to keep this
+            # daemon thread alive so handler isn't garbage-collected.
+            threading.Event().wait()
+        except Exception as exc:
+            log.error("Slack Socket Mode listener failed: %s", exc)
+
+    t = threading.Thread(target=_start_socket_mode, daemon=True)
+    t.name = "slack-socket-mode"
+    t.start()
+    log.info("Slack Socket Mode listener started (channel=%s)", SLACK_CHANNEL_ID)
+
+
+# ---------------------------------------------------------------------------
+# Approval prompt summariser (Gemini CLI, 8 s timeout)
+# ---------------------------------------------------------------------------
+
+
+def _generate_approval_summary(prompt_text: str) -> str:
+    """Return a ≤15-word plain-English sentence describing what the worker wants to do."""
+    import shutil
+    import subprocess as _sp
+    import os as _os
+
+    cli = shutil.which("gemini")
+    if cli is None:
+        appdata = _os.environ.get("APPDATA", "")
+        if appdata:
+            candidate = _os.path.join(appdata, "npm", "gemini.cmd")
+            if _os.path.isfile(candidate):
+                cli = candidate
+    if cli is None:
+        return prompt_text[:120].strip()
+
+    gen_prompt = (
+        "In one sentence of 15 words or less, explain what this AI worker "
+        "is asking permission to do and why. Be direct and plain. "
+        "Do not use jargon. Start with a verb. "
+        "Example output: Edit dispatcher.py to fix the Slack bridge restart logic. "
+        "Prompt to summarize: " + prompt_text[:300]
+    )
+    cli_env = _os.environ.copy()
+    cli_env["NO_COLOR"] = "1"
+    cli_env["TERM"] = "dumb"
+    try:
+        _cflags = getattr(_sp, "CREATE_NO_WINDOW", 0)
+        proc = _sp.Popen(
+            [cli, "-p", gen_prompt, "--yolo"],
+            stdout=_sp.PIPE,
+            stderr=_sp.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            cwd=str(_REPO_ROOT),
+            creationflags=_cflags,
+            env=cli_env,
+        )
+        stdout, _ = proc.communicate(timeout=8)
+        summary = stdout.strip()
+        summary = summary.replace('"', "").replace("'", "").replace("\n", " ").strip()
+        if len(summary) > 100:
+            summary = summary[:97] + "..."
+        if summary:
+            return summary
+    except Exception:
+        pass
+    return prompt_text[:120].strip()
 
 
 # ---------------------------------------------------------------------------
@@ -519,11 +880,16 @@ def run_job(job: Job) -> None:
     _db_upsert_job(job)
 
     if job.status in ("done", "failed"):
-        job_url = f"{DISPATCHER_BASE_URL}/jobs/{job.id}" if DISPATCHER_BASE_URL else ""
-        send_pushover(
+        # Strip noise lines from output preview for Slack
+        if job.output:
+            clean_lines = [
+                l for l in job.output.splitlines()
+                if not _NOISE_LINE_RE.search(l)
+            ]
+            job.output = "\n".join(clean_lines)
+        send_slack_notification(
             title=f"Miru job {job.id[:8]} {job.status.upper()}",
             message=job.output_preview,
-            url=job_url,
         )
         # Fix 4: Auto-generate title in background daemon thread
         t = threading.Thread(
@@ -643,6 +1009,56 @@ def api_cancel_job(job_id: str):
         return jsonify({"status": job.status, "id": job.id})
 
     return jsonify({"status": job.status, "id": job.id, "note": "terminal state"}), 200
+
+
+@app.post("/api/jobs/cancel-all")
+def api_cancel_all_jobs():
+    """Cancel every pending or running job in one shot."""
+    CANCELLABLE = {"pending", "running", "cancel_requested", "waiting_approval"}
+    cancelled_ids: list[str] = []
+    with jobs_lock:
+        snapshot = list(jobs.values())
+    for job in snapshot:
+        if job.status not in CANCELLABLE:
+            continue
+        if job.status == "pending":
+            if job.future is not None:
+                job.future.cancel()
+            job.status = "cancelled"
+            job.finished_at = datetime.now(timezone.utc).isoformat()
+            job.output = "[cancelled before start]"
+        else:
+            job.status = "cancel_requested"
+            job.cancel_event.set()
+        cancelled_ids.append(job.id)
+    log.info("cancel-all: cancelled %d jobs", len(cancelled_ids))
+    return jsonify({"cancelled": cancelled_ids, "count": len(cancelled_ids)})
+
+
+@app.post("/api/jobs/<job_id>/stdin")
+def api_job_stdin(job_id: str):
+    """Send text input to a running job's subprocess stdin."""
+    with jobs_lock:
+        job = jobs.get(job_id)
+    if job is None:
+        return jsonify({"error": "job not found"}), 404
+    if job.status not in ("running", "waiting_approval"):
+        return jsonify({"error": "job not accepting input", "status": job.status}), 400
+    if job.proc is None or job.proc.stdin is None:
+        return jsonify({"error": "job has no stdin pipe"}), 400
+    try:
+        payload = request.get_json(force=True, silent=True) or {}
+        text = str(payload.get("text", "")).strip()
+        if not text:
+            return jsonify({"error": "text required"}), 400
+        job.proc.stdin.write(text + "\n")
+        job.proc.stdin.flush()
+        job.output_lines.append(f"[STDIN] Sent: {text}")
+        log.info("Stdin sent to job %s: %s", job.id[:8], text)
+        return jsonify({"ok": True, "sent": text})
+    except Exception as exc:
+        log.warning("Stdin write failed for job %s: %s", job.id, exc)
+        return jsonify({"error": str(exc)}), 500
 
 
 # ---------------------------------------------------------------------------
@@ -818,7 +1234,14 @@ def api_files():
         for child in sorted(target.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower())):
             if child.name.startswith(".git") and child.name != ".gitignore":
                 continue
-            if child.name in ("__pycache__", "node_modules"):
+            if child.name in (
+                "__pycache__",
+                "node_modules",
+                ".pip-tmp",
+                "pip-tmp",
+                ".pip_tmp",
+                "pip_tmp",
+            ):
                 continue
             try:
                 st = child.stat()
@@ -1355,9 +1778,43 @@ def api_job_stream(job_id: str):
 # ---------------------------------------------------------------------------
 
 
+def _scheme_from_request() -> str:
+    """Honor reverse proxies that set X-Forwarded-Proto."""
+    xfp = request.headers.get("X-Forwarded-Proto", "").strip().lower()
+    if xfp in ("http", "https"):
+        return xfp
+    return request.scheme or "http"
+
+
+def _host_from_request() -> str:
+    """Hostname only (strip port), for links to PM / Miru on the same machine as the dispatcher."""
+    host = (request.host or "").strip()
+    if not host:
+        return ""
+    if host.startswith("["):
+        end = host.find("]")
+        if end > 0:
+            return host[1:end]
+        return host
+    if ":" in host:
+        return host.rsplit(":", 1)[0]
+    return host
+
+
 @app.get("/")
 def index():
-    return render_template("dispatcher.html", cache_bust=int(time.time()))
+    host = _host_from_request() or "127.0.0.1"
+    scheme = _scheme_from_request()
+    ql_pm = f"{scheme}://{host}:18080"
+    ql_miru = f"{scheme}://{host}:18765"
+    ql_disp = f"{scheme}://{host}:19000"
+    return render_template(
+        "dispatcher.html",
+        cache_bust=int(time.time()),
+        ql_pm_url=ql_pm,
+        ql_miru_url=ql_miru,
+        ql_dispatcher_url=ql_disp,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1366,10 +1823,11 @@ def index():
 
 if __name__ == "__main__":
     _init_db()
+    _setup_slack_listener()
     log.info(
-        "Starting Miru Task Dispatcher on 0.0.0.0:19000 (pushover=%s) - "
+        "Starting Miru Task Dispatcher on 0.0.0.0:19000 (slack=%s) - "
         "no auth layer; intended for private Tailscale / trusted network only",
-        PUSHOVER_ENABLED,
+        SLACK_ENABLED,
     )
     app.run(host="0.0.0.0", port=19000, debug=False, use_reloader=False,
             threaded=True)

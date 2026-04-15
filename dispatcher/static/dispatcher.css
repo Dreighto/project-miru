@@ -706,6 +706,15 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   text-transform: uppercase; letter-spacing: 0.03em;
 }
 .h-port { font-size: var(--t-xs); color: var(--text-faint); font-family: var(--font-mono); }
+a.h-port-link {
+  text-decoration: none; color: inherit; display: inline-block;
+}
+a.h-port-link .h-port {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+a.h-port-link:active .h-port { opacity: 0.85; }
 .h-detail {
   font-size: var(--t-xs); color: var(--text-muted);
   text-align: center; max-width: 100%; word-break: break-word; line-height: 1.4;
@@ -894,7 +903,7 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   border-top: 0.5px solid var(--divider);
   padding-top: 10px;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  z-index: 100;
+  z-index: 201; /* above batch bar (z-index:200) so nav is never blocked */
   -webkit-transform: translateZ(0); transform: translateZ(0); /* GPU layer — prevents nav jumping with keyboard */
 }
 
@@ -1056,6 +1065,7 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   border-radius: 11px; padding: 11px 13px;
   display: flex; align-items: center; gap: 9px;
   cursor: pointer; font-family: var(--font); text-align: left;
+  text-decoration: none; color: inherit;
   touch-action: manipulation; -webkit-tap-highlight-color: transparent;
   transition: border-color var(--dur-base) var(--ease-out);
 }
@@ -1137,7 +1147,7 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
 .fb-search:focus { border-color: var(--primary); }
 .fb-search::placeholder { color: var(--text-faint); }
 
-.fb-pinned { padding: 8px 16px; border-bottom: 1px solid var(--divider); }
+.fb-pinned { padding: 8px 16px; border-bottom: 1px solid var(--divider); touch-action: pan-y; }
 .fb-pinned:empty { display: none; padding: 0; border: none; }
 .fb-pin-label {
   font-size: 10px; color: var(--text-faint);
@@ -1145,7 +1155,7 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   padding: 4px 0 6px;
 }
 
-.fb-tree { padding: 4px 0; }
+.fb-tree { padding: 4px 0; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 .fb-loading, .fb-no-results {
   padding: 32px 16px; text-align: center;
   color: var(--text-faint); font-size: var(--t-sm);
@@ -1156,8 +1166,21 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   padding: 7px 16px; min-height: 44px;
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out);
-  touch-action: manipulation;
+  touch-action: pan-y; /* manipulation breaks vertical scroll on iOS file lists */
   -webkit-tap-highlight-color: transparent;
+  /* Prevent iOS long-press text-selection callout */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* FIX — iOS 17+ applies callout based on leaf hit-test node (span/svg),
+   not the container. CSS inheritance is not reliable for
+   -webkit-touch-callout in Safari 17+, so target children explicitly. */
+.fb-row,
+.fb-row * {
+  -webkit-user-select: none !important;
+  -webkit-touch-callout: none !important;
+  user-select: none !important;
 }
 .fb-row:hover { background: var(--surface); }
 .fb-row:active { background: var(--surface-2); }
@@ -1307,7 +1330,7 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   padding: 12px 20px 8px;
   border-top: 0.5px solid var(--border-subtle);
 }
-.file-sheet-actions .btn-ghost { flex: 1; justify-content: center; gap: 6px; min-height: 44px; font-size: 12px; }
+.file-sheet-actions .btn-ghost { flex: 1; justify-content: center; gap: 6px; min-height: 44px; font-size: 13px; padding: 0 8px; }
 .file-sheet-actions .btn-ghost.active { color: var(--primary); border-color: var(--primary); }
 
 /* Sheet header meta line */
@@ -1373,13 +1396,14 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
 .hist-filters {
   display: flex; gap: 6px; padding: 8px 16px 4px;
   flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  touch-action: pan-x; /* horizontal chip strip — manipulation can fight nested scroll on iOS */
 }
 .hist-chip {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
   border: 1px solid var(--border); background: var(--surface);
   color: var(--text-muted); cursor: pointer; white-space: nowrap;
-  min-height: 36px; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+  min-height: 36px; touch-action: pan-x; -webkit-tap-highlight-color: transparent;
   transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 .hist-chip:active { opacity: 0.75; }
@@ -1396,7 +1420,7 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   background: var(--surface-2); border: 0.5px solid var(--border-subtle);
   border-radius: 9px; padding: 10px 12px; display: flex; align-items: center;
   gap: 9px; cursor: pointer; min-height: 44px;
-  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent; touch-action: pan-y; /* match file rows — vertical scroll on iOS */
 }
 .hist-row:active { opacity: 0.75; }
 .hist-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--text-faint); }
@@ -1457,9 +1481,25 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   font-family: var(--font-mono); white-space: pre-wrap; word-break: break-word;
 }
 .js-pre-output {
-  background: #0d1117; border-radius: 7px; padding: 10px 12px;
-  font-size: 12px; line-height: 1.5; color: #c9d1d9;
-  font-family: var(--font-mono); white-space: pre-wrap; word-break: break-word;
+  background: #0d1117; border-radius: 8px; padding: 12px;
+  font-size: 13px; line-height: 1.5; color: #c9d1d9;
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  white-space: pre-wrap; word-break: break-all;
+  height: 320px; overflow-y: auto;
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+/* Terminal panel — shared by live log and static output */
+.js-term-panel {
+  background: #0d1117; border-radius: 8px; padding: 12px;
+  height: 320px; overflow-y: auto;
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  touch-action: pan-y; position: relative;
+}
+.js-term-body {
+  font-family: ui-monospace, 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 13px; line-height: 1.6; color: #c9d1d9;
+  white-space: pre-wrap; word-break: break-all;
 }
 /* Token usage section */
 .js-token-row { display: flex; gap: 4px; }
@@ -1507,12 +1547,14 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
 .live-log-panel {
   background: #0d1117;
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 12px;
   margin-top: 12px;
+  height: 320px;
   max-height: 45dvh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  touch-action: pan-y;
   position: relative;
 }
 .live-log-panel pre {
@@ -1581,22 +1623,39 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   background: var(--surface);
   border-top: 1px solid var(--border);
   position: fixed;
   left: 0; right: 0;
-  bottom: calc(var(--bottomnav-h) + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--bottomnav-h, 64px) + env(safe-area-inset-bottom, 0px));
   z-index: 200;
   min-height: 56px;
-  /* slide-up entry */
+  will-change: transform;
   transform: translateY(110%);
-  transition: transform 220ms var(--ease-out);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 220ms var(--ease-out, ease-out),
+              visibility 0s linear 220ms;
+}
+/* Hard block: hidden bar must never steal taps/scroll (touch-action:none on hidden
+   layer can still disrupt routing on some WebKit builds during visibility transition). */
+#fb-batch-bar:not(.visible) {
+  pointer-events: none !important;
+  touch-action: auto !important;
 }
 #fb-batch-bar.visible {
   transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  touch-action: none;
+  overscroll-behavior: none;
+  transition: transform 220ms var(--ease-out, ease-out),
+              visibility 0s linear 0s;
 }
 @media (prefers-reduced-motion: reduce) {
-  #fb-batch-bar { transition: none; }
+  #fb-batch-bar,
+  #fb-batch-bar.visible { transition: none; }
 }
 
 .fb-batch-count {
@@ -1641,3 +1700,45 @@ svg.lucide { width: 16px; height: 16px; flex-shrink: 0; }
   border: 1px solid var(--border);
 }
 .fb-batch-cancel-btn:hover { background: var(--surface-2); color: var(--text); }
+
+/* FIX 3: Cancel button — ensure tap target is above home indicator zone */
+#fb-batch-cancel {
+  min-height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Worker brand colors ── */
+:root {
+  --worker-claude:  #da7756;  /* Anthropic terra cotta */
+  --worker-gemini:  #1A73E8;  /* Google blue */
+  --worker-codex:   #000000;  /* OpenAI black */
+  --worker-cursor:  #F54E00;  /* Cursor international orange */
+  --worker-ollama:  #6B7280;  /* neutral gray for local */
+}
+
+.worker-badge-claude  { background: var(--worker-claude); color: #fff; }
+.worker-badge-gemini  { background: var(--worker-gemini); color: #fff; }
+.worker-badge-codex   { background: var(--worker-codex);  color: #fff; }
+.worker-badge-cursor  { background: var(--worker-cursor); color: #fff; }
+.worker-badge-ollama  { background: var(--worker-ollama); color: #fff; }
+
+/* waiting_approval status badge */
+.status-waiting_approval {
+  background: #F59E0B;
+  color: #000;
+  animation: approval-pulse 1.5s ease-in-out infinite;
+}
+@keyframes approval-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-waiting_approval { animation: none; }
+}
+
+/* waiting_approval dot */
+.dot-waiting_approval {
+  background: #F59E0B;
+  animation: approval-pulse 1.5s ease-in-out infinite;
+}

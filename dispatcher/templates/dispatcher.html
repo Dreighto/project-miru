@@ -140,6 +140,7 @@
         <span class="rb-dot"></span>
         <span class="rb-text" id="rb-text">Running...</span>
         <button class="rb-cancel" id="rb-cancel" type="button">Cancel</button>
+        <button class="rb-cancel rb-cancel-all" id="rb-cancel-all" type="button">Cancel All</button>
       </div>
 
       <div class="stats-pills" id="stats-bar"></div>
@@ -240,34 +241,34 @@
           <div class="rec-body" id="rec-body"></div>
         </div>
 
-        <!-- Quick Links -->
+        <!-- Quick Links: real <a href> so iOS Universal Links can open native apps; PM/Miru use same host as this page -->
         <div>
           <div class="m3-sl">Quick links</div>
           <div class="ql-grid">
-            <button class="ql-item" onclick="window.open('https://claude.ai','_blank')" aria-label="Claude">
+            <a class="ql-item" href="https://claude.ai/" target="_blank" rel="noopener noreferrer" aria-label="Claude">
               <div class="ql-dot" style="background:#1A1A30;color:#8888FF">C</div>
               <div><div class="ql-name">Claude</div><div class="ql-sub">claude.ai</div></div>
-            </button>
-            <button class="ql-item" onclick="window.open('https://gemini.google.com','_blank')" aria-label="Gemini">
+            </a>
+            <a class="ql-item" href="https://gemini.google.com/app" target="_blank" rel="noopener noreferrer" aria-label="Gemini">
               <div class="ql-dot" style="background:#1A2A1A;color:#66BB66">G</div>
               <div><div class="ql-name">Gemini</div><div class="ql-sub">gemini.google.com</div></div>
-            </button>
-            <button class="ql-item" onclick="window.open('https://chat.openai.com','_blank')" aria-label="ChatGPT">
+            </a>
+            <a class="ql-item" href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer" aria-label="ChatGPT">
               <div class="ql-dot" style="background:#1A1A1A;color:#AAAAAA">GP</div>
-              <div><div class="ql-name">ChatGPT</div><div class="ql-sub">chat.openai.com</div></div>
-            </button>
-            <button class="ql-item" onclick="window.open('https://notion.so','_blank')" aria-label="Notion">
+              <div><div class="ql-name">ChatGPT</div><div class="ql-sub">chatgpt.com</div></div>
+            </a>
+            <a class="ql-item" href="https://www.notion.so/" target="_blank" rel="noopener noreferrer" aria-label="Notion">
               <div class="ql-dot" style="background:#1E1A10;color:#CCAA44">N</div>
               <div><div class="ql-name">Notion</div><div class="ql-sub">notion.so</div></div>
-            </button>
-            <button class="ql-item" onclick="window.open('http://100.104.150.125:18080','_blank')" aria-label="PM Console">
+            </a>
+            <a class="ql-item" href="{{ ql_pm_url }}" target="_blank" rel="noopener noreferrer" aria-label="PM Console">
               <div class="ql-dot" style="background:#10181A;color:#44AACC">PM</div>
               <div><div class="ql-name">PM Console</div><div class="ql-sub">:18080</div></div>
-            </button>
-            <button class="ql-item" onclick="window.open('http://100.104.150.125:18765','_blank')" aria-label="Miru Dev">
+            </a>
+            <a class="ql-item" href="{{ ql_miru_url }}" target="_blank" rel="noopener noreferrer" aria-label="Miru Dev">
               <div class="ql-dot" style="background:#1A1020;color:#AA66CC">M</div>
               <div><div class="ql-name">Miru Dev</div><div class="ql-sub">:18765</div></div>
-            </button>
+            </a>
           </div>
         </div>
 
@@ -354,19 +355,19 @@
         <div class="h-card">
           <div class="h-card-head"><i data-lucide="radio"></i><span>Dispatcher</span></div>
           <div class="h-status"><span class="dot dot-up"></span><span>up</span></div>
-          <span class="h-port">:19000</span>
+          <a class="h-port-link" href="{{ ql_dispatcher_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open Dispatcher"><span class="h-port">:19000</span></a>
         </div>
         <div class="h-card">
           <div class="h-card-head"><i data-lucide="eye"></i><span>Project Miru</span></div>
           <div class="h-status"><span class="dot" id="dot-pm"></span><span id="health-pm">checking...</span></div>
-          <span class="h-port">:18080</span>
+          <a class="h-port-link" href="{{ ql_pm_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open Project Miru"><span class="h-port">:18080</span></a>
           <div class="h-detail hidden" id="health-detail-pm"></div>
           <button class="btn-ghost btn-sm h-restart" data-restart="pm" id="btn-restart-pm">Restart PM</button>
         </div>
         <div class="h-card">
           <div class="h-card-head"><i data-lucide="message-square"></i><span>Miru AI</span></div>
           <div class="h-status"><span class="dot" id="dot-ai"></span><span id="health-miru-ai">checking...</span></div>
-          <span class="h-port">:18765</span>
+          <a class="h-port-link" href="{{ ql_miru_url }}" target="_blank" rel="noopener noreferrer" aria-label="Open Miru AI"><span class="h-port">:18765</span></a>
           <div class="h-detail hidden" id="health-detail-miru-ai"></div>
           <button class="btn-ghost btn-sm h-restart" data-restart="miru_ai" id="btn-restart-ai">Restart Miru AI</button>
         </div>

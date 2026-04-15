@@ -22,7 +22,7 @@
   var restartState = 'idle';
   var restartRAF = null;
 
-  var LIVE_STATES = new Set(['pending', 'running', 'cancel_requested']);
+  var LIVE_STATES = new Set(['pending', 'running', 'cancel_requested', 'waiting_approval']);
   var POLL_MS = 5000;
   var MAX_TOASTS = 3;
   var DISMISS_MS = 2500;
@@ -33,6 +33,41 @@
      DOM REFS
      ============================================================= */
   function $(id){ return document.getElementById(id); }
+
+  /* ── Lazy DOM getters for file-browser refs ──────────────────────────
+     Defined early (before switchView at line ~219) so that any call to
+     switchView('files') can safely reference these elements even before
+     the file-browser section initialises (~line 1516+).
+     Getters resolve on first access and cache in backing _fb* vars.   */
+  var _fbBatchBar    = null;
+  var _fbBatchCancel = null;
+  var _fbTreeEl      = null;
+  var _fbPinnedEl    = null;
+
+  Object.defineProperty(window, 'fbBatchBar', {
+    get: function() {
+      return _fbBatchBar || (_fbBatchBar = document.getElementById('fb-batch-bar'));
+    },
+    configurable: true
+  });
+  Object.defineProperty(window, 'fbBatchCancel', {
+    get: function() {
+      return _fbBatchCancel || (_fbBatchCancel = document.getElementById('fb-batch-cancel'));
+    },
+    configurable: true
+  });
+  Object.defineProperty(window, 'fbTreeEl', {
+    get: function() {
+      return _fbTreeEl || (_fbTreeEl = document.getElementById('fb-tree'));
+    },
+    configurable: true
+  });
+  Object.defineProperty(window, 'fbPinnedEl', {
+    get: function() {
+      return _fbPinnedEl || (_fbPinnedEl = document.getElementById('fb-pinned'));
+    },
+    configurable: true
+  });
 
   var form           = $('job-form');
   var promptEl       = $('prompt');
@@ -118,7 +153,23 @@
     if(status === 'cancelled')        return 'dot dot-cancelled';
     if(status === 'cancel_requested') return 'dot dot-cancel_requested';
     if(status === 'pending')          return 'dot dot-pending';
+    if(status === 'waiting_approval') return 'dot dot-waiting_approval';
     return 'dot';
+  }
+
+  function workerBadgeClass(model){
+    var m = (model || '').toLowerCase();
+    if(m === 'claude')  return 'worker-badge-claude';
+    if(m === 'gemini')  return 'worker-badge-gemini';
+    if(m === 'codex')   return 'worker-badge-codex';
+    if(m === 'cursor')  return 'worker-badge-cursor';
+    if(m === 'ollama')  return 'worker-badge-ollama';
+    return '';
+  }
+
+  function statusLabel(status){
+    if(status === 'waiting_approval') return 'Awaiting approval';
+    return status;
   }
 
   function icons(){
@@ -216,6 +267,17 @@
       b.classList.toggle('active', b.getAttribute('data-nav') === name);
     });
     if(name === 'health') fetchHealth();
+    if(name === 'files') {
+      fbSelectionMode  = false;
+      fbCancelInFlight = false;
+      fbSelected.clear();
+      var _bar = document.getElementById('fb-batch-bar');
+      if(_bar) _bar.classList.remove('visible');
+      var _tree = document.getElementById('fb-tree');
+      if(_tree) _tree.classList.remove('fb-selection-mode');
+      var _pinned = document.getElementById('fb-pinned');
+      if(_pinned) _pinned.classList.remove('fb-selection-mode');
+    }
   }
 
   /* sidebar nav (preserved for rollback) */
@@ -356,11 +418,13 @@
       var banner = $('running-banner');
       if(banner){
         if(running > 0){
-          /* Find the most recent running job for the worker name */
-          var runningJob = allJobs.find(function(j){ return j.status === 'running'; });
+          /* Find the most recent running/waiting job for the worker name */
+          var runningJob = allJobs.find(function(j){ return j.status === 'running' || j.status === 'waiting_approval'; });
           var workerName = (runningJob && runningJob.model) ? runningJob.model : 'Job';
           var rbText = $('rb-text');
-          if(rbText) rbText.textContent = workerName + ' is running\u2026';
+          if(rbText) rbText.textContent = (runningJob && runningJob.status === 'waiting_approval')
+            ? workerName + ' awaiting approval\u2026'
+            : workerName + ' is running\u2026';
           banner.style.display = 'flex';
         } else {
           banner.style.display = 'none';
@@ -400,7 +464,7 @@
       '<span class="jr-id">' + esc((j.id || '').substring(0, 8)) + '</span>' +
       '<span class="jr-prompt">' + esc(j.prompt ? j.prompt.substring(0, 80) : (j.output_preview || '(no output yet)')) + '</span>' +
       '<span class="jr-meta">' +
-        '<span class="pill">' + esc(j.model) + '</span>' +
+        '<span class="pill ' + workerBadgeClass(j.model) + '">' + esc(j.model) + '</span>' +
         '<span class="pill">' + esc(j.effort) + '</span>' +
         simBadge +
       '</span>' +
@@ -517,12 +581,12 @@
       var r = await fetch('/api/jobs/' + id, {cache:'no-store'});
       if(!r.ok){ inner.innerHTML = '<div class="jcd-body"><span class="jcd-error">Failed to load</span></div>'; return; }
       var j = await r.json();
-      var cancelable = j.status === 'pending' || j.status === 'running';
+      var cancelable = j.status === 'pending' || j.status === 'running' || j.status === 'waiting_approval';
 
       var html = '<div class="jcd-body">';
-      html += '<div class="jcd-field"><span class="jcd-label">Status</span><span class="jcd-value"><span class="' + dotClass(j.status) + '"></span> ' + esc(j.status) + '</span></div>';
+      html += '<div class="jcd-field"><span class="jcd-label">Status</span><span class="jcd-value"><span class="' + dotClass(j.status) + '"></span> ' + esc(statusLabel(j.status)) + (j.status === 'waiting_approval' ? ' <span class="status-waiting_approval" style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:11px;">APPROVAL</span>' : '') + '</span></div>';
       html += '<div class="jcd-field"><span class="jcd-label">ID</span><span class="jcd-value jcd-mono">' + esc(j.id) + '</span></div>';
-      html += '<div class="jcd-field"><span class="jcd-label">Model</span><span class="jcd-value">' + esc(j.model) + '</span></div>';
+      html += '<div class="jcd-field"><span class="jcd-label">Model</span><span class="jcd-value"><span class="pill ' + workerBadgeClass(j.model) + '" style="display:inline-block;padding:1px 8px;border-radius:4px;font-size:12px;">' + esc(j.model) + '</span></span></div>';
       html += '<div class="jcd-field"><span class="jcd-label">Effort</span><span class="jcd-value">' + esc(j.effort) + '</span></div>';
       html += '<div class="jcd-field"><span class="jcd-label">Mode</span><span class="jcd-value">' + esc(j.executor_mode || '\u2014') + '</span></div>';
       html += '<div class="jcd-field"><span class="jcd-label">Created</span><span class="jcd-value">' + esc(j.created_at || '\u2014') + '</span></div>';
@@ -1233,16 +1297,17 @@
     }
     bodyEl.innerHTML = jobs.map(function(j){
       var jid    = j.id || j.job_id || '';  /* /api/jobs uses id; /api/history uses job_id */
-      var rdClass = j.status === 'done' ? 'done' : (j.status === 'running' || j.status === 'cancel_requested' ? 'run' : (j.status === 'pending' ? 'pending' : (j.status === 'failed' ? 'failed' : '')));
+      var rdClass = j.status === 'done' ? 'done' : (j.status === 'running' || j.status === 'cancel_requested' ? 'run' : (j.status === 'waiting_approval' ? 'run' : (j.status === 'pending' ? 'pending' : (j.status === 'failed' ? 'failed' : ''))));
       var displayText = esc(j.title || (j.prompt ? j.prompt.substring(0, 60) : '(no prompt)'));
       var worker = esc(j.model || 'Unknown');
+      var wbClass = workerBadgeClass(j.model);
       var ago    = fmtTimeAgo(j.created_at);
-      var status = esc(j.status || '');
+      var status = esc(statusLabel(j.status || ''));
       return '<div class="ri" data-id="' + esc(jid) + '">' +
         '<div class="rd ' + rdClass + '"></div>' +
         '<div class="rt">' +
           '<div class="rtt">' + displayText + '</div>' +
-          '<div class="rtm">' + worker + (ago ? ' \u00b7 ' + ago : '') + '</div>' +
+          '<div class="rtm"><span class="' + wbClass + '" style="padding:0 4px;border-radius:3px;font-size:10px;">' + worker + '</span>' + (ago ? ' \u00b7 ' + ago : '') + '</div>' +
         '</div>' +
         '<span class="rtd">' + status + '</span>' +
       '</div>';
@@ -1481,8 +1546,7 @@
   /* =============================================================
      M5: FILE BROWSER
      ============================================================= */
-  var fbTreeEl    = $('fb-tree');
-  var fbPinnedEl  = $('fb-pinned');
+  /* fbTreeEl + fbPinnedEl: lazy getters defined at top of IIFE — no var here */
   var fbSearchEl  = $('fb-search');
   var fileSheetEl = $('file-sheet');
   var fsCodeEl    = $('fs-code');
@@ -1907,17 +1971,22 @@
   /* =============================================================
      BATCH SELECTION MODE
      ============================================================= */
-  var fbBatchBar    = $('fb-batch-bar');
+  /* fbBatchBar + fbBatchCancel: lazy getters defined at top of IIFE — no var here */
   var fbBatchCount  = $('fb-batch-count');
   var fbBatchDlBtn  = $('fb-batch-dl');
-  var fbBatchCancel = $('fb-batch-cancel');
 
-  function fbUpdateBatchBar(){
+  function fbUpdateBatchBar() {
+    if (fbCancelInFlight) return; // don't fight the cancel sequence
+    if (!fbBatchBar) return;
     var n = fbSelected.size;
-    if(fbBatchCount) fbBatchCount.textContent = n + ' file' + (n === 1 ? '' : 's') + ' selected';
-    if(fbBatchBar){
-      if(n > 0){ fbBatchBar.classList.add('visible'); }
-      else { fbBatchBar.classList.remove('visible'); }
+    if (fbBatchCount) {
+      fbBatchCount.textContent = n + ' file' + (n === 1 ? '' : 's') + ' selected';
+    }
+    // CRITICAL: only show bar when BOTH selection mode is active AND files are selected
+    if (n > 0 && fbSelectionMode) {
+      fbBatchBar.classList.add('visible');
+    } else {
+      fbBatchBar.classList.remove('visible');
     }
   }
 
@@ -1950,13 +2019,14 @@
       var row = ev.target.closest('.fb-row');
       if(!row || row.getAttribute('data-dir') === '1') return;
       if(fbSelectionMode) return;   /* already in selection mode */
+      if(fbCancelInFlight) return;  /* cancel in progress — ignore touch burst */
       lpMoved = false;
       lpPath  = row.getAttribute('data-path');
       lpTimer = setTimeout(function(){
         lpTimer = null;
         if(!lpMoved && lpPath) fbEnterSelection(lpPath);
       }, 500);
-    }, {passive: true});
+    }, {passive: true});  /* passive OK — prevention is on the container */
 
     document.addEventListener('touchmove', function(){
       lpMoved = true;
@@ -1971,6 +2041,18 @@
       if(lpTimer){ clearTimeout(lpTimer); lpTimer = null; }
     }, {passive: true});
   })();
+
+  /* Context menu only — do NOT preventDefault on touchstart for every row:
+     that breaks iOS momentum scrolling and tap routing (WebKit). Callout is
+     suppressed via CSS (-webkit-touch-callout / user-select on .fb-row). */
+  function setupFbTouchPrevention(container) {
+    if (!container) return;
+    container.addEventListener('contextmenu', function(ev) {
+      if (ev.target.closest('.fb-row')) ev.preventDefault();
+    }, { passive: false });
+  }
+  setupFbTouchPrevention(fbTreeEl);
+  setupFbTouchPrevention(fbPinnedEl);
 
   /* tree row click */
   document.addEventListener('click', function(ev){
@@ -1999,8 +2081,51 @@
     else fbOpen(path, name, mtime);
   });
 
-  /* Batch cancel button */
-  if(fbBatchCancel) fbBatchCancel.addEventListener('click', function(){ fbExitSelection(); });
+  var fbCancelInFlight = false;
+  var fbBatchEpoch     = 0;
+
+  function fbCancelBatch() {
+    if (fbCancelInFlight) return;
+    fbCancelInFlight = true;
+    fbBatchEpoch++;
+    var currentEpoch = fbBatchEpoch;
+
+    fbSelectionMode = false;
+    fbSelected.clear();
+
+    if (fbBatchBar) fbBatchBar.classList.remove('visible');
+    if (fbTreeEl)   fbTreeEl.classList.remove('fb-selection-mode');
+    if (fbPinnedEl) fbPinnedEl.classList.remove('fb-selection-mode');
+
+    fbRender();
+
+    function releaseCancelLock() {
+      if (fbBatchEpoch === currentEpoch) fbCancelInFlight = false;
+    }
+    requestAnimationFrame(function() {
+      requestAnimationFrame(releaseCancelLock);
+    });
+    /* Fallback: rAF can be delayed or skipped (background tab / WebKit); stuck
+       fbCancelInFlight blocks long-press and fbUpdateBatchBar. */
+    setTimeout(releaseCancelLock, 320);
+  }
+
+  if (fbBatchCancel) {
+    // PRIMARY: pointerup fires after iOS commits the pointer sequence,
+    // before any follow-on gesture scheduler fires.
+    fbBatchCancel.addEventListener('pointerup', function(e) {
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      fbCancelBatch();
+    }, { capture: true });
+
+    // FALLBACK: click for non-touch (mouse) scenarios
+    fbBatchCancel.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (!fbSelectionMode && !fbCancelInFlight) return;
+      fbCancelBatch();
+    }, { capture: true });
+  }
 
   /* Batch download ZIP */
   if(fbBatchDlBtn) fbBatchDlBtn.addEventListener('click', function(){
@@ -2047,7 +2172,7 @@
   function fbUpdateActiveFiles(){
     var nxt = new Set();
     allJobs.forEach(function(j){
-      if(j.status !== 'running' && j.status !== 'pending') return;
+      if(j.status !== 'running' && j.status !== 'pending' && j.status !== 'waiting_approval') return;
       var p = j.prompt || '';
       var m = p.match(/[\w\-\.\/\\]+\.\w{1,10}/g);
       if(m) m.forEach(function(f){
@@ -2093,6 +2218,25 @@
      JOB DETAIL SHEET (shared: History + Recent)
      iOS Bottom Sheet Standard: Fix 1 (scroll lock) + Fix 2 (swipe)
      ============================================================= */
+  /* ── ansi_up v6 — lazy-loaded from jsDelivr ── */
+  var _ansiUp = null;
+  function _getAnsiUp(cb) {
+    if (_ansiUp) { cb(_ansiUp); return; }
+    import('https://cdn.jsdelivr.net/npm/ansi_up@6/esm/ansi_up.js')
+      .then(function(mod) {
+        _ansiUp = new mod.default();
+        _ansiUp.use_classes = false;
+        cb(_ansiUp);
+      })
+      .catch(function() {
+        /* Fallback: strip ANSI via regex, HTML-escape the rest */
+        _ansiUp = { ansi_to_html: function(t) {
+          return esc(t.replace(/\x1b\[[0-9;]*m/g, ''));
+        }};
+        cb(_ansiUp);
+      });
+  }
+
   var jobSheetEl = $('job-sheet');
   var jsBodyEl   = $('js-body');
   var jsTitleEl  = $('js-title');
@@ -2105,6 +2249,8 @@
   var jsEventSource = null; /* SSE connection for live log */
   var jsCurrentJobId = null;
   var jsAutoScroll = true;
+  /* One scroll listener per live panel — AbortController drops it on sheet close / reload / reconnect */
+  var jsLiveLogScrollAbort = null;
 
   function openJobSheet(){
     if(!jobSheetEl) return;
@@ -2122,6 +2268,7 @@
   function closeJobSheet(){
     /* Close SSE connection cleanly */
     if(jsEventSource){ try { jsEventSource.close(); } catch(e){} jsEventSource = null; }
+    if(jsLiveLogScrollAbort){ try { jsLiveLogScrollAbort.abort(); } catch(e){} jsLiveLogScrollAbort = null; }
     jsCurrentJobId = null;
     jsAutoScroll = true;
     if(jsCancelBtn) jsCancelBtn.style.display = 'none';
@@ -2148,6 +2295,8 @@
   /* Feature 3: start SSE stream for live log */
   function startJobStream(id, logPre, logPanel){
     if(jsEventSource){ try { jsEventSource.close(); } catch(e){} }
+    if(jsLiveLogScrollAbort){ try { jsLiveLogScrollAbort.abort(); } catch(e){} jsLiveLogScrollAbort = null; }
+    jsLiveLogScrollAbort = new AbortController();
     jsAutoScroll = true;
     jsCurrentJobId = id;
 
@@ -2157,7 +2306,7 @@
       jsAutoScroll = atBottom;
       var jumpBtn = logPanel.querySelector('.ll-jump-btn');
       if(jumpBtn) jumpBtn.style.display = atBottom ? 'none' : 'block';
-    });
+    }, { signal: jsLiveLogScrollAbort.signal });
 
     function connect(){
       var es = new EventSource('/api/jobs/' + id + '/stream');
@@ -2186,12 +2335,11 @@
           } else {
             return; /* Skip non-text data */
           }
-          var cls = llClass(text);
-          var span = document.createElement('span');
-          span.className = 'll-line ' + cls;
-          span.textContent = text + '\n';
-          logPre.appendChild(span);
-          if(jsAutoScroll) logPanel.scrollTop = logPanel.scrollHeight;
+          _getAnsiUp(function(au){
+            var rendered = au.ansi_to_html(text) + '<br>';
+            logPre.insertAdjacentHTML('beforeend', rendered);
+            if(jsAutoScroll) logPanel.scrollTop = logPanel.scrollHeight;
+          });
         } catch(ex){}
       });
 
@@ -2199,11 +2347,13 @@
         es.close(); jsEventSource = null;
         /* Update cancel button visibility */
         if(jsCancelBtn) jsCancelBtn.style.display = 'none';
+        /* Hide approve/deny bar if visible */
+        var apBar = $('js-approval-bar');
+        if(apBar) apBar.style.display = 'none';
         /* Add done marker */
-        var marker = document.createElement('span');
-        marker.className = 'll-line ll-ok';
-        marker.textContent = '\n--- stream ended ---\n';
-        logPre.appendChild(marker);
+        _getAnsiUp(function(au){
+          logPre.insertAdjacentHTML('beforeend', '<br><span style="color:#3fb950">--- stream ended ---</span><br>');
+        });
       });
 
       es.addEventListener('heartbeat', function(){});
@@ -2221,6 +2371,7 @@
 
   async function loadJobDetail(id){
     if(!jsBodyEl) return;
+    if(jsLiveLogScrollAbort){ try { jsLiveLogScrollAbort.abort(); } catch(e){} jsLiveLogScrollAbort = null; }
     jsBodyEl.innerHTML = '<div class="js-loading">Loading\u2026</div>';
     if(jsTitleEl) jsTitleEl.textContent = 'Job Detail';
     if(jsMetaEl) jsMetaEl.textContent = '';
@@ -2234,18 +2385,19 @@
       var j = await r.json();
       jsOutputText = j.output || '';
       if(jsTitleEl) jsTitleEl.textContent = j.title || (j.prompt || '').substring(0, 50) || 'Job Detail';
-      if(jsMetaEl) jsMetaEl.textContent = esc(j.model || '') + ' \u00b7 ' + esc(j.effort || '') + ' \u00b7 ' + fmtTimeAgo(j.created_at);
+      if(jsMetaEl) jsMetaEl.innerHTML = '<span class="' + workerBadgeClass(j.model) + '" style="padding:0 4px;border-radius:3px;font-size:11px;">' + esc(j.model || '') + '</span> \u00b7 ' + esc(j.effort || '') + ' \u00b7 ' + fmtTimeAgo(j.created_at);
       var durationStr = j.duration || '';
       if(!durationStr && j.created_at && j.finished_at){
         try { var ds = (new Date(j.finished_at).getTime() - new Date(j.created_at).getTime()) / 1000; durationStr = ds.toFixed(1) + 's'; } catch(e){}
       }
-      var isLive = (j.status === 'running' || j.status === 'pending' || j.status === 'cancel_requested');
+      var isLive = (j.status === 'running' || j.status === 'pending' || j.status === 'cancel_requested' || j.status === 'waiting_approval');
       var html = '';
 
       /* PART A — compact 2×2 metadata grid */
-      var workerEffort = esc(j.model || '\u2014') + ' \u00b7 ' + esc(j.effort || '\u2014');
+      var wbClass = workerBadgeClass(j.model);
+      var workerEffort = '<span class="' + wbClass + '" style="padding:0 4px;border-radius:3px;font-size:11px;">' + esc(j.model || '\u2014') + '</span> \u00b7 ' + esc(j.effort || '\u2014');
       html += '<div class="js-meta-grid">';
-      html += '<div class="js-meta-cell"><div class="js-meta-cell-lbl">Status</div><div class="js-meta-cell-val"><span class="' + dotClass(j.status) + '"></span>' + esc(j.status) + '</div></div>';
+      html += '<div class="js-meta-cell"><div class="js-meta-cell-lbl">Status</div><div class="js-meta-cell-val"><span class="' + dotClass(j.status) + '"></span>' + esc(statusLabel(j.status)) + '</div></div>';
       html += '<div class="js-meta-cell"><div class="js-meta-cell-lbl">Worker</div><div class="js-meta-cell-val">' + workerEffort + '</div></div>';
       html += '<div class="js-meta-cell"><div class="js-meta-cell-lbl">Duration</div><div class="js-meta-cell-val">' + esc(durationStr || '\u2014') + '</div></div>';
       html += '<div class="js-meta-cell"><div class="js-meta-cell-lbl">Started</div><div class="js-meta-cell-val jv-ts">' + formatLATime(j.created_at) + '</div></div>';
@@ -2257,11 +2409,12 @@
       /* PART C — Output section (dominant) */
       if(isLive){
         html += '<div class="js-section"><div class="js-section-label">Live Output</div>';
-        html += '<div class="live-log-panel" id="js-live-log"><pre id="js-live-pre"></pre>';
+        html += '<div class="live-log-panel" id="js-live-log"><div id="js-live-pre" class="js-term-body"></div>';
         html += '<button class="ll-jump-btn" id="ll-jump" style="display:none">Jump to bottom</button>';
         html += '</div></div>';
       } else {
-        html += '<div class="js-section"><div class="js-section-label">Output</div><pre class="js-pre-output">' + esc(j.output || '(no output yet)') + '</pre></div>';
+        html += '<div class="js-section"><div class="js-section-label">Output</div>';
+        html += '<div class="js-pre-output" id="js-output-term"></div></div>';
       }
 
       /* PART D — Token usage (done jobs only) */
@@ -2281,6 +2434,78 @@
       }
 
       jsBodyEl.innerHTML = html;
+
+      /* Render static output via ansi_up for completed jobs */
+      if(!isLive){
+        var outTerm = $('js-output-term');
+        if(outTerm){
+          _getAnsiUp(function(au){
+            var raw = j.output || '(no output yet)';
+            var lines = raw.split('\n');
+            var frags = lines.map(function(l){ return au.ansi_to_html(l); });
+            outTerm.innerHTML = frags.join('<br>');
+          });
+        }
+      }
+
+      /* Change 5: Approve / Deny bar for waiting_approval jobs */
+      if(j.status === 'waiting_approval'){
+        var apBar = document.createElement('div');
+        apBar.id = 'js-approval-bar';
+        apBar.style.cssText = 'display:flex;gap:10px;padding:10px 0 4px;';
+        var apPrompt = document.createElement('div');
+        apPrompt.style.cssText = 'font-size:13px;color:#e3b341;margin-bottom:6px;';
+        apPrompt.textContent = 'Awaiting approval — approve or deny to continue';
+        var approveBtn = document.createElement('button');
+        approveBtn.id = 'js-ap-approve';
+        approveBtn.textContent = '\u2705 Approve';
+        approveBtn.style.cssText = 'min-height:44px;min-width:100px;flex:1;background:#238636;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;';
+        var denyBtn = document.createElement('button');
+        denyBtn.id = 'js-ap-deny';
+        denyBtn.textContent = '\u274c Deny';
+        denyBtn.style.cssText = 'min-height:44px;min-width:100px;flex:1;background:#b62324;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;';
+
+        function sendApproval(text, btn){
+          btn.disabled = true;
+          approveBtn.disabled = true;
+          denyBtn.disabled = true;
+          btn.textContent = 'Sending\u2026';
+          fetch('/api/jobs/' + id + '/stdin', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({text: text})
+          }).then(function(r){
+            if(r.ok){
+              apBar.style.display = 'none';
+              toast(text === 'y' ? 'Approved' : 'Denied', 'ok');
+            } else {
+              toast('Stdin error', 'err');
+              approveBtn.disabled = false;
+              denyBtn.disabled = false;
+              approveBtn.textContent = '\u2705 Approve';
+              denyBtn.textContent = '\u274c Deny';
+            }
+          }).catch(function(){
+            toast('Network error', 'err');
+            approveBtn.disabled = false;
+            denyBtn.disabled = false;
+            approveBtn.textContent = '\u2705 Approve';
+            denyBtn.textContent = '\u274c Deny';
+          });
+        }
+
+        approveBtn.addEventListener('click', function(){ sendApproval('y', approveBtn); });
+        denyBtn.addEventListener('click', function(){ sendApproval('n', denyBtn); });
+
+        apBar.appendChild(approveBtn);
+        apBar.appendChild(denyBtn);
+
+        var apWrapper = document.createElement('div');
+        apWrapper.style.cssText = 'padding:0 0 4px;';
+        apWrapper.appendChild(apPrompt);
+        apWrapper.appendChild(apBar);
+        jsBodyEl.insertBefore(apWrapper, jsBodyEl.firstChild);
+      }
 
       /* Feature 4: Show cancel button for live jobs */
       if(jsCancelBtn){
@@ -2405,6 +2630,7 @@
   function histDotClass(s){
     if(s === 'done')    return 'hist-dot done';
     if(s === 'running') return 'hist-dot running';
+    if(s === 'waiting_approval') return 'hist-dot running';
     if(s === 'failed' || s === 'cancelled') return 'hist-dot failed';
     if(s === 'pending') return 'hist-dot pending';
     return 'hist-dot';
@@ -2431,14 +2657,15 @@
       var status = j.status || '';
       var displayText = esc(j.title || (j.prompt || '(no prompt)').substring(0, 60));
       var worker = esc(j.model || 'Unknown');
+      var wbClass = workerBadgeClass(j.model);
       var ago = fmtTimeAgo(j.created_at);
       return '<div class="hist-row" data-job-id="' + esc(jid) + '">' +
         '<div class="' + histDotClass(status) + '"></div>' +
         '<div class="hist-info">' +
           '<div class="hist-prompt">' + displayText + '</div>' +
-          '<div class="hist-meta">' + worker + (ago ? ' \u00b7 ' + ago : '') + '</div>' +
+          '<div class="hist-meta"><span class="' + wbClass + '" style="padding:0 4px;border-radius:3px;font-size:10px;">' + worker + '</span>' + (ago ? ' \u00b7 ' + ago : '') + '</div>' +
         '</div>' +
-        '<span class="hist-status">' + esc(status) + '</span>' +
+        '<span class="hist-status">' + esc(statusLabel(status)) + '</span>' +
       '</div>';
     }).join('');
   }
@@ -2538,6 +2765,21 @@
     });
   })();
 
+  /* Batch cancel — Cancel All button in running banner */
+  (function(){
+    var rbCancelAll = $('rb-cancel-all');
+    if(!rbCancelAll) return;
+    rbCancelAll.addEventListener('click', function(){
+      rbCancelAll.disabled = true;
+      toast('Cancelling all jobs\u2026', 'ok');
+      fetch('/api/jobs/cancel-all', {method:'POST'})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ toast('Cancelled ' + (d.count || 0) + ' job(s)', 'ok'); })
+        .catch(function(){ toast('Cancel all failed', 'err'); })
+        .finally(function(){ setTimeout(function(){ rbCancelAll.disabled = false; }, 3000); });
+    });
+  })();
+
   window.addEventListener('focusin', function(){ document.body.classList.add('keyboard-open'); });
   window.addEventListener('focusout', function(){ document.body.classList.remove('keyboard-open'); });
 
@@ -2555,4 +2797,18 @@
   setInterval(fetchStatsEndpoint, POLL_MS);
   setInterval(fbUpdateActiveFiles, POLL_MS);
   setInterval(fetchGitContext, 30000); /* refresh every 30s */
+
+  /* FIX 4 — contextmenu suppression on tree containers.
+     Attached directly to the elements (not document) so iOS UIKit
+     processes our preventDefault before scheduling its callout.
+     DOM is ready here — script runs at end of <body>. */
+  ;(function() {
+    ['fb-tree', 'fb-pinned'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+      }, false);
+    });
+  })();
 })();
