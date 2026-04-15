@@ -2311,6 +2311,7 @@
     function connect(){
       var es = new EventSource('/api/jobs/' + id + '/stream');
       jsEventSource = es;
+      logPanel.classList.add('streaming');
 
       es.addEventListener('log', function(e){
         try {
@@ -2345,6 +2346,7 @@
 
       es.addEventListener('done', function(){
         es.close(); jsEventSource = null;
+        logPanel.classList.remove('streaming');
         /* Update cancel button visibility */
         if(jsCancelBtn) jsCancelBtn.style.display = 'none';
         /* Hide approve/deny bar if visible */
