@@ -183,7 +183,7 @@ function Test-MiruProcessIsDashboard {
     try {
         $proc = Get-CimInstance Win32_Process -Filter "ProcessId = $ProcessId" -ErrorAction Stop
         $cmd = [string]$proc.CommandLine
-        return $cmd -match "dashboard[/\\]app\.py" -or $cmd -match "dashboard\\app\.py"
+        return $cmd -match "pm[/\\]app\.py" -or $cmd -match "pm\\app\.py"
     }
     catch { return $false }
 }
