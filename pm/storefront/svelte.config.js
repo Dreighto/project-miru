@@ -15,7 +15,11 @@ const config = {
 			fallback: 'index.html',
 			precompress: false,
 			strict: true
-		})
+		}),
+		// Phase 2: served by Flask under /storefront/ (Jinja UI keeps /).
+		paths: {
+			base: '/storefront'
+		}
 	}
 };
 
