@@ -511,3 +511,240 @@ def api_card_lookup():
         }
 
     return jsonify({"ok": True, "results": results})
+
+
+# ── Phase 3: Storefront API — sets, cards, card detail ─────────────
+# These endpoints feed the SvelteKit storefront mounted at /storefront/.
+# All reads are against card_catalog.db via the read-only pool.
+
+def _img_url(local_path: str | None) -> str | None:
+    """Convert an image_assets.local_path into a /img/<rel> URL, or None."""
+    if not local_path:
+        return None
+    rel = _normalize_rel_image_path(str(local_path))
+    if not rel:
+        return None
+    return f"/img/{quote(rel)}"
+
+
+@api_bp.get("/api/sets")
+def api_sets():
+    """All sets with card counts, newest set_code first."""
+    conn = connect_catalog()
+    try:
+        rows = conn.execute(
+            """
+            SELECT s.set_code, s.set_name,
+                   (SELECT COUNT(*) FROM cards c WHERE c.set_code = s.set_code) AS card_count
+            FROM sets s
+            ORDER BY s.set_code DESC
+            """
+        ).fetchall()
+    finally:
+        conn.close()
+
+    sets = [
+        {
+            "set_id": r["set_code"],
+            "set_name": r["set_name"],
+            "card_count": int(r["card_count"] or 0),
+        }
+        for r in rows
+    ]
+    return jsonify({"sets": sets})
+
+
+@api_bp.get("/api/cards")
+def api_cards_list():
+    """
+    Paginated, filterable cards list.
+
+    Query params:
+      set   (required): filter by cards.set_code
+      page  (optional, default 1)
+      limit (optional, default 40, max 100)
+      color (optional): exact match on cards.color
+      type  (optional): exact match on cards.card_type
+    """
+    set_id = str(request.args.get("set") or "").strip()
+    if not set_id:
+        return jsonify({"error": "set parameter required"}), 400
+
+    try:
+        page = max(1, int(request.args.get("page") or 1))
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        limit = int(request.args.get("limit") or 40)
+    except (TypeError, ValueError):
+        limit = 40
+    limit = max(1, min(100, limit))
+    offset = (page - 1) * limit
+
+    color = str(request.args.get("color") or "").strip()
+    ctype = str(request.args.get("type") or "").strip()
+
+    filters = ["c.set_code = ?"]
+    params: list = [set_id]
+    if color:
+        filters.append("c.color = ?")
+        params.append(color)
+    if ctype:
+        filters.append("c.card_type = ?")
+        params.append(ctype)
+    where = " AND ".join(filters)
+
+    conn = connect_catalog()
+    try:
+        total = int(
+            conn.execute(
+                f"SELECT COUNT(*) FROM cards c WHERE {where}", params
+            ).fetchone()[0]
+        )
+        rows = conn.execute(
+            f"""
+            SELECT c.canonical_code, c.card_name, c.card_type, c.color,
+                   c.cost, c.power, c.counter, c.rarity, c.set_code,
+                   (
+                     SELECT ia.local_path
+                     FROM card_variants cv
+                     JOIN image_assets ia ON ia.printing_id = cv.id
+                     WHERE cv.card_id = c.id AND cv.is_base = 1
+                     ORDER BY ia.is_primary DESC, ia.id ASC
+                     LIMIT 1
+                   ) AS base_image_path
+            FROM cards c
+            WHERE {where}
+            ORDER BY c.canonical_code ASC
+            LIMIT ? OFFSET ?
+            """,
+            params + [limit, offset],
+        ).fetchall()
+    finally:
+        conn.close()
+
+    cards = [
+        {
+            "code": r["canonical_code"],
+            "name": r["card_name"],
+            "type": r["card_type"],
+            "color": r["color"],
+            "cost": r["cost"],
+            "power": r["power"],
+            "counter": r["counter"],
+            "rarity": r["rarity"],
+            "set_id": r["set_code"],
+            "image_path": _img_url(r["base_image_path"]),
+        }
+        for r in rows
+    ]
+    pages = (total + limit - 1) // limit if total > 0 else 0
+    return jsonify(
+        {
+            "cards": cards,
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "pages": pages,
+        }
+    )
+
+
+@api_bp.get("/api/cards/<code>")
+def api_card_single(code: str):
+    """Full detail for a single card by canonical code, with variants."""
+    code_norm = str(code or "").strip().upper()
+    if not code_norm:
+        return jsonify({"error": "Card not found"}), 404
+
+    conn = connect_catalog()
+    try:
+        row = conn.execute(
+            """
+            SELECT id, canonical_code, card_name, card_type, color, cost,
+                   power, counter, rarity, set_code, effect_text, attribute, traits
+            FROM cards
+            WHERE canonical_code = ?
+            LIMIT 1
+            """,
+            (code_norm,),
+        ).fetchone()
+        if not row:
+            return jsonify({"error": "Card not found"}), 404
+
+        base_img_row = conn.execute(
+            """
+            SELECT ia.local_path
+            FROM card_variants cv
+            JOIN image_assets ia ON ia.printing_id = cv.id
+            WHERE cv.card_id = ? AND cv.is_base = 1
+            ORDER BY ia.is_primary DESC, ia.id ASC
+            LIMIT 1
+            """,
+            (row["id"],),
+        ).fetchone()
+
+        vrows = conn.execute(
+            """
+            SELECT cv.id AS printing_id,
+                   cv.variant_key,
+                   cv.variant_label,
+                   cv.is_base,
+                   ia.local_path,
+                   (
+                     SELECT mp.market_price
+                     FROM printing_market_map pmm
+                     JOIN market_prices mp ON mp.market_product_fk = pmm.market_product_id
+                     WHERE pmm.printing_id = cv.id
+                     ORDER BY mp.captured_at DESC
+                     LIMIT 1
+                   ) AS market_price
+            FROM card_variants cv
+            JOIN image_assets ia
+              ON ia.printing_id = cv.id AND ia.is_primary = 1
+            WHERE cv.card_id = ?
+            ORDER BY cv.is_base DESC, cv.id ASC
+            """,
+            (row["id"],),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    # Archetype: traits column is a " / " separated list
+    traits_raw = str(row["traits"] or "").strip()
+    archetype = (
+        [t.strip() for t in traits_raw.split("/") if t.strip()]
+        if traits_raw
+        else []
+    )
+
+    variants = [
+        {
+            "variant_key": v["variant_key"],
+            "label": v["variant_label"] or ("Base" if v["is_base"] else ""),
+            "image_path": _img_url(v["local_path"]),
+            "market_price": v["market_price"],
+        }
+        for v in vrows
+    ]
+
+    base_img = _img_url(base_img_row["local_path"]) if base_img_row else None
+
+    return jsonify(
+        {
+            "code": row["canonical_code"],
+            "name": row["card_name"],
+            "type": row["card_type"],
+            "color": row["color"],
+            "cost": row["cost"],
+            "power": row["power"],
+            "counter": row["counter"],
+            "rarity": row["rarity"],
+            "set_id": row["set_code"],
+            "effect_text": row["effect_text"],
+            "attribute": row["attribute"],
+            "archetype": archetype,
+            "image_path": base_img,
+            "variants": variants,
+        }
+    )
