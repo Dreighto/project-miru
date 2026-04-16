@@ -564,15 +564,21 @@ def api_cards_list():
     Paginated, filterable cards list.
 
     Query params:
-      set   (required): filter by cards.set_code
+      set   (optional): filter by cards.set_code
       page  (optional, default 1)
       limit (optional, default 40, max 100)
       color (optional): exact match on cards.color
       type  (optional): exact match on cards.card_type
+
+    At least one of set/color/type must be provided so we never
+    return the entire catalog in one response.
     """
     set_id = str(request.args.get("set") or "").strip()
-    if not set_id:
-        return jsonify({"error": "set parameter required"}), 400
+    color = str(request.args.get("color") or "").strip()
+    ctype = str(request.args.get("type") or "").strip()
+
+    if not (set_id or color or ctype):
+        return jsonify({"error": "at least one of set, color, or type is required"}), 400
 
     try:
         page = max(1, int(request.args.get("page") or 1))
@@ -585,11 +591,11 @@ def api_cards_list():
     limit = max(1, min(100, limit))
     offset = (page - 1) * limit
 
-    color = str(request.args.get("color") or "").strip()
-    ctype = str(request.args.get("type") or "").strip()
-
-    filters = ["c.set_code = ?"]
-    params: list = [set_id]
+    filters: list[str] = []
+    params: list = []
+    if set_id:
+        filters.append("c.set_code = ?")
+        params.append(set_id)
     if color:
         filters.append("c.color = ?")
         params.append(color)
