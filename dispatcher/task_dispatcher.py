@@ -769,85 +769,78 @@ def _generate_approval_summary(prompt_text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Auto-generated job titles via Gemini CLI (Fix 4)
+# Auto-generated job titles via Claude API
 # ---------------------------------------------------------------------------
+
+def _title_fallback(prompt: str) -> str:
+    """Word-boundary truncation: up to 6 words or 50 chars, whichever comes first."""
+    words = (prompt or "").split()
+    result = ""
+    for word in words:
+        candidate = (result + " " + word).strip() if result else word
+        if len(candidate) > 50 or len(candidate.split()) > 6:
+            break
+        result = candidate
+    return result.strip() or "Untitled"
 
 
 def _generate_title_background(job: Job) -> None:
-    """Background thread: ask Gemini CLI for a 4-6 word job title."""
-    import shutil
+    """Background thread: call Claude Haiku to generate a 4-6 word job title."""
+    raw = ""
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 
-    cli = shutil.which("gemini")
-    if cli is None:
-        appdata = os.environ.get("APPDATA", "")
-        if appdata:
-            candidate = os.path.join(appdata, "npm", "gemini.cmd")
-            if os.path.isfile(candidate):
-                cli = candidate
-    if cli is None:
-        job.title = (job.prompt or "")[:50].strip() or "Untitled"
-        _db_upsert_job(job)
-        log.info("Title fallback (no CLI) for job %s: %s", job.id[:8], job.title)
-        return
-
-    prompt_snippet = (job.prompt or "")[:200].replace('"', "'")
-    gen_prompt = (
-        "Generate a 4-6 word title for this task. "
-        "Reply with ONLY the title, no punctuation, no quotes, no explanation: "
-        + prompt_snippet
-    )
-    cli_env = os.environ.copy()
-    cli_env["NO_COLOR"] = "1"
-    cli_env["TERM"] = "dumb"
-
-    try:
-        # Use Popen + manual timeout so we can kill the entire process tree
-        # on Windows (subprocess.run timeout leaves orphan node.exe children).
-        _cflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        proc = subprocess.Popen(
-            [cli, "-p", gen_prompt],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            cwd=str(_REPO_ROOT),
-            creationflags=_cflags,
-            env=cli_env,
+    if api_key:
+        prompt_snippet = (job.prompt or "")[:200]
+        user_msg = (
+            "Generate a 4-6 word title for this task. "
+            "Reply with only the title, no quotes, no punctuation at the end:\n\n"
+            + prompt_snippet
+        )
+        payload = json.dumps({
+            "model": "claude-haiku-4-5-20251001",
+            "max_tokens": 20,
+            "messages": [{"role": "user", "content": user_msg}],
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=payload,
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+            method="POST",
         )
         try:
-            stdout, _stderr = proc.communicate(timeout=30)
-            raw = stdout.strip() if proc.returncode == 0 else ""
-        except subprocess.TimeoutExpired:
-            log.warning("Title gen timeout for job %s — killing process tree", job.id[:8])
-            # Kill entire process tree (node.exe children) on Windows
-            try:
-                subprocess.run(
-                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
-                    timeout=5, creationflags=_cflags,
-                )
-            except Exception:
-                proc.kill()
-            try:
-                proc.communicate(timeout=5)
-            except Exception:
-                pass
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = json.loads(resp.read().decode())
+                raw = data["content"][0]["text"].strip()
+        except Exception as exc:
+            log.warning("Claude title gen error for job %s: %s", job.id[:8], exc)
             raw = ""
-    except Exception as exc:
-        log.warning("Title gen error for job %s: %s", job.id[:8], exc)
-        raw = ""
+
+        # Fix 1: strip Gemini/CLI noise lines before sanitizing (defensive, in case
+        # the raw text ever passes through a CLI path in future).
+        if raw:
+            clean_lines = [
+                ln for ln in raw.splitlines()
+                if not _NOISE_LINE_RE.search(ln)
+                and "MCP issues detected" not in ln
+            ]
+            raw = " ".join(ln.strip() for ln in clean_lines if ln.strip())
+    else:
+        log.info("No ANTHROPIC_API_KEY — using fallback title for job %s", job.id[:8])
 
     # Sanitize: strip quotes, newlines, JSON artifacts, limit length
     title = raw.replace('"', "").replace("'", "").replace("\n", " ").strip()
-    # Remove any JSON-like wrapping
     if title.startswith("{") or title.startswith("["):
         title = ""
-    # Truncate to reasonable length
     if len(title) > 60:
         title = title[:57] + "..."
-    # Fallback
+
+    # Fix 3: word-boundary fallback instead of hard char truncation
     if not title:
-        title = (job.prompt or "")[:50].strip() or "Untitled"
+        title = _title_fallback(job.prompt or "")
 
     job.title = title
     _db_upsert_job(job)

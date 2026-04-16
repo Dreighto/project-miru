@@ -2292,6 +2292,22 @@
     return 'll-raw';
   }
 
+  /* Terminal line accent classifier — returns CSS class string */
+  function tLineClass(text){
+    var s = text.replace(/\x1b\[[0-9;]*m/g, '').trimStart();
+    if(!s.trim()) return 't-line t-line-empty';
+    var c = s.charAt(0);
+    /* User input / prompt indicators */
+    if(c === '>' || c === '\u276f') return 't-line t-line-input';
+    /* Success / info indicators */
+    if(c === '\u2713' || c === '\u25cf' || c === '\u25c6') return 't-line t-line-success';
+    /* Error indicators */
+    if(c === '\u2717' || c === '\u00d7' || s.indexOf('Error') === 0 || s.indexOf('error:') === 0) return 't-line t-line-error';
+    /* Warning indicators */
+    if(c === '\u26a0' || s.indexOf('Warning') === 0 || s.indexOf('warning:') === 0) return 't-line t-line-warning';
+    return 't-line';
+  }
+
   /* Feature 3: start SSE stream for live log */
   function startJobStream(id, logPre, logPanel){
     if(jsEventSource){ try { jsEventSource.close(); } catch(e){} }
@@ -2300,17 +2316,24 @@
     jsAutoScroll = true;
     jsCurrentJobId = id;
 
-    /* Track manual scroll-up → stop auto-scroll */
+    /* Track manual scroll-up → stop auto-scroll; show/hide scroll-to-bottom button */
     logPanel.addEventListener('scroll', function(){
       var atBottom = logPanel.scrollHeight - logPanel.scrollTop - logPanel.clientHeight < 40;
       jsAutoScroll = atBottom;
-      var jumpBtn = logPanel.querySelector('.ll-jump-btn');
-      if(jumpBtn) jumpBtn.style.display = atBottom ? 'none' : 'block';
+      var jumpBtn = logPanel.querySelector('.log-scroll-btn');
+      if(jumpBtn) jumpBtn.classList.toggle('visible', !atBottom);
     }, { signal: jsLiveLogScrollAbort.signal });
 
     function connect(){
       var es = new EventSource('/api/jobs/' + id + '/stream');
       jsEventSource = es;
+      logPanel.classList.add('streaming');
+      /* Add blinking cursor while streaming */
+      if(!logPre.querySelector('.t-cursor')){
+        var _cur = document.createElement('span');
+        _cur.className = 't-cursor';
+        logPre.appendChild(_cur);
+      }
 
       es.addEventListener('log', function(e){
         try {
@@ -2336,8 +2359,14 @@
             return; /* Skip non-text data */
           }
           _getAnsiUp(function(au){
-            var rendered = au.ansi_to_html(text) + '<br>';
-            logPre.insertAdjacentHTML('beforeend', rendered);
+            var rendered = au.ansi_to_html(text);
+            var cls = tLineClass(text);
+            var cursor = logPre.querySelector('.t-cursor');
+            var lineEl = document.createElement('div');
+            lineEl.className = cls;
+            lineEl.innerHTML = rendered;
+            if(cursor){ logPre.insertBefore(lineEl, cursor); }
+            else { logPre.appendChild(lineEl); }
             if(jsAutoScroll) logPanel.scrollTop = logPanel.scrollHeight;
           });
         } catch(ex){}
@@ -2345,15 +2374,21 @@
 
       es.addEventListener('done', function(){
         es.close(); jsEventSource = null;
+        logPanel.classList.remove('streaming');
+        /* Remove blinking cursor */
+        var cur = logPre.querySelector('.t-cursor');
+        if(cur) cur.remove();
         /* Update cancel button visibility */
         if(jsCancelBtn) jsCancelBtn.style.display = 'none';
         /* Hide approve/deny bar if visible */
         var apBar = $('js-approval-bar');
         if(apBar) apBar.style.display = 'none';
         /* Add done marker */
-        _getAnsiUp(function(au){
-          logPre.insertAdjacentHTML('beforeend', '<br><span style="color:#3fb950">--- stream ended ---</span><br>');
-        });
+        var doneEl = document.createElement('div');
+        doneEl.className = 't-line t-line-success';
+        doneEl.textContent = '\u2014\u2014\u2014 stream ended \u2014\u2014\u2014';
+        logPre.appendChild(doneEl);
+        if(jsAutoScroll) logPanel.scrollTop = logPanel.scrollHeight;
       });
 
       es.addEventListener('heartbeat', function(){});
@@ -2408,13 +2443,20 @@
 
       /* PART C — Output section (dominant) */
       if(isLive){
-        html += '<div class="js-section"><div class="js-section-label">Live Output</div>';
+        html += '<div class="js-section">';
+        html += '<div class="log-header"><span class="log-job-name">' + esc(j.prompt || 'Running...').substring(0,40) + '</span><div class="log-header-right"><span class="log-timer" id="log-timer-disp">0:00</span><span class="log-status-dot running"></span></div></div>';
         html += '<div class="live-log-panel" id="js-live-log"><div id="js-live-pre" class="js-term-body"></div>';
-        html += '<button class="ll-jump-btn" id="ll-jump" style="display:none">Jump to bottom</button>';
+        html += '<button class="log-scroll-btn" id="ll-jump">&#8595; scroll to bottom</button>';
         html += '</div></div>';
       } else {
-        html += '<div class="js-section"><div class="js-section-label">Output</div>';
-        html += '<div class="js-pre-output" id="js-output-term"></div></div>';
+        html += '<div class="js-section">';
+        html += '<div class="js-output-hdr">';
+        html += '<span class="js-output-hdr-label">Output</span>';
+        html += '<span class="js-output-hdr-lines" id="js-output-linecount"></span>';
+        html += '<button class="js-output-hdr-copy" id="js-output-hdr-copy-btn" type="button">Copy</button>';
+        html += '</div>';
+        html += '<div class="js-pre-output" id="js-output-term"></div>';
+        html += '</div>';
       }
 
       /* PART D — Token usage (done jobs only) */
@@ -2438,12 +2480,28 @@
       /* Render static output via ansi_up for completed jobs */
       if(!isLive){
         var outTerm = $('js-output-term');
+        var lineCountEl = $('js-output-linecount');
+        var hdrCopyBtn = $('js-output-hdr-copy-btn');
         if(outTerm){
           _getAnsiUp(function(au){
             var raw = j.output || '(no output yet)';
             var lines = raw.split('\n');
-            var frags = lines.map(function(l){ return au.ansi_to_html(l); });
-            outTerm.innerHTML = frags.join('<br>');
+            /* Trim single trailing blank line */
+            if(lines.length > 1 && !lines[lines.length - 1].trim()) lines = lines.slice(0, -1);
+            var frag = document.createDocumentFragment();
+            lines.forEach(function(l){
+              var el = document.createElement('div');
+              el.className = tLineClass(l);
+              el.innerHTML = l.trim() ? au.ansi_to_html(l) : '\u00a0';
+              frag.appendChild(el);
+            });
+            outTerm.appendChild(frag);
+            if(lineCountEl) lineCountEl.textContent = '\u2937 ' + lines.length + ' lines';
+          });
+        }
+        if(hdrCopyBtn){
+          hdrCopyBtn.addEventListener('click', function(){
+            copyToClipboard(j.output || '', hdrCopyBtn);
           });
         }
       }
@@ -2519,13 +2577,13 @@
         var livePre = $('js-live-pre');
         if(liveLog && livePre) startJobStream(id, livePre, liveLog);
 
-        /* Jump to bottom button */
+        /* Scroll-to-bottom button */
         var jumpBtn = $('ll-jump');
         if(jumpBtn && liveLog){
           jumpBtn.addEventListener('click', function(){
             liveLog.scrollTop = liveLog.scrollHeight;
             jsAutoScroll = true;
-            jumpBtn.style.display = 'none';
+            jumpBtn.classList.remove('visible');
           });
         }
       }
@@ -2811,4 +2869,5 @@
       }, false);
     });
   })();
+
 })();

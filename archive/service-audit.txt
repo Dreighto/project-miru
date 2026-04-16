@@ -1,0 +1,324 @@
+================================================================================
+PROJECT MIRU — WINDOWS SERVICE CONFIGURATION AUDIT
+Date: 2026-04-15
+Auditor: Claude Sonnet 4.6 (read-only, no changes made)
+================================================================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. WINDOWS SERVICES (Get-Service / Win32_Service)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Only ONE Miru-related Windows service found:
+
+  Name        : MiruDashboard
+  DisplayName : MiruDashboard
+  Status      : Paused        ← NOT running; effectively inert
+  StartType   : Automatic
+  StartName   : LocalSystem   ← runs as SYSTEM
+  PathName    : C:\WINDOWS\system32\nssm.exe
+
+This is the OLD PM Dashboard NSSM service. It is PAUSED (not stopped, not running).
+It is NOT the currently active PM Dashboard process.
+
+The Dispatcher (19000) has NO Windows service entry.
+Miru AI (18765) has NO Windows service entry.
+
+Both are plain Python processes managed entirely by PowerShell scripts.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. CURRENT DISPATCHER PROCESS (port 19000)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  PID           : 23344
+  Process Name  : python
+  Path          : C:\Python314\python.exe
+  CommandLine   : "C:\Python314\python.exe" D:\dev\tcg-watcher-worktree\dispatcher\task_dispatcher.py
+  Owner         : NAS\NAS
+  Parent PID    : 2632 (process no longer exists — orphaned parent chain)
+
+The Dispatcher runs as the interactive user NAS\NAS.
+It was launched by start_dispatcher.ps1 (most recently via restart_dispatcher.ps1).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. CURRENT USER CONTEXT (the shell Claude Code runs in)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Identity          : NAS\NAS
+  Admin group       : YES — member of BUILTIN\Administrators
+  Token elevated    : FALSE — running with FILTERED (standard) token due to UAC
+  Token type        : Split-token: admin group present but "used for deny only"
+
+This is the classic UAC split-token situation:
+  NAS\NAS is an administrator BUT PowerShell is running with the restricted token.
+  Any operation requiring full admin privileges needs an explicit elevation step.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. NSSM INSTALLATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  C:\WINDOWS\system32\nssm.exe   ← FOUND (system-wide install)
+  C:\tools\                      ← exists but contains only sqlite3
+  C:\tools\nssm\                 ← NOT FOUND
+  C:\nssm\                       ← NOT FOUND
+  C:\Program Files\nssm\         ← NOT FOUND
+  D:\tools\                      ← NOT FOUND
+
+NSSM is system-wide at C:\WINDOWS\system32\nssm.exe.
+It is NOT on PATH for the current shell (Get-Command nssm returns nothing).
+The MiruDashboard service uses it as its service binary.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. POWERSHELL EXECUTION POLICY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  MachinePolicy  : Undefined
+  UserPolicy     : Undefined
+  Process        : Bypass        ← set by Cursor/Claude Code launcher
+  CurrentUser    : RemoteSigned
+  LocalMachine   : Undefined
+
+The restart scripts are called with -ExecutionPolicy Bypass, so policy is not
+the blocking factor. This is fine.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. SCHEDULED TASKS (Miru-related)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+A. OP Miru Startup
+   TaskPath    : \
+   State       : Ready
+   Trigger     : Boot
+   RunAs       : NAS\NAS
+   RunLevel    : Highest (ELEVATED — full admin token)
+   LogonType   : S4U (runs without password prompt, works without login)
+   Action      : C:\Users\andre\.codex\worktrees\0814\tcg-watcher\windows\op_miru_bootstrap.cmd
+   WorkingDir  : C:\Users\andre\.codex\worktrees\0814\tcg-watcher
+   LastRun     : 2026-04-15 03:49:07
+   LastResult  : 2147942667 = 0x8007010B = ERROR_DIRECTORY (invalid directory)
+
+   *** CRITICAL: THIS TASK IS BROKEN ***
+   The path C:\Users\andre\.codex\worktrees\0814\tcg-watcher does NOT EXIST.
+   This is an old Codex worktree path that has been deleted.
+   The task runs at boot but FAILS SILENTLY every time.
+   The current Dispatcher is NOT started by this task.
+
+B. RestartMiruAIRelay
+   State       : Ready
+   RunAs       : NAS\NAS
+   RunLevel    : Limited (NOT elevated)
+   LogonType   : Interactive only
+   Action      : powershell.exe -Command "Start-ScheduledTask -TaskName 'RestartMiruAI'"
+   Comment     : "User-safe relay that triggers SYSTEM Miru AI restart task"
+   LastResult  : 1 (FAILED — last run 2026-04-05)
+
+   *** TARGET TASK 'RestartMiruAI' DOES NOT EXIST ***
+   This relay was designed to call an elevated SYSTEM task for Miru AI restart,
+   but that elevated task was never created. The relay fails every time it runs.
+
+C. RestartMiruDashboardRelay
+   State       : Ready
+   RunAs       : NAS\NAS
+   RunLevel    : Limited (NOT elevated)
+   LogonType   : Interactive only
+   Action      : powershell.exe -Command "Start-ScheduledTask -TaskName 'RestartMiruDashboard'"
+   Comment     : "User-safe relay that triggers SYSTEM PM restart task"
+   LastResult  : 1 (FAILED — last run 2026-04-07)
+
+   *** TARGET TASK 'RestartMiruDashboard' DOES NOT EXIST ***
+   Same problem as the AI relay — the elevated backing task was never created.
+
+D. Miru Nightly Backup     — State: DISABLED
+E. Miru Worker (Worktree Overlap) — State: DISABLED
+
+Note: There is NO scheduled task for the Dispatcher (19000) restart,
+neither a relay nor an elevated backing task.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. RESTART SCRIPT ANALYSIS: restart_dispatcher.ps1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+What it does (step by step):
+  1. Finds all PIDs listening on port 19000 via Get-NetTCPConnection
+  2. Stop-Process -Id $procId -Force     ← kill existing Python process
+  3. Waits for port 19000 to stop listening
+  4. Calls: & $startScriptPath -Force    ← runs start_dispatcher.ps1
+  5. start_dispatcher.ps1 calls:
+       Start-Process -FilePath python.exe \
+                     -ArgumentList @(dispatcher_script) \
+                     -WindowStyle Hidden \
+                     -PassThru
+     (NO -Verb RunAs, NO elevation requested)
+  6. Polls http://127.0.0.1:19000/ for health
+  7. Checks Tailscale IP health
+
+What it does NOT do:
+  - Does NOT use Start-Process -Verb RunAs
+  - Does NOT call NSSM in any way
+  - Does NOT use net stop / net start
+  - Does NOT call Start-ScheduledTask
+  - Does NOT request or require elevation explicitly
+
+All three restart scripts (restart_dispatcher.ps1, restart_pm.ps1, restart_miru_ai.ps1)
+follow the same pattern. None of them request elevation.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. UAC CONFIGURATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  EnableLUA                     : 1  (UAC is ON)
+  ConsentPromptBehaviorAdmin    : 5  ← "Prompt for credentials on secure desktop"
+  ConsentPromptBehaviorUser     : 3  ← "Prompt for credentials"
+  PromptOnSecureDesktop         : 1  (secure desktop — switches to dedicated screen)
+  LocalAccountTokenFilterPolicy : (not set = default 0)
+
+ConsentPromptBehaviorAdmin=5 is the most important value here.
+It means: even for administrator accounts, any operation requiring elevation
+will show a CREDENTIAL PROMPT (username + password) on the secure desktop —
+NOT just a "yes/no" consent dialog. This is the strictest admin UAC mode.
+
+LocalAccountTokenFilterPolicy=0 (not set = 0) means: local admin accounts
+connecting remotely get filtered tokens. Relevant for remote/WMI scenarios.
+
+================================================================================
+SUMMARY
+================================================================================
+
+ACCOUNT the Dispatcher runs under:
+  NAS\NAS — the interactive Windows user account.
+  NOT a service account. NOT LocalSystem. NOT a dedicated service user.
+  The same account that opens Cursor and runs Claude Code sessions.
+
+TOKEN LEVEL when Claude Code runs restarts:
+  STANDARD (filtered) token — NOT elevated.
+  NAS\NAS is in the Administrators group, but UAC splits the token.
+  The PowerShell shell Claude Code uses runs WITHOUT admin privileges.
+
+HOW the Dispatcher currently stays alive:
+  Manually — someone ran restart_dispatcher.ps1 during a session.
+  The OP Miru Startup task (which was designed to auto-start at boot) is
+  BROKEN and points to a deleted Codex worktree path. It fails silently.
+
+================================================================================
+PROBLEM: WHY UAC PROMPTS APPEAR DURING RESTARTS
+================================================================================
+
+The restart scripts themselves DO NOT request elevation. So a UAC prompt
+from the script code itself should NOT occur. However, there are two
+scenarios where UAC prompts can appear:
+
+Scenario A — If Dispatcher was previously started by an ELEVATED process:
+  If the Dispatcher was ever started by an elevated context (e.g., an admin
+  shell, a RunAs process, or the now-broken OP Miru Startup task when it was
+  working), the Python process runs with a FULL ADMIN token.
+  
+  When Claude Code (non-elevated filtered token) calls Stop-Process -Force
+  on a process with a higher-integrity token, Windows DENIES access.
+  On Windows with UAC, attempting operations that require a higher privilege
+  level causes Windows to either:
+    a) Silently fail with "Access Denied" (most common for Stop-Process), OR
+    b) In some application contexts, trigger a UAC elevation dialog.
+
+  Currently, the running Dispatcher (PID 23344) was started from the restart
+  script in the PREVIOUS session — so it is running with whatever token THAT
+  session had. If that session was elevated, the process is elevated.
+
+Scenario B — Windows security warnings from hidden process spawning:
+  Start-Process with -WindowStyle Hidden can trigger Windows Defender or
+  SmartScreen warnings in some configurations, which surface as UAC-style
+  dialogs.
+
+Scenario C — The IDE or terminal itself requests elevation:
+  If Cursor or another tool around Claude Code's shell requests admin elevation
+  for file watching, process management, or port operations, the UAC prompt
+  from that request appears even though the restart script didn't ask for it.
+
+Most likely scenario in practice:
+  The shell session Claude Code runs in is non-elevated.
+  Stop-Process -Force on the existing Dispatcher process may fail if that
+  process has a higher-integrity token (from being started by an elevated shell).
+  Windows then surfaces a UAC credential dialog (ConsentPromptBehaviorAdmin=5
+  means CREDENTIALS are required, not just a click) asking for admin password.
+
+================================================================================
+RECOMMENDATION: Minimal change to allow restarts without UAC
+================================================================================
+
+Create a Scheduled Task pair for the Dispatcher, following the same relay
+pattern already intended for PM and Miru AI:
+
+STEP 1 — Create an elevated backing task (run once as admin, from elevated shell):
+
+  $action  = New-ScheduledTaskAction -Execute "powershell.exe" `
+               -Argument '-NoProfile -ExecutionPolicy Bypass -File "D:\dev\tcg-watcher-worktree\windows\restart_dispatcher.ps1"'
+  $trigger = New-ScheduledTaskTrigger -Once -At "2000-01-01" # dummy, never fires on its own
+  $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+  $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
+  Register-ScheduledTask -TaskName "RestartMiruDispatcher" -Action $action `
+    -Trigger $trigger -Principal $principal -Settings $settings -Force
+
+  This task runs as SYSTEM (full admin) and never needs a UAC prompt.
+
+STEP 2 — Create a limited relay task (can be done as any admin, or update the existing relay):
+
+  $action    = New-ScheduledTaskAction -Execute "powershell.exe" `
+                 -Argument '-NoProfile -ExecutionPolicy Bypass -Command "Start-ScheduledTask -TaskName ''RestartMiruDispatcher''"'
+  $trigger   = New-ScheduledTaskTrigger -Once -At "2000-01-01"
+  $principal = New-ScheduledTaskPrincipal -UserId "NAS\NAS" -LogonType Interactive -RunLevel Limited
+  Register-ScheduledTask -TaskName "RestartMiruDispatcherRelay" -Action $action `
+    -Trigger $trigger -Principal $principal -Force
+
+STEP 3 — Claude Code calls the relay:
+
+  Start-ScheduledTask -TaskName "RestartMiruDispatcherRelay"
+
+  OR even simpler — Claude Code could call the backing task directly:
+  Start-ScheduledTask -TaskName "RestartMiruDispatcher"
+  (Start-ScheduledTask does NOT need elevation to trigger a SYSTEM task that
+   already exists in Task Scheduler — this is the whole point of the relay pattern)
+
+ALSO RECOMMENDED: Fix the OP Miru Startup task to point to the correct worktree:
+  Old path: C:\Users\andre\.codex\worktrees\0814\tcg-watcher
+  New path: D:\dev\tcg-watcher-worktree
+  This will restore auto-start at boot.
+
+ALSO RECOMMENDED: Create the missing backing tasks for PM and Miru AI:
+  'RestartMiruDashboard' — the relay exists, the target doesn't
+  'RestartMiruAI'        — the relay exists, the target doesn't
+
+================================================================================
+RISK: What could go wrong
+================================================================================
+
+1. SYSTEM task restarts without user awareness:
+   A SYSTEM task can be triggered by any process on the machine (including
+   malicious ones). If someone gains code execution as NAS\NAS, they can
+   restart services at will. LOW additional risk vs. current state since
+   the restart scripts are already world-readable.
+
+2. SYSTEM task can kill system processes:
+   The restart script uses Stop-Process -Force. Running as SYSTEM means it
+   can kill ANY process, not just the Dispatcher's Python process.
+   If the port detection code has a bug, it could kill a critical process.
+   MITIGATION: The port filter is specific (port 19000) and the current
+   restart script is already well-tested.
+
+3. Log files written by SYSTEM may have wrong ownership/permissions:
+   The restart script writes to logs/. If run as SYSTEM, those log files
+   will be owned by SYSTEM. Subsequent non-elevated writes by NAS\NAS may
+   fail if permissions are restrictive.
+   MITIGATION: Windows default file creation inherits parent directory ACLs.
+   Since NAS\NAS owns the repo directory, this is unlikely to be a problem.
+
+4. OP Miru Startup fix required before relay pattern will work headlessly:
+   Even with a SYSTEM restart task, if the machine reboots, the services
+   need to be started fresh. Fixing OP Miru Startup is a prerequisite for
+   true headless operation.
+
+5. The relay pattern for PM (18080) and Miru AI (18765) is incomplete:
+   Both relay tasks exist but their backing tasks don't. Creating only the
+   Dispatcher backing task leaves PM and Miru AI still broken.
+   All three backing tasks should be created together.
+
+================================================================================
+END OF AUDIT
+================================================================================

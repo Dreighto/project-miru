@@ -39,9 +39,28 @@
   Object.keys(vars).forEach(function(k){ html.style.setProperty(k, vars[k]); });
 })();
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<style>
+@font-face {
+  font-family: 'Geist Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('https://cdn.jsdelivr.net/fontsource/fonts/geist:vf@latest/latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Geist Mono Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('https://cdn.jsdelivr.net/fontsource/fonts/geist-mono:vf@latest/latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark-dimmed.min.css" />
 <link rel="stylesheet" href="{{ url_for('static', filename='dispatcher.css') }}?v={{ cache_bust }}" />
 </head>
@@ -77,23 +96,23 @@
     <div class="ws-handle"></div>
     <div class="ws-title">Switch Worker</div>
     <div class="ws-list">
-      <div class="ws-item selected" data-worker="claude" data-label="C" data-name="Claude Sonnet" data-color-a="#5B5BD6" data-color-b="#3B82F6">
-        <div class="ws-avatar" style="background:linear-gradient(135deg,#5B5BD6,#3B82F6)">C</div>
+      <div class="ws-item selected" data-worker="claude" data-label="C" data-name="Claude Sonnet" data-color-a="#D97706" data-color-b="#B45309">
+        <div class="ws-avatar" data-worker="claude">C</div>
         <div class="ws-info"><div class="ws-name">Claude Sonnet</div><div class="ws-desc">Anthropic · Best for reasoning + writing</div></div>
         <div class="ws-check"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
       </div>
-      <div class="ws-item" data-worker="cursor" data-label="Cr" data-name="Cursor" data-color-a="#1A1A2E" data-color-b="#2D2D5E">
-        <div class="ws-avatar" style="background:linear-gradient(135deg,#1A1A2E,#2D2D5E)">Cr</div>
+      <div class="ws-item" data-worker="cursor" data-label="Cr" data-name="Cursor" data-color-a="#6366F1" data-color-b="#4F46E5">
+        <div class="ws-avatar" data-worker="cursor">Cr</div>
         <div class="ws-info"><div class="ws-name">Cursor</div><div class="ws-desc">Anysphere · Best for code edits in repo</div></div>
         <div class="ws-empty"></div>
       </div>
-      <div class="ws-item" data-worker="codex" data-label="Co" data-name="Codex CLI" data-color-a="#0D3320" data-color-b="#1A6640">
-        <div class="ws-avatar" style="background:linear-gradient(135deg,#0D3320,#1A6640)">Co</div>
+      <div class="ws-item" data-worker="codex" data-label="Co" data-name="Codex CLI" data-color-a="#059669" data-color-b="#047857">
+        <div class="ws-avatar" data-worker="codex">Co</div>
         <div class="ws-info"><div class="ws-name">Codex CLI</div><div class="ws-desc">OpenAI · Terminal-native code agent</div></div>
         <div class="ws-empty"></div>
       </div>
-      <div class="ws-item" data-worker="gemini" data-label="G" data-name="Gemini CLI" data-color-a="#1A2A0D" data-color-b="#2E5A1A">
-        <div class="ws-avatar" style="background:linear-gradient(135deg,#1A2A0D,#2E5A1A)">G</div>
+      <div class="ws-item" data-worker="gemini" data-label="G" data-name="Gemini CLI" data-color-a="#1A73E8" data-color-b="#0D47A1">
+        <div class="ws-avatar" data-worker="gemini">G</div>
         <div class="ws-info"><div class="ws-name">Gemini CLI</div><div class="ws-desc">Google · Long context + multimodal</div></div>
         <div class="ws-empty"></div>
       </div>
@@ -543,6 +562,17 @@
 <!-- Lucide Icons CDN -->
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="{{ url_for('static', filename='dispatcher.js') }}?v={{ cache_bust }}"></script>
+
+<!-- SVG noise filter (P3-0 — applied to surface cards for depth texture) -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <defs>
+    <filter id="noise-filter" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" stitchTiles="stitch" result="n"/>
+      <feColorMatrix type="saturate" values="0" in="n" result="grey"/>
+      <feBlend in="SourceGraphic" in2="grey" mode="soft-light"/>
+    </filter>
+  </defs>
+</svg>
 
 <!-- Advanced options seg-group wiring -->
 <script>
