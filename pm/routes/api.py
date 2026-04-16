@@ -1,3 +1,7 @@
+import json
+import sqlite3
+import uuid
+from datetime import datetime, timezone
 from urllib.parse import quote
 
 from flask import Blueprint, current_app, jsonify, request
@@ -746,5 +750,379 @@ def api_card_single(code: str):
             "archetype": archetype,
             "image_path": base_img,
             "variants": variants,
+        }
+    )
+
+
+# ── Phase 4: Deck save/load/validate ───────────────────────────────
+# Decks live in a separate sqlite file to keep PM deck data isolated
+# from card_catalog.db (which is treated as read-only for card data).
+
+DECKS_DB_PATH = CATALOG_DB_PATH.parent / "pm_decks.db"
+
+
+def _connect_decks():
+    conn = sqlite3.connect(str(DECKS_DB_PATH))
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _ensure_decks_schema():
+    conn = _connect_decks()
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS decks (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                leader_code TEXT NOT NULL,
+                cards TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# Initialize on module import so the file exists before first request.
+_ensure_decks_schema()
+
+
+def _parse_card_colors(color: str | None) -> list[str]:
+    """Split a catalog color string like 'Red/Blue' into ['Red', 'Blue']."""
+    if not color:
+        return []
+    return [c.strip() for c in str(color).split("/") if c.strip()]
+
+
+def _fetch_card_info(codes: list[str]) -> dict[str, sqlite3.Row]:
+    """Batch-load card metadata for the given canonical codes."""
+    out: dict[str, sqlite3.Row] = {}
+    codes = [c for c in codes if c]
+    if not codes:
+        return out
+    unique = list({c.upper() for c in codes})
+    placeholders = ",".join(["?"] * len(unique))
+    conn = connect_catalog()
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT canonical_code, card_name, card_type, color, cost, power
+            FROM cards
+            WHERE canonical_code IN ({placeholders})
+            """,
+            unique,
+        ).fetchall()
+    finally:
+        conn.close()
+    for r in rows:
+        out[r["canonical_code"]] = r
+    return out
+
+
+@api_bp.get("/api/decks")
+def api_decks_list():
+    conn = _connect_decks()
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, name, leader_code, cards, created_at, updated_at
+            FROM decks
+            ORDER BY updated_at DESC
+            """
+        ).fetchall()
+    finally:
+        conn.close()
+
+    leader_codes = list({r["leader_code"] for r in rows})
+    leader_info = _fetch_card_info(leader_codes)
+
+    decks = []
+    for r in rows:
+        try:
+            card_list = json.loads(r["cards"] or "[]")
+        except (ValueError, TypeError):
+            card_list = []
+        total = sum(int(c.get("count") or 0) for c in card_list if isinstance(c, dict))
+        leader_row = leader_info.get(r["leader_code"])
+        decks.append(
+            {
+                "id": r["id"],
+                "name": r["name"],
+                "leader_code": r["leader_code"],
+                "leader_name": leader_row["card_name"] if leader_row else "",
+                "card_count": total,
+                "created_at": r["created_at"],
+                "updated_at": r["updated_at"],
+            }
+        )
+    return jsonify({"decks": decks})
+
+
+@api_bp.post("/api/decks")
+def api_decks_create():
+    payload = request.get_json(silent=True) or {}
+    name = str(payload.get("name") or "").strip()
+    leader_code = str(payload.get("leader_code") or "").strip().upper()
+    raw_cards = payload.get("cards")
+    deck_id_in = str(payload.get("id") or "").strip()
+
+    errors: list[str] = []
+    if not name:
+        errors.append("name is required")
+    if not leader_code:
+        errors.append("leader_code is required")
+
+    normalized: list[dict] = []
+    if raw_cards is None:
+        raw_cards = []
+    if not isinstance(raw_cards, list):
+        errors.append("cards must be an array")
+        raw_cards = []
+
+    for c in raw_cards:
+        if not isinstance(c, dict):
+            errors.append(f"invalid card entry: {c!r}")
+            continue
+        code = str(c.get("code") or "").strip().upper()
+        try:
+            count = int(c.get("count") or 0)
+        except (TypeError, ValueError):
+            count = 0
+        if not code:
+            errors.append("card entry missing code")
+            continue
+        if count < 1 or count > 4:
+            errors.append(f"{code}: count {count} must be between 1 and 4")
+        normalized.append({"code": code, "count": count})
+
+    # Validate against catalog
+    codes_to_check = [c["code"] for c in normalized]
+    if leader_code:
+        codes_to_check.append(leader_code)
+    info = _fetch_card_info(codes_to_check)
+
+    if leader_code:
+        lrow = info.get(leader_code)
+        if not lrow:
+            errors.append(f"leader_code {leader_code} not found in catalog")
+        elif (lrow["card_type"] or "").strip().lower() != "leader":
+            errors.append(
+                f"leader_code {leader_code} is not a Leader card "
+                f"(found card_type={lrow['card_type']!r})"
+            )
+
+    for c in normalized:
+        if c["code"] not in info:
+            errors.append(f"card code {c['code']} not found in catalog")
+
+    total_non_leader = sum(c["count"] for c in normalized)
+    if total_non_leader > 50:
+        errors.append(f"total card count {total_non_leader} exceeds 50")
+
+    if errors:
+        return jsonify({"error": "validation failed", "details": errors}), 400
+
+    deck_id = deck_id_in or str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+
+    conn = _connect_decks()
+    try:
+        existing = conn.execute(
+            "SELECT created_at FROM decks WHERE id = ?", (deck_id,)
+        ).fetchone()
+        created_at = existing["created_at"] if existing else now
+        conn.execute(
+            """
+            INSERT OR REPLACE INTO decks
+                (id, name, leader_code, cards, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                deck_id,
+                name,
+                leader_code,
+                json.dumps(normalized),
+                created_at,
+                now,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    leader_row = info.get(leader_code)
+    return (
+        jsonify(
+            {
+                "id": deck_id,
+                "name": name,
+                "leader_code": leader_code,
+                "leader_name": leader_row["card_name"] if leader_row else "",
+                "cards": normalized,
+                "created_at": created_at,
+                "updated_at": now,
+            }
+        ),
+        201,
+    )
+
+
+@api_bp.get("/api/decks/<deck_id>")
+def api_decks_get(deck_id: str):
+    conn = _connect_decks()
+    try:
+        row = conn.execute(
+            """
+            SELECT id, name, leader_code, cards, created_at, updated_at
+            FROM decks
+            WHERE id = ?
+            """,
+            (deck_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return jsonify({"error": "Deck not found"}), 404
+
+    try:
+        card_list = json.loads(row["cards"] or "[]")
+    except (ValueError, TypeError):
+        card_list = []
+
+    codes = [c["code"] for c in card_list if isinstance(c, dict) and c.get("code")]
+    all_codes = codes + [row["leader_code"]] if row["leader_code"] else list(codes)
+    info = _fetch_card_info(all_codes)
+    leader_row = info.get(row["leader_code"])
+
+    cards_out = []
+    for c in card_list:
+        if not isinstance(c, dict):
+            continue
+        code = str(c.get("code") or "").strip().upper()
+        cinfo = info.get(code)
+        cards_out.append(
+            {
+                "code": code,
+                "count": int(c.get("count") or 0),
+                "name": cinfo["card_name"] if cinfo else "",
+                "type": cinfo["card_type"] if cinfo else "",
+                "color": cinfo["color"] if cinfo else "",
+                "cost": cinfo["cost"] if cinfo else None,
+                "power": cinfo["power"] if cinfo else "",
+            }
+        )
+
+    return jsonify(
+        {
+            "id": row["id"],
+            "name": row["name"],
+            "leader_code": row["leader_code"],
+            "leader_name": leader_row["card_name"] if leader_row else "",
+            "cards": cards_out,
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+    )
+
+
+@api_bp.post("/api/decks/<deck_id>/validate")
+def api_decks_validate(deck_id: str):
+    conn = _connect_decks()
+    try:
+        row = conn.execute(
+            "SELECT id, name, leader_code, cards FROM decks WHERE id = ?",
+            (deck_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return jsonify({"error": "Deck not found"}), 404
+
+    try:
+        card_list = json.loads(row["cards"] or "[]")
+    except (ValueError, TypeError):
+        card_list = []
+
+    codes = [c["code"] for c in card_list if isinstance(c, dict) and c.get("code")]
+    all_codes = list(codes)
+    if row["leader_code"]:
+        all_codes.append(row["leader_code"])
+    info = _fetch_card_info(all_codes)
+
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    leader_row = info.get(row["leader_code"])
+    leader_name = ""
+    leader_colors: list[str] = []
+    if not row["leader_code"]:
+        errors.append("Deck has no leader")
+    elif not leader_row:
+        errors.append(f"leader_code {row['leader_code']} not found in catalog")
+    else:
+        leader_name = leader_row["card_name"]
+        if (leader_row["card_type"] or "").strip().lower() != "leader":
+            errors.append(f"{row['leader_code']} is not a Leader card")
+        leader_colors = _parse_card_colors(leader_row["color"])
+
+    total_cards = 0
+    colors_seen: set[str] = set()
+    cost_curve: dict[str, int] = {}
+
+    for c in card_list:
+        if not isinstance(c, dict):
+            continue
+        code = str(c.get("code") or "").strip().upper()
+        try:
+            count = int(c.get("count") or 0)
+        except (TypeError, ValueError):
+            count = 0
+        total_cards += max(0, count)
+
+        if count > 4:
+            errors.append(f"{code}: {count} copies exceeds max of 4")
+
+        cinfo = info.get(code)
+        if not cinfo:
+            errors.append(f"card code {code} not found in catalog")
+            continue
+
+        card_colors = _parse_card_colors(cinfo["color"])
+        for cc in card_colors:
+            colors_seen.add(cc)
+        if leader_colors and card_colors:
+            if not any(cc in leader_colors for cc in card_colors):
+                errors.append(
+                    f"{code} color {cinfo['color']} does not match leader colors "
+                    f"{leader_row['color'] if leader_row else ''}"
+                )
+
+        if cinfo["cost"] is not None:
+            key = str(cinfo["cost"])
+            cost_curve[key] = cost_curve.get(key, 0) + count
+
+    # Card count: <50 is a warning (legal but still building), >50 is an error
+    if total_cards > 50:
+        errors.append(f"Deck has {total_cards} cards — exceeds 50")
+    elif total_cards < 50:
+        warnings.append(f"Deck has {total_cards} cards — {50 - total_cards} short of 50")
+
+    valid = not errors and total_cards == 50
+
+    return jsonify(
+        {
+            "valid": valid,
+            "errors": errors,
+            "warnings": warnings,
+            "summary": {
+                "total_cards": total_cards,
+                "leader": leader_name,
+                "colors": sorted(colors_seen),
+                "cost_curve": cost_curve,
+            },
         }
     )
