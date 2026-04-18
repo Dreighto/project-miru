@@ -977,4 +977,116 @@ _Filled in after the Phase 7 commit lands — see §7.1 below after commit._
 
 Per Notion, Phases 6 and 7 have no pause between them (both "Continue"). Captain's instruction was to pause after Phase 7 for re-greenlight before Phase 8. Phase 7 wraps here.
 
+---
+
+# Migration Phase 8 — Firewall + Scheduled Tasks
+
+**Date:** 2026-04-18 (~14:40 local on ROOM)
+**Host:** ROOM
+**Session:** elevated (Administrator) PowerShell context — needed for `New-NetFirewallRule` and `Register-ScheduledTask`.
+**Authoritative plan:** Notion Phase 8.
+
+## 0. Elevation verification
+
+```
+[Security.Principal.WindowsPrincipal] .IsInRole([WindowsBuiltInRole]::Administrator)
+  -> True
+```
+
+Elevated session confirmed. No UAC prompts encountered during Phase 8.
+
+## 1. Firewall — inbound rules
+
+Scope per Notion: ONE rule per port, Private profile only, TCP, specific port. Pre-check on ROOM found no existing Miru-related inbound rules (clean slate, no duplicates).
+
+Three rules created via `New-NetFirewallRule`:
+
+| DisplayName | Port | Protocol | Profile | Direction | Action | Enabled |
+|---|---|---|---|---|---|---|
+| Miru PM Dashboard 18080 | 18080 | TCP | Private | Inbound | Allow | True |
+| Miru AI 18765 | 18765 | TCP | Private | Inbound | Allow | True |
+| Miru Task Dispatcher 19000 | 19000 | TCP | Private | Inbound | Allow | True |
+
+Verified via `Get-NetFirewallRule | Get-NetFirewallPortFilter` join — all three show the expected protocol + port binding.
+
+## 2. Scheduled tasks — source inventory
+
+| Source | File | Notes |
+|---|---|---|
+| `D:\Drop-In\scheduled_tasks\` | `OP Miru Startup.xml` | UTF-16 LE BOM, clean — used as canonical source |
+| `D:\Drop-In\scheduled_tasks\` | `Miru Nightly Backup.xml` | Originally `Enabled=false` on NAS |
+| `D:\Drop-In\scheduled_tasks\` | `Miru Worker (Worktree Overlap).xml` | Originally `Enabled=false`, references foreign user `andre` + Python 3.7 |
+| `D:\miru-migration\config_backup\` | `scheduled_task_OP_Miru_Startup.xml` | Duplicate of Drop-In `OP Miru Startup.xml`; **not used** (Drop-In version preferred — cleaner encoding) |
+
+## 3. Task rewrites applied
+
+Common rewrite for every imported task:
+
+- **Principal SID**: `S-1-5-21-2886909604-2079632362-3451800254-1001` (NAS) → `S-1-5-21-245781674-56561636-2242498322-1001` (ROOM\Dreighto)
+
+Per-task rewrites:
+
+| Task | Replacements |
+|---|---|
+| OP Miru Startup | `D:\dev\tcg-watcher-worktree` → `D:\dev\miru` (matches Command `-File` arg + WorkingDirectory + Description) |
+| Miru Nightly Backup | `D:\docker\tcg-watcher` → `D:\dev\miru` (matches `cd /d` path + script path) |
+| Miru Worker (Worktree Overlap) | `C:\Users\andre\AppData\Local\Programs\Python\Python37\python.exe` → `C:\Users\Dreighto\AppData\Local\Programs\Python\Python314\python.exe`; `C:\Users\andre\.codex\worktrees\0814\tcg-watcher` → `D:\dev\miru` |
+
+Rewritten XMLs were written to `tests/_tmp/phase8/` (gitignored) and registered via `Register-ScheduledTask -Xml -Force`.
+
+## 4. Task registration results
+
+Verified via `Get-ScheduledTask`.
+
+| TaskName | State | Trigger | Action |
+|---|---|---|---|
+| OP Miru Startup | Ready | BootTrigger + PT30S | `powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "D:\dev\miru\windows\startup_all.ps1"` |
+| Miru Nightly Backup | **Disabled** (preserved) | Daily 02:00 | `cmd.exe /c cd /d D:\dev\miru && powershell.exe -ExecutionPolicy Bypass -File D:\dev\miru\tools\miru_backup.ps1` |
+| Miru Worker (Worktree Overlap) | **Disabled** (preserved) | Every 30 min | `C:\Users\Dreighto\AppData\Local\Programs\Python\Python314\python.exe -m tools.run_worktree_worker --mode overlap --log-run` |
+| MiruTaskDispatcher | Ready | At logon (Dreighto) + PT30S | `D:\dev\miru\windows\op_dispatcher_bootstrap.cmd` |
+
+`MiruTaskDispatcher` was created by running `windows\install_dispatcher_startup.ps1` — script auto-detected elevation, removed any existing task (none present), and registered a fresh one tied to the current user at logon with a 30s Tailscale delay.
+
+## 5. Flags — items that need Captain's eyes before Phase 9 goes hot
+
+These do not block Phase 9 (services start regardless), but surface them now so they don't bite later:
+
+### 5a. `D:\dev\miru\tools\miru_backup.ps1` is missing.
+- The `Miru Nightly Backup` task is registered with the correct future path but the script itself was not copied from NAS. Task is left **Disabled** (matches the original NAS state), so it cannot fail silently.
+- To enable nightly backups on ROOM, restore or recreate `tools\miru_backup.ps1`, then flip the task to Enabled.
+
+### 5b. `RunMiruAssetJob` was not recreated.
+- Notion Phase 8 mentions "`RunMiruAssetJob` — if not in backup, recreate via existing install script". There is no XML in either backup location and **no install script** exists anywhere in the repo (searched `windows\`, `tools\`, and all install_* / register_* candidates). The runtime script `windows\run_miru_asset_job.ps1` exists, but an installer to create the scheduled task does not.
+- Skipped deliberately. Creating a new installer from scratch is outside Phase 8 scope. Flagged for Captain to decide between: (a) author a new install script in a dedicated pass, (b) accept that this job runs manually for now, or (c) provide the XML from NAS if it was missed in the Drop-In export.
+
+### 5c. `Miru Worker (Worktree Overlap)` — registered but suspect.
+- Original NAS XML referenced user `andre`'s codex worktree, not the Miru repo. Path rewrites landed on `D:\dev\miru` and the repo does contain `tools\run_worktree_worker.py`, so the task will now resolve correctly if enabled. Task is left **Disabled** (matches original).
+- Whether Captain actually wants this task active on ROOM is an open question — it wasn't active on NAS either.
+
+### 5d. `data\overlays\asset_job_pointer.txt` still contains the old path.
+- File content: `D:\dev\tcg-watcher-worktree\tools\fetch_chapter19_11c_install_images.py`.
+- This is a Phase 4 (path rewrites) miss, surfaced while investigating item 5b. Not fixed in Phase 8 — Phase 8 scope was firewall + tasks, not content rewrites. Flagged for a follow-up path-rewrite pass.
+
+## 6. Summary
+
+| Outcome | Count |
+|---|---|
+| Firewall rules created | 3 / 3 |
+| Scheduled tasks registered | 4 / 4 planned (OP Miru Startup, Miru Nightly Backup, Miru Worker, MiruTaskDispatcher) |
+| Scheduled tasks skipped | 1 (RunMiruAssetJob — no installer, flagged) |
+| Path rewrite failures | 0 |
+| SID rewrite failures | 0 |
+| UAC interruptions | 0 |
+
+## 7. Git commit + tag
+
+_Filled in after the Phase 8 commit lands._
+
+---
+
+**Phase 8 status: COMPLETE.**
+
+Per Notion, no pause between Phase 8 and Phase 9. Phase 9 itself has a built-in pause for Captain's phone verification.
+
+
 **Awaiting Captain review before Phase 8 (firewall + scheduled tasks).**
