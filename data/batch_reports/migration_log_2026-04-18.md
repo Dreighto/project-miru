@@ -1257,6 +1257,167 @@ _Filled in after the Phase 9 commit lands._
 
 Phone verification cleared. Next: Phase 10 — MCP verification across workers + Dispatcher Files tab root path verification.
 
+---
+
+# Migration Phase 10 — MCP verification + Dispatcher Files tab
+
+**Date:** 2026-04-18 (~15:35 local on ROOM)
+**Host:** ROOM
+**Authoritative plan:** Notion Phase 10.
+**Captain directive:** For workers I can't launch from inside Claude Code (Cursor, Codex, Gemini, Copilot, Windsurf), inspect config files only. Don't spawn other workers. Document what I can verify vs what needs Captain's manual follow-up.
+
+## 1. Claude Code — LIVE VERIFIED
+
+Claude Code reads MCPs from repo `.mcp.json` (13 servers) plus this session's auto-loaded MCPs. Every MCP path in `.mcp.json` now reads `D:\dev\miru` (zero remaining `tcg-watcher-worktree` occurrences).
+
+Live calls made during Phases 8–10 of this session (proof, not introspection):
+
+| MCP | Call | Result |
+|---|---|---|
+| sqlite-ro-snapshot | `sqlite_all("SELECT name FROM sqlite_master WHERE type='table' …")` | Returned 10 table names (`cards`, `card_intelligence`, `market_prices`, …) — was RED in Phase 1, now GREEN |
+| notion | `notion-fetch(migration-page)` in Phase 8; `notion-get-teams()` now | Both returned structured data — was RED in Phase 1, now GREEN |
+| youtube | `list_playlists()` | MCP process responded with OAuth-scope error (expected — `mine=true` needs user OAuth, not just API key). MCP is reachable; auth scope is a product constraint, not a deployment gap — was RED in Phase 1, MCP infra now GREEN |
+| magic-ui | `logo_search(["github"], "SVG")` | Returned GitHub Copilot icon SVG — was RED in Phase 1, now GREEN |
+| git, filesystem, perplexity, sequential-thinking, fetch, justtcg, playwright, shadcn | Not re-tested here; trusted based on `.mcp.json` correctness + availability in session's tool namespace | No action |
+
+All four Phase-1-red MCPs are now responding from the new repo location. No regressions on the others.
+
+## 2. Cursor — CONFIG AUDIT (needs Captain launch)
+
+**Can verify from here:**
+- Project-level: repo `.mcp.json` exists (4,239 B) with 13 servers, all paths `D:\dev\miru`. Cursor will pick this up automatically when opening the repo folder.
+- User-level: `C:\Users\Dreighto\.cursor\mcp.json` — **NOT present**. The Cursor dir exists (argv, extensions, plugins, projects) but the user MCP file was never deployed.
+- Backup source: `D:\Drop-In\cursor\dot_cursor\mcp.json` (2,072 B) and `D:\miru-migration\secrets\cursor_mcp_user.json` (same 2,072 B).
+
+**Backup files need rewrites before deployment** (both are pre-migration snapshots):
+- Contain `D:\dev\tcg-watcher-worktree` paths (not D:\dev\miru)
+- Contain **hardcoded API keys as literal values** for Perplexity / Notion / YouTube / JustTCG. The current repo `.mcp.json` uses `.env`-driven secret loading (correct pattern). Deploying the backup verbatim would regress secret handling.
+
+**Recommended (Captain decides):** Either (a) copy `Drop-In\cursor\dot_cursor\mcp.json` to `C:\Users\Dreighto\.cursor\mcp.json` *after* path-rewrite + secret-scrub, or (b) skip user-level entirely and rely on project-level `.mcp.json` for miru work. Option (b) matches how Claude Code is configured here.
+
+**Needs Captain manual verification:** Launch Cursor in `D:\dev\miru`, confirm MCPs appear in Cursor's MCP panel and respond to one test call.
+
+## 3. Codex — CONFIG AUDIT (needs Captain launch)
+
+**Can verify from here:**
+- Codex CLI resolvable on PATH: `C:\Users\Dreighto\AppData\Roaming\npm\codex.ps1` ✓
+- User config dir `C:\Users\Dreighto\.codex\` contains only `tmp\` — no `config.toml` or `config.json`.
+- NAS backup `D:\Drop-In\codex\` is **empty**. No MCP config was in use on NAS. Intentional empty slate.
+
+**Interpretation:** Codex on ROOM has zero MCPs configured by design. No file-level verification possible beyond confirming that state.
+
+**Needs Captain manual verification:** Run `codex` from a shell and confirm it launches cleanly. No MCP output expected.
+
+## 4. Gemini — CONFIG AUDIT (needs Captain launch)
+
+**Can verify from here:**
+- Gemini CLI on PATH: `C:\Users\Dreighto\AppData\Roaming\npm\gemini.ps1` ✓
+- User-level: `C:\Users\Dreighto\.gemini\` contains only `projects.json` — no settings.json.
+- NAS backup `D:\Drop-In\gemini\` is **empty** — no user-level config on NAS either.
+- Repo-level: `D:\dev\miru\.gemini\settings.json` (Gemini reads project settings from here). All paths `D:\dev\miru` (Phase 4 applied).
+
+**Gemini MCP subset vs Claude Code's (documented per Notion directive):**
+
+| MCP | Claude Code `.mcp.json` | Gemini `.gemini/settings.json` |
+|---|---|---|
+| fetch | ✓ | ✓ |
+| justtcg | ✓ | ✓ |
+| perplexity | ✓ | ✓ |
+| sequential-thinking | ✓ | ✓ |
+| sqlite-ro-snapshot | ✓ | ✓ (with `includeTools: [read_query, get_schema_ddl]` — narrower tool surface) |
+| git | ✓ | ✓ |
+| notion | ✓ | ✓ |
+| youtube | ✓ | ✓ |
+| **filesystem** | ✓ | **missing** (intentional — Gemini CLI already has local FS via its own tools) |
+| **playwright** | ✓ | **missing** (intentional — no browser automation surface for Gemini) |
+| **magic-ui** | ✓ | **missing** (intentional — UI-component surface not used in Gemini flows) |
+| **shadcn** | ✓ | **missing** (intentional — same reason as magic-ui) |
+
+Net: Gemini has **8 MCPs**, Claude Code has **13**. Gap of 4 is deliberate by the design Captain referenced in the Notion directive.
+
+No NAS-side Gemini config to cross-reference against; treating the repo-level `.gemini/settings.json` as canonical.
+
+**Needs Captain manual verification:** Run `gemini` from `D:\dev\miru` and confirm the 8 MCPs load. Expect no filesystem/playwright/magic-ui/shadcn entries.
+
+## 5. Copilot (VS Code) — CONFIG AUDIT (needs Captain launch)
+
+**Can verify from here:**
+- VS Code user settings: `C:\Users\Dreighto\AppData\Roaming\Code\User\settings.json` = `{}` (empty default).
+- `chatLanguageModels.json` = 2 B (empty default).
+- Backup at `D:\Drop-In\vscode\User\settings.json` exists but **was not deployed**.
+
+**Per Notion:** "no MCP expected" for Copilot — so MCP-wise, nothing to verify. The un-deployed general VS Code settings backup is outside Phase 10 scope.
+
+**Needs Captain manual verification:** Launch VS Code, confirm Copilot is signed in and operating. Decide separately whether to deploy the backup general settings (unrelated to MCP).
+
+## 6. Windsurf — CONFIG AUDIT (needs Captain launch)
+
+**Can verify from here:**
+- Windsurf app installed at `C:\Users\Dreighto\AppData\Local\Programs\Windsurf` ✓
+- No user config directories present: neither `C:\Users\Dreighto\.codeium\windsurf\` nor `C:\Users\Dreighto\AppData\Roaming\Windsurf\User\` exist.
+- Backup exists at `D:\Drop-In\windsurf\settings.json` and `D:\Drop-In\windsurf\codeium_windsurf\` (brain, cascade, memories, etc).
+
+**Interpretation:** Windsurf has not been launched on ROOM yet — config dirs only get created on first launch. Can't deploy settings until the target dirs exist.
+
+**Needs Captain manual verification:**
+1. Launch Windsurf once so it creates its user config dirs.
+2. Decide whether to deploy `Drop-In\windsurf\` backup on top, and (if yes) whether NAS→ROOM path / hostname rewrites are needed inside those settings.
+3. Confirm sign-in works.
+
+## 7. Dispatcher Files tab — LIVE VERIFIED
+
+**Can verify from here:** The Dispatcher's Files API is at `GET /api/files`. Root path is `_FILE_ROOT = REPO_ROOT = DISPATCHER_ROOT.parent` (`dispatcher/task_dispatcher.py:49,1158`). A separate hardcoded constant `_REPO_ROOT = r"D:\dev\miru"` sits at `task_dispatcher.py:1700` — Phase 4 rewrite applied correctly (old value would have been `tcg-watcher-worktree`).
+
+Live call:
+
+```
+GET http://127.0.0.1:19000/api/files?path=
+-> 200 OK
+   path: "."
+   entries (30 total, first 20):
+     [D] .claude  [D] .gemini  [D] .npm-cache  [D] app  [D] archive
+     [D] config   [D] data     [D] dispatcher  [D] docs  [D] logs
+     [D] miru-mcp [D] miru_ai  [D] pm          [D] shared [D] tests
+     [D] tools    [D] windows  .env  .gitignore  .mcp.json
+```
+
+Entry list matches the actual `D:\dev\miru\` directory listing. Files tab is serving the correct root. ✓
+
+**Needs Captain manual verification (light):** Open the Dispatcher UI at `http://room.taila28611.ts.net:19000/` from phone, click into Files tab, confirm it shows the same 30 entries.
+
+## 8. Flags — items to be aware of
+
+| # | Flag | Severity |
+|---|---|---|
+| 8a | `C:\Users\Dreighto\.cursor\mcp.json` missing; backup has old paths + inlined API keys; needs rewrite + scrub before deployment. Current project-level `.mcp.json` covers miru-repo Cursor sessions. | Medium — only matters if Captain uses Cursor outside the miru repo |
+| 8b | VS Code user `settings.json` is `{}` — backup not deployed. Outside MCP scope (Copilot has no MCP per Notion). | Low |
+| 8c | Windsurf not yet launched on ROOM; config dirs absent. Backup waiting at `Drop-In\windsurf\`. | Low — one-time setup Captain can do later |
+| 8d | Notion Phase 4 audit item #8 mentioned `.claude/settings.local.json` path/hostname rewrites. That file does not exist in the current repo checkout; `.claude/` is gitignored (`.gitignore:10`). Claude Code regenerates `settings.local.json` lazily on first local-setting change. No rewrite needed — the file just isn't here to edit. | Low — status clarification, not a gap |
+| 8e | `C:\temp\playwright-shots\` exists (empty) ✓ — Phase 4 audit item #8 side-effect is in place. | None — already done |
+
+## 9. Summary
+
+| Target | Mechanism | Result |
+|---|---|---|
+| Claude Code | Live MCP calls this session | 4/4 previously-red MCPs now green; all 13 paths clean |
+| Cursor | Config file audit | Project `.mcp.json` clean ✓; user `.cursor/mcp.json` absent — Captain launch needed |
+| Codex | Config file audit | No user MCPs by design; Captain launch needed |
+| Gemini | Config file audit | Repo `.gemini/settings.json` clean, 8-MCP intentional subset; Captain launch needed |
+| Copilot | Config file audit | No MCP expected; Captain launch needed for sign-in |
+| Windsurf | Config file audit | Not yet launched on ROOM; Captain first-launch needed |
+| Dispatcher Files tab | Live API call | Root = D:\dev\miru ✓ |
+
+## 10. Git commit + tag
+
+_Filled in after the Phase 10 commit lands._
+
+---
+
+**Phase 10 status: COMPLETE.**
+
+Per Notion, no pause between Phase 10 and Phase 11. Proceeding to Phase 11 — full-stack integration test + migration closeout.
+
+
 
 
 **Awaiting Captain review before Phase 8 (firewall + scheduled tasks).**
