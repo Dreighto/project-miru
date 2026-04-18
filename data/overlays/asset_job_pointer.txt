@@ -1,1 +1,1 @@
-D:\dev\tcg-watcher-worktree\tools\fetch_chapter19_11c_install_images.py
+D:\dev\miru\tools\fetch_chapter19_11c_install_images.py

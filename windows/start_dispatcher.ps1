@@ -1,4 +1,4 @@
-# Miru Task Dispatcher launcher (port 19000)
+﻿# Miru Task Dispatcher launcher (port 19000)
 # Hidden-window pattern + PID file + health poll.
 # Dot-sources op_miru_common.ps1 for shared helpers.
 #

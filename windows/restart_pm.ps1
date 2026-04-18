@@ -1,4 +1,4 @@
-# restart_pm.ps1 — Project Miru PM Dashboard restart wrapper
+﻿# restart_pm.ps1 — Project Miru PM Dashboard restart wrapper
 # Triggers the MiruRestartPM scheduled task (SYSTEM, highest privilege).
 # Does NOT require elevation — Start-ScheduledTask works from any user session.
 #

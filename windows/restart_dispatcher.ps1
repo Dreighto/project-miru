@@ -1,4 +1,4 @@
-# restart_dispatcher.ps1 — Miru Task Dispatcher restart
+﻿# restart_dispatcher.ps1 — Miru Task Dispatcher restart
 # Kills the process on port 19000 and starts a fresh Dispatcher.
 # Does not require elevation when the Dispatcher was itself started
 # non-elevated (which is guaranteed when the OP Miru Startup task

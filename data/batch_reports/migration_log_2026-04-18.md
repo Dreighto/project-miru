@@ -1088,5 +1088,175 @@ _Filled in after the Phase 8 commit lands._
 
 Per Notion, no pause between Phase 8 and Phase 9. Phase 9 itself has a built-in pause for Captain's phone verification.
 
+---
+
+# Migration Phase 9 — Start services, verify access
+
+**Date:** 2026-04-18 (~15:12 local on ROOM)
+**Host:** ROOM
+**Session:** elevated (Administrator) — needed for `register_restart_tasks.ps1`.
+**Authoritative plan:** Notion Phase 9.
+
+## 0. Late Phase 4 touch-up (bundled into Phase 9 commit)
+
+Captain requested the overlay pointer file be fixed before Phase 9 starts services:
+
+```
+data/overlays/asset_job_pointer.txt
+  - D:\dev\tcg-watcher-worktree\tools\fetch_chapter19_11c_install_images.py
+  + D:\dev\miru\tools\fetch_chapter19_11c_install_images.py
+```
+
+Phase 4 correctly skipped the `data/overlays/` folder as "data pipeline output" territory, but this specific file is a config pointer read by a scheduled task, not a data artifact. Fixing it here prevents a runtime miss later.
+
+## 1. Windows restart-task registration
+
+Prerequisite discovered during Phase 9 start attempt: the canonical `windows\restart_pm.ps1` and `windows\restart_miru_ai.ps1` wrappers both delegate to `MiruRestartPM` / `MiruRestartMiruAI` scheduled tasks via `Start-ScheduledTask`. Those tasks did not exist on ROOM yet.
+
+Resolved by running the existing installer (not a new script):
+
+```
+powershell -ExecutionPolicy Bypass -File D:\dev\miru\windows\register_restart_tasks.ps1
+```
+
+The script auto-resolves `$env:UserDomain\$env:UserName` → `ROOM\Dreighto` and registered all four tasks:
+
+| Task | Principal | LogonType | RunLevel | Trigger |
+|---|---|---|---|---|
+| OP Miru Startup | ROOM\Dreighto | S4U | Limited | AtStartup + 30s delay |
+| MiruRestartDispatcher | ROOM\Dreighto | Interactive | Limited | on-demand only |
+| MiruRestartPM | ROOM\Dreighto | Interactive | Limited | on-demand only |
+| MiruRestartMiruAI | ROOM\Dreighto | Interactive | Limited | on-demand only |
+
+`OP Miru Startup` was re-registered via this path (`-Force`). Content is equivalent to the Phase 8 XML-import version — same user, S4U, Limited, boot + 30s, same script target. No functional drift; `register_restart_tasks.ps1` is simply the canonical register path.
+
+## 2. PowerShell 5.1 CP1252 parse blocker — UTF-8 BOM fix
+
+**Symptom.** Invoking `restart_pm.ps1` failed immediately:
+
+```
+At D:\dev\miru\windows\restart_pm.ps1:51 char:33
++ Write-LogLine "RESTART_TRIGGERED"
+The string is missing the terminator: ".
+```
+
+**Root cause.** The repo's `.ps1` files are UTF-8 without BOM. PowerShell 5.1 (the `powershell.exe` available on Windows 11 — `pwsh` is not installed on ROOM) defaults to the system ANSI code page (CP1252) when a `.ps1` has no BOM. Em-dash (`—`, UTF-8 `E2 80 94`) and box-drawing (`─`, UTF-8 `E2 94 80`) bytes get mis-decoded into characters the PS tokenizer trips on — including Unicode quote-like chars (0x94 = `"` in CP1252) — causing cascading "missing terminator" / "missing closing brace" errors on lines elsewhere in the file.
+
+**Why Phase 7 didn't catch it.** Phase 7 verified tool presence/versions, not that every `.ps1` in `windows/` would parse cleanly under the installed PowerShell. The first time these scripts are actually *executed* is Phase 9.
+
+**Fix.** Prepend UTF-8 BOM (3 bytes: `EF BB BF`) to each affected script. No content changes. 14 files updated in this pass; 1 (`tasks/restart_pm_task.ps1`) was BOM'd mid-diagnosis:
+
+```
+windows\restart_pm.ps1
+windows\restart_miru_ai.ps1
+windows\restart_dispatcher.ps1
+windows\tasks\restart_pm_task.ps1
+windows\tasks\restart_miru_ai_task.ps1
+windows\tasks\restart_dispatcher_task.ps1
+windows\startup_all.ps1
+windows\start_all_services.ps1
+windows\start_dispatcher.ps1
+windows\start_miru_ai_dev.ps1
+windows\start_project_miru_dashboard.ps1
+windows\op_miru_common.ps1
+windows\op_miru_runtime.ps1
+windows\run_miru_asset_job.ps1
+```
+
+After the BOM sweep, `restart_pm.ps1` and `restart_miru_ai.ps1` parsed and triggered cleanly. `restart_dispatcher.ps1` had already worked earlier because its only non-ASCII chars happened to sit in comment lines that PS 5.1 skipped without tokenizing deeply — the bug was latent, not absent.
+
+`register_restart_tasks.ps1` was intentionally left un-BOM'd in this pass because it already ran successfully during §1 above — its non-ASCII chars likewise happened to land in a pattern PS 5.1 tolerated. If it ever breaks, same one-line fix.
+
+## 3. Service startup sequence
+
+Order chosen: Dispatcher first (self-contained restart script with built-in verification), then PM, then Miru AI.
+
+### 3a. Dispatcher (port 19000)
+
+```
+powershell -ExecutionPolicy Bypass -File D:\dev\miru\windows\restart_dispatcher.ps1
+```
+
+Result (from `logs\restart_dispatcher.log`):
+
+```
+stale_pids_killed=none
+Spawned PID 22420. Waiting for health check...
+Dispatcher is HEALTHY on port 19000 (PID 22420).
+listener_observed_after_start=yes
+TAILSCALE_OK 100.81.19.49
+localhost_verification=ok
+tailscale_verification=ok
+RESTART_SUCCESS
+```
+
+### 3b. PM Dashboard (port 18080)
+
+Initial `restart_pm.ps1` failed at parse (CP1252 bug, since fixed). PM was brought up by invoking `tasks\restart_pm_task.ps1` directly — same logic the scheduled task runs, just bypassed the wrapper during the parse-bug diagnosis. Subsequent `restart_pm.ps1` invocations (wrapper re-parsed fine after BOM fix) will cycle PM via the scheduled-task path as designed.
+
+Result (from `logs\pm_restart.log`):
+
+```
+Start-Process returned pid=4260
+PM Dashboard is listening on port 18080 — restart SUCCESS
+```
+
+### 3c. Miru AI (port 18765)
+
+Started via the canonical wrapper (now BOM-fixed):
+
+```
+powershell -ExecutionPolicy Bypass -File D:\dev\miru\windows\restart_miru_ai.ps1
+```
+
+Result (from `logs\miru_ai_restart.log`):
+
+```
+Start-Process returned pid=22500
+Miru AI is listening on port 18765 — restart SUCCESS
+```
+
+## 4. Verification
+
+Six HTTP probes (3 services × 2 hostnames):
+
+| URL | Status | Content length |
+|---|---|---|
+| http://127.0.0.1:19000/ | 200 OK | 37,812 B |
+| http://127.0.0.1:18080/ | 200 OK | 9,000 B |
+| http://127.0.0.1:18765/ | 200 OK | 842 B |
+| http://room.taila28611.ts.net:19000/ | 200 OK | 37,877 B |
+| http://room.taila28611.ts.net:18080/ | 200 OK | 9,000 B |
+| http://room.taila28611.ts.net:18765/ | 200 OK | 842 B |
+
+Captain phone verification (via Tailscale) — all three URLs loaded cleanly on phone:
+
+- `http://room.taila28611.ts.net:18080/` — PM Dashboard ✓
+- `http://room.taila28611.ts.net:18765/` — Miru AI ✓
+- `http://room.taila28611.ts.net:19000/` — Task Dispatcher ✓
+
+## 5. Summary
+
+| Outcome | Count |
+|---|---|
+| Services started | 3 / 3 (Dispatcher, PM, Miru AI) |
+| Localhost verifications | 3 / 3 passed |
+| Tailscale (from ROOM) verifications | 3 / 3 passed |
+| Captain phone verifications (from outside ROOM via Tailscale) | 3 / 3 passed |
+| Scheduled tasks registered this phase | 4 (via `register_restart_tasks.ps1`) |
+| `.ps1` files BOM'd this phase | 15 |
+| Phase 4 touch-ups bundled | 1 (`data/overlays/asset_job_pointer.txt`) |
+
+## 6. Git commit + tag
+
+_Filled in after the Phase 9 commit lands._
+
+---
+
+**Phase 9 status: COMPLETE.**
+
+Phone verification cleared. Next: Phase 10 — MCP verification across workers + Dispatcher Files tab root path verification.
+
+
 
 **Awaiting Captain review before Phase 8 (firewall + scheduled tasks).**

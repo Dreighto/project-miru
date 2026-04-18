@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Privileged asset-job runner for Scheduled Task "RunMiruAssetJob" (typically SYSTEM).
 

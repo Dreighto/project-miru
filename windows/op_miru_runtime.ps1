@@ -1,4 +1,4 @@
-# Authoritative runtime constants and helpers for the three Miru runtimes.
+﻿# Authoritative runtime constants and helpers for the three Miru runtimes.
 # Port authority: 18765 = Miru AI/Dev (worktree), 18080 = Project Miru worktree, 8080 = main stable.
 # Do NOT use 8765.
 # Dot-source op_miru_common.ps1 first (callers must do so, or source this after common).

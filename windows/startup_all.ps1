@@ -1,4 +1,4 @@
-# startup_all.ps1 — Project Miru full-stack startup script
+﻿# startup_all.ps1 — Project Miru full-stack startup script
 # Starts all three services in order with delays between them.
 # Called by the "OP Miru Startup" scheduled task at boot.
 #
