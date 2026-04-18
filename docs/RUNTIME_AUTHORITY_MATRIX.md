@@ -11,8 +11,8 @@ Use this file first before editing launchers, ports, or Dev controls.
 |---|---|---|---|---|
 | Main stable Project Miru site | `D:\docker\tcg-watcher` | RETIRED — do not use. Legacy NAS stack (D:\docker) is dead. | `dashboard` Docker service from main repo | `8080` |
 | Main Miru AI | `D:\docker\tcg-watcher` | RETIRED — do not use. Legacy NAS stack (D:\docker) is dead. | legacy main repo Miru AI path | `8765` |
-| Worktree Project Miru test site | `D:\dev\tcg-watcher-worktree` | `windows/start_op_miru_worktree.ps1` | `pm/app.py` (native) or `docker-compose.worktree.yml` | `18080` |
-| Worktree Miru AI / Dev control surface | `D:\dev\tcg-watcher-worktree` | `windows/start_op_miru_worktree.ps1` | `python -m miru_ai.server` -> `miru_ai/server.py` | `18765` |
+| Worktree Project Miru test site | `D:\dev\miru` | `windows/start_op_miru_worktree.ps1` | `pm/app.py` (native) or `docker-compose.worktree.yml` | `18080` |
+| Worktree Miru AI / Dev control surface | `D:\dev\miru` | `windows/start_op_miru_worktree.ps1` | `python -m miru_ai.server` -> `miru_ai/server.py` | `18765` |
 
 ## Worktree Canonical Control Paths
 
@@ -47,11 +47,11 @@ Use this file first before editing launchers, ports, or Dev controls.
 
 - If your target is worktree testing, use only `18080` and `18765`.
 - Do not treat files under `D:\docker\tcg-watcher` as worktree runtime authority.
-- Do not treat files under deleted historical worktrees as runtime authority; the only valid worktree root is `D:\dev\tcg-watcher-worktree`.
+- Do not treat files under deleted historical worktrees as runtime authority; the only valid worktree root is `D:\dev\miru`.
 - Learner start/stop should be driven from the worktree Dev page (`18765`) so process guardrails are applied.
 
 ## Worker Path Law
 
 - Active worker/data scripts must derive paths from `Path(__file__).resolve()` or script-root-relative paths.
 - Do not hardcode `C:\Users\andre\.codex\worktrees\0814\tcg-watcher` in any active runtime or worker script.
-- Canonical data/log roots for worker code in this repo are `data/` and `logs/` under `D:\dev\tcg-watcher-worktree`.
+- Canonical data/log roots for worker code in this repo are `data/` and `logs/` under `D:\dev\miru`.

@@ -4,13 +4,13 @@
 
 .CONTRACT
   Pointer file (absolute path to ONE approved Python script, path only — no args):
-    D:\dev\tcg-watcher-worktree\data\overlays\asset_job_pointer.txt
+    D:\dev\miru\data\overlays\asset_job_pointer.txt
 
   Allowed script root (validated target must resolve under this directory):
-    D:\dev\tcg-watcher-worktree\tools\
+    D:\dev\miru\tools\
 
   Log (overwritten each run; final line is the outcome marker):
-    D:\dev\tcg-watcher-worktree\logs\asset_job.log
+    D:\dev\miru\logs\asset_job.log
 
   Final markers (exactly one, last line of the log):
     ASSET_JOB_SUCCESS

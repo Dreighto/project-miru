@@ -1,7 +1,7 @@
 # CRITICAL REPO SAFETY CONTRACT
 
 Authorized repo root:
-D:\dev\tcg-watcher-worktree
+D:\dev\miru
 
 Before every task:
 1. print cwd
@@ -9,7 +9,7 @@ Before every task:
 3. print active branch
 
 If repo root is NOT exactly:
-D:\dev\tcg-watcher-worktree
+D:\dev\miru
 
 STOP immediately and report:
 WRONG REPO

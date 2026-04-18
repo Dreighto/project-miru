@@ -1,6 +1,6 @@
 """Local card image analysis for SP / parallel markers (Claude Vision).
 
-Reads images only from the operator image root (default F:/OPTCG_Images).
+Reads images only from the operator image root (default D:/OPTCG_Images).
 Does not download from the network. Writes to ``image_variant_analysis`` only
 when both marker fields are definite yes/no (never ``unclear``).
 """
@@ -34,7 +34,7 @@ logger = logging.getLogger("miru.image_variant")
 
 ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
 VISION_MODEL = "claude-sonnet-4-20250514"
-DEFAULT_IMAGE_ROOT = Path("F:/OPTCG_Images")
+DEFAULT_IMAGE_ROOT = Path("D:/OPTCG_Images")
 VERIFIED_MAPPINGS_REL = Path("data/verified_variant_mappings.json")
 
 _PROMPT = """You are reading the ID label area of a One Piece Trading Card Game card.

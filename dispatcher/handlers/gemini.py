@@ -21,7 +21,7 @@ import time
 
 log = logging.getLogger("miru.dispatcher.handler.gemini")
 
-_REPO_ROOT = r"D:\dev\tcg-watcher-worktree"
+_REPO_ROOT = r"D:\dev\miru"
 
 APPROVAL_PATTERNS = [
     r"\(y/n\)",

@@ -14,7 +14,7 @@ Ownership: `pm/` is the Project Miru runtime boundary for port `18080`.
 
 ## Path law
 - Use repo-relative paths; do not hardcode deleted C-drive worktree paths.
-- Keep PM data/config access compatible with worktree root `D:\dev\tcg-watcher-worktree`.
+- Keep PM data/config access compatible with worktree root `D:\dev\miru`.
 
 ## Verification for PM edits
 - Confirm `http://127.0.0.1:18080/` returns `200`.

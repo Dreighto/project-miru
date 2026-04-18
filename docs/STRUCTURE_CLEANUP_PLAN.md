@@ -109,7 +109,7 @@ These `tools/` files import from `dashboard/` — this is the main coupling risk
 ## 2. Proposed Target Structure
 
 ```
-D:\dev\tcg-watcher-worktree\
+D:\dev\miru\
 │
 ├── CLAUDE.md
 ├── .env

@@ -55,7 +55,7 @@ Restart actions are allowed from **localhost**, **Tailscale** (100.x or fd7a:115
 
 ## Remote reachability (Tailscale / firewall)
 
-The Miru AI server binds to **0.0.0.0:18765** and the Project Miru dashboard to **0.0.0.0:18080**, so both accept connections on all interfaces (localhost, LAN, Tailscale). Your machine’s Tailscale IP (e.g. **100.104.150.125**) is the address to use from your phone; confirm it with `ipconfig` (Tailscale adapter).
+The Miru AI server binds to **0.0.0.0:18765** and the Project Miru dashboard to **0.0.0.0:18080**, so both accept connections on all interfaces (localhost, LAN, Tailscale). Your machine’s Tailscale IP (e.g. **100.81.19.49**) is the address to use from your phone; confirm it with `ipconfig` (Tailscale adapter).
 
 If the phone gets **ERR_CONNECTION_TIMED_OUT** or a blank page to `http://<Tailscale-IP>:18765/dev` or `http://<Tailscale-IP>:18080/` while local checks pass, first ensure the service is running (e.g. run `.\windows\start_project_miru_dashboard.ps1` for 18080). Then the cause is usually **Windows Firewall** or **Tailscale connectivity**, not the app.
 
@@ -65,7 +65,7 @@ If the phone gets **ERR_CONNECTION_TIMED_OUT** or a blank page to `http://<Tails
   netsh advfirewall firewall add rule name="Project Miru dashboard (18080)" dir=in action=allow protocol=TCP localport=18080 profile=private,public description="Allow inbound TCP 18080 for Project Miru worktree dashboard"
   ```
 - **Verify from the machine** that the Tailscale IP responds:  
-  `Invoke-WebRequest -Uri "http://100.104.150.125:18765/api/health" -UseBasicParsing -TimeoutSec 5`  
+  `Invoke-WebRequest -Uri "http://100.81.19.49:18765/api/health" -UseBasicParsing -TimeoutSec 5`  
   (Replace with your actual Tailscale IP if different.) StatusCode 200 and body containing `"status":"ok"` means the server is reachable on that interface; if the phone still times out, the issue is likely Tailscale NAT/discovery or the phone’s network.
 - **Intermittent** timeouts can be Tailscale UDP discovery or NAT traversal; ensure both devices are on the same Tailnet and that Tailscale is connected on the phone.
 

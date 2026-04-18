@@ -11,7 +11,7 @@
 
 ## Repo Boundary — Hard Rule
 
-- Canonical repo root: D:\dev\tcg-watcher-worktree
+- Canonical repo root: D:\dev\miru
 - Never leave this repo unless the operator explicitly authorizes it for a specific task
 - If a task requires leaving the repo: STOP. Explain what you need to do and why. Wait for operator decision before proceeding.
 - Never access, modify, or read files outside the repo root without explicit operator authorization
