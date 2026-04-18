@@ -685,7 +685,23 @@ Still pending:
 
 ## 7. Git commit + tag
 
-_Filled in after the Phase 5 commit lands — see §8._
+- **Commit:** `77ed7baecd7fb191b432628a4478ed5afbc50db7`
+- **Subject:** `migration: phase 5 — assets placed`
+- **Parent:** `8d177692` (= `migration-phase-4`)
+- **Shape:** 1 file changed, 162 insertions, 1 deletion (just the log update — repo state unchanged by this phase since assets live outside `D:\dev\miru\`)
+- **Also folded in:** the Phase 4 post-commit §8 amendment (the `migration-phase-4` commit-SHA fill-in from the prior end-of-phase housekeeping note). No uncommitted log drift remains after this Phase 5 commit.
+- **Tag:** `migration-phase-5` — **annotated** (type = `tag`), pointing at `77ed7bae`
+- **Not pushed.** Migration commits and tags remain local-only until Phase 11.
+
+### Migration tags so far
+
+```
+migration-phase-2 → a1809526  (Phase 2 repo copy complete)
+migration-phase-4 → 8d177692  (Phase 4 path rewrites applied)
+migration-phase-5 → 77ed7bae  (Phase 5 assets placed)
+```
+
+No `migration-phase-3` tag exists. Phase 3 placed `.env` and `.mcp.json`, but both are gitignored — there were no tracked-file changes for Phase 3 to commit at the time. Phase 3's audit lives fully in this log. If Captain wants retroactive coverage, a lightweight or annotated tag `migration-phase-3` could be placed on the `migration-phase-2` commit (they'd share a target) — happy to add if you'd like symmetry across the sequence.
 
 ## 8. Next steps
 
@@ -701,3 +717,130 @@ _Filled in after the Phase 5 commit lands — see §8._
 ---
 
 **Phase 5 status: COMPLETE — awaiting Captain review before Phase 6.**
+
+---
+
+# Migration Phase 6 — Data Copy
+
+**Date:** 2026-04-18 (~14:03 local on ROOM)
+**Host:** ROOM
+**Authoritative plan:** Notion Phase 6 + README_FIRST.md Step 5 (databases + runtime state + snapshot + jobs.db placement)
+
+Phase 6 scope (Captain-approved):
+1. Copy `D:\miru-migration\data\*` → `D:\dev\miru\data\*` (preserve structure, additive over the Phase-2 repo content already at the destination)
+2. Place dispatcher DB at its service runtime path: `data\dispatcher\jobs.db` → `dispatcher\data\jobs.db`
+3. Place MCP snapshot DB at its runtime path: `data\mcp\card_catalog.snapshot.db` → `miru-mcp\sqlite-ro\card_catalog.snapshot.db` (unblocks `sqlite-ro-snapshot` MCP)
+4. Verify canonical DB paths exist + hash-match source
+5. Random `sqlite3 PRAGMA integrity_check` on 2–3 DBs to confirm no copy corruption
+
+---
+
+## 1. Pre-flight
+
+| Check | Result |
+|---|---|
+| Source `D:\miru-migration\data\` inventory | 180 files, 182 MB, 3 subdirs (`dispatcher\`, `mcp\`, `snapshots\`, `tcgcsv\`) + 14 primary `.db` files + auxiliary `.db-shm` / `.db-wal` |
+| `data/card_catalog.db` at source | ✓ 48,787,456 B |
+| `data/mcp/card_catalog.snapshot.db` at source | ✓ 47,869,952 B |
+| `data/dispatcher/jobs.db` at source | ✓ 294,912 B |
+| Destination `D:\dev\miru\data\` pre-state | 548 files (from Phase 2 repo snapshot — includes this migration log itself, batch_reports/, overlays/, ingested data, etc.) |
+| Destination `D:\dev\miru\dispatcher\data\` | ✓ already exists (from repo; jobs.db absent) |
+| Destination `D:\dev\miru\miru-mcp\` | ❌ did not exist — created in §3 below |
+
+## 2. Data-tree copy
+
+```
+MSYS_NO_PATHCONV=1 robocopy "D:\miru-migration\data" "D:\dev\miru\data" \
+  /E /COPY:DAT /DCOPY:DAT /R:1 /W:1 /MT:8 /NFL /NDL /NP
+```
+
+| Metric | Value |
+|---|---|
+| Dirs: Total / Copied / Skipped | 78 / 78 / 76 (76 = existing repo subdirs matched) |
+| Files: Total / Copied / FAILED | 180 / 180 / 0 |
+| Extras preserved (not in source, kept at dest) | 47 files, 14.63 MB — Phase-2 repo content that doesn't overlap with the migration data/ |
+| Bytes copied | 181.42 MB |
+| Wall clock | <1 second (reported 0:00:05 elapsed with 0:00:00 copy time — /MT:8 parallelism on small files) |
+| Exit code | 3 (= files copied + extras preserved) ✓ |
+
+## 3. Service-runtime placements
+
+```
+mkdir -p "D:/dev/miru/miru-mcp/sqlite-ro"
+cp -p "D:/miru-migration/data/mcp/card_catalog.snapshot.db" \
+      "D:/dev/miru/miru-mcp/sqlite-ro/card_catalog.snapshot.db"
+cp -p "D:/miru-migration/data/dispatcher/jobs.db" \
+      "D:/dev/miru/dispatcher/data/jobs.db"
+```
+
+Both files land at their service-expected paths AND remain at their `data\`-rooted paths (the recursive copy put the originals under `data\mcp\` and `data\dispatcher\`). This matches the README_FIRST.md recipe — same file, two homes.
+
+## 4. Canonical DB verification (size + SHA-256 vs source)
+
+| Canonical destination | Size | Source hash vs dest hash |
+|---|---|---|
+| `data\card_catalog.db` | 48,787,456 B | MATCH ✓ |
+| `miru-mcp\sqlite-ro\card_catalog.snapshot.db` | 47,869,952 B | MATCH ✓ |
+| `dispatcher\data\jobs.db` | 294,912 B | MATCH ✓ |
+
+Byte-identical copies at all three runtime paths. No robocopy mismatch, no post-copy mutation.
+
+## 5. Random `PRAGMA integrity_check` — 3/3 PASSED ✅
+
+Pool of 16 `.db` files discovered under `D:\dev\miru\` (excluding `-shm`, `-wal`, backup DBs, `archive/`, `.git/`):
+
+```
+data\card_catalog.db                              (48,787,456 B)
+data\dispatcher\jobs.db                              (294,912 B)
+data\mcp\card_catalog.snapshot.db                (47,869,952 B)
+data\miru_deck_intel.db                              (241,664 B)
+data\miru_dev_training_reviews.db                    (385,024 B)
+data\miru_dossiers.db                             (35,643,392 B)
+data\miru_learning_dossiers.db                    (35,934,208 B)
+data\miru_learning_log.db                          (1,699,840 B)
+data\miru_learning_queue.db                        (1,056,768 B)
+data\miru_mcp_governance.db                           (53,248 B)
+data\miru_official_rules.db                           (98,304 B)
+data\miru_source_cache.db                            (184,320 B)
+data\miru_user_decks.db                               (49,152 B)
+data\pm_decks.db                                      (12,288 B)
+dispatcher\data\jobs.db                              (294,912 B)
+miru-mcp\sqlite-ro\card_catalog.snapshot.db      (47,869,952 B)
+```
+
+`random.sample(candidates, 3)` draw:
+
+| # | DB | Size | `PRAGMA integrity_check` |
+|---|---|---|---|
+| 1 | `data\miru_learning_queue.db` | 1,056,768 B | `ok` ✅ |
+| 2 | `data\miru_deck_intel.db` | 241,664 B | `ok` ✅ |
+| 3 | `miru-mcp\sqlite-ro\card_catalog.snapshot.db` | 47,869,952 B | `ok` ✅ |
+
+**Result: all 3 passed.** The random draw happened to include the MCP snapshot DB at its runtime path — extra-valuable because that's the exact file `.mcp.json` points at and the one whose placement unblocks the last failing MCP server.
+
+### Implementation note on sqlite3 CLI
+
+The Windows `sqlite3.exe` from WinGet (`C:\Users\Dreighto\AppData\Local\Microsoft\WinGet\Packages\SQLite.SQLite_…`) does not reliably parse backslash-quoted paths when invoked from a bash pipeline. Switched to Python's stdlib `sqlite3` module — same SQLite library, cleaner string handling, deterministic exit codes. See `D:\miru-migration\_phase6_integrity_check.py`.
+
+## 6. MCP status projection after Phase 6
+
+At the next Claude Code restart:
+
+| MCP | Pre-Phase-6 | Post-Phase-6 |
+|---|---|---|
+| `sqlite-ro-snapshot` | ❌ path exists in `.mcp.json` but DB file absent | ✅ DB now at the expected path |
+| git, fetch, justtcg, perplexity, sequential-thinking, playwright, shadcn, notion, youtube, magic-ui | ✅ | ✅ (unchanged) |
+
+**All 11 local MCP entries expected to be green** after the restart. `filesystem` MCP was dropped in Phase 1 (no Docker on ROOM).
+
+## 7. Git commit + tag
+
+_Filled in after the Phase 6 commit lands — see Phase 7's opening notes for the SHA._
+
+## 8. Transition — straight into Phase 7 per Notion (no pause)
+
+Per Captain's standing instruction and Notion's Phase 6 plan ("No pause. Continue straight to Phase 7."), Phase 7 begins immediately after the Phase 6 tag is placed.
+
+---
+
+**Phase 6 status: COMPLETE — moving straight into Phase 7.**
