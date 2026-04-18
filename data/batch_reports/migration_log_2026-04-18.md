@@ -835,7 +835,11 @@ At the next Claude Code restart:
 
 ## 7. Git commit + tag
 
-_Filled in after the Phase 6 commit lands — see Phase 7's opening notes for the SHA._
+- **Commit:** `53856a8` — `migration: phase 6 — data placed`
+- **Parent:** `77ed7ba` (= `migration-phase-5`)
+- **Shape:** 4 files changed, 144 insertions, 1 deletion. Three new tracked files: `data/dispatcher/jobs.db`, `data/mcp/card_catalog.snapshot.db`, `data/pm_decks.db` (these three weren't in the repo snapshot). Plus the migration log itself.
+- **Not in the commit (gitignored):** `miru-mcp/sqlite-ro/card_catalog.snapshot.db` (rule `miru-mcp/sqlite-ro/*.db`) and `dispatcher/data/jobs.db` (rule `dispatcher/data/jobs.db`). Both service-runtime copies stay out of git — correct, they're regenerable and one is a 48 MB snapshot.
+- **Tag:** `migration-phase-6` — **annotated**, pointing at `53856a8`.
 
 ## 8. Transition — straight into Phase 7 per Notion (no pause)
 
@@ -844,3 +848,133 @@ Per Captain's standing instruction and Notion's Phase 6 plan ("No pause. Continu
 ---
 
 **Phase 6 status: COMPLETE — moving straight into Phase 7.**
+
+---
+
+# Migration Phase 7 — Tooling Verification Sweep
+
+**Date:** 2026-04-18 (~14:05 local on ROOM)
+**Host:** ROOM
+**Authoritative plan:** Notion Phase 7 + Captain note: "Phase 7 should be a quick verification sweep confirming nothing got undone, plus any remaining installs that Phase 1 deferred."
+
+Phase 7 scope (Captain-approved, no pause between 6 and 7):
+1. Tool presence + version for everything Phase 1 installed
+2. Pip package parity between ROOM and the NAS `python_pip_list.txt` snapshot
+3. Windows user-scope env var presence for the full set (23 original + 3 added in Phase 4b)
+4. Log + commit + annotated tag `migration-phase-7`
+
+No "deferred installs" were found — Phase 1 + Phase 4b left nothing open. Phase 7 is purely a sanity sweep.
+
+---
+
+## 1. Tool version sweep
+
+All match Phase 1's installed versions. No regressions, no missing tools.
+
+| Tool | Phase 1 installed | ROOM on 2026-04-18 | Status |
+|---|---|---|---|
+| Python | 3.14.3 | 3.14.3 | ✓ |
+| pip | upgraded during Phase 1 install | 26.0.1 | ✓ (per-release upgrade) |
+| Node.js | 22.22.2 | v22.22.2 | ✓ |
+| npm | 10.9.7 | 10.9.7 | ✓ |
+| uv | 0.11.7 | 0.11.7 | ✓ |
+| uvx | 0.11.7 | 0.11.7 | ✓ |
+| NSSM | 2.24-101-g897c7ad | 2.24-101-g897c7ad 64-bit 2017-04-26 | ✓ |
+| SQLite3 CLI | 3.53.0 | 3.53.0 | ✓ |
+| Git | 2.53.0.windows.3 | 2.53.0.windows.3 | ✓ |
+| Claude Code CLI | 2.1.76 | 2.1.76 (Claude Code) | ✓ |
+| Codex CLI | 0.120.0 | codex-cli 0.120.0 | ✓ |
+| Gemini CLI | 0.38.0 | 0.38.0 | ✓ |
+
+## 2. Pip package parity — ROOM vs. NAS snapshot
+
+Source of truth: `D:\miru-migration\tools_info\python_pip_list.txt` (98 packages from NAS, 2026-04-18 export).
+Live state: `pip list --format=freeze` on ROOM (inside the same Python 3.14.3 Phase 1 installed to).
+
+| Metric | Count |
+|---|---|
+| Expected from NAS snapshot | 98 packages |
+| Current on ROOM | 100 packages |
+| **Missing from ROOM (regressions)** | **0** |
+| **Version mismatches** | **0** |
+| Extras on ROOM | 2 (harmless) |
+
+The 2 extras:
+
+| Package | Version | Why |
+|---|---|---|
+| `altair` | 6.0.0 | Transitive dep of one of the 98; NAS export likely excluded it because NAS had `pip list` run against a slightly different environment snapshot |
+| `wheel` | 0.46.3 | Standard build tool; pip upgraded/installed during the Phase 1 `pip install -r` pass (it's normal to see `wheel` alongside `pip` / `setuptools`) |
+
+Minor discrepancy on counts: the Phase 1 log said "99 packages pinned from tools_info/python_pip_list.txt", but a direct re-count of the file shows 98. That's a one-off Phase 1 miscount — doesn't affect anything functional since the diff above is hash-level (package name + version), not based on the count assertion.
+
+**Verdict:** zero regressions, zero version drift. Every single one of the 98 NAS-expected packages is installed at its exact NAS version on ROOM.
+
+## 3. Windows user-scope env vars
+
+Expected set: **26 variables** (23 from Phase 1 `.env` import + 3 added in Phase 4b: `PROJECT_MIRU_CLEAN_THUMB_ROOT`, `MIRU_RUNTIME_IMAGES_ROOT`, `MIRU_OPTCG_IMAGES_ROOT`).
+
+| Category | Expected | Set | Unset |
+|---|---|---|---|
+| All 26 | 26 | **26** | **0** |
+
+### Non-secret readback (safe to show — URLs, paths, flags, channel IDs)
+
+```
+DISPATCHER_BASE_URL           = http://127.0.0.1:19000   (Phase-4 rewrite applied ✓)
+MIRU_HELPER_BASE_URL          = http://127.0.0.1:11434/v1
+OLLAMA_BASE_URL               = http://127.0.0.1:11434
+PROJECT_MIRU_CLEAN_THUMB_ROOT = D:\Miru_Assets
+MIRU_RUNTIME_IMAGES_ROOT      = D:\Miru_Assets
+MIRU_OPTCG_IMAGES_ROOT        = D:\OPTCG_Images
+MIRU_HELPER_ENABLED           = 1
+MIRU_HELPER_MODEL             = gemma4:e4b
+DEBUG_IMAGES                  = 1
+PUSHOVER_DEFAULT_PRIORITY     = 0
+PUSHOVER_ENABLED              = true
+SLACK_CHANNEL_ID              = C0ASSN9JULW
+```
+
+### Secret vars — presence-only
+
+Values never read or logged. Each shown as SET / UNSET only.
+
+| Variable | State |
+|---|---|
+| ANTHROPIC_API_KEY | SET ✓ |
+| ASSEMBLY_AI_API_KEY | SET ✓ |
+| CURSOR_API_KEY | SET ✓ |
+| FIRECRAWL_API_KEY | SET ✓ |
+| JUSTTCG_API_KEY | SET ✓ |
+| MAGIC_UI_API_KEY | SET ✓ |
+| NOTION_TOKEN | SET ✓ |
+| OPENAI_API_KEY | SET ✓ |
+| PERPLEXITY_API_KEY | SET ✓ |
+| PUSHOVER_API_TOKEN | SET ✓ |
+| PUSHOVER_USER_KEY | SET ✓ |
+| SLACK_APP_TOKEN | SET ✓ |
+| SLACK_BOT_TOKEN | SET ✓ |
+| YOUTUBE_API_KEY | SET ✓ |
+
+No secrets logged, no values echoed, no regressions.
+
+## 4. Summary — what's still to do in later phases
+
+| Phase | Scope | Unlocked by |
+|---|---|---|
+| 8 | Firewall rules (3 ports: 18080, 18765, 19000) + 4 scheduled tasks (OP Miru Startup, Miru Nightly Backup, Miru Worker, RunMiruAssetJob) + dispatcher startup task | `install_dispatcher_startup.ps1` + `config_backup\scheduled_task_*.xml` |
+| 9 | Start services (PM, Miru AI, Dispatcher), verify Tailscale access from phone | **Phase 9 ends with a pause** for Captain phone verification |
+| 10 | MCP verification across all agents (Claude Code, Cursor, Codex, Gemini, Copilot, Windsurf) + Dispatcher Files tab | — |
+| 11 | Full-stack integration test + `MIGRATION_COMPLETE.md` + push commits to `origin/phase3-console-2` | Final checkpoint |
+
+## 5. Git commit + tag
+
+_Filled in after the Phase 7 commit lands — see §7.1 below after commit._
+
+---
+
+**Phase 7 status: COMPLETE.**
+
+Per Notion, Phases 6 and 7 have no pause between them (both "Continue"). Captain's instruction was to pause after Phase 7 for re-greenlight before Phase 8. Phase 7 wraps here.
+
+**Awaiting Captain review before Phase 8 (firewall + scheduled tasks).**
