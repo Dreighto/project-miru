@@ -23,7 +23,7 @@
         "-ExecutionPolicy",
         "Bypass",
         "-Command",
-        "$ErrorActionPreference='Stop'; $envPath='D:\\dev\\miru\\.env'; $line=Get-Content -LiteralPath $envPath | Where-Object { $_ -match '^\\s*PERPLEXITY_API_KEY\\s*=' } | Select-Object -First 1; if (-not $line) { Write-Error 'PERPLEXITY_API_KEY missing'; exit 1 }; $value=($line -split '=',2)[1].Trim(); $env:PERPLEXITY_API_KEY=$value; & 'C:\\Program Files\\nodejs\\node.exe' 'D:\\dev\\miru\\node_modules\\@perplexity-ai\\mcp-server\\dist\\index.js'"
+        "$ErrorActionPreference='Stop'; $envPath='D:\\dev\\miru\\.env'; $line=Get-Content -LiteralPath $envPath | Where-Object { $_ -match '^\\s*PERPLEXITY_API_KEY\\s*=' } | Select-Object -First 1; if (-not $line) { Write-Error 'PERPLEXITY_API_KEY missing'; exit 1 }; $value=($line -split '=',2)[1].Trim(); $env:PERPLEXITY_API_KEY=$value; & node.exe 'D:\\dev\\miru\\node_modules\\@perplexity-ai\\mcp-server\\dist\\index.js'"
       ],
       "trust": true
     },
