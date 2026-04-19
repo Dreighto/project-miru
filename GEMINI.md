@@ -25,8 +25,9 @@
 ## Notion — Read Rules
 
 - ALL workers may READ Notion to understand the current job, active tasks, and system state
-- Only Claude Chat may WRITE to Notion
-- No other worker may create, update, or modify any Notion page under any circumstances
+- Only Claude Chat may WRITE to Notion. This is the governance rule.
+- Claude Code may write to Notion only when the operator explicitly delegates a write task per-session, after a task is verified complete/working.
+- All other workers (this one included) are READ-ONLY on Notion. Never create, update, or modify any Notion page under any circumstances.
 - Use Notion reads to avoid overlapping with in-progress work
 
 ## MCP Tool Usage Rules
@@ -104,7 +105,7 @@ Every file created must go in the correct location. These rules are non-negotiab
 
 ### File ownership
 
-- Gemini owns: HTML/CSS/JS templates in `dashboard/templates/` and `tools/templates/`
+- Gemini owns: HTML/CSS/JS templates across service directories: `pm/templates/`, `miru_ai/templates/`, `dispatcher/templates/`
 - Gemini owns: image processing scripts
 - Gemini owns: log analysis tasks
 
