@@ -8115,7 +8115,7 @@ def render_page(page_key: str, current_endpoint: str):
     )
 
 
-OPTCG_IMAGES_ROOT = Path("F:/OPTCG_Images")
+OPTCG_IMAGES_ROOT = Path("D:/OPTCG_Images")
 OFFICIAL_RULES_DB_PATH = PROJECT_ROOT / "data" / "miru_official_rules.db"
 
 
@@ -9572,7 +9572,7 @@ def create_app() -> Flask:
 
     @app.route("/images/cards/<path:filename>")
     def serve_card_image(filename):
-        return send_from_directory("F:/OPTCG_Images", filename)
+        return send_from_directory("D:/OPTCG_Images", filename)
 
     @app.get("/leader/<leader_code>")
     def leader_hub(leader_code: str):

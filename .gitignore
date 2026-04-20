@@ -91,3 +91,12 @@ __pycache__/
 .venv/
 .pip-cache/
 .npm-tmp/
+
+# Blanket DB exclusions (added 2026-04-19, pre-Phase 1)
+# Covers card_catalog.db, snapshots, dispatcher jobs, pm_decks, and all intel/learning/dossier DBs
+data/**/*.db
+data/**/*.sqlite
+data/**/*.sqlite3
+archive/**/*.db
+archive/**/*.sqlite
+archive/**/*.sqlite3

@@ -1,10 +1,10 @@
 {
   "policy_version": 1,
   "authority_boundary": {
-    "canonical_repo": "D:\\dev\\tcg-watcher-worktree",
+    "canonical_repo": "D:\\dev\\miru",
     "canonical_project_miru_runtime_port": 18080,
     "canonical_miru_ai_runtime_port": 18765,
-    "canonical_phone_verification_host": "100.104.150.125",
+    "canonical_phone_verification_host": "100.81.19.49",
     "miru_side_only_default": true,
     "pm_read_only_verification_only": true,
     "notes": [

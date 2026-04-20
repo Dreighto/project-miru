@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$envPath = 'D:\dev\tcg-watcher-worktree\.env'
+$envPath = 'D:\dev\miru\.env'
 $line = Get-Content -LiteralPath $envPath |
     Where-Object { $_ -match '^\s*PERPLEXITY_API_KEY\s*=' } |
     Select-Object -First 1

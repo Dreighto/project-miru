@@ -1,4 +1,4 @@
-# restart_miru_ai.ps1 — Project Miru AI restart wrapper
+﻿# restart_miru_ai.ps1 — Project Miru AI restart wrapper
 # Triggers the MiruRestartMiruAI scheduled task (SYSTEM, highest privilege).
 # Does NOT require elevation — Start-ScheduledTask works from any user session.
 #

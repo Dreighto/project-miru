@@ -1,4 +1,4 @@
-# Start or restart the Project Miru worktree dashboard on 18080 only.
+﻿# Start or restart the Project Miru worktree dashboard on 18080 only.
 # Canonical worktree dashboard launcher: single-instance, background start, PID-tracked, and health-verified.
 param(
     [int]$Port = 18080,

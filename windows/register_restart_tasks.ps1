@@ -90,7 +90,7 @@ $startupTask = Register-ScheduledTask `
     -Trigger    $startupTrigger `
     -Settings   $commonSettings `
     -Principal  $startupPrincipal `
-    -Description "Starts Dispatcher (19000), PM Dashboard (18080), and Miru AI (18765) 30s after Windows boot. Managed by D:\dev\tcg-watcher-worktree\windows\startup_all.ps1" `
+    -Description "Starts Dispatcher (19000), PM Dashboard (18080), and Miru AI (18765) 30s after Windows boot. Managed by D:\dev\miru\windows\startup_all.ps1" `
     -Force
 
 Write-Host "  OK: '$($startupTask.TaskName)'" -ForegroundColor Green

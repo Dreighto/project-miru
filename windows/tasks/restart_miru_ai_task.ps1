@@ -1,4 +1,4 @@
-# restart_miru_ai_task.ps1
+﻿# restart_miru_ai_task.ps1
 # Called by the "MiruRestartMiruAI" scheduled task.
 # Runs as NAS\NAS with RunLevel=Highest (S4U) — elevated in the user's session.
 # Stops whatever is on port 18765, then starts a fresh Miru AI server process.

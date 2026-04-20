@@ -23,7 +23,7 @@
         "-ExecutionPolicy",
         "Bypass",
         "-Command",
-        "$ErrorActionPreference='Stop'; $envPath='D:\\dev\\tcg-watcher-worktree\\.env'; $line=Get-Content -LiteralPath $envPath | Where-Object { $_ -match '^\\s*PERPLEXITY_API_KEY\\s*=' } | Select-Object -First 1; if (-not $line) { Write-Error 'PERPLEXITY_API_KEY missing'; exit 1 }; $value=($line -split '=',2)[1].Trim(); $env:PERPLEXITY_API_KEY=$value; & 'C:\\Program Files\\nodejs\\node.exe' 'D:\\dev\\tcg-watcher-worktree\\node_modules\\@perplexity-ai\\mcp-server\\dist\\index.js'"
+        "$ErrorActionPreference='Stop'; $envPath='D:\\dev\\miru\\.env'; $line=Get-Content -LiteralPath $envPath | Where-Object { $_ -match '^\\s*PERPLEXITY_API_KEY\\s*=' } | Select-Object -First 1; if (-not $line) { Write-Error 'PERPLEXITY_API_KEY missing'; exit 1 }; $value=($line -split '=',2)[1].Trim(); $env:PERPLEXITY_API_KEY=$value; & node.exe 'D:\\dev\\miru\\node_modules\\@perplexity-ai\\mcp-server\\dist\\index.js'"
       ],
       "trust": true
     },
@@ -44,7 +44,7 @@
         "-y",
         "@mokei/mcp-sqlite",
         "--db",
-        "D:\\dev\\tcg-watcher-worktree\\miru-mcp\\sqlite-ro\\card_catalog.snapshot.db"
+        "D:\\dev\\miru\\miru-mcp\\sqlite-ro\\card_catalog.snapshot.db"
       ],
       "env": {},
       "trust": false,
@@ -61,8 +61,8 @@
       ],
       "env": {
         "MCP_TRANSPORT_TYPE": "stdio",
-        "GIT_BASE_DIR": "D:\\dev\\tcg-watcher-worktree",
-        "npm_config_cache": "D:\\dev\\tcg-watcher-worktree\\.npm-cache"
+        "GIT_BASE_DIR": "D:\\dev\\miru",
+        "npm_config_cache": "D:\\dev\\miru\\.npm-cache"
       },
       "trust": false
     },

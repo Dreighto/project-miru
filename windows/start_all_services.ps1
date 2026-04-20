@@ -1,4 +1,4 @@
-# start_all_services.ps1 — Start all three Project Miru services if not already running
+﻿# start_all_services.ps1 — Start all three Project Miru services if not already running
 # Safe to run at any time — only starts services that are currently down.
 # Never force-kills a running service.
 #

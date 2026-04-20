@@ -1,4 +1,4 @@
-# restart_pm_task.ps1
+﻿# restart_pm_task.ps1
 # Called by the "MiruRestartPM" scheduled task.
 # Runs as NAS\NAS with RunLevel=Highest (S4U) — elevated in the user's session.
 # Stops whatever is on port 18080, then starts a fresh PM Dashboard process.

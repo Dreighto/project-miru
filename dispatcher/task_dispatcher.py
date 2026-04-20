@@ -1697,7 +1697,7 @@ def admin_restart():
 # Git context (Feature 1: Context Bar)
 # ---------------------------------------------------------------------------
 
-_REPO_ROOT = r"D:\dev\tcg-watcher-worktree"
+_REPO_ROOT = r"D:\dev\miru"
 
 
 @app.get("/api/git/context")

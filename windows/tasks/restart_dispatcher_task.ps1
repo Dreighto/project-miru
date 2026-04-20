@@ -1,4 +1,4 @@
-# restart_dispatcher_task.ps1
+﻿# restart_dispatcher_task.ps1
 # Called by the "MiruRestartDispatcher" scheduled task.
 # Runs as NAS\NAS with RunLevel=Highest (S4U) — elevated in the user's session.
 # Stops whatever is on port 19000, then starts a fresh Dispatcher process.

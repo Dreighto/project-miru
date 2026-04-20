@@ -1,4 +1,4 @@
-# Start or restart Miru AI / Dev (worktree) on 18765 only. Single-instance; health-verified.
+﻿# Start or restart Miru AI / Dev (worktree) on 18765 only. Single-instance; health-verified.
 # Use this to bring up only the Dev control surface, or to restart it after a crash.
 # Full worktree stack: use start_op_miru_worktree.ps1 -Native instead.
 # Do NOT use port 8765.
