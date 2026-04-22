@@ -16,9 +16,10 @@ const config = {
 			precompress: false,
 			strict: true
 		}),
-		// Phase 2: served by Flask under /storefront/ (Jinja UI keeps /).
+		// Phase 3 (PRO-6): SvelteKit serves at root. Flask catches all paths and
+		// delegates to the static build; Jinja page routes are neutralized.
 		paths: {
-			base: '/storefront'
+			base: ''
 		}
 	}
 };

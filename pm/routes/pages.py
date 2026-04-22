@@ -85,7 +85,8 @@ def serve_catalog_variant_image(filename: str):
         return send_from_directory(str(MIRU_ASSETS), normalized)
     return Response("Not found", status=404)
 
-@pages_bp.get("/")
+# PRO-6 Stage 1: route served by SvelteKit catch-all in app.py; function kept for Stage 2 deletion.
+# @pages_bp.get("/")
 def home():
     items = load_prices()
     catalog_cards = load_catalog_card_index()
@@ -170,8 +171,9 @@ def home():
     )
 
 
-@pages_bp.get("/cards")
-@pages_bp.get("/library")
+# PRO-6 Stage 1: route served by SvelteKit catch-all in app.py; function kept for Stage 2 deletion.
+# @pages_bp.get("/cards")
+# @pages_bp.get("/library")
 def index():
     # Shell only: client loads /api/cards-json; fragment URL mirrors query args for /library-fragment.
     try:
@@ -199,7 +201,8 @@ def index():
     )
 
 
-@pages_bp.get("/leaders")
+# PRO-6 Stage 1: route served by SvelteKit catch-all in app.py; function kept for Stage 2 deletion.
+# @pages_bp.get("/leaders")
 def leaders():
     catalog = load_catalog_card_index()
     leader_list = []
@@ -245,7 +248,8 @@ def leaders():
     )
 
 
-@pages_bp.get("/leader/<leader_code>")
+# PRO-6 Stage 1: route served by SvelteKit catch-all in app.py; function kept for Stage 2 deletion.
+# @pages_bp.get("/leader/<leader_code>")
 def leader_page(leader_code: str):
     code = str(leader_code or "").strip().upper()
     catalog = load_catalog_card_index()
@@ -286,7 +290,8 @@ def miru_flip_back_urls() -> dict:
     return {"leader_red": "", "character_blue": ""}
 
 
-@pages_bp.get("/deck-builder")
+# PRO-6 Stage 1: route served by SvelteKit catch-all in app.py; function kept for Stage 2 deletion.
+# @pages_bp.get("/deck-builder")
 def deck_builder():
     _selected_leader = str(request.args.get("leader") or "").strip().upper()
     catalog = load_catalog_card_index()
@@ -368,7 +373,8 @@ def deck_builder():
     )
 
 
-@pages_bp.get("/profile")
+# PRO-6 Stage 1: route served by SvelteKit catch-all in app.py; function kept for Stage 2 deletion.
+# @pages_bp.get("/profile")
 def profile_page():
     return render_template(
         "profile.html",
