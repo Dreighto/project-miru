@@ -10,8 +10,9 @@ secrets/
 .claude/
 .mcp.json
 mcp.json
-.cursor/mcp.json
-.cursor/
+**/.cursor/mcp.json
+**/.cursor/settings.json
+**/.cursor/*.lock
 .vscode/
 
 miru_ai/dev_review_hub_ui/node_modules/
