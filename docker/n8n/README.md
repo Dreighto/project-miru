@@ -59,11 +59,29 @@ docker run --rm -v n8n_data:/data -v ${PWD}:/backup alpine sh -c "cd /data && ta
 2. `docker compose up -d`
 3. Visit http://localhost:15678 (or the Tailscale URL) and complete the owner-account prompt — n8n 2.x asks for email, name, and password. That account becomes the instance owner.
 
+## Workflows and deploy
+
+Workflow JSON templates live in `workflows/`; deploy helpers live in `scripts/`.
+
+- `workflows/w1-planning-intake.json` — W1 main workflow
+- `workflows/w1-error-handler.json` — W1 error handler
+- `workflows/W1_TEST.md` — end-to-end test plan for W1
+- `scripts/deploy-workflow.ps1` — create/update a workflow via the n8n public API (leaves workflows inactive; operator activates in UI)
+- `scripts/README.md` — deploy / re-deploy / rollback instructions, including the one-time Error Workflow wire-up step
+
+Quick deploy (from any cwd):
+
+```powershell
+.\scripts\deploy-workflow.ps1 w1-planning-intake.json
+.\scripts\deploy-workflow.ps1 w1-error-handler.json
+```
+
+Requires `N8N_API_KEY` set in `D:\dev\miru\.env` (generate in n8n UI → Settings → n8n API).
+
 ## What is NOT set up yet (separate tickets)
 
-- Credentials for Notion, Linear, GitHub, Pushover
-- Any workflows
-- Any wiring to Miru services (PM 18080, Miru AI 18765, Dispatcher 19000)
+- Any wiring to Miru services (PM 18080, Miru AI 18765, Dispatcher 19000) beyond W1
+- Workflows W2–W10 (worker dispatch, pending-work log, approvals, etc.)
 - Version pinning — currently tracks `n8nio/n8n:latest`; consider pinning to a specific tag after first successful run
 
 ## Config notes

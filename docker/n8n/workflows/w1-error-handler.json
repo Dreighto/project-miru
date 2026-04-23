@@ -1,0 +1,150 @@
+{
+  "name": "W1 — Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e001-error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Shape the error payload into fields we need for Linear + Pushover.\nconst err = $input.item.json || {};\nconst execution = err.execution || {};\nconst trigger = err.trigger || {};\nconst lastNode = (execution.lastNodeExecuted) || (err.node && err.node.name) || 'unknown';\nconst workflowName = (err.workflow && err.workflow.name) || 'unknown workflow';\nconst executionId = execution.id || '';\nconst executionUrl = execution.url || '';\nconst mode = execution.mode || '';\nconst ts = new Date().toISOString();\n\n// Error message extraction — n8n puts the human-readable error in execution.error.message sometimes,\n// other times under err.error. Walk both.\nlet errorMessage = '';\nlet errorStack = '';\nif (execution.error) {\n  errorMessage = execution.error.message || '';\n  errorStack = execution.error.stack || '';\n} else if (err.error) {\n  errorMessage = err.error.message || '';\n  errorStack = err.error.stack || '';\n}\n\nconst fullPayload = JSON.stringify(err, null, 2);\nconst truncated = fullPayload.length > 8000 ? fullPayload.slice(0, 8000) + '\\n\\n... (truncated)' : fullPayload;\n\nconst title = `n8n ${workflowName} error — ${ts}`;\nconst description = [\n  `**Workflow:** ${workflowName}`,\n  `**Failed node:** ${lastNode}`,\n  `**Execution ID:** ${executionId}`,\n  `**Execution URL:** ${executionUrl}`,\n  `**Mode:** ${mode}`,\n  `**Timestamp:** ${ts}`,\n  '',\n  `**Error message:**`,\n  '```',\n  errorMessage || '(no message)',\n  '```',\n  '',\n  `**Stack:**`,\n  '```',\n  errorStack || '(no stack)',\n  '```',\n  '',\n  `**Full payload:**`,\n  '```json',\n  truncated,\n  '```'\n].join('\\n');\n\nreturn {\n  json: {\n    error_title: title,\n    error_description: description,\n    failed_workflow_name: workflowName,\n    failed_node_name: lastNode,\n    execution_id: executionId,\n    execution_url: executionUrl\n  }\n};"
+      },
+      "id": "e002-shape-payload",
+      "name": "Shape error payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linear.app/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linearApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"query EHLookup($teamId: String!) { team(id: $teamId) { states { nodes { id name type } } } issueLabels(first: 100) { nodes { id name } } }\",\n  \"variables\": { \"teamId\": \"f9d6193c-4572-40a9-b834-c408439f1aa1\" }\n}",
+        "options": {}
+      },
+      "id": "e003-linear-lookup",
+      "name": "Linear: Lookup",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 300],
+      "credentials": {
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Resolve Todo state ID and n8n-error-queue label ID.\nconst data = ($input.item.json && $input.item.json.data) || {};\nconst team = data.team || { states: { nodes: [] } };\nconst allLabels = (data.issueLabels && data.issueLabels.nodes) || [];\n\nconst todoState = (team.states.nodes || []).find(s => s.type === 'unstarted') || null;\nconst labelIdByName = {};\nfor (const l of allLabels) labelIdByName[l.name] = l.id;\n\nconst labelIds = [];\nif (labelIdByName['n8n-error-queue']) labelIds.push(labelIdByName['n8n-error-queue']);\n\nconst shaped = $('Shape error payload').item.json;\n\nreturn {\n  json: {\n    todo_state_id: todoState ? todoState.id : null,\n    label_ids: labelIds,\n    error_title: shaped.error_title,\n    error_description: shaped.error_description,\n    failed_workflow_name: shaped.failed_workflow_name,\n    failed_node_name: shaped.failed_node_name,\n    execution_id: shaped.execution_id,\n    execution_url: shaped.execution_url\n  }\n};"
+      },
+      "id": "e004-resolve-ids",
+      "name": "Resolve IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linear.app/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linearApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation EHCreate($teamId: String!, $title: String!, $description: String!, $stateId: String!, $labelIds: [String!]!) { issueCreate(input: { teamId: $teamId, title: $title, description: $description, stateId: $stateId, labelIds: $labelIds, priority: 2 }) { success issue { id identifier url title } } }\",\n  \"variables\": {\n    \"teamId\": \"f9d6193c-4572-40a9-b834-c408439f1aa1\",\n    \"title\": {{ JSON.stringify($json.error_title) }},\n    \"description\": {{ JSON.stringify($json.error_description) }},\n    \"stateId\": \"{{ $json.todo_state_id }}\",\n    \"labelIds\": {{ JSON.stringify($json.label_ids) }}\n  }\n}",
+        "options": {}
+      },
+      "id": "e005-linear-create",
+      "name": "Linear: Create error issue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1040, 300],
+      "credentials": {
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "userIds": [],
+        "title": "n8n workflow failed",
+        "message": "={{ $('Resolve IDs').item.json.failed_workflow_name }} failed at node \"{{ $('Resolve IDs').item.json.failed_node_name }}\" — error queue: {{ $json.data.issueCreate.issue.identifier }}",
+        "priority": 1,
+        "additionalFields": {}
+      },
+      "id": "e006-pushover-alert",
+      "name": "Pushover: Error alert",
+      "type": "n8n-nodes-base.pushover",
+      "typeVersion": 1,
+      "position": [1240, 300],
+      "credentials": {
+        "pushoverApi": {
+          "id": "{{PUSHOVER_CRED_ID}}",
+          "name": "pushover-n8n"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [[{"node": "Shape error payload", "type": "main", "index": 0}]]
+    },
+    "Shape error payload": {
+      "main": [[{"node": "Linear: Lookup", "type": "main", "index": 0}]]
+    },
+    "Linear: Lookup": {
+      "main": [[{"node": "Resolve IDs", "type": "main", "index": 0}]]
+    },
+    "Resolve IDs": {
+      "main": [[{"node": "Linear: Create error issue", "type": "main", "index": 0}]]
+    },
+    "Linear: Create error issue": {
+      "main": [[{"node": "Pushover: Error alert", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
