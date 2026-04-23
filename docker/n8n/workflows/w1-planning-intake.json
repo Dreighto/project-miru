@@ -149,7 +149,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"query\": \"query W1Lookup($teamId: String!) { team(id: $teamId) { states { nodes { id name type } } } issueLabels(first: 100) { nodes { id name } } issues(filter: {team: {id: {eq: $teamId}}, state: {type: {eq: \\\"unstarted\\\"}}, labels: {name: {eq: \\\"intake-draft\\\"}}}, first: 250) { nodes { id identifier title url } } }\",\n  \"variables\": { \"teamId\": \"f9d6193c-4572-40a9-b834-c408439f1aa1\" }\n}",
+        "jsonBody": "={\n  \"query\": \"query W1Lookup($teamId: ID!) { team(id: $teamId) { states { nodes { id name type } } } issueLabels(first: 100) { nodes { id name } } issues(filter: {team: {id: {eq: $teamId}}, state: {type: {eq: \\\"unstarted\\\"}}, labels: {name: {eq: \\\"intake-draft\\\"}}}, first: 250) { nodes { id identifier title url } } }\",\n  \"variables\": { \"teamId\": \"f9d6193c-4572-40a9-b834-c408439f1aa1\" }\n}",
         "options": {}
       },
       "id": "a007-linear-lookup",
@@ -226,7 +226,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"query\": \"mutation W1CommentDupe($issueId: String!, $body: String!) { commentCreate(input: {issueId: $issueId, body: $body}) { success comment { id } } }\",\n  \"variables\": {\n    \"issueId\": \"{{ $json.matched_issue_id }}\",\n    \"body\": \"Another intake page references this task:\\n\\n{{ $json.linked_notion_page_url }}\\n\\n(Auto-posted by n8n W1 workflow.)\"\n  }\n}",
+        "jsonBody": "={\n  \"query\": \"mutation W1CommentDupe($issueId: ID!, $body: String!) { commentCreate(input: {issueId: $issueId, body: $body}) { success comment { id } } }\",\n  \"variables\": {\n    \"issueId\": \"{{ $json.matched_issue_id }}\",\n    \"body\": \"Another intake page references this task:\\n\\n{{ $json.linked_notion_page_url }}\\n\\n(Auto-posted by n8n W1 workflow.)\"\n  }\n}",
         "options": {}
       },
       "id": "a010-linear-comment-dupe",
@@ -284,7 +284,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"query\": \"mutation W1Create($teamId: String!, $title: String!, $description: String!, $stateId: String!, $labelIds: [String!]!, $priority: Int) { issueCreate(input: { teamId: $teamId, title: $title, description: $description, stateId: $stateId, labelIds: $labelIds, priority: $priority }) { success issue { id identifier url title } } }\",\n  \"variables\": {\n    \"teamId\": \"f9d6193c-4572-40a9-b834-c408439f1aa1\",\n    \"title\": {{ JSON.stringify($json.title) }},\n    \"description\": {{ JSON.stringify('Intake source: ' + $json.linked_notion_page_url + '\\n\\n' + $json.description) }},\n    \"stateId\": \"{{ $json.todo_state_id }}\",\n    \"labelIds\": {{ JSON.stringify($json.label_ids_for_create) }},\n    \"priority\": {{ $json.suggested_priority_int }}\n  }\n}",
+        "jsonBody": "={\n  \"query\": \"mutation W1Create($teamId: ID!, $title: String!, $description: String!, $stateId: ID!, $labelIds: [ID!]!, $priority: Int) { issueCreate(input: { teamId: $teamId, title: $title, description: $description, stateId: $stateId, labelIds: $labelIds, priority: $priority }) { success issue { id identifier url title } } }\",\n  \"variables\": {\n    \"teamId\": \"f9d6193c-4572-40a9-b834-c408439f1aa1\",\n    \"title\": {{ JSON.stringify($json.title) }},\n    \"description\": {{ JSON.stringify('Intake source: ' + $json.linked_notion_page_url + '\\n\\n' + $json.description) }},\n    \"stateId\": \"{{ $json.todo_state_id }}\",\n    \"labelIds\": {{ JSON.stringify($json.label_ids_for_create) }},\n    \"priority\": {{ $json.suggested_priority_int }}\n  }\n}",
         "options": {}
       },
       "id": "a012-linear-create",
@@ -382,7 +382,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"query\": \"mutation W1BacklinkFailed($issueId: String!, $labelIds: [String!]!, $body: String!) { issueUpdate(id: $issueId, input: { labelIds: $labelIds }) { success issue { id } } commentCreate(input: { issueId: $issueId, body: $body }) { success comment { id } } }\",\n  \"variables\": {\n    \"issueId\": \"{{ $('Linear: Create issue').item.json.data.issueCreate.issue.id }}\",\n    \"labelIds\": {{ JSON.stringify(($('Dedupe match').item.json.label_ids_for_create || []).concat($('Dedupe match').item.json.notion_backlink_failed_label_id ? [$('Dedupe match').item.json.notion_backlink_failed_label_id] : [])) }},\n    \"body\": {{ JSON.stringify('Notion back-link failed after retries. Source intake page:\\n\\n' + $('Dedupe match').item.json.linked_notion_page_url + '\\n\\n(Auto-posted by n8n W1 workflow — back-link manually if desired.)') }}\n  }\n}",
+        "jsonBody": "={\n  \"query\": \"mutation W1BacklinkFailed($issueId: ID!, $labelIds: [ID!]!, $body: String!) { issueUpdate(id: $issueId, input: { labelIds: $labelIds }) { success issue { id } } commentCreate(input: { issueId: $issueId, body: $body }) { success comment { id } } }\",\n  \"variables\": {\n    \"issueId\": \"{{ $('Linear: Create issue').item.json.data.issueCreate.issue.id }}\",\n    \"labelIds\": {{ JSON.stringify(($('Dedupe match').item.json.label_ids_for_create || []).concat($('Dedupe match').item.json.notion_backlink_failed_label_id ? [$('Dedupe match').item.json.notion_backlink_failed_label_id] : [])) }},\n    \"body\": {{ JSON.stringify('Notion back-link failed after retries. Source intake page:\\n\\n' + $('Dedupe match').item.json.linked_notion_page_url + '\\n\\n(Auto-posted by n8n W1 workflow — back-link manually if desired.)') }}\n  }\n}",
         "options": {}
       },
       "id": "a015-linear-backlink-failed",

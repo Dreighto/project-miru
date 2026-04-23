@@ -38,7 +38,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"query\": \"query EHLookup($teamId: String!) { team(id: $teamId) { states { nodes { id name type } } } issueLabels(first: 100) { nodes { id name } } }\",\n  \"variables\": { \"teamId\": \"f9d6193c-4572-40a9-b834-c408439f1aa1\" }\n}",
+        "jsonBody": "={\n  \"query\": \"query EHLookup($teamId: ID!) { team(id: $teamId) { states { nodes { id name type } } } issueLabels(first: 100) { nodes { id name } } }\",\n  \"variables\": { \"teamId\": \"f9d6193c-4572-40a9-b834-c408439f1aa1\" }\n}",
         "options": {}
       },
       "id": "e003-linear-lookup",
@@ -85,7 +85,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"query\": \"mutation EHCreate($teamId: String!, $title: String!, $description: String!, $stateId: String!, $labelIds: [String!]!) { issueCreate(input: { teamId: $teamId, title: $title, description: $description, stateId: $stateId, labelIds: $labelIds, priority: 2 }) { success issue { id identifier url title } } }\",\n  \"variables\": {\n    \"teamId\": \"f9d6193c-4572-40a9-b834-c408439f1aa1\",\n    \"title\": {{ JSON.stringify($json.error_title) }},\n    \"description\": {{ JSON.stringify($json.error_description) }},\n    \"stateId\": \"{{ $json.todo_state_id }}\",\n    \"labelIds\": {{ JSON.stringify($json.label_ids) }}\n  }\n}",
+        "jsonBody": "={\n  \"query\": \"mutation EHCreate($teamId: ID!, $title: String!, $description: String!, $stateId: ID!, $labelIds: [ID!]!) { issueCreate(input: { teamId: $teamId, title: $title, description: $description, stateId: $stateId, labelIds: $labelIds, priority: 2 }) { success issue { id identifier url title } } }\",\n  \"variables\": {\n    \"teamId\": \"f9d6193c-4572-40a9-b834-c408439f1aa1\",\n    \"title\": {{ JSON.stringify($json.error_title) }},\n    \"description\": {{ JSON.stringify($json.error_description) }},\n    \"stateId\": \"{{ $json.todo_state_id }}\",\n    \"labelIds\": {{ JSON.stringify($json.label_ids) }}\n  }\n}",
         "options": {}
       },
       "id": "e005-linear-create",
