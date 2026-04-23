@@ -246,7 +246,7 @@
     },
     {
       "parameters": {
-        "userIds": [],
+        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
         "title": "W1 dedupe matched",
         "message": "=Intake matched existing {{ $('Dedupe match').item.json.matched_issue_identifier }} — no new draft created.",
         "priority": 0,
@@ -344,7 +344,7 @@
     },
     {
       "parameters": {
-        "userIds": [],
+        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
         "title": "W1 draft created",
         "message": "=New task draft: {{ $('Linear: Create issue').item.json.data.issueCreate.issue.identifier }} — {{ $('Dedupe match').item.json.title }}. Review and promote when ready.",
         "priority": 0,
@@ -402,7 +402,7 @@
     },
     {
       "parameters": {
-        "userIds": [],
+        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
         "title": "W1 back-link failed",
         "message": "={{ $('Linear: Create issue').item.json.data.issueCreate.issue.identifier }} created but Notion back-link failed — check manually.",
         "priority": 1,

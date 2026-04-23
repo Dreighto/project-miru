@@ -105,7 +105,7 @@
     },
     {
       "parameters": {
-        "userIds": [],
+        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
         "title": "n8n workflow failed",
         "message": "={{ $('Resolve IDs').item.json.failed_workflow_name }} failed at node \"{{ $('Resolve IDs').item.json.failed_node_name }}\" — error queue: {{ $json.data.issueCreate.issue.identifier }}",
         "priority": 1,
