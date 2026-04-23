@@ -13,6 +13,7 @@ services:
       N8N_PROTOCOL: http
       WEBHOOK_URL: http://room.taila28611.ts.net:15678/
       N8N_SECURE_COOKIE: "false"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       GENERIC_TIMEZONE: America/Los_Angeles
       TZ: America/Los_Angeles
       PUSHOVER_USER_KEY: ${PUSHOVER_USER_KEY}
