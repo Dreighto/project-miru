@@ -424,7 +424,7 @@
     }
   ],
   "connections": {
-    "AI Inbox Poll (5 min)": {
+    "AI Inbox Poll (1 min)": {
       "main": [[{"node": "Normalize (Notion)", "type": "main", "index": 0}]]
     },
     "Manual Webhook": {
