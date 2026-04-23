@@ -6,8 +6,7 @@
         "pollTimes": {
           "item": [
             {
-              "mode": "custom",
-              "cronExpression": "*/5 * * * *"
+              "mode": "everyMinute"
             }
           ]
         },
@@ -16,7 +15,7 @@
         "simple": true
       },
       "id": "a001-notion-trigger",
-      "name": "AI Inbox Poll (5 min)",
+      "name": "AI Inbox Poll (1 min)",
       "type": "n8n-nodes-base.notionTrigger",
       "typeVersion": 1,
       "position": [240, 200],
