@@ -37,9 +37,44 @@ workflow is left **inactive** — open the URL, review, then click **Activate**.
 ### Re-deploy / update
 
 Run the same command again. The script looks up the workflow by name and
-PUTs (full replace) the new content to the existing workflow ID (n8n bumps the version). No
+PUTs the new content to the existing workflow ID (n8n bumps the version). No
 duplicate workflows are created. The operator-set active/inactive state is
-preserved by n8n across updates (the script never toggles activation).
+preserved by n8n across updates (the script never toggles activation). On
+success the status line reports the actual state (`active` or `inactive`)
+read from the server, not a fixed string.
+
+### Pre-flight validation (PRO-27)
+
+Before any POST/PUT, the script runs two blocker checks against the parsed
+workflow JSON. If either fails the deploy aborts non-zero with a clear
+message and no API write happens.
+
+1. **Connections integrity.** Every top-level key in `connections` and
+   every `.node` value in every connection edge must match a node name in
+   `nodes[]`. Catches the W1-era silent-breakage class where a node is
+   renamed in `nodes[]` without a matching rewrite of every reference —
+   n8n would run cleanly with zero items flowing downstream.
+2. **Credential references.** Every credential ID referenced by a node
+   (`credentials.<type>.id`) must be present in the n8n vault (looked up
+   via the same `/credentials` call already used for placeholder
+   substitution). Catches credential-rotation UUID drift: if a credential
+   is deleted + recreated, its UUID changes and any workflow JSON still
+   holding the old UUID would break silently after deploy.
+
+Re-running the deploy is itself the fix for most credential-rotation
+drifts — the `{{..._CRED_ID}}` placeholders resubstitute against the
+current vault on every run.
+
+### Settings merge (PRO-27)
+
+On update (not create), the script first fetches the existing workflow's
+`settings` block, then merges the incoming JSON settings on top (incoming
+values win on conflict). This preserves operator-configured keys that the
+workflow JSON does not ship with — most importantly the one-time manual
+`errorWorkflow` wire-up described below, which now survives subsequent
+redeploys automatically. Prior behavior replaced the settings block
+wholesale, which silently dropped that key (and anything else the
+operator had set in the UI).
 
 ### Rollback
 
