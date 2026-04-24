@@ -1,0 +1,49 @@
+{
+  "$schema_version": "1.0.0",
+  "$description": "Worker routing rules for W2 (Worker Selection Router). Strings are canon-verbatim from n8n Automation Layer page 16, W2 step 3 table. Scoring logic in w2007-score-workers uses lowercase substring matching against issue title + description + labels + touches_paths concatenated. Phase 1 placeholder; recalibration at 200 decisions via Brier + ECE.",
+  "claude-code": {
+    "best_for": [
+      "careful implementation",
+      "architecture-sensitive",
+      "multi-step exec"
+    ],
+    "hard_no_go": [
+      "pure UI iteration",
+      "read-only audits"
+    ]
+  },
+  "codex": {
+    "best_for": [
+      "technical repo work",
+      "analysis-heavy coding",
+      "multi-file implement"
+    ],
+    "hard_no_go": [
+      "interactive UI builds",
+      "direct DB execution"
+    ]
+  },
+  "cursor": {
+    "best_for": [
+      "rapid UI iteration",
+      "HTML/CSS/Svelte",
+      "live phone testing"
+    ],
+    "hard_no_go": [
+      "backend architecture",
+      "risky refactors"
+    ]
+  },
+  "gemini": {
+    "best_for": [
+      "audit",
+      "schema reads",
+      "alternate framing",
+      "repo scan",
+      "second-opinion"
+    ],
+    "hard_no_go": [
+      "editing code or templates"
+    ]
+  }
+}

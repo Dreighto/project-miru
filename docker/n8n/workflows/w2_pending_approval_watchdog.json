@@ -1,0 +1,98 @@
+{
+  "name": "W2 — Pending-Approval Watchdog",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 8,20 * * *" }
+          ]
+        }
+      },
+      "id": "w2w01-schedule-trigger",
+      "name": "w2w01-schedule-trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linear.app/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linearApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"query W2WStale($teamIdFilter: ID!, $cutoff: DateTimeOrDuration!) { issues(first: 50, filter: { team: { id: { eq: $teamIdFilter } }, labels: { some: { name: { eq: \\\"pending-approval\\\" } } }, updatedAt: { lt: $cutoff } }) { nodes { id identifier title updatedAt } } }\",\n  \"variables\": {\n    \"teamIdFilter\": \"f9d6193c-4572-40a9-b834-c408439f1aa1\",\n    \"cutoff\": {{ JSON.stringify(new Date(Date.now() - 24 * 3600 * 1000).toISOString()) }}\n  }\n}",
+        "options": {}
+      },
+      "id": "w2w02-linear-stale-query",
+      "name": "w2w02-linear-stale-query",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "credentials": {
+        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data.issues.nodes",
+        "options": {}
+      },
+      "id": "w2w03-split-stale",
+      "name": "w2w03-split-stale",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
+        "title": "=W2 pending-approval stale: {{ $json.identifier }}",
+        "message": "={{ $json.identifier }} — {{ $json.title }}\\n\\nLast updated: {{ $json.updatedAt }}\\nPending-approval > 24h. Approve, override, or apply triage.",
+        "priority": 2,
+        "additionalFields": {
+          "url": "=https://linear.app/project-miru/issue/{{ $json.identifier }}",
+          "url_title": "Open in Linear",
+          "retry": 60,
+          "expire": 3600
+        }
+      },
+      "id": "w2w04-pushover-stale",
+      "name": "w2w04-pushover-stale",
+      "type": "n8n-nodes-base.pushover",
+      "typeVersion": 1,
+      "position": [840, 300],
+      "credentials": {
+        "pushoverApi": { "id": "{{PUSHOVER_CRED_ID}}", "name": "pushover-n8n" }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    }
+  ],
+  "connections": {
+    "w2w01-schedule-trigger": {
+      "main": [[{"node": "w2w02-linear-stale-query", "type": "main", "index": 0}]]
+    },
+    "w2w02-linear-stale-query": {
+      "main": [[{"node": "w2w03-split-stale", "type": "main", "index": 0}]]
+    },
+    "w2w03-split-stale": {
+      "main": [[{"node": "w2w04-pushover-stale", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
