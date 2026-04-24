@@ -22,11 +22,11 @@
 - If another worker is actively working on the same file or feature: STOP. Report the conflict to the operator. Do not proceed until the operator decides.
 - Never modify a file that is currently open and being edited by another worker
 
-## Notion — Read Rules
+## Notion — Read/Write Rules
 
 - ALL workers may READ Notion to understand the current job, active tasks, and system state
-- Only Claude Chat may WRITE to Notion
-- No other worker may create, update, or modify any Notion page under any circumstances
+- Claude Chat is the default Notion writer
+- Other workers (including Claude Code) may write to Notion only when the operator explicitly authorizes a specific task — the authorization is per-task, not standing
 - Use Notion reads to avoid overlapping with in-progress work
 
 ## MCP Tool Usage Rules
@@ -96,13 +96,13 @@ Every file created must go in the correct location. These rules are non-negotiab
 
 ### Role
 
-- **Claude Chat:** Lead Architect. Architecture decisions, planning, worker prompt authoring, Notion read AND write, session continuity. The only worker that writes to Notion.
-- **Claude Code:** Primary Python execution worker. Complex multi-file Python refactoring, test writing, verification scripts.
+- **Claude Chat:** Lead Architect. Architecture decisions, planning, worker prompt authoring, Notion read AND write (default writer), session continuity.
+- **Claude Code:** Primary Python execution worker. Complex multi-file Python refactoring, test writing, verification scripts. Handles large or surgical edits to Claude Chat's normally-owned surfaces (Notion canon pages, CLAUDE.md, worker prompts) when the operator explicitly authorizes it for a given task — e.g. when Claude Chat is unavailable or the edit volume is impractical in chat.
 
 ### File ownership
 
 - Claude Code owns: Python backend files, test scripts, verification scripts
-- Claude Chat owns: CLAUDE.md, GEMINI.md, CURSOR.md, CODEX.md, COPILOT.md, all worker prompts
+- Claude Chat owns by default: CLAUDE.md, GEMINI.md, CURSOR.md, CODEX.md, COPILOT.md, all worker prompts — Claude Code may edit these when the operator explicitly authorizes it for that task
 
 ### Must never
 
