@@ -45,6 +45,9 @@ data/miru_dev_training_reviews.db
 # n8n W2 routing_history runtime log (append-only; rotate manually)
 data/routing_history.jsonl
 
+# n8n W7 pending_callbacks runtime log (intent + decided rows; idempotency state)
+data/pending_callbacks.jsonl
+
 # Dispatcher runtime databases (job history — regenerated at startup)
 dispatcher/data/jobs.db
 windows/dispatcher_jobs.db
