@@ -252,7 +252,7 @@
         "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "a011-pushover-dupe",
-      "name": "Pushover: Dedupe ping",
+      "name": "Telegram: Dedupe ping",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [1840, 160],
@@ -347,7 +347,7 @@
         "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "a014-pushover-created",
-      "name": "Pushover: Draft created",
+      "name": "Telegram: Draft created",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [2040, 400],
@@ -402,7 +402,7 @@
         "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "a016-pushover-backlink-failed",
-      "name": "Pushover: Backlink failed",
+      "name": "Telegram: Backlink failed",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [2240, 560],
@@ -446,19 +446,19 @@
       ]
     },
     "Linear: Comment on dupe": {
-      "main": [[{"node": "Pushover: Dedupe ping", "type": "main", "index": 0}]]
+      "main": [[{"node": "Telegram: Dedupe ping", "type": "main", "index": 0}]]
     },
     "Linear: Create issue": {
       "main": [[{"node": "Notion: Back-link", "type": "main", "index": 0}]]
     },
     "Notion: Back-link": {
       "main": [
-        [{"node": "Pushover: Draft created", "type": "main", "index": 0}],
+        [{"node": "Telegram: Draft created", "type": "main", "index": 0}],
         [{"node": "Linear: Mark backlink failed", "type": "main", "index": 0}]
       ]
     },
     "Linear: Mark backlink failed": {
-      "main": [[{"node": "Pushover: Backlink failed", "type": "main", "index": 0}]]
+      "main": [[{"node": "Telegram: Backlink failed", "type": "main", "index": 0}]]
     }
   },
   "settings": {

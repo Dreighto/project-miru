@@ -112,7 +112,7 @@
         "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "e006-pushover-alert",
-      "name": "Pushover: Error alert",
+      "name": "Telegram: Error alert",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [1240, 300],
@@ -138,7 +138,7 @@
       "main": [[{"node": "Linear: Create error issue", "type": "main", "index": 0}]]
     },
     "Linear: Create error issue": {
-      "main": [[{"node": "Pushover: Error alert", "type": "main", "index": 0}]]
+      "main": [[{"node": "Telegram: Error alert", "type": "main", "index": 0}]]
     }
   },
   "settings": {
