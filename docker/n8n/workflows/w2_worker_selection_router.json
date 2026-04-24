@@ -121,6 +121,40 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "d1",
+              "leftValue": "={{ $json.should_proceed }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "w2003b-dedupe-if",
+      "name": "w2003b-dedupe-if",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1100, 330]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w2003c-dedupe-skip-log\n// Observability tail for the dedupe guard's false branch: append a single\n// skipped-dedupe row to routing_history.jsonl. No downstream — terminates\n// the branch. Safe to remove; dedupe correctness does not depend on this row.\nconst fs = require('fs');\nconst HISTORY = '/miru-data/routing_history.jsonl';\nconst data = $input.item.json;\nconst row = {\n  timestamp: new Date().toISOString(),\n  task_id: data.issue_id || null,\n  issue_identifier: data.issue_identifier || '',\n  trace_id: data.trace_id || null,\n  outcome: 'skipped-dedupe',\n  dedupe_reason: data.dedupe_reason || '',\n  intake_source: data.intake_source || ''\n};\ntry {\n  fs.appendFileSync(HISTORY, JSON.stringify(row) + '\\n');\n} catch (e) {\n  // fail-open: history log is diagnostic, not load-bearing\n}\nreturn { json: row };"
+      },
+      "id": "w2003c-dedupe-skip-log",
+      "name": "w2003c-dedupe-skip-log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 480]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://api.linear.app/graphql",
         "authentication": "predefinedCredentialType",
@@ -540,7 +574,13 @@
       "main": [[{"node": "w2003a-dedupe-guard", "type": "main", "index": 0}]]
     },
     "w2003a-dedupe-guard": {
-      "main": [[{"node": "w2005-linear-fetch", "type": "main", "index": 0}]]
+      "main": [[{"node": "w2003b-dedupe-if", "type": "main", "index": 0}]]
+    },
+    "w2003b-dedupe-if": {
+      "main": [
+        [{"node": "w2005-linear-fetch", "type": "main", "index": 0}],
+        [{"node": "w2003c-dedupe-skip-log", "type": "main", "index": 0}]
+      ]
     },
     "w2005-linear-fetch": {
       "main": [
