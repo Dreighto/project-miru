@@ -105,22 +105,19 @@
     },
     {
       "parameters": {
-        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
-        "title": "n8n workflow failed",
-        "message": "={{ $('Resolve IDs').item.json.failed_workflow_name }} failed at node \"{{ $('Resolve IDs').item.json.failed_node_name }}\" — error queue: {{ $json.data.issueCreate.issue.identifier }}",
-        "priority": 1,
-        "additionalFields": {}
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=*n8n workflow failed*\n\n{{ $('Resolve IDs').item.json.failed_workflow_name }} failed at node \"{{ $('Resolve IDs').item.json.failed_node_name }}\" — error queue: {{ $json.data.issueCreate.issue.identifier }}",
+        "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "e006-pushover-alert",
       "name": "Pushover: Error alert",
-      "type": "n8n-nodes-base.pushover",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [1240, 300],
       "credentials": {
-        "pushoverApi": {
-          "id": "{{PUSHOVER_CRED_ID}}",
-          "name": "pushover-n8n"
-        }
+        "telegramApi": { "id": "5tWWGl8jkCOHqJQg", "name": "telegram-n8n" }
       },
       "retryOnFail": true,
       "maxTries": 3,

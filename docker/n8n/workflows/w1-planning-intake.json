@@ -245,22 +245,19 @@
     },
     {
       "parameters": {
-        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
-        "title": "W1 dedupe matched",
-        "message": "=Intake matched existing {{ $('Dedupe match').item.json.matched_issue_identifier }} — no new draft created.",
-        "priority": 0,
-        "additionalFields": {}
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=*W1 dedupe matched*\n\nIntake matched existing {{ $('Dedupe match').item.json.matched_issue_identifier }} — no new draft created.",
+        "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "a011-pushover-dupe",
       "name": "Pushover: Dedupe ping",
-      "type": "n8n-nodes-base.pushover",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [1840, 160],
       "credentials": {
-        "pushoverApi": {
-          "id": "{{PUSHOVER_CRED_ID}}",
-          "name": "pushover-n8n"
-        }
+        "telegramApi": { "id": "5tWWGl8jkCOHqJQg", "name": "telegram-n8n" }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -343,22 +340,19 @@
     },
     {
       "parameters": {
-        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
-        "title": "W1 draft created",
-        "message": "=New task draft: {{ $('Linear: Create issue').item.json.data.issueCreate.issue.identifier }} — {{ $('Dedupe match').item.json.title }}. Review and promote when ready.",
-        "priority": 0,
-        "additionalFields": {}
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=*W1 draft created*\n\nNew task draft: {{ $('Linear: Create issue').item.json.data.issueCreate.issue.identifier }} — {{ $('Dedupe match').item.json.title }}. Review and promote when ready.",
+        "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "a014-pushover-created",
       "name": "Pushover: Draft created",
-      "type": "n8n-nodes-base.pushover",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [2040, 400],
       "credentials": {
-        "pushoverApi": {
-          "id": "{{PUSHOVER_CRED_ID}}",
-          "name": "pushover-n8n"
-        }
+        "telegramApi": { "id": "5tWWGl8jkCOHqJQg", "name": "telegram-n8n" }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -401,22 +395,19 @@
     },
     {
       "parameters": {
-        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
-        "title": "W1 back-link failed",
-        "message": "={{ $('Linear: Create issue').item.json.data.issueCreate.issue.identifier }} created but Notion back-link failed — check manually.",
-        "priority": 1,
-        "additionalFields": {}
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=*W1 back-link failed*\n\n{{ $('Linear: Create issue').item.json.data.issueCreate.issue.identifier }} created but Notion back-link failed — check manually.",
+        "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "a016-pushover-backlink-failed",
       "name": "Pushover: Backlink failed",
-      "type": "n8n-nodes-base.pushover",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [2240, 560],
       "credentials": {
-        "pushoverApi": {
-          "id": "{{PUSHOVER_CRED_ID}}",
-          "name": "pushover-n8n"
-        }
+        "telegramApi": { "id": "5tWWGl8jkCOHqJQg", "name": "telegram-n8n" }
       },
       "retryOnFail": true,
       "maxTries": 3,
