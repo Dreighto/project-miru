@@ -96,6 +96,12 @@ __pycache__/
 .pip-cache/
 .npm-tmp/
 
+# Tailscale TLS certificates (issued by `tailscale cert`; never commit private keys)
+*.taila*.crt
+*.taila*.key
+*.ts.net.crt
+*.ts.net.key
+
 # Blanket DB exclusions (added 2026-04-19, pre-Phase 1)
 # Covers card_catalog.db, snapshots, dispatcher jobs, pm_decks, and all intel/learning/dossier DBs
 data/**/*.db

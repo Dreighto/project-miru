@@ -11,8 +11,8 @@ services:
     environment:
       N8N_HOST: room.taila28611.ts.net
       N8N_PORT: "5678"
-      N8N_PROTOCOL: http
-      WEBHOOK_URL: http://room.taila28611.ts.net:15678/
+      N8N_PROTOCOL: https
+      WEBHOOK_URL: https://room.taila28611.ts.net/
       N8N_SECURE_COOKIE: "false"
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       GENERIC_TIMEZONE: America/Los_Angeles
