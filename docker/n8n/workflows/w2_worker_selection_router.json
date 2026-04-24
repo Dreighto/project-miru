@@ -314,7 +314,7 @@
         "options": {}
       },
       "id": "w2013-pushover-proposal",
-      "name": "w2013-pushover-proposal",
+      "name": "w2013-telegram-proposal",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [3100, 260],
@@ -373,7 +373,7 @@
         "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "w2016-triage-pushover",
-      "name": "w2016-triage-pushover",
+      "name": "w2016-triage-telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [2800, 460],
@@ -447,7 +447,7 @@
         "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "w2998b-apply-failed-pushover",
-      "name": "w2998b-apply-failed-pushover",
+      "name": "w2998b-apply-failed-telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [3000, 100],
@@ -508,7 +508,7 @@
         "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "w2999c-router-failure-pushover",
-      "name": "w2999c-router-failure-pushover",
+      "name": "w2999c-router-failure-telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [2800, 640],
@@ -591,14 +591,14 @@
       "main": [[{"node": "w2012a-mint-callback-token", "type": "main", "index": 0}]]
     },
     "w2012a-mint-callback-token": {
-      "main": [[{"node": "w2013-pushover-proposal", "type": "main", "index": 0}]]
+      "main": [[{"node": "w2013-telegram-proposal", "type": "main", "index": 0}]]
     },
     "w2014-append-history-triage": {
       "main": [[{"node": "w2015-triage-apply", "type": "main", "index": 0}]]
     },
     "w2015-triage-apply": {
       "main": [
-        [{"node": "w2016-triage-pushover", "type": "main", "index": 0}],
+        [{"node": "w2016-triage-telegram", "type": "main", "index": 0}],
         [{"node": "w2999a-router-failure-code", "type": "main", "index": 0}]
       ]
     },
@@ -612,13 +612,13 @@
       ]
     },
     "w2998a-apply-failed-code": {
-      "main": [[{"node": "w2998b-apply-failed-pushover", "type": "main", "index": 0}]]
+      "main": [[{"node": "w2998b-apply-failed-telegram", "type": "main", "index": 0}]]
     },
     "w2999a-router-failure-code": {
       "main": [[{"node": "w2999b-router-failure-triage-apply", "type": "main", "index": 0}]]
     },
     "w2999b-router-failure-triage-apply": {
-      "main": [[{"node": "w2999c-router-failure-pushover", "type": "main", "index": 0}]]
+      "main": [[{"node": "w2999c-router-failure-telegram", "type": "main", "index": 0}]]
     }
   },
   "settings": {
