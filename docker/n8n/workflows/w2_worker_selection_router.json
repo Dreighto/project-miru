@@ -288,23 +288,36 @@
     },
     {
       "parameters": {
-        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
-        "title": "={{ ($json.shadow_mode ? 'SHADOW MODE — ' : '') + 'W2 → ' + ({'claude-code':'Claude Code','codex':'Codex','cursor':'Cursor','gemini':'Gemini CLI'}[$json.chosen_worker] || $json.chosen_worker) + ' proposed for ' + ($json.issue_identifier || $json.issue_id) }}",
-        "message": "={{ ($json.shadow_mode ? '[SHADOW MODE]\\n\\n' : '') + ($json.issue_title || '') + '\\n\\nProposed: ' + ({'claude-code':'Claude Code','codex':'Codex','cursor':'Cursor','gemini':'Gemini CLI'}[$json.chosen_worker] || $json.chosen_worker) + ' (conf ' + $json.confidence.toFixed(2) + ', risk ' + $json.risk + ')\\n\\nRisk rationale: ' + ($json.risk_rationale || '') + '\\n\\n' + ($json.shadow_mode ? 'Shadow mode: no labels applied. Review in Linear.' : 'Approve: remove `pending-approval` in Linear.') + '\\n\\ntrace_id: ' + $json.trace_id }}",
-        "priority": 0,
-        "additionalFields": {
-          "url": "=https://linear.app/project-miru/issue/{{ $json.issue_identifier }}",
-          "url_title": "Open in Linear"
-        }
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w2012a-mint-callback-token\n// Mint per-button HMAC, write 'intent' row to pending_callbacks.jsonl, build full\n// Telegram sendMessage body for downstream HTTP Request. ANCHOR MUST match\n// w7004-hmac-validate (2026-01-01T00:00:00Z = unix 1767225600).\n// Uses parse_mode=HTML so arbitrary issue_title / risk_rationale content is safe.\nconst fs = require('fs');\nconst crypto = require('crypto');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\nconst ANCHOR_UNIX = 1767225600;\n\nfunction esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\n\nconst data = $input.item.json;\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nconst chatId = $env.TELEGRAM_CHAT_ID;\nif (!secret) throw new Error('TELEGRAM_CALLBACK_SECRET not set');\nif (!chatId) throw new Error('TELEGRAM_CHAT_ID not set');\n\nconst token = crypto.randomBytes(8).toString('hex').slice(0, 12);\nconst ts_minutes = Math.floor((Math.floor(Date.now()/1000) - ANCHOR_UNIX) / 60);\nconst ts_hex = ts_minutes.toString(16).padStart(8, '0').slice(-8);\n\nfunction buttonFor(actionCode, label) {\n  const nonce = crypto.randomBytes(4).toString('hex');\n  const payload = token + actionCode + nonce + ts_hex;\n  const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\n  const cb = token + actionCode + nonce + ts_hex + hmac;\n  if (cb.length !== 61) throw new Error('callback_data length mismatch: ' + cb.length);\n  return { text: label, callback_data: cb };\n}\n\nconst button_set = 'proposal';\nconst buttons = [\n  buttonFor('a','Approve'),\n  buttonFor('o','Override'),\n  buttonFor('t','Triage'),\n  buttonFor('r','Request Revision')\n];\nconst inline_keyboard = [\n  [buttons[0], buttons[1]],\n  [buttons[2], buttons[3]]\n];\n\nconst intentRow = {\n  kind: 'intent',\n  token,\n  intent_written_at: new Date().toISOString(),\n  trace_id: data.trace_id,\n  issue_id: data.issue_id,\n  issue_identifier: data.issue_identifier,\n  chosen_worker: data.chosen_worker,\n  confidence: data.confidence,\n  risk: data.risk,\n  button_set,\n  issue_existing_label_ids: data.issue_existing_label_ids || [],\n  labels_map: data.labels_map || {}\n};\nfs.appendFileSync(PENDING, JSON.stringify(intentRow) + '\\n');\n\nconst workerDisplay = { 'claude-code':'Claude Code','codex':'Codex','cursor':'Cursor','gemini':'Gemini CLI' };\nconst display = workerDisplay[data.chosen_worker] || data.chosen_worker;\nconst conf = (typeof data.confidence === 'number') ? data.confidence.toFixed(2) : 'n/a';\nconst shadowPrefix = data.shadow_mode ? '[SHADOW MODE]\\n\\n' : '';\nconst identSafe = esc(data.issue_identifier);\nconst titleSafe = esc(data.issue_title);\nconst riskSafe = esc(data.risk || '?');\nconst rationaleSafe = esc(data.risk_rationale || '\\u2014');\nconst displaySafe = esc(display);\nconst traceSafe = esc(data.trace_id);\nconst linearUrl = data.issue_identifier ? ('https://linear.app/project-miru/issue/' + encodeURIComponent(data.issue_identifier)) : null;\nconst text = shadowPrefix\n  + '<b>W2 routing proposal: ' + displaySafe + '</b>\\n'\n  + identSafe + (titleSafe ? (' \\u2014 ' + titleSafe) : '') + '\\n\\n'\n  + 'Proposed: ' + displaySafe + ' (conf ' + conf + ', risk ' + riskSafe + ')\\n'\n  + 'Risk rationale: ' + rationaleSafe + '\\n'\n  + (linearUrl ? ('<a href=\"' + linearUrl + '\">Open in Linear</a>\\n') : '')\n  + '\\n' + (data.shadow_mode ? 'Shadow mode: no labels applied.' : 'Choose:')\n  + '\\n\\ntrace_id: ' + traceSafe;\n\nconst telegram_send_body = {\n  chat_id: chatId,\n  text,\n  parse_mode: 'HTML',\n  reply_markup: { inline_keyboard }\n};\n\nreturn { json: { ...data, callback_token: token, telegram_send_body } };"
+      },
+      "id": "w2012a-mint-callback-token",
+      "name": "w2012a-mint-callback-token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2900, 260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.telegram_send_body) }}",
+        "options": {}
       },
       "id": "w2013-pushover-proposal",
       "name": "w2013-pushover-proposal",
-      "type": "n8n-nodes-base.pushover",
-      "typeVersion": 1,
-      "position": [3000, 260],
-      "credentials": {
-        "pushoverApi": { "id": "{{PUSHOVER_CRED_ID}}", "name": "pushover-n8n" }
-      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3100, 260],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
@@ -353,22 +366,19 @@
     },
     {
       "parameters": {
-        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
-        "title": "=W2 → triage on {{ $json.issue_identifier || $json.issue_id }}",
-        "message": "=Router confidence low (conf {{ $json.confidence.toFixed(2) }}) on {{ $json.issue_identifier }} — manual routing required.\\n\\nTitle: {{ $json.issue_title }}\\nRisk: {{ $json.risk }}\\n\\ntrace_id: {{ $json.trace_id }}",
-        "priority": 1,
-        "additionalFields": {
-          "url": "=https://linear.app/project-miru/issue/{{ $json.issue_identifier }}",
-          "url_title": "Open in Linear"
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=*W2 → triage on {{ $json.issue_identifier || $json.issue_id }}*\n\nRouter confidence low (conf {{ $json.confidence.toFixed(2) }}) on {{ $json.issue_identifier }} — manual routing required.\n\nTitle: {{ $json.issue_title }}\nRisk: {{ $json.risk }}\n[Open in Linear](https://linear.app/project-miru/issue/{{ $json.issue_identifier }})\n\ntrace_id: {{ $json.trace_id }}",
+        "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "w2016-triage-pushover",
       "name": "w2016-triage-pushover",
-      "type": "n8n-nodes-base.pushover",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [2800, 460],
       "credentials": {
-        "pushoverApi": { "id": "{{PUSHOVER_CRED_ID}}", "name": "pushover-n8n" }
+        "telegramApi": { "id": "5tWWGl8jkCOHqJQg", "name": "telegram-n8n" }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -430,22 +440,19 @@
     },
     {
       "parameters": {
-        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
-        "title": "=W2 → apply-failed on {{ $json.issue_identifier || $json.issue_id }}",
-        "message": "=Label+comment apply FAILED for {{ $json.issue_identifier }} after 3 retries.\\n\\nDecision was computed: {{ $json._workerDisplay }} (conf {{ $json.confidence.toFixed(2) }}, risk {{ $json.risk }}).\\n\\nApply manually in Linear:\\n - Add `{{ $json.chosen_worker }}` + `pending-approval` labels\\n - OR re-trigger via POST /webhook/w2-route with {\"issue_id\":\"{{ $json.issue_id }}\"}\\n\\nError: {{ $json.apply_failed_error }}\\n\\ntrace_id: {{ $json.trace_id }}",
-        "priority": 1,
-        "additionalFields": {
-          "url": "=https://linear.app/project-miru/issue/{{ $json.issue_identifier }}",
-          "url_title": "Open in Linear"
-        }
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=*W2 → apply-failed on {{ $json.issue_identifier || $json.issue_id }}*\n\nLabel+comment apply FAILED for {{ $json.issue_identifier }} after 3 retries.\n\nDecision was computed: {{ $json._workerDisplay }} (conf {{ $json.confidence.toFixed(2) }}, risk {{ $json.risk }}).\n\nApply manually in Linear:\n - Add `{{ $json.chosen_worker }}` + `pending-approval` labels\n - OR re-trigger via POST /webhook/w2-route with issue_id {{ $json.issue_id }}\n[Open in Linear](https://linear.app/project-miru/issue/{{ $json.issue_identifier }})\n\nError: {{ $json.apply_failed_error }}\n\ntrace_id: {{ $json.trace_id }}",
+        "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "w2998b-apply-failed-pushover",
       "name": "w2998b-apply-failed-pushover",
-      "type": "n8n-nodes-base.pushover",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [3000, 100],
       "credentials": {
-        "pushoverApi": { "id": "{{PUSHOVER_CRED_ID}}", "name": "pushover-n8n" }
+        "telegramApi": { "id": "5tWWGl8jkCOHqJQg", "name": "telegram-n8n" }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -494,19 +501,19 @@
     },
     {
       "parameters": {
-        "userKey": "={{ $env.PUSHOVER_USER_KEY }}",
-        "title": "=W2 → halted on {{ $('w2999a-router-failure-code').item.json.issue_identifier || $('w2999a-router-failure-code').item.json.issue_id || 'unknown' }}",
-        "message": "=Router failure during decision phase on {{ $('w2999a-router-failure-code').item.json.issue_identifier || 'unknown' }} — manual routing required.\\n\\nError: {{ $('w2999a-router-failure-code').item.json.halt_error }}\\n\\ntrace_id: {{ $('w2999a-router-failure-code').item.json.trace_id }}",
-        "priority": 1,
-        "additionalFields": {}
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=*W2 \u2192 halted on {{ $('w2999a-router-failure-code').item.json.issue_identifier || $('w2999a-router-failure-code').item.json.issue_id || 'unknown' }}*\nRouter failure during decision phase on {{ $('w2999a-router-failure-code').item.json.issue_identifier || 'unknown' }} \u2014 manual routing required.\n\nError: {{ $('w2999a-router-failure-code').item.json.halt_error }}\n\ntrace_id: {{ $('w2999a-router-failure-code').item.json.trace_id }}",
+        "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "w2999c-router-failure-pushover",
       "name": "w2999c-router-failure-pushover",
-      "type": "n8n-nodes-base.pushover",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
       "position": [2800, 640],
       "credentials": {
-        "pushoverApi": { "id": "{{PUSHOVER_CRED_ID}}", "name": "pushover-n8n" }
+        "telegramApi": { "id": "5tWWGl8jkCOHqJQg", "name": "telegram-n8n" }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -581,6 +588,9 @@
       ]
     },
     "w2012-append-history-dispatched": {
+      "main": [[{"node": "w2012a-mint-callback-token", "type": "main", "index": 0}]]
+    },
+    "w2012a-mint-callback-token": {
       "main": [[{"node": "w2013-pushover-proposal", "type": "main", "index": 0}]]
     },
     "w2014-append-history-triage": {
