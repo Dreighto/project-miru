@@ -1,0 +1,63 @@
+# Pre-PR hygiene layer (PRO-107).
+# Hooks fire on git commit (pre-commit stage) and git push (pre-push stage).
+# Bypass policy: --no-verify allowed only for emergency hotfixes; must be logged
+# in the commit message ("HYGIENE BYPASS: <reason>"). See CLAUDE.md ## Hygiene gate.
+# Legacy files (those not touched by the current PR) are NOT subject to retroactive
+# enforcement — hooks fire on changed files only, by pre-commit's default behavior.
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: check-yaml
+      - id: check-json
+        # Workflow JSONs are validated by the dedicated n8n schema hook below.
+        exclude: ^docker/n8n/workflows/
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [javascript, css, html, markdown]
+        exclude: ^docker/n8n/workflows/
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.16.0
+    hooks:
+      - id: eslint
+        files: \.(js|jsx|ts|tsx)$
+        exclude: ^docker/n8n/workflows/
+
+  - repo: local
+    hooks:
+      - id: n8n-workflow-schema
+        name: n8n workflow JSON schema validation
+        entry: python tools/validate_n8n_workflow.py
+        language: system
+        files: ^docker/n8n/workflows/.*\.json$
+        pass_filenames: true
+
+      - id: jsonl-line-validation
+        name: JSONL append-only line validation
+        entry: python tools/validate_jsonl.py
+        language: system
+        files: \.jsonl$
+        pass_filenames: true
+
+      # Pytest pre-push hook intentionally omitted per operator ruling 2026-04-25.
+      # CI (`.github/workflows/hygiene.yml`) runs pytest authoritatively on every PR.
+      # Local pre-push pytest will be re-enabled once the test suite debt is cleared
+      # (PRO-109): 33 pre-existing failures across 7 files surfaced during PRO-107
+      # build (env var drift, schema drift, identity-truth-lock data, threshold drift).
+      # `conftest.py` at repo root stays — it fixes a latent sys.path bug regardless.

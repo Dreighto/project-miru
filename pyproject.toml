@@ -1,0 +1,24 @@
+# PRO-107 — pre-PR hygiene config.
+# Project-wide ruff config (linter + formatter, replaces black per ruff-format).
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+  "archive",
+  "data",
+  "logs",
+  ".venv",
+  "venv",
+  "node_modules",
+  "tests/_tmp",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
+# E501 (line length) is enforced softly via the formatter; not a hard error.
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
