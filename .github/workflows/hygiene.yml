@@ -1,0 +1,41 @@
+# Pre-PR hygiene CI gate (PRO-107).
+# Mirrors the local pre-commit hooks. Catches anyone bypassing pre-commit with
+# --no-verify by re-running the same checks on the PR before merge.
+# Phased rollout: hooks fire on changed files only (pre-commit's default scope);
+# legacy code is grandfathered until touched. See CLAUDE.md ## Hygiene gate.
+
+name: Pre-PR Hygiene
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
+
+      - name: Run tests
+        run: |
+          pip install pytest
+          pytest tests/ -x --tb=short

@@ -34,6 +34,7 @@
 CC may self-merge PRs that fall in the low-risk column below. Operator reviews and merges anything in the high-risk column.
 
 **CC merges (fixes):**
+
 - Single-file edits to existing files
 - Single-workflow JSON changes
 - Bug fixes following a known canon-lesson pattern
@@ -44,6 +45,7 @@ CC may self-merge PRs that fall in the low-risk column below. Operator reviews a
 - Bugbot reviewed and green
 
 **Operator merges (changes):**
+
 - New files or new directories
 - Multi-workflow changes
 - Schema or data model changes
@@ -56,6 +58,7 @@ CC may self-merge PRs that fall in the low-risk column below. Operator reviews a
 **Principle:** CC merges fixes. Operator merges changes. Fix = restore expected behavior of something that already exists. Change = add capability or alter the contract. When unsure, default to opening the PR for operator review (fail-closed). The cost of waiting for an operator review is minutes; the cost of a wrong self-merge is a revert plus context loss.
 
 **Hard requirements before CC self-merges:**
+
 1. PR is in the CC-merge column above (CC must explicitly check)
 2. Bugbot has reviewed AND raised no non-trivial findings
 3. CC's own completion contract reports CONFIRMED WORKING (not INCONCLUSIVE)
@@ -65,6 +68,7 @@ CC may self-merge PRs that fall in the low-risk column below. Operator reviews a
 If any of those fail: open the PR for operator review, do not self-merge.
 
 **Never self-merge:**
+
 - Force-push or destructive git operations (these are hard rules under access progression, not just merge policy)
 - This ticket itself (PR for PRO-76 falls in the operator-merge column — worker rule file change)
 
@@ -101,6 +105,7 @@ Source: locked 2026-04-25 after CC shipped 4 clean ticket fixes (PRO-60, PRO-65,
 Every file created must go in the correct location. These rules are non-negotiable.
 
 ### Service boundaries — files belong to their service
+
 - `miru_ai/` — ALL code for the Miru AI service (port 18765): Python modules, workers, templates, static, tools, migrations
 - `pm/` — ALL code for the PM Dashboard (port 18080): app.py, templates, static
 - `dispatcher/` — ALL code for the Task Dispatcher (port 19000): task_dispatcher.py, handlers/, templates/, static/
@@ -108,6 +113,7 @@ Every file created must go in the correct location. These rules are non-negotiab
 - `windows/` — Windows operational scripts (.ps1, .cmd) for service management ONLY. No Python service code here.
 
 ### Where new files go
+
 - New Python module for miru_ai → `miru_ai/` (appropriate subfolder: core/, workers/, governance/, ingestion/)
 - New Python module for dispatcher → `dispatcher/handlers/` or `dispatcher/`
 - New Python module for pm → `pm/`
@@ -123,11 +129,12 @@ Every file created must go in the correct location. These rules are non-negotiab
 - Debug screenshots → `archive/screenshots/`
 
 ### NEVER do these
+
 - Never create service code (.py, .html, .css, .js) at repo root
 - Never create temp, scratch, or debug files at repo root
-- Never write *.log files to repo root or data/ root — always use `logs/`
-- Never write *.db files to repo root — always use `data/`
-- Never write *.png screenshots to repo root — use `archive/screenshots/`
+- Never write \*.log files to repo root or data/ root — always use `logs/`
+- Never write \*.db files to repo root — always use `data/`
+- Never write \*.png screenshots to repo root — use `archive/screenshots/`
 - If a file belongs to miru_ai, pm, or dispatcher — it lives in that service directory, nowhere else
 - Never create files in `data/startup-logs/` — that path is deprecated; use `logs/`
 
@@ -162,9 +169,21 @@ Every task must end with exactly one of:
 
 Plus a summary of what changed and what did not.
 
+### Hygiene gate (locked 2026-04-25 per PRO-107)
+
+Tasks involving code changes are not complete until lint + format + schema validation pass locally before PR creation. Worker MUST run `pre-commit run` (default scope: staged files) and confirm green before opening a PR. Local hygiene gate runs lint, format, and schema validation. Pytest is enforced via CI on every PR (`.github/workflows/hygiene.yml`). Local pytest will be re-enabled once the test suite is clean — see PRO-109.
+
+If hygiene fails:
+
+- Fix the issues if they're in scope of the current task.
+- If issues are pre-existing or out of scope: STOP, report the failures to operator, do NOT push a PR with known lint failures hoping CI will catch them.
+
+Bypass policy: `git commit --no-verify` is allowed only for emergency hotfixes. The bypass MUST be logged in the commit message (`HYGIENE BYPASS: <reason>`) and reported to operator. Legacy files (those not touched by the current PR) are not subject to retroactive lint enforcement. Hooks fire on changed files only.
+
 ## Craft Guides — load on demand
 
 The repo has two craft-guide libraries at:
+
 - `docs/ui_ux/` — universal frontend craft (applies to any Miru surface: PM, Dispatcher, Dev Review Hub, future work)
 - `docs/pm/` — PM-specific craft (only applies to `pm/storefront/` work; layers on top of ui_ux)
 
