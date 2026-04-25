@@ -139,15 +139,147 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "ar1a",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "a",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "ar1t",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "t",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "ar1r",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "r",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "w7-action-router-1",
+      "name": "w7-action-router-1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1500, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "ar2",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "o",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "w7-action-router-2",
+      "name": "w7-action-router-2",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1500, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "ar3c",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "c",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "ar3u",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "u",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "ar3x",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "x",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "ar3g",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "g",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "id": "ar3T",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "T",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "w7-action-router-3",
+      "name": "w7-action-router-3",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1500, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "ar4",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "b",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "w7-action-router-4",
+      "name": "w7-action-router-4",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1500, 800]
+    },
+    {
+      "parameters": {},
+      "id": "w7-noop-unknown-action",
+      "name": "w7-noop-unknown-action",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1700, 1000]
+    },
+    {
+      "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w7008-build-mutation\n// Branch on action -> compute next label_ids + Linear GraphQL mutation body.\n// a=Approve, o=Override, t=Triage, r=Request Revision\nconst data = $input.item.json;\nconst labelsMap = data.labels_map || {};\nconst existingIds = (data.issue_existing_label_ids || []).slice();\nconst chosenWorker = data.chosen_worker;\n\nconst pendingApprovalId = labelsMap['pending-approval'];\nconst triageId = labelsMap['triage'];\nconst manualInterventionId = labelsMap['manual-intervention-required'];\nconst chosenWorkerId = labelsMap[chosenWorker];\n\nconst actionLabelMap = { a: 'Approve', o: 'Override', t: 'Triage', r: 'Request Revision' };\nconst actionLabel = actionLabelMap[data.action] || ('Unknown(' + data.action + ')');\n\nif (!pendingApprovalId) {\n  return { json: { ...data, _build_error: 'pending-approval label id missing from labels_map' } };\n}\n\nlet nextIds = existingIds.filter(id => id !== pendingApprovalId);\n\nif (data.action === 'a') {\n  // Approve: keep worker label, drop pending-approval (already filtered)\n  // No-op beyond the filter.\n} else if (data.action === 'o') {\n  // Override: drop chosen worker label, add triage\n  if (chosenWorkerId) nextIds = nextIds.filter(id => id !== chosenWorkerId);\n  if (triageId && !nextIds.includes(triageId)) nextIds.push(triageId);\n} else if (data.action === 't') {\n  // Triage: add triage label\n  if (triageId && !nextIds.includes(triageId)) nextIds.push(triageId);\n} else if (data.action === 'r') {\n  // Request Revision: add manual-intervention-required\n  if (manualInterventionId && !nextIds.includes(manualInterventionId)) nextIds.push(manualInterventionId);\n} else {\n  return { json: { ...data, _build_error: 'unknown action code: ' + data.action } };\n}\n\nconst decided_at = new Date().toISOString();\nconst commentBody = '**W7 callback decided: ' + actionLabel + '**\\n\\n'\n  + 'Tap source: Telegram inline button\\n'\n  + 'Decided at: ' + decided_at + '\\n'\n  + 'Decided by user_id: ' + (data.from_user_id != null ? data.from_user_id : 'unknown') + '\\n'\n  + 'Original proposal: ' + chosenWorker + ' (conf ' + (data.confidence != null ? data.confidence : 'n/a') + ', risk ' + (data.risk || 'n/a') + ')\\n'\n  + 'Callback age at decision: ' + (data.callback_age_seconds != null ? data.callback_age_seconds + 's' : 'unknown') + '\\n\\n'\n  + 'trace_id: ' + (data.trace_id || 'unknown');\n\nconst mutation_body_obj = {\n  query: 'mutation W7Apply($issueId: String!, $labelIds: [String!]!, $commentBody: String!) { issueUpdate(id: $issueId, input: { labelIds: $labelIds }) { success issue { identifier } } commentCreate(input: { issueId: $issueId, body: $commentBody }) { success comment { id } } }',\n  variables: { issueId: data.issue_id, labelIds: nextIds, commentBody }\n};\n\nreturn { json: { ...data, action_label: actionLabel, decided_at, next_label_ids: nextIds, mutation_body_obj } };"
+        "jsCode": "// w7008-build-mutation\n// Branch on action -> compute next label_ids + Linear GraphQL mutation body.\n// Reached only for original-message actions {a, t, r} via w7-action-router-1.\n// 'o' (Override) is now routed to w7-mint-picker-keyboard instead — its branch\n// here is retained as a defensive fallback only.\nconst data = $input.item.json;\nconst labelsMap = data.labels_map || {};\nconst existingIds = (data.issue_existing_label_ids || []).slice();\nconst chosenWorker = data.chosen_worker;\n\nconst pendingApprovalId = labelsMap['pending-approval'];\nconst triageId = labelsMap['triage'];\nconst manualInterventionId = labelsMap['manual-intervention-required'];\nconst chosenWorkerId = labelsMap[chosenWorker];\n\nconst actionLabelMap = { a: 'Approve', o: 'Override', t: 'Triage', r: 'Request Revision' };\nconst actionLabel = actionLabelMap[data.action] || ('Unknown(' + data.action + ')');\n\nif (!pendingApprovalId) {\n  return { json: { ...data, _build_error: 'pending-approval label id missing from labels_map' } };\n}\n\nlet nextIds = existingIds.filter(id => id !== pendingApprovalId);\n\nif (data.action === 'a') {\n  // Approve: keep worker label, drop pending-approval (already filtered)\n  // No-op beyond the filter.\n} else if (data.action === 'o') {\n  // Defensive fallback: Override should now route to picker-mint.\n  if (chosenWorkerId) nextIds = nextIds.filter(id => id !== chosenWorkerId);\n  if (triageId && !nextIds.includes(triageId)) nextIds.push(triageId);\n} else if (data.action === 't') {\n  // Triage: add triage label\n  if (triageId && !nextIds.includes(triageId)) nextIds.push(triageId);\n} else if (data.action === 'r') {\n  // Request Revision: add manual-intervention-required\n  if (manualInterventionId && !nextIds.includes(manualInterventionId)) nextIds.push(manualInterventionId);\n} else {\n  return { json: { ...data, _build_error: 'unknown action code: ' + data.action } };\n}\n\nconst decided_at = new Date().toISOString();\nconst commentBody = '**W7 callback decided: ' + actionLabel + '**\\n\\n'\n  + 'Tap source: Telegram inline button\\n'\n  + 'Decided at: ' + decided_at + '\\n'\n  + 'Decided by user_id: ' + (data.from_user_id != null ? data.from_user_id : 'unknown') + '\\n'\n  + 'Original proposal: ' + chosenWorker + ' (conf ' + (data.confidence != null ? data.confidence : 'n/a') + ', risk ' + (data.risk || 'n/a') + ')\\n'\n  + 'Callback age at decision: ' + (data.callback_age_seconds != null ? data.callback_age_seconds + 's' : 'unknown') + '\\n\\n'\n  + 'trace_id: ' + (data.trace_id || 'unknown');\n\nconst mutation_body_obj = {\n  query: 'mutation W7Apply($issueId: String!, $labelIds: [String!]!, $commentBody: String!) { issueUpdate(id: $issueId, input: { labelIds: $labelIds }) { success issue { identifier } } commentCreate(input: { issueId: $issueId, body: $commentBody }) { success comment { id } } }',\n  variables: { issueId: data.issue_id, labelIds: nextIds, commentBody }\n};\n\nreturn { json: { ...data, action_label: actionLabel, decided_at, next_label_ids: nextIds, mutation_body_obj } };"
       },
       "id": "w7008-build-mutation",
       "name": "w7008-build-mutation",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1600, 100]
+      "position": [1700, 100]
     },
     {
       "parameters": {
@@ -170,7 +302,7 @@
       "name": "w7009-linear-mutate",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1800, 100],
+      "position": [1900, 100],
       "credentials": {
         "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
       },
@@ -197,7 +329,7 @@
       "name": "w7010-edit-message",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2000, 100],
+      "position": [2100, 100],
       "continueOnFail": true
     },
     {
@@ -210,7 +342,150 @@
       "name": "w7011-mark-decided",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2200, 100]
+      "position": [2300, 100]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w7-mint-picker-keyboard (PRO-80 Phase A)\n// Override tap arrives here. Re-mint a 6-button picker keyboard re-using the\n// existing token (HMAC anchor + pattern shared with w2012a-mint-callback-token).\n// No pending_callbacks row written — the original 'intent' row remains valid;\n// the picker tap eventually writes the 'decided' row.\nconst crypto = require('crypto');\nconst ANCHOR_UNIX = 1767225600;\n\nconst data = $input.item.json;\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret) throw new Error('TELEGRAM_CALLBACK_SECRET not set');\n\nconst token = data.token;\nconst ts_minutes = Math.floor((Math.floor(Date.now()/1000) - ANCHOR_UNIX) / 60);\nconst ts_hex = ts_minutes.toString(16).padStart(8, '0').slice(-8);\n\nfunction pickerButton(actionCode, label) {\n  const nonce = crypto.randomBytes(4).toString('hex');\n  const payload = token + actionCode + nonce + ts_hex;\n  const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\n  const cb = token + actionCode + nonce + ts_hex + hmac;\n  if (cb.length !== 61) throw new Error('picker callback_data length mismatch: ' + cb.length);\n  return { text: label, callback_data: cb };\n}\n\nconst inline_keyboard = [\n  [pickerButton('c', 'Claude Code'), pickerButton('u', 'Cursor'), pickerButton('x', 'Codex')],\n  [pickerButton('g', 'Gemini CLI'), pickerButton('T', 'Triage'), pickerButton('b', '\\u21A9 Back')]\n];\n\nconst telegram_edit_body = {\n  chat_id: data.chat_id,\n  message_id: data.message_id,\n  reply_markup: { inline_keyboard }\n};\n\nreturn { json: { ...data, telegram_edit_body, _picker_minted_at: new Date().toISOString() } };"
+      },
+      "id": "w7-mint-picker-keyboard",
+      "name": "w7-mint-picker-keyboard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1700, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageReplyMarkup",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.telegram_edit_body) }}",
+        "options": {}
+      },
+      "id": "w7-edit-to-picker",
+      "name": "w7-edit-to-picker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1900, 400],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w7-picker-build-mutation (PRO-80 Phase A)\n// Picker button tap (c/u/x/g/T) — compute next label_ids and Linear mutation\n// for the operator-selected worker (or triage). Maps action codes to canonical\n// Linear label names; gemini-cli is operator-locked decision (PRO-80 prompt).\nconst data = $input.item.json;\n\nconst ACTION_TO_LABEL = {\n  c: 'claude-code',\n  u: 'cursor',\n  x: 'codex',\n  g: 'gemini-cli',\n  T: 'triage'\n};\nconst ACTION_TO_DISPLAY = {\n  c: 'Claude Code',\n  u: 'Cursor',\n  x: 'Codex',\n  g: 'Gemini CLI',\n  T: 'Triage'\n};\n\nconst labelName = ACTION_TO_LABEL[data.action];\nconst display = ACTION_TO_DISPLAY[data.action];\n\nif (!labelName) {\n  return { json: { ...data, _build_error: 'unknown picker action: ' + data.action } };\n}\n\nconst labelsMap = data.labels_map || {};\nconst selectedId = labelsMap[labelName];\nconst pendingApprovalId = labelsMap['pending-approval'];\nconst chosenWorkerId = labelsMap[data.chosen_worker];\nconst KNOWN_WORKER_KEYS = ['claude-code', 'cursor', 'codex', 'gemini', 'gemini-cli'];\n\nif (!selectedId) {\n  return { json: { ...data, _build_error: 'picker label not in labels_map: ' + labelName + ' (ensure label exists in Linear so w2006 picks it up)' } };\n}\nif (!pendingApprovalId) {\n  return { json: { ...data, _build_error: 'pending-approval label id missing from labels_map' } };\n}\n\n// Drop pending-approval, drop any prior worker label, add the selected label.\nlet nextIds = (data.issue_existing_label_ids || []).slice();\nnextIds = nextIds.filter(id => id !== pendingApprovalId);\nfor (const k of KNOWN_WORKER_KEYS) {\n  const wid = labelsMap[k];\n  if (wid) nextIds = nextIds.filter(id => id !== wid);\n}\nif (chosenWorkerId) nextIds = nextIds.filter(id => id !== chosenWorkerId);\nif (!nextIds.includes(selectedId)) nextIds.push(selectedId);\n\nconst overrideFlag = labelName !== data.chosen_worker;\nconst decided_at = new Date().toISOString();\nconst commentBody = '**W7 picker decided: ' + display + '**\\n\\n'\n  + 'Picker selection via Telegram inline button\\n'\n  + 'Decided at: ' + decided_at + '\\n'\n  + 'Decided by user_id: ' + (data.from_user_id != null ? data.from_user_id : 'unknown') + '\\n'\n  + 'W2 proposal: ' + data.chosen_worker + ' (conf ' + (data.confidence != null ? data.confidence : 'n/a') + ', risk ' + (data.risk || 'n/a') + ')\\n'\n  + 'Operator selected: ' + labelName + (overrideFlag ? ' (override)' : ' (matches proposal)') + '\\n'\n  + 'Callback age at decision: ' + (data.callback_age_seconds != null ? data.callback_age_seconds + 's' : 'unknown') + '\\n\\n'\n  + 'trace_id: ' + (data.trace_id || 'unknown');\n\nconst mutation_body_obj = {\n  query: 'mutation W7Picker($issueId: String!, $labelIds: [String!]!, $commentBody: String!) { issueUpdate(id: $issueId, input: { labelIds: $labelIds }) { success issue { identifier } } commentCreate(input: { issueId: $issueId, body: $commentBody }) { success comment { id } } }',\n  variables: { issueId: data.issue_id, labelIds: nextIds, commentBody }\n};\n\nreturn { json: { ...data, picker_label_name: labelName, picker_display: display, override_flag_picker: overrideFlag, decided_at, next_label_ids: nextIds, mutation_body_obj } };"
+      },
+      "id": "w7-picker-build-mutation",
+      "name": "w7-picker-build-mutation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1700, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linear.app/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linearApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.mutation_body_obj) }}",
+        "options": {}
+      },
+      "id": "w7-picker-linear-mutate",
+      "name": "w7-picker-linear-mutate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1900, 600],
+      "credentials": {
+        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const d = $('w7-picker-build-mutation').item.json; const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); return JSON.stringify({ chat_id: d.chat_id, message_id: d.message_id, text: '<b>\\u2713 Picker decided: ' + esc(d.picker_display) + '</b>\\n<i>' + esc(d.issue_identifier || '?') + ' \\u2014 proposed ' + esc(d.chosen_worker) + ' \\u2014 ' + esc(d.decided_at) + '</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }); })() }}",
+        "options": {}
+      },
+      "id": "w7-picker-edit-message",
+      "name": "w7-picker-edit-message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2100, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w7-picker-mark-decided (PRO-80 Phase A)\n// Final-stage picker decision: append pending_callbacks 'decided' row (so any\n// further taps on the same token are rejected as already_decided) AND append a\n// routing_history row with the new picker fields (proposed_worker, selected_worker, override).\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\nconst HISTORY = '/miru-data/routing_history.jsonl';\nconst WORKFLOW_VERSION = 'phase-2-v1';\n\nconst prior = $('w7-picker-build-mutation').item.json;\nconst editResp = $input.item.json;\n\nconst decided_at = prior.decided_at;\nconst action = prior.action;\nconst action_label = prior.picker_display;\nconst token = prior.token;\nconst trace_id = prior.trace_id;\nconst task_id = prior.issue_id;\nconst task_identifier = prior.issue_identifier;\nconst proposed_worker = prior.chosen_worker;\nconst selected_worker = prior.picker_label_name;\nconst override = !!prior.override_flag_picker;\n\n// 1) pending_callbacks.jsonl: 'decided' row, source='picker'\nconst decidedRow = {\n  kind: 'decided',\n  token,\n  action,\n  action_label,\n  decided_at,\n  decided_by_user_id: prior.from_user_id != null ? prior.from_user_id : null,\n  trace_id,\n  task_id,\n  task_identifier,\n  edit_message_ok: !(editResp && editResp.error),\n  source: 'picker'\n};\nfs.appendFileSync(PENDING, JSON.stringify(decidedRow) + '\\n');\n\n// 2) routing_history.jsonl: outcome='picker-decided' with PRO-80 fields\nconst historyRow = {\n  timestamp: decided_at,\n  trace_id,\n  task_id,\n  task_identifier,\n  extracted_signals: null,\n  ranked_candidates: null,\n  chosen_worker: proposed_worker,\n  confidence: prior.confidence,\n  risk: prior.risk,\n  operator_override_flag: override,\n  outcome: 'picker-decided',\n  worker_response_ref: 'callback-picker-' + token,\n  proposed_model_version: null,\n  actual_model_version: null,\n  w2_workflow_version: WORKFLOW_VERSION,\n  callback_source: 'telegram',\n  button_tapped: action_label,\n  button_set: 'picker',\n  callback_age_seconds: prior.callback_age_seconds != null ? prior.callback_age_seconds : null,\n  decided_at,\n  decided_by_user_id: prior.from_user_id != null ? prior.from_user_id : null,\n  proposed_worker,\n  selected_worker,\n  override\n};\nfs.appendFileSync(HISTORY, JSON.stringify(historyRow) + '\\n');\n\nreturn { json: { ...prior, _decided_persisted: true, _history_persisted: true } };"
+      },
+      "id": "w7-picker-mark-decided",
+      "name": "w7-picker-mark-decided",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2300, 600]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w7-mint-original-keyboard (PRO-80 Phase A)\n// Back tap: re-mint the original 4-button keyboard (a/o/t/r) with fresh HMACs.\n// Re-uses the same token; new nonces and ts_hex.\nconst crypto = require('crypto');\nconst ANCHOR_UNIX = 1767225600;\n\nconst data = $input.item.json;\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret) throw new Error('TELEGRAM_CALLBACK_SECRET not set');\n\nconst token = data.token;\nconst ts_minutes = Math.floor((Math.floor(Date.now()/1000) - ANCHOR_UNIX) / 60);\nconst ts_hex = ts_minutes.toString(16).padStart(8, '0').slice(-8);\n\nfunction origButton(actionCode, label) {\n  const nonce = crypto.randomBytes(4).toString('hex');\n  const payload = token + actionCode + nonce + ts_hex;\n  const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\n  const cb = token + actionCode + nonce + ts_hex + hmac;\n  if (cb.length !== 61) throw new Error('original-keyboard callback_data length mismatch: ' + cb.length);\n  return { text: label, callback_data: cb };\n}\n\nconst inline_keyboard = [\n  [origButton('a', 'Approve'), origButton('o', 'Override')],\n  [origButton('t', 'Triage'), origButton('r', 'Request Revision')]\n];\n\nconst telegram_edit_body = {\n  chat_id: data.chat_id,\n  message_id: data.message_id,\n  reply_markup: { inline_keyboard }\n};\n\nreturn { json: { ...data, telegram_edit_body, _back_minted_at: new Date().toISOString() } };"
+      },
+      "id": "w7-mint-original-keyboard",
+      "name": "w7-mint-original-keyboard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1700, 800]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageReplyMarkup",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.telegram_edit_body) }}",
+        "options": {}
+      },
+      "id": "w7-edit-to-original",
+      "name": "w7-edit-to-original",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1900, 800],
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -237,8 +512,32 @@
     },
     "w7007-found-branch": {
       "main": [
-        [{"node": "w7008-build-mutation", "type": "main", "index": 0}],
+        [{"node": "w7-action-router-1", "type": "main", "index": 0}],
         [{"node": "w7-noop-duplicate", "type": "main", "index": 0}]
+      ]
+    },
+    "w7-action-router-1": {
+      "main": [
+        [{"node": "w7008-build-mutation", "type": "main", "index": 0}],
+        [{"node": "w7-action-router-2", "type": "main", "index": 0}]
+      ]
+    },
+    "w7-action-router-2": {
+      "main": [
+        [{"node": "w7-mint-picker-keyboard", "type": "main", "index": 0}],
+        [{"node": "w7-action-router-3", "type": "main", "index": 0}]
+      ]
+    },
+    "w7-action-router-3": {
+      "main": [
+        [{"node": "w7-picker-build-mutation", "type": "main", "index": 0}],
+        [{"node": "w7-action-router-4", "type": "main", "index": 0}]
+      ]
+    },
+    "w7-action-router-4": {
+      "main": [
+        [{"node": "w7-mint-original-keyboard", "type": "main", "index": 0}],
+        [{"node": "w7-noop-unknown-action", "type": "main", "index": 0}]
       ]
     },
     "w7008-build-mutation": {
@@ -249,6 +548,21 @@
     },
     "w7010-edit-message": {
       "main": [[{"node": "w7011-mark-decided", "type": "main", "index": 0}]]
+    },
+    "w7-mint-picker-keyboard": {
+      "main": [[{"node": "w7-edit-to-picker", "type": "main", "index": 0}]]
+    },
+    "w7-picker-build-mutation": {
+      "main": [[{"node": "w7-picker-linear-mutate", "type": "main", "index": 0}]]
+    },
+    "w7-picker-linear-mutate": {
+      "main": [[{"node": "w7-picker-edit-message", "type": "main", "index": 0}]]
+    },
+    "w7-picker-edit-message": {
+      "main": [[{"node": "w7-picker-mark-decided", "type": "main", "index": 0}]]
+    },
+    "w7-mint-original-keyboard": {
+      "main": [[{"node": "w7-edit-to-original", "type": "main", "index": 0}]]
     }
   },
   "settings": {
