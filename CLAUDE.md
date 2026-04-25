@@ -200,3 +200,50 @@ Do not load the full library. Load on demand.
 typo fixes, one-line style tweaks, bugfixes that don't change interaction model, backend-only work (routes, data, scrapers).
 
 **When craft guides conflict with CLAUDE.md / operator directives:** operator directives win, always. Flag the conflict; don't silently override.
+
+## Completion-marker convention (locked 2026-04-25)
+
+When CC completes a task with `CONFIRMED WORKING` status, CC MUST append one structured row to `data/cc_completion_log.jsonl` immediately before reporting completion to the operator in chat.
+
+This is how Claude Chat verifies completion without the operator manually relaying CC's chat report. The file is append-only — never edit, never truncate.
+
+### Schema (one JSON object per line, no array wrapping)
+
+- `timestamp` (ISO 8601 string, UTC) — when the task completed.
+- `ticket_id` (string) — Linear ticket identifier (e.g. "PRO-80"). Use null if no ticket.
+- `phase` (string or null) — sub-phase label if relevant (e.g. "A").
+- `status` (enum) — `CONFIRMED_WORKING` | `INCONCLUSIVE` | `FAILED`.
+- `summary` (string) — one-line plain-English description of what shipped.
+- `branch` (string or null) — git branch name if applicable.
+- `pr_number` (int or null) — GitHub PR number if applicable.
+- `merge_commit_sha` (string or null) — merge commit SHA if merged.
+- `files_touched` (array of strings) — repo-relative paths edited or created.
+- `linear_state_after` (string or null) — final Linear ticket state (e.g. "In Review", "Done").
+- `deploy_actions` (array of strings) — short descriptions of any deploys, redeploys, or service restarts ("w7 redeployed via deploy-workflow.ps1, active state preserved").
+- `test_evidence` (string) — one-line summary of how the work was verified ("15/15 fixtures pass", "7-step self-test on live Telegram").
+- `follow_up_tickets_filed` (array of strings) — Linear ticket IDs filed during this work for out-of-scope items.
+- `notes` (string) — anything Claude Chat needs to know that doesn't fit above. Empty string if none.
+
+### When to write
+
+Write the row at the moment CC would otherwise produce a `CONFIRMED WORKING` chat report. The chat report still happens (operator visibility is still useful), but the marker is the structured truth Claude Chat reads.
+
+For `INCONCLUSIVE` or `FAILED` outcomes: write the row too, with status set accordingly. `notes` field should explain what blocked or broke. This gives Claude Chat visibility into stalled work.
+
+### When NOT to write
+
+- Mid-task progress updates. The marker is for terminal task state only.
+- Sub-task milestones inside a multi-phase ticket. Wait for the phase to land.
+- Diagnostic-only or read-only work that produces no commit, no merge, no deploy. (CC can still chat-report, just no marker needed.)
+
+### Rules
+
+- Append only. Never read-modify-write the file. Never sort it. Never deduplicate it.
+- One JSON object per line. No trailing commas, no array wrapping.
+- ISO 8601 UTC timestamps with `Z` suffix.
+- If a field is genuinely unknown or not applicable, use `null` (not empty string, not omitted).
+- Use `JSON.stringify` (or PowerShell's `ConvertTo-Json -Compress`) to ensure valid JSON. Do not hand-format.
+
+### Verification by Claude Chat
+
+Claude Chat reads this file via Filesystem MCP when the operator says "task done" or asks for completion verification. Claude Chat then cross-checks the marker against GitHub PR state, Linear ticket state, file changes, and (for n8n workflows) deploy state. Discrepancies between the marker and ground truth get flagged for operator review.
