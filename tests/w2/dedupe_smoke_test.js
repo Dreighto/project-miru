@@ -18,7 +18,8 @@ const POLL_EXCLUDE = [
 ];
 
 // Canon from w2003a-dedupe-guard
-const TERMINAL_OUTCOMES = ['success', 'fail', 'inconclusive', 'halted', 'triage', 'apply-failed'];
+// MUST stay in sync with w2003a-dedupe-guard's terminal list in production W2 workflow JSON.
+const TERMINAL_OUTCOMES = ['success', 'fail', 'inconclusive', 'halted', 'triage', 'apply-failed', 'callback-decided', 'picker-decided', 'dispatched', 'skipped-dedupe'];
 const WINDOW_MS = 5 * 60 * 1000;
 
 // (1) Poll filter: Linear semantics are `labels.every.name.nin: exclude` —
@@ -97,11 +98,11 @@ const FIXTURES = [
   // --- Dedupe-guard fixtures ---
   {
     id: 'C',
-    name: 'dispatched 2 min ago blocks re-entry (within window)',
+    name: 'dispatched 2 min ago does NOT block (terminal)',
     run: () => {
       const history = [row(120, 'dispatched', TASK, 'trace-1')];
       const r = dedupeGuard(TASK, history, NOW);
-      return r.should_proceed === false && /non-terminal/.test(r.dedupe_reason);
+      return r.should_proceed === true;
     }
   },
   {
@@ -123,10 +124,18 @@ const FIXTURES = [
   },
   {
     id: 'C-callback-decided',
-    name: 'callback-decided 1 min ago blocks (non-terminal)',
+    name: 'callback-decided 1 min ago does NOT block (terminal)',
     run: () => {
       const r = dedupeGuard(TASK, [row(60, 'callback-decided')], NOW);
-      return r.should_proceed === false;
+      return r.should_proceed === true;
+    }
+  },
+  {
+    id: 'C-picker-decided',
+    name: 'picker-decided 1 min ago does NOT block (terminal, PRO-80 Phase A)',
+    run: () => {
+      const r = dedupeGuard(TASK, [row(60, 'picker-decided')], NOW);
+      return r.should_proceed === true;
     }
   },
   {

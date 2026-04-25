@@ -392,6 +392,62 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "eb1",
+              "leftValue": "={{ $json._build_error }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "w7-picker-error-branch",
+      "name": "w7-picker-error-branch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1800, 600]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w7-picker-error-edit-message (PRO-80 Phase A)\n// Reached when w7-picker-build-mutation returns _build_error (e.g., label\n// missing from labels_map). Builds a Telegram editMessageText body that\n// surfaces the error reason to the operator instead of letting the workflow\n// send malformed data to Linear's GraphQL endpoint.\nfunction esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\n\nconst data = $input.item.json;\nconst errMsg = data._build_error || 'unknown picker error';\n\nconst text = '<b>\\u26A0 Picker error</b>\\n'\n  + '<i>' + esc(data.issue_identifier || '?') + '</i>\\n'\n  + '<code>' + esc(errMsg) + '</code>';\n\nconst telegram_error_body = {\n  chat_id: data.chat_id,\n  message_id: data.message_id,\n  text,\n  parse_mode: 'HTML',\n  reply_markup: { inline_keyboard: [] }\n};\n\nreturn { json: { ...data, telegram_error_body } };"
+      },
+      "id": "w7-picker-error-edit-message",
+      "name": "w7-picker-error-edit-message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 800]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.telegram_error_body) }}",
+        "options": {}
+      },
+      "id": "w7-picker-error-edit",
+      "name": "w7-picker-error-edit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 800],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://api.linear.app/graphql",
         "authentication": "predefinedCredentialType",
@@ -553,7 +609,16 @@
       "main": [[{"node": "w7-edit-to-picker", "type": "main", "index": 0}]]
     },
     "w7-picker-build-mutation": {
-      "main": [[{"node": "w7-picker-linear-mutate", "type": "main", "index": 0}]]
+      "main": [[{"node": "w7-picker-error-branch", "type": "main", "index": 0}]]
+    },
+    "w7-picker-error-branch": {
+      "main": [
+        [{"node": "w7-picker-error-edit-message", "type": "main", "index": 0}],
+        [{"node": "w7-picker-linear-mutate", "type": "main", "index": 0}]
+      ]
+    },
+    "w7-picker-error-edit-message": {
+      "main": [[{"node": "w7-picker-error-edit", "type": "main", "index": 0}]]
     },
     "w7-picker-linear-mutate": {
       "main": [[{"node": "w7-picker-edit-message", "type": "main", "index": 0}]]
