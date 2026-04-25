@@ -29,6 +29,47 @@
 - Other workers (including Claude Code) may write to Notion only when the operator explicitly authorizes a specific task — the authorization is per-task, not standing
 - Use Notion reads to avoid overlapping with in-progress work
 
+## PR Merge Policy — CC self-merges low-risk PRs
+
+CC may self-merge PRs that fall in the low-risk column below. Operator reviews and merges anything in the high-risk column.
+
+**CC merges (fixes):**
+- Single-file edits to existing files
+- Single-workflow JSON changes
+- Bug fixes following a known canon-lesson pattern
+- Config changes (.env, docker-compose env vars)
+- Test fixtures, log rotation, hygiene tasks
+- Lint / format / comment-only changes
+- PRs that reference one Linear ticket
+- Bugbot reviewed and green
+
+**Operator merges (changes):**
+- New files or new directories
+- Multi-workflow changes
+- Schema or data model changes
+- Anything touching `card_catalog.db` or its schema
+- Anything that changes `routing_history.jsonl` schema
+- Worker rule file changes (CLAUDE.md, AGENTS.md, CURSOR.md, etc.)
+- Infrastructure (gateway, MCPs, port assignments)
+- First implementation of something new (e.g. W3 build)
+
+**Principle:** CC merges fixes. Operator merges changes. Fix = restore expected behavior of something that already exists. Change = add capability or alter the contract. When unsure, default to opening the PR for operator review (fail-closed). The cost of waiting for an operator review is minutes; the cost of a wrong self-merge is a revert plus context loss.
+
+**Hard requirements before CC self-merges:**
+1. PR is in the CC-merge column above (CC must explicitly check)
+2. Bugbot has reviewed AND raised no non-trivial findings
+3. CC's own completion contract reports CONFIRMED WORKING (not INCONCLUSIVE)
+4. The PR references a Linear ticket
+5. Branch was cut clean from main (no concern braiding)
+
+If any of those fail: open the PR for operator review, do not self-merge.
+
+**Never self-merge:**
+- Force-push or destructive git operations (these are hard rules under access progression, not just merge policy)
+- This ticket itself (PR for PRO-76 falls in the operator-merge column — worker rule file change)
+
+Source: locked 2026-04-25 after CC shipped 4 clean ticket fixes (PRO-60, PRO-65, PRO-72, PRO-68 + PRO-73) with consistent pre-flight discipline.
+
 ## MCP Tool Usage Rules
 
 - Use MCP tools when they genuinely help the task
