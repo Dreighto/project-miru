@@ -1,0 +1,46 @@
+{
+  "name": "SPIKE Telegram approval UX",
+  "nodes": [
+    {
+      "id": "spike-tg-manual",
+      "name": "spike-tg-manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "parameters": {}
+    },
+    {
+      "id": "spike-tg-send",
+      "name": "spike-tg-send",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [500, 300],
+      "credentials": { "telegramApi": { "id": "TELEGRAM_CRED_ID", "name": "telegram-n8n" } },
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "TELEGRAM_CHAT_ID_VALUE",
+        "text": "🧪 SPIKE test — tap Approve or Reject to confirm webhook fires. Topic: Miru n8n Phase 1 smoke.",
+        "additionalFields": {
+          "replyMarkup": "inlineKeyboard",
+          "inlineKeyboard": {
+            "rows": [
+              {
+                "row": {
+                  "buttons": [
+                    { "text": "✅ Approve", "additionalFields": { "callbackData": "spike-approve" } },
+                    { "text": "❌ Reject",  "additionalFields": { "callbackData": "spike-reject"  } }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "connections": {
+    "spike-tg-manual": { "main": [[{"node": "spike-tg-send", "type": "main", "index": 0}]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

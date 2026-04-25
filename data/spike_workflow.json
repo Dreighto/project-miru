@@ -1,0 +1,49 @@
+{
+  "name": "SPIKE ntfy approval UX",
+  "nodes": [
+    {
+      "id": "spike-webhook",
+      "name": "spike-webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [200, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "spike-ntfy",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "spike-logger",
+      "name": "spike-logger",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300],
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst q = $json.query || {};\nconst b = $json.body || {};\nconst entry = {\n  ts: new Date().toISOString(),\n  button: q.button || b.button || 'unknown',\n  test: q.test || b.test || 'unknown',\n  method: $json.method || 'POST',\n  query: q,\n  body_keys: Object.keys(b)\n};\nfs.appendFileSync('/miru-data/spike_ntfy_log.jsonl', JSON.stringify(entry) + '\\n');\nreturn [{ json: entry }];"
+      }
+    },
+    {
+      "id": "spike-respond",
+      "name": "spike-respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [800, 300],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({received: true, at: new Date().toISOString(), button: $json.button, test: $json.test}) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "spike-webhook": {
+      "main": [[{"node": "spike-logger", "type": "main", "index": 0}]]
+    },
+    "spike-logger": {
+      "main": [[{"node": "spike-respond", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

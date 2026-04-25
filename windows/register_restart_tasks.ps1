@@ -1,11 +1,12 @@
 # register_restart_tasks.ps1
 # Run this ONCE from an ELEVATED (Administrator) PowerShell window.
-# It registers all four scheduled tasks for Project Miru:
+# It registers all five scheduled tasks for Project Miru:
 #
-#   1. OP Miru Startup       -- boot trigger, NAS\NAS S4U Limited, starts all 3 services
-#   2. MiruRestartDispatcher -- on-demand, NAS\NAS Interactive Limited, port 19000
-#   3. MiruRestartPM         -- on-demand, NAS\NAS Interactive Limited, port 18080
-#   4. MiruRestartMiruAI     -- on-demand, NAS\NAS Interactive Limited, port 18765
+#   1. OP Miru Startup        -- boot trigger, NAS\NAS S4U Limited, starts all 3 services
+#   2. MiruRestartDispatcher  -- on-demand, NAS\NAS Interactive Limited, port 19000
+#   3. MiruRestartPM          -- on-demand, NAS\NAS Interactive Limited, port 18080
+#   4. MiruRestartMiruAI      -- on-demand, NAS\NAS Interactive Limited, port 18765
+#   5. MiruRestartMcpGateway  -- on-demand, NAS\NAS Interactive Limited, port 18766
 #
 # WHY Interactive + Limited for restart tasks:
 #   RunLevel=Highest tasks (even NAS\NAS-owned) cannot be triggered by a
@@ -203,8 +204,40 @@ Write-Host "      Trigger   : on-demand only"
 Write-Host "      Script    : $miruAiTaskScript"
 Write-Host ""
 
+# ════════════════════════════════════════════════════════════════════════════════
+# TASK 5 — MiruRestartMcpGateway (Stage 1 remote MCP gateway, port 18766)
+# Same Interactive + Limited principal as Tasks 2-4. Triggered by:
+#   Start-ScheduledTask -TaskName "MiruRestartMcpGateway"
+# ════════════════════════════════════════════════════════════════════════════════
+Write-Host "Registering: MiruRestartMcpGateway..." -ForegroundColor Yellow
+
+$mcpGatewayTaskScript = Join-Path $tasksDir "restart_mcp_gateway_task.ps1"
+if (-not (Test-Path $mcpGatewayTaskScript)) {
+    Write-Error "restart_mcp_gateway_task.ps1 not found at $mcpGatewayTaskScript"
+}
+
+$restartMcpGatewayAction = New-ScheduledTaskAction `
+    -Execute "powershell.exe" `
+    -Argument "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$mcpGatewayTaskScript`"" `
+    -WorkingDirectory $repoRoot
+
+$mcpGatewayTask = Register-ScheduledTask `
+    -TaskName   "MiruRestartMcpGateway" `
+    -Action     $restartMcpGatewayAction `
+    -Trigger    $restartTrigger `
+    -Settings   $commonSettings `
+    -Principal  $restartPrincipal `
+    -Description "Restarts MCP Gateway on port 18766. Trigger via: Start-ScheduledTask -TaskName 'MiruRestartMcpGateway'" `
+    -Force
+
+Write-Host "  OK: '$($mcpGatewayTask.TaskName)'" -ForegroundColor Green
+Write-Host "      Principal : $userId (Interactive, RunLevel=Limited)"
+Write-Host "      Trigger   : on-demand only"
+Write-Host "      Script    : $mcpGatewayTaskScript"
+Write-Host ""
+
 # ── Summary ───────────────────────────────────────────────────────────────────
-Write-Host "=== All 4 tasks registered successfully (Interactive/Limited) ===" -ForegroundColor Cyan
+Write-Host "=== All 5 tasks registered successfully (Interactive/Limited) ===" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "To restart the Dispatcher (no elevation needed):" -ForegroundColor White
 Write-Host "  Start-ScheduledTask -TaskName 'MiruRestartDispatcher'" -ForegroundColor Gray
