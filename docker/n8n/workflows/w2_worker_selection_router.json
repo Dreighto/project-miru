@@ -369,7 +369,7 @@
         "resource": "message",
         "operation": "sendMessage",
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
-        "text": "=*W2 → triage on {{ $json.issue_identifier || $json.issue_id }}*\n\nRouter confidence low (conf {{ $json.confidence.toFixed(2) }}) on {{ $json.issue_identifier }} — manual routing required.\n\nTitle: {{ $json.issue_title }}\nRisk: {{ $json.risk }}\n[Open in Linear](https://linear.app/project-miru/issue/{{ $json.issue_identifier }})\n\ntrace_id: {{ $json.trace_id }}",
+        "text": "=*W2 → triage on {{ $('w2014-append-history-triage').item.json.issue_identifier || $('w2014-append-history-triage').item.json.issue_id }}*\n\nRouter confidence low (conf {{ $('w2014-append-history-triage').item.json.confidence.toFixed(2) }}) on {{ $('w2014-append-history-triage').item.json.issue_identifier }} — manual routing required.\n\nTitle: {{ $('w2014-append-history-triage').item.json.issue_title }}\nRisk: {{ $('w2014-append-history-triage').item.json.risk }}\n[Open in Linear](https://linear.app/project-miru/issue/{{ $('w2014-append-history-triage').item.json.issue_identifier }})\n\ntrace_id: {{ $('w2014-append-history-triage').item.json.trace_id }}",
         "additionalFields": { "parse_mode": "Markdown" }
       },
       "id": "w2016-triage-pushover",
