@@ -90,9 +90,23 @@ function Wait-ForUrl {
     return $false
 }
 
-function Test-EnvSecretPresent {
-    if (-not (Test-Path $envFile)) { return $false }
-    return ((Select-String -Path $envFile -Pattern '^W4_LISTENER_HMAC_SECRET=' -SimpleMatch:$false -Quiet) -eq $true)
+function Test-EnvSecretState {
+    # Returns @{ Present = <bool>; HasValue = <bool> } so the caller can
+    # surface a specific error for the line-missing case versus the
+    # line-present-but-empty case. The empty case is the silent-crash-loop
+    # trap that motivated this check (Bugbot Low finding on PR #22): a blank
+    # `W4_LISTENER_HMAC_SECRET=` (the literal shape in .env.example) used to
+    # pass the previous `^W4_LISTENER_HMAC_SECRET=` check, then the listener
+    # would exit 2 on every wrapper respawn.
+    if (-not (Test-Path $envFile)) {
+        return @{ Present = $false; HasValue = $false }
+    }
+    $hasLine = (Select-String -Path $envFile -Pattern '^W4_LISTENER_HMAC_SECRET=' -SimpleMatch:$false -Quiet) -eq $true
+    if (-not $hasLine) {
+        return @{ Present = $false; HasValue = $false }
+    }
+    $hasValue = (Select-String -Path $envFile -Pattern '^W4_LISTENER_HMAC_SECRET=.+$' -SimpleMatch:$false -Quiet) -eq $true
+    return @{ Present = $true; HasValue = $hasValue }
 }
 
 try {
@@ -116,8 +130,12 @@ try {
     }
     Write-LogLine "wrapper_script=$wrapperScript"
 
-    if (-not (Test-EnvSecretPresent)) {
+    $secretState = Test-EnvSecretState
+    if (-not $secretState.Present) {
         throw "W4_LISTENER_HMAC_SECRET not present in $envFile -- operator must add it before install."
+    }
+    if (-not $secretState.HasValue) {
+        throw "W4_LISTENER_HMAC_SECRET is set but empty in $envFile. Generate a value before reinstalling: [Convert]::ToBase64String((1..32 | %{Get-Random -Maximum 256}))"
     }
     Write-LogLine "env_secret_present=yes"
 

@@ -194,8 +194,10 @@ app.post(
     const promptAbs = path.isAbsolute(promptPath) ? promptPath : path.join(REPO_ROOT, promptPath);
     let promptText;
     try {
-      const raw = fs.readFileSync(promptAbs, 'utf8').replace(/^﻿/, '');
-      const promptDoc = JSON.parse(raw);
+      // Renamed from `raw` to `promptRaw` to avoid shadowing the outer `raw`
+      // that holds the request body for HMAC verification (see top of handler).
+      const promptRaw = fs.readFileSync(promptAbs, 'utf8').replace(/^﻿/, '');
+      const promptDoc = JSON.parse(promptRaw);
       if (typeof promptDoc.prompt !== 'string' || promptDoc.prompt.length === 0) {
         throw new Error('prompt field missing or empty');
       }
