@@ -64,7 +64,8 @@ while ($respawns -lt $MAX_RESPAWNS) {
 
     Push-Location -Path $repoRoot
     try {
-        & $nodeCmd.Source $entry >> $stdoutLog 2>> $stderrLog
+        $cmdLine = ('"{0}" "{1}" >> "{2}" 2>> "{3}"' -f $nodeCmd.Source, $entry, $stdoutLog, $stderrLog)
+        & $env:ComSpec /d /c $cmdLine
         $lastExit = $LASTEXITCODE
     } finally {
         Pop-Location
