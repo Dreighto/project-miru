@@ -11,6 +11,40 @@ const { writeDlqEntry } = require('./dlq');
 
 const STDERR_TAIL_BYTES = 4096;
 
+function killProcessTree(child) {
+  if (!child || !child.pid) return;
+
+  if (process.platform === 'win32') {
+    try {
+      const killer = spawn('taskkill', ['/PID', String(child.pid), '/T', '/F'], {
+        windowsHide: true,
+        stdio: 'ignore',
+      });
+      killer.on('error', () => {
+        try {
+          child.kill('SIGTERM');
+        } catch (_e) {
+          // already exited
+        }
+      });
+      killer.unref();
+      return;
+    } catch (_e) {
+      // fall through to the direct child fallback below
+    }
+  }
+
+  try {
+    if (process.platform !== 'win32') {
+      process.kill(-child.pid, 'SIGTERM');
+    } else {
+      child.kill('SIGTERM');
+    }
+  } catch (_e) {
+    // already exited
+  }
+}
+
 function readTail(filePath, maxBytes) {
   try {
     const stat = fs.statSync(filePath);
@@ -84,11 +118,7 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
       pid: child.pid,
       timeout_seconds: timeoutSeconds,
     });
-    try {
-      child.kill('SIGTERM');
-    } catch (_e) {
-      // already exited
-    }
+    killProcessTree(child);
   }, timeoutSeconds * 1000);
   if (typeof timer.unref === 'function') timer.unref();
 

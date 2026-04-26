@@ -62,18 +62,14 @@ $lastExit = -1
 while ($respawns -lt $MAX_RESPAWNS) {
     Write-WrapperLog "spawn attempt=$($respawns + 1) node=$($nodeCmd.Source) entry=$entry"
 
-    $proc = Start-Process `
-        -FilePath          $nodeCmd.Source `
-        -ArgumentList      @($entry) `
-        -WorkingDirectory  $repoRoot `
-        -NoNewWindow `
-        -PassThru `
-        -RedirectStandardOutput $stdoutLog `
-        -RedirectStandardError  $stderrLog `
-        -Wait
-
-    $lastExit = $proc.ExitCode
-    Write-WrapperLog "exit pid=$($proc.Id) code=$lastExit attempts=$($respawns + 1)"
+    Push-Location -Path $repoRoot
+    try {
+        & $nodeCmd.Source $entry >> $stdoutLog 2>> $stderrLog
+        $lastExit = $LASTEXITCODE
+    } finally {
+        Pop-Location
+    }
+    Write-WrapperLog "exit code=$lastExit attempts=$($respawns + 1)"
 
     if ($lastExit -eq 0) {
         Write-WrapperLog "graceful exit -- not respawning"
