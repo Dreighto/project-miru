@@ -1,6 +1,26 @@
 // PRO-107 — pre-PR hygiene ESLint config (flat config, ESLint 9+).
 // Conservative defaults only. Catches mechanical issues, not style preferences.
 // File-rule tightening should ship as separate follow-up tickets.
+const NODE_COMMONJS_GLOBALS = {
+  require: 'readonly',
+  module: 'readonly',
+  exports: 'readonly',
+  __dirname: 'readonly',
+  __filename: 'readonly',
+  process: 'readonly',
+  Buffer: 'readonly',
+  console: 'readonly',
+  setTimeout: 'readonly',
+  clearTimeout: 'readonly',
+  setInterval: 'readonly',
+  clearInterval: 'readonly',
+  setImmediate: 'readonly',
+  clearImmediate: 'readonly',
+  globalThis: 'readonly',
+  URL: 'readonly',
+  URLSearchParams: 'readonly',
+};
+
 export default [
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
@@ -19,6 +39,14 @@ export default [
       'no-undef': 'error',
       'prefer-const': 'warn',
       'no-var': 'error',
+    },
+  },
+  // PRO-83 — Node CommonJS service. Scoped so the rest of the repo isn't affected.
+  {
+    files: ['services/dispatch_listener/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: NODE_COMMONJS_GLOBALS,
     },
   },
 ];
