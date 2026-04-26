@@ -3,10 +3,23 @@
 const fs = require('fs');
 const path = require('path');
 
+// Flags here intentionally do NOT include the prompt as a positional argv
+// element. The prompt is written to the child's stdin in spawn.js -- this
+// sidesteps cmd.exe's argv parsing of %VAR% expansion and embedded newlines
+// that would mutate or truncate multi-line / env-string-containing prompts.
+// See PR #22 Bugbot finding "Prompt passed unescaped to cmd.exe argv".
+//
+// Stdin behavior verified empirically (2026-04-26):
+//   * claude --print --dangerously-skip-permissions  -- reads prompt from stdin
+//   * gemini -p ""                                   -- stdin appended to (empty) -p
+//   * codex exec -                                   -- explicit `-` reads stdin
 const ALLOWLIST_DEF = Object.freeze({
-  'claude-code': { binary: 'claude.cmd', flags: ['--print', '--dangerously-skip-permissions'] },
-  gemini: { binary: 'gemini.cmd', flags: ['-p'] },
-  codex: { binary: 'codex.cmd', flags: ['exec'] },
+  'claude-code': {
+    binary: 'claude.cmd',
+    flags: ['--print', '--dangerously-skip-permissions'],
+  },
+  gemini: { binary: 'gemini.cmd', flags: ['-p', ''] },
+  codex: { binary: 'codex.cmd', flags: ['exec', '-'] },
 });
 
 // Some Windows installations virtualize %APPDATA%\npm into an AppContainer

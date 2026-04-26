@@ -1,8 +1,8 @@
 # W4 Dispatch Listener
 
 Tiny host webhook service that receives HMAC-signed POSTs from n8n and spawns
-the requested worker CLI (claude / gemini / codex) as a detached child process.
-Built for [PRO-83](https://linear.app/project-miru/issue/PRO-83); consumed by
+the requested worker CLI (claude / gemini / codex) as a child process. Built
+for [PRO-83](https://linear.app/project-miru/issue/PRO-83); consumed by
 PRO-84 once the W7 Dispatch button ships.
 
 - Bind: `127.0.0.1:19100` only — never `0.0.0.0`, never any Tailscale interface.
@@ -163,14 +163,46 @@ restart tasks). That's out of scope for PRO-83 but trivial to add later.
   W5 (Execution Monitor, future ticket) will populate these from real worker
   output. The schema is forward-compatible.
 
-- **Listener restart while a child is mid-flight:** the child survives
-  (`detached: true` + `unref()`), but no terminal receipt gets written. On
-  startup the listener sweeps `data/n8n_inbox/*.result.json` for
-  `status: "spawned"` rows older than one hour and DLQs them with
-  `error_class: "listener_restarted"`.
+- **Listener restart while a child is mid-flight:** the in-flight worker is
+  killed along with the listener (the spawn is no longer `detached: true` --
+  empirically `detached:true` was incompatible with file-fd-based stdin on
+  this Windows install, and the worker would exit 1 with empty stdout/stderr).
+  Mid-flight work is lost; operator can re-dispatch. On startup the listener
+  sweeps `data/n8n_inbox/*.result.json` for `status: "spawned"` rows older
+  than one hour and DLQs them with `error_class: "listener_restarted"` --
+  this catches any placeholder receipts that were written before the listener
+  died but didn't get a terminal write.
 - **`claude-code` field → `claude.cmd` binary:** the request field name matches
   W2's `chosen_worker` convention; the binary name matches the npm install. The
   mapping lives in `src/allowlist.js`.
+
+## Known limitations (tracked in [PRO-110](https://linear.app/project-miru/issue/PRO-110))
+
+Three Bugbot findings on commit `8ab22d6` were severity-weighted and deferred
+from this PR to a focused hardening ticket. They're tracked, not forgotten.
+
+- **Orphan-sweep timing window mismatch (Medium).** `TIMEOUT_MAX` is 30 min but
+  the startup orphan sweep checks for placeholders older than 1 hour. If the
+  listener restarts 30-60 min into a still-running worker's lifetime the sweep
+  skips the placeholder (it stays `spawned` forever). If the restart happens
+  > 1 hour into a worker's lifetime the sweep writes a `FAILED`/`listener_restarted`
+  > receipt for a worker that may still be alive, and the natural exit later can't
+  > update the rotated receipt. Realistic fix: tie the sweep threshold to
+  > `TIMEOUT_MAX` (or check whether the prompt's timeout has actually elapsed
+  > rather than using a fixed wall-clock).
+- **Orphan-sweep partial-write rollback gap (Low).** If the sweep's
+  `writeTerminalReceipt` succeeds but `writeDlqEntry` throws (or vice versa),
+  the inner `catch` only logs. On the next restart the receipt now reads
+  `status: "FAILED"` and the sweep skips it, so the missing DLQ row is never
+  re-attempted. The "exactly one DLQ row per orphan" guarantee isn't actually
+  enforced. Realistic fix: write DLQ first then receipt (or use a two-phase
+  marker so a partial write is detectable on restart).
+- **Worker child inherits `W4_LISTENER_HMAC_SECRET` via `process.env` (Low).**
+  The spawned cmd inherits the listener's env verbatim, including the HMAC
+  secret. Workers (`claude`, `gemini`, `codex`) routinely log env, send
+  telemetry, or are themselves AI models that may surface env values in
+  transcripts. Realistic fix: filter `W4_LISTENER_HMAC_SECRET` (and any other
+  listener-only secrets) from the child's `env` in `spawn.js`.
 
 ## Out of scope for PRO-83
 

@@ -80,27 +80,66 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
   const stderrFd = fs.openSync(stderrPath, 'a');
 
   const binary = workerSpec.binaryPath || workerSpec.binary;
-  const argv = ['/c', binary, ...workerSpec.flags, promptText];
+  // Prompt is written to a temp file and the file is opened as a read-only
+  // file descriptor passed directly to the child as stdio[0]. This sidesteps
+  // every cmd-level escaping concern:
+  //   * The prompt content never appears in argv, so cmd's %VAR% expansion
+  //     and newline-as-terminator behavior can't mutate or truncate it (see
+  //     PR #22 Bugbot finding "Prompt passed unescaped to cmd.exe argv").
+  //   * No `<` redirect inside a cmd command string, so node's argv escaping
+  //     can't mangle it (we hit "The filename, directory name, or volume
+  //     label syntax is incorrect" trying to use `cmd /c "<bin> <args> <
+  //     <file>"` directly).
+  //   * No reliance on `child.stdin.pipe` writes, which empirically don't
+  //     reach the worker when `detached: true` is set on Windows.
+  // The temp file is unlinked on exit/error.
+  const promptFile = path.join(traceLogDir, `${traceId}.prompt.tmp`);
+  fs.writeFileSync(promptFile, promptText, 'utf8');
 
-  let child;
+  let promptFd;
   try {
-    child = spawn('cmd', argv, {
-      cwd,
-      detached: true,
-      windowsHide: true,
-      stdio: ['ignore', stdoutFd, stderrFd],
-      env: { ...process.env },
-    });
+    promptFd = fs.openSync(promptFile, 'r');
   } catch (err) {
     fs.closeSync(stdoutFd);
     fs.closeSync(stderrFd);
+    try {
+      fs.unlinkSync(promptFile);
+    } catch (_e) {
+      /* best effort */
+    }
     throw err;
   }
 
+  let child;
+  try {
+    // detached:true was empirically incompatible with stdio file fds on this
+    // Windows setup -- claude exited 1 with empty stdout/stderr no matter how
+    // stdin was wired (pipe, file fd, batch wrapper with `< redirect`).
+    // Dropping detached:true makes the worker a normal child of the listener:
+    // listener crash will kill mid-flight workers (acceptable Phase 1 behavior
+    // per the README, the orphan sweep already handles that case at startup).
+    child = spawn('cmd', ['/c', binary, ...workerSpec.flags], {
+      cwd,
+      windowsHide: true,
+      stdio: [promptFd, stdoutFd, stderrFd],
+      env: { ...process.env },
+    });
+  } catch (err) {
+    fs.closeSync(promptFd);
+    fs.closeSync(stdoutFd);
+    fs.closeSync(stderrFd);
+    try {
+      fs.unlinkSync(promptFile);
+    } catch (_e) {
+      /* best effort */
+    }
+    throw err;
+  }
+
+  // Parent closes its copy of the fds; the child has inherited them.
+  fs.closeSync(promptFd);
   fs.closeSync(stdoutFd);
   fs.closeSync(stderrFd);
-
-  child.unref();
 
   const startedAt = new Date().toISOString();
   log.info('worker_spawned', {
@@ -161,6 +200,11 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
     } catch (writeErr) {
       log.error('finalize_error_path_failed', { trace_id: traceId, error: writeErr.message });
     }
+    try {
+      fs.unlinkSync(promptFile);
+    } catch (_e) {
+      /* best effort */
+    }
   });
 
   child.on('exit', (code, signal) => {
@@ -214,6 +258,11 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
       }
     } catch (writeErr) {
       log.error('finalize_exit_path_failed', { trace_id: traceId, error: writeErr.message });
+    }
+    try {
+      fs.unlinkSync(promptFile);
+    } catch (_e) {
+      /* best effort */
     }
   });
 

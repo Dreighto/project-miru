@@ -168,7 +168,65 @@ try {
         Write-LogLine "leftover_nssm_service=absent"
     }
 
-    # Stop any prior listener that may still be holding port 19100. Best-effort.
+    # ------------------------------------------------------------------------
+    # Reinstall teardown (PR #22 Bugbot finding "Install kills listener PID
+    # but leaves wrapper respawning"). Naive teardown -- killing only port-19100
+    # processes -- leaves the parent wrapper PowerShell alive. The wrapper
+    # sleeps 30s then respawns its own node, racing the freshly-registered
+    # task. Result: two listeners fight for port 19100, and the install's
+    # post-start health check intermittently fails. Proper teardown order:
+    #   1. Stop the Scheduled Task (kills wrapper + its child cmd/node tree
+    #      via Windows job-object propagation, when it works).
+    #   2. Wait for task State to leave Running.
+    #   3. Defensively kill any orphan wrapper PowerShells (matched by cmdline)
+    #      that survived the task stop -- this is the path that bit us during
+    #      manual verification cycles.
+    #   4. Kill any remaining node listening on port 19100.
+    # ------------------------------------------------------------------------
+    $existingTask = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+    if ($null -ne $existingTask) {
+        Write-LogLine "teardown_existing_task_state=$($existingTask.State)"
+        try {
+            Stop-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+            Write-LogLine "teardown_stop_scheduled_task=invoked"
+        } catch {
+            Write-LogLine "teardown_stop_scheduled_task_warn=$($_.Exception.Message)"
+        }
+        # Poll up to 10s for the task to leave Running state
+        $deadline = (Get-Date).AddSeconds(10)
+        do {
+            Start-Sleep -Milliseconds 500
+            $t = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+            if ($null -eq $t -or $t.State -ne 'Running') { break }
+        } while ((Get-Date) -lt $deadline)
+        $finalState = if ($null -ne $t) { $t.State } else { 'absent' }
+        Write-LogLine "teardown_task_state_after_stop=$finalState"
+    } else {
+        Write-LogLine "teardown_existing_task=absent"
+    }
+
+    # Defensive wrapper-PowerShell kill: any powershell.exe whose command line
+    # contains start_dispatch_listener.ps1 must die before we register the new
+    # task, otherwise the old wrapper's 30s respawn loop will race us.
+    $wrapperProcs = @(
+        Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -like '*start_dispatch_listener.ps1*' -and $_.ProcessId -ne $PID }
+    )
+    if ($wrapperProcs.Count -eq 0) {
+        Write-LogLine "teardown_wrapper_ps_killed=none"
+    } else {
+        foreach ($wp in $wrapperProcs) {
+            try {
+                Stop-Process -Id $wp.ProcessId -Force -ErrorAction Stop
+                Write-LogLine "teardown_wrapper_ps_killed=$($wp.ProcessId)"
+            } catch {
+                Write-LogLine "teardown_wrapper_ps_kill_failed=$($wp.ProcessId) reason=$($_.Exception.Message)"
+            }
+        }
+        Start-Sleep -Milliseconds 500
+    }
+
+    # Final cleanup: any orphan node still bound to port 19100.
     $stalePids = @(
         Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue |
             ForEach-Object { [int]$_.OwningProcess } |
@@ -178,16 +236,20 @@ try {
     foreach ($p in $stalePids) {
         try {
             Stop-Process -Id $p -Force -ErrorAction Stop
-            Write-LogLine "stale_pid_killed=$p"
+            Write-LogLine "teardown_orphan_listener_killed=$p"
         } catch {
-            Write-LogLine "stale_pid_kill_failed=$p reason=$($_.Exception.Message)"
+            Write-LogLine "teardown_orphan_listener_kill_failed=$p reason=$($_.Exception.Message)"
         }
     }
+    if ($stalePids.Count -eq 0) {
+        Write-LogLine "teardown_orphan_listener_killed=none"
+    }
+    Write-LogLine "teardown_complete=yes"
 
     # Build the Scheduled Task. Conventions match windows\register_restart_tasks.ps1.
-    # The wrapper script handles stdout/stderr redirection cleanly via
-    # Start-Process -RedirectStandardOutput/-RedirectStandardError and propagates
-    # the listener's exit code so Task Scheduler's RestartOnFailure can fire.
+    # The wrapper script (start_dispatch_listener.ps1) hands off to cmd.exe with
+    # `>> append` redirection so node's UTF-8 stdout/stderr land in the log
+    # files unmangled, and owns a respawn loop that fires on non-zero exit.
     $argString = "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$wrapperScript`""
     $action = New-ScheduledTaskAction `
         -Execute "powershell.exe" `
