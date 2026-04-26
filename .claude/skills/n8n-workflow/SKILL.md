@@ -10,6 +10,7 @@ This skill is a thin wrapper. The canonical content lives at:
 **`docs/n8n/N8N_SKILL.md`** — read this file first.
 
 It covers:
+
 1. n8n core patterns (Code node, If node coercion, HTTP Request, webhook silent failure, error propagation, testing)
 2. Telegram + approval loop (callback_query, answerCallbackQuery, raw HTTP vs Telegram node, approval gate timeout)
 3. LLM routing (current state: rule-based; future: LLM router shadow mode post-PRO-84)
