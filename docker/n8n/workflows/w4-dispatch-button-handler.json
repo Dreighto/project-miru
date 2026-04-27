@@ -18,7 +18,7 @@
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ accepted: true, trace_id: $json.body && $json.body.token ? $json.body.token : null }) }}",
+        "responseBody": "={{ JSON.stringify({ accepted: true, trace_id: $json.token || null, abort: !!$json._abort, abort_reason: $json._abort_reason || null }) }}",
         "options": {}
       },
       "id": "w4001a-respond",
@@ -507,12 +507,12 @@
   ],
   "connections": {
     "w4001-webhook": {
-      "main": [[{"node": "w4001a-respond", "type": "main", "index": 0}]]
-    },
-    "w4001a-respond": {
       "main": [[{"node": "w4002-parse-input", "type": "main", "index": 0}]]
     },
     "w4002-parse-input": {
+      "main": [[{"node": "w4001a-respond", "type": "main", "index": 0}]]
+    },
+    "w4001a-respond": {
       "main": [[{"node": "w4003-hmac-validate", "type": "main", "index": 0}]]
     },
     "w4003-hmac-validate": {
