@@ -1,0 +1,269 @@
+[
+  {
+    "parameters": {
+      "conditions": {
+        "options": {
+          "caseSensitive": true,
+          "leftValue": "",
+          "typeValidation": "strict"
+        },
+        "conditions": [
+          {
+            "id": "mcpb1",
+            "leftValue": "={{ $json.button_set }}",
+            "rightValue": "mcp_n8n_write",
+            "operator": {
+              "type": "string",
+              "operation": "equals"
+            }
+          }
+        ],
+        "combinator": "and"
+      },
+      "options": {}
+    },
+    "id": "w7007b-mcp-n8n-if",
+    "name": "w7007b-mcp-n8n-if",
+    "type": "n8n-nodes-base.if",
+    "typeVersion": 2.2,
+    "position": [
+      1520,
+      200
+    ]
+  },
+  {
+    "parameters": {
+      "conditions": {
+        "options": {
+          "caseSensitive": true,
+          "leftValue": "",
+          "typeValidation": "strict"
+        },
+        "conditions": [
+          {
+            "id": "mcpa1",
+            "leftValue": "={{ $json.action }}",
+            "rightValue": "a",
+            "operator": {
+              "type": "string",
+              "operation": "equals"
+            }
+          }
+        ],
+        "combinator": "and"
+      },
+      "options": {}
+    },
+    "id": "w7-mcp-action-if",
+    "name": "w7-mcp-action-if",
+    "type": "n8n-nodes-base.if",
+    "typeVersion": 2.2,
+    "position": [
+      1680,
+      120
+    ]
+  },
+  {
+    "parameters": {
+      "language": "javaScript",
+      "mode": "runOnceForEachItem",
+      "jsCode": "// w7-mcp-read-pending (PRO-122)\nconst fs = require('fs');\nconst MCP = '/miru-data/mcp_gateway_pending_writes.jsonl';\nconst data = $input.item.json;\nconst traceId = data.trace_id;\nif (!traceId) {\n  return { json: { ...data, _mcp_error: 'missing trace_id' } };\n}\nlet content = '';\ntry {\n  if (fs.existsSync(MCP)) content = fs.readFileSync(MCP, 'utf8');\n} catch (e) {\n  return { json: { ...data, _mcp_error: 'read mcp_gateway_pending_writes: ' + e.message } };\n}\nconst lines = content.split(String.fromCharCode(10)).filter(Boolean);\nlet row = null;\nfor (let i = lines.length - 1; i >= 0; i--) {\n  let r;\n  try { r = JSON.parse(lines[i]); } catch (e2) { continue; }\n  if (r.kind === 'intent' && r.request_id === traceId) {\n    row = r;\n    break;\n  }\n}\nif (!row) {\n  return { json: { ...data, _mcp_error: 'no matching intent row for request_id', _mcp_trace: traceId } };\n}\nconst op = row.operation;\nlet base = String($env.N8N_INTERNAL_API_BASE || 'http://127.0.0.1:5678');\nwhile (base.endsWith('/')) base = base.slice(0, -1);\nconst apiKey = $env.N8N_API_KEY;\nif (!apiKey) {\n  return { json: { ...data, _mcp_error: 'N8N_API_KEY not set on n8n container' } };\n}\nlet n8n_method;\nlet n8n_url;\nif (op === 'create_workflow') {\n  n8n_method = 'POST';\n  n8n_url = base + '/api/v1/workflows';\n} else if (op === 'update_workflow') {\n  const wid = row.workflow_id;\n  if (!wid) {\n    return { json: { ...data, _mcp_error: 'update_workflow missing workflow_id' } };\n  }\n  n8n_method = 'PUT';\n  n8n_url = base + '/api/v1/workflows/' + wid;\n} else {\n  return { json: { ...data, _mcp_error: 'unknown operation: ' + op } };\n}\nconst bodyObj = row.workflow_json;\nif (!bodyObj || typeof bodyObj !== 'object') {\n  return { json: { ...data, _mcp_error: 'workflow_json missing or invalid' } };\n}\nconst decided_at = new Date().toISOString();\nreturn { json: {\n  ...data,\n  _mcp_pending_row: row,\n  n8n_method,\n  n8n_url,\n  mcp_mutation_body: bodyObj,\n  decided_at,\n  action_label: 'Approve (MCP n8n write)'\n}};\n"
+    },
+    "id": "w7-mcp-read-pending",
+    "name": "w7-mcp-read-pending",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      1840,
+      40
+    ]
+  },
+  {
+    "parameters": {
+      "conditions": {
+        "options": {
+          "caseSensitive": true,
+          "leftValue": "",
+          "typeValidation": "strict"
+        },
+        "conditions": [
+          {
+            "id": "mcpc1",
+            "leftValue": "={{ $json._mcp_pending_row.operation }}",
+            "rightValue": "create_workflow",
+            "operator": {
+              "type": "string",
+              "operation": "equals"
+            }
+          }
+        ],
+        "combinator": "and"
+      },
+      "options": {}
+    },
+    "id": "w7-mcp-if-create",
+    "name": "w7-mcp-if-create",
+    "type": "n8n-nodes-base.if",
+    "typeVersion": 2.2,
+    "position": [
+      2000,
+      40
+    ]
+  },
+  {
+    "parameters": {
+      "method": "POST",
+      "url": "={{ $('w7-mcp-read-pending').item.json.n8n_url }}",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "X-N8N-API-KEY",
+            "value": "={{ $env.N8N_API_KEY }}"
+          },
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "={{ JSON.stringify($('w7-mcp-read-pending').item.json.mcp_mutation_body) }}",
+      "options": {}
+    },
+    "id": "w7-mcp-http-post",
+    "name": "w7-mcp-http-post",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [
+      2180,
+      -40
+    ],
+    "retryOnFail": true,
+    "maxTries": 2,
+    "waitBetweenTries": 3000,
+    "continueOnFail": true
+  },
+  {
+    "parameters": {
+      "method": "PUT",
+      "url": "={{ $('w7-mcp-read-pending').item.json.n8n_url }}",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "X-N8N-API-KEY",
+            "value": "={{ $env.N8N_API_KEY }}"
+          },
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "={{ JSON.stringify($('w7-mcp-read-pending').item.json.mcp_mutation_body) }}",
+      "options": {}
+    },
+    "id": "w7-mcp-http-put",
+    "name": "w7-mcp-http-put",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [
+      2180,
+      120
+    ],
+    "retryOnFail": true,
+    "maxTries": 2,
+    "waitBetweenTries": 3000,
+    "continueOnFail": true
+  },
+  {
+    "parameters": {
+      "language": "javaScript",
+      "mode": "runOnceForEachItem",
+      "jsCode": "// w7-mcp-mark-decided-approved (PRO-122)\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\nconst prior = $('w7-mcp-read-pending').item.json;\nconst httpOut = $input.item.json;\nconst decided_at = prior.decided_at || new Date().toISOString();\nlet applyOk = true;\nlet applyErr = null;\nif (httpOut && httpOut.error) {\n  applyOk = false;\n  applyErr = (httpOut.error.message && String(httpOut.error.message)) || JSON.stringify(httpOut.error);\n} else if (httpOut && httpOut.message && String(httpOut.message).toLowerCase().indexOf('error') >= 0) {\n  applyOk = false;\n  applyErr = String(httpOut.message);\n}\nconst sc = httpOut.statusCode != null ? httpOut.statusCode : httpOut.status;\nif (sc != null && (sc < 200 || sc >= 300)) {\n  applyOk = false;\n  applyErr = applyErr || ('HTTP ' + sc);\n}\nconst decidedRow = {\n  kind: 'decided',\n  token: prior.token,\n  action: prior.action,\n  action_label: prior.action_label || 'Approve (MCP n8n write)',\n  decided_at,\n  decided_by_user_id: prior.from_user_id != null ? prior.from_user_id : null,\n  trace_id: prior.trace_id,\n  task_id: prior.issue_id || null,\n  task_identifier: prior.issue_identifier || null,\n  edit_message_ok: applyOk,\n  mcp_n8n_write_outcome: applyOk ? 'applied' : 'n8n_http_failed',\n  mcp_n8n_write_error: applyErr\n};\nfs.appendFileSync(PENDING, JSON.stringify(decidedRow) + String.fromCharCode(10));\nreturn { json: { ...prior, _mcp_apply_ok: applyOk, _mcp_apply_err: applyErr } };\n"
+    },
+    "id": "w7-mcp-mark-decided-approved",
+    "name": "w7-mcp-mark-decided-approved",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      2360,
+      40
+    ]
+  },
+  {
+    "parameters": {
+      "method": "POST",
+      "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "={{ (() => { const d = $('w7-mcp-read-pending').item.json; const r = $json; const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); const ok = r._mcp_apply_ok; const msg = ok ? 'Applied to n8n.' : ('FAILED: ' + esc(r._mcp_apply_err || 'unknown')); return JSON.stringify({ chat_id: d.chat_id, message_id: d.message_id, text: '<b>MCP n8n write \\u2014 Approve</b>\\n<i>' + esc(msg) + '</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }); })() }}",
+      "options": {}
+    },
+    "id": "w7-mcp-edit-approved",
+    "name": "w7-mcp-edit-approved",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [
+      2540,
+      40
+    ],
+    "continueOnFail": true
+  },
+  {
+    "parameters": {
+      "language": "javaScript",
+      "mode": "runOnceForEachItem",
+      "jsCode": "// w7-mcp-triage-mark (PRO-122)\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\nconst d = $input.item.json;\nconst decided_at = new Date().toISOString();\nconst action_label = 'Triage (declined MCP n8n write)';\nconst decidedRow = {\n  kind: 'decided',\n  token: d.token,\n  action: d.action,\n  action_label,\n  decided_at,\n  decided_by_user_id: d.from_user_id != null ? d.from_user_id : null,\n  trace_id: d.trace_id,\n  task_id: d.issue_id || null,\n  task_identifier: d.issue_identifier || null,\n  edit_message_ok: true,\n  mcp_n8n_write_outcome: 'declined_triage'\n};\nfs.appendFileSync(PENDING, JSON.stringify(decidedRow) + String.fromCharCode(10));\nreturn { json: { ...d, decided_at, action_label } };\n"
+    },
+    "id": "w7-mcp-triage-mark",
+    "name": "w7-mcp-triage-mark",
+    "type": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "position": [
+      1840,
+      280
+    ]
+  },
+  {
+    "parameters": {
+      "method": "POST",
+      "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+      "sendHeaders": true,
+      "headerParameters": {
+        "parameters": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      },
+      "sendBody": true,
+      "specifyBody": "json",
+      "jsonBody": "={{ (() => { const d = $('w7-mcp-triage-mark').item.json; const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); return JSON.stringify({ chat_id: d.chat_id, message_id: d.message_id, text: '<b>MCP n8n write \\u2014 Triage</b>\\n<i>Declined. No n8n mutation.</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }); })() }}",
+      "options": {}
+    },
+    "id": "w7-mcp-edit-triage",
+    "name": "w7-mcp-edit-triage",
+    "type": "n8n-nodes-base.httpRequest",
+    "typeVersion": 4.2,
+    "position": [
+      2020,
+      280
+    ],
+    "continueOnFail": true
+  }
+]

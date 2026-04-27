@@ -65,9 +65,7 @@ _PATTERN_SCRUBS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"ghr_[A-Za-z0-9]{36,}"), "<REDACTED:GH_TOKEN>"),
     # JWT (header.payload.signature)
     (
-        re.compile(
-            r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"
-        ),
+        re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"),
         "<REDACTED:JWT>",
     ),
     # Bearer auth (HTTP header form)
@@ -128,6 +126,22 @@ def redact(text: str) -> str:
     return out
 
 
+def find_named_secret_substrings(text: str) -> list[str]:
+    """Return replacement markers for any configured secret *value* found in text.
+
+    Used by docs write tools to **reject** writes that embed real secrets (PRO-123).
+    Does not apply regex pattern scrubs — only env-derived substring pairs.
+    """
+    if not text:
+        return []
+    pairs = _ensure_loaded()
+    hits: list[str] = []
+    for value in sorted(pairs.keys(), key=len, reverse=True):
+        if value in text:
+            hits.append(pairs[value])
+    return hits
+
+
 def redact_dict(obj: Any) -> Any:
     """Recursively scrub strings inside dicts/lists/tuples.
 
@@ -138,6 +152,6 @@ def redact_dict(obj: Any) -> Any:
         return redact(obj)
     if isinstance(obj, dict):
         return {k: redact_dict(v) for k, v in obj.items()}
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, list | tuple):
         return [redact_dict(x) for x in obj]
     return obj
