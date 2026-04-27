@@ -352,12 +352,12 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" },
             { "name": "X-W4-HMAC", "value": "={{ $json.listener_hmac_hex }}" }
           ]
         },
         "sendBody": true,
-        "specifyBody": "string",
+        "specifyBody": "raw",
+        "rawContentType": "application/json",
         "body": "={{ $json.listener_body_string }}",
         "options": {
           "response": {
