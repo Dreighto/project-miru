@@ -346,6 +346,22 @@ def _item_shape(item: Any) -> Any:
     return "_scalar_"
 
 
+def _count_main_items(main: Any) -> int:
+    """Count INodeExecutionData items under n8n ``data.main`` / ``input.main``."""
+    if not isinstance(main, list):
+        return 0
+    n = 0
+    for branch in main:
+        if not isinstance(branch, list):
+            continue
+        for slot in branch:
+            if isinstance(slot, list):
+                n += len(slot)
+            elif isinstance(slot, dict):
+                n += 1
+    return n
+
+
 def _branch_shapes(branch: Any) -> list[Any]:
     if not isinstance(branch, list):
         return []
@@ -389,14 +405,17 @@ def _execution_node_summaries(
         err_msg = ""
         if isinstance(last.get("error"), dict):
             err_msg = str(last["error"].get("message", ""))[:400]
-        main = (last.get("data") or {}).get("main")
-        item_in = item_out = 0
+        data_block = last.get("data") if isinstance(last.get("data"), dict) else {}
+        main = data_block.get("main")
+        input_block = last.get("input")
+        input_main = input_block.get("main") if isinstance(input_block, dict) else None
+        item_in = _count_main_items(input_main)
+        item_out = _count_main_items(main)
         in_shape: Any = []
         out_shape: Any = []
         if isinstance(main, list):
             for branch in main:
                 if isinstance(branch, list):
-                    item_in += sum(len(w) for w in branch if isinstance(w, list))
                     in_shape = _branch_shapes(branch)
         out_shape = (
             main if include_values and isinstance(main, list) else in_shape

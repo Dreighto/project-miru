@@ -291,29 +291,109 @@ def system_tail_safe_log(name: str, lines: int = 100) -> str:
 # --- Helpers ------------------------------------------------------------
 
 
-def _docker_n8n_logs(name: str, lines: int) -> str:
-    """Run ``docker logs`` with ``--since`` + ``--tail`` (PRO-132)."""
+def _docker_container_log_path(container: str) -> Path | None:
+    """Resolve Docker json-file log path via ``docker inspect`` (stream-aware tail)."""
     import subprocess
 
-    stream_flag: list[str] = []
-    if name == "n8n_stdout":
-        stream_flag = ["--stdout"]
-    elif name == "n8n_stderr":
-        stream_flag = ["--stderr"]
+    try:
+        proc = subprocess.run(
+            ["docker", "inspect", "-f", "{{.LogPath}}", container],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except FileNotFoundError:
+        return None
+    except subprocess.TimeoutExpired:
+        return None
+    if proc.returncode != 0:
+        return None
+    raw = (proc.stdout or "").strip()
+    if not raw:
+        return None
+    return Path(raw)
+
+
+def _tail_docker_json_logs(
+    log_path: Path,
+    *,
+    lines: int,
+    stream: str | None,
+    max_chunk_bytes: int = 4 * 1024 * 1024,
+) -> str | None:
+    """Tail json-file driver lines; ``stream`` ``stdout``/``stderr`` or ``None`` for both."""
+    try:
+        size = log_path.stat().st_size
+    except OSError:
+        return None
+    read_amount = min(size, max_chunk_bytes)
+    try:
+        with log_path.open("rb") as fh:
+            if size > read_amount:
+                fh.seek(size - read_amount)
+            blob = fh.read()
+    except OSError:
+        return None
+    text = blob.decode("utf-8", errors="replace")
+    matched: list[str] = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        st = obj.get("stream")
+        if stream is not None and st != stream:
+            continue
+        log = obj.get("log")
+        if isinstance(log, str):
+            matched.append(log.rstrip("\n\r"))
+    if not matched:
+        return None
+    tail = matched[-lines:] if lines > 0 else matched
+    body = "\n".join(tail)
+    return body + ("\n" if body else "")
+
+
+def _docker_n8n_logs(name: str, lines: int) -> str:
+    """Tail n8n container logs (PRO-132): prefer json-file LogPath for stdout/stderr split."""
+    import subprocess
+
     tail_n = min(500, max(1, lines))
     container = _N8N_DOCKER_CONTAINER
+    stream_key: str | None = None
+    if name == "n8n_stdout":
+        stream_key = "stdout"
+    elif name == "n8n_stderr":
+        stream_key = "stderr"
+
+    log_path = _docker_container_log_path(container)
+    if log_path is not None and name != "n8n_combined":
+        blob = _tail_docker_json_logs(log_path, lines=tail_n, stream=stream_key)
+        if blob is not None and blob.strip():
+            return blob
+
+    if log_path is not None and name == "n8n_combined":
+        blob = _tail_docker_json_logs(log_path, lines=tail_n, stream=None)
+        if blob is not None and blob.strip():
+            return blob
+
     for since in ("1h", "4h"):
-        cmd = [
-            "docker",
-            "logs",
-            container,
-            f"--since={since}",
-            f"--tail={tail_n}",
-            *stream_flag,
-        ]
         try:
             proc = subprocess.run(
-                cmd,
+                [
+                    "docker",
+                    "logs",
+                    container,
+                    f"--since={since}",
+                    f"--tail={tail_n}",
+                ],
                 capture_output=True,
                 text=True,
                 timeout=20,
@@ -331,8 +411,17 @@ def _docker_n8n_logs(name: str, lines: int) -> str:
                 f"system: n8n docker container not running or not found: {container!r}",
                 -32000,
             )
+        if "unknown flag" in low or "invalid option" in low:
+            raise stdio_mcp.McpError(f"system: docker logs failed: {err[:500]}", -32000)
         out = proc.stdout or ""
-        if out.strip():
+        cli_err = (proc.stderr or "").strip()
+        if name == "n8n_combined":
+            merged = out.rstrip()
+            if cli_err:
+                merged = f"{merged}\n{cli_err}" if merged else cli_err
+            if merged.strip():
+                return merged + ("\n" if not merged.endswith("\n") else "")
+        elif out.strip():
             return out
     return f"[docker logs: no output in last 4h for {container!r}]\n"
 

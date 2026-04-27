@@ -57,9 +57,12 @@ denied.
   `dispatcher_stdout/stderr`, `startup`. Call with `name=""` to list them.
 
 When `MIRU_SYSTEM_LOGS_ENABLED=true`, docker-backed keys are added:
-`n8n_stdout`, `n8n_stderr`, `n8n_combined` (uses `docker logs` with
-`--since 1h` / fallback `--since 4h` and `--tail`, container
-`MIRU_N8N_CONTAINER_NAME` default `miru-n8n`). Requires Docker CLI on PATH.
+`n8n_stdout`, `n8n_stderr`, `n8n_combined`. Split streams use the container
+json-file log from `docker inspect -f '{{.LogPath}}'` when readable; otherwise
+`docker logs` (no invalid `--stdout`/`--stderr` flags) is used. Combined mode
+merges CLI stdout and stderr so Docker client messages are not dropped.
+`--since 1h` with `--since 4h` fallback and `--tail`, container
+`MIRU_N8N_CONTAINER_NAME` default `miru-n8n`. Requires Docker CLI on PATH.
 
 ### github (read-only, PRO-131)
 

@@ -262,10 +262,3 @@ def wrap_tool_entry(func: Callable[..., Any], cfg: Any) -> Callable[..., Any]:
             raise
 
     return wrapper
-
-
-def register_wrapped_tools(mcp: Any, cfg: Any, functions: tuple[Callable[..., Any], ...]) -> int:
-    """Register each function behind PRO-137 wrapper."""
-    for func in functions:
-        mcp.tool(wrap_tool_entry(func, cfg))
-    return len(functions)
