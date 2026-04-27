@@ -21,6 +21,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
       TELEGRAM_CALLBACK_SECRET: ${TELEGRAM_CALLBACK_SECRET}
+      W4_LISTENER_HMAC_SECRET: ${W4_LISTENER_HMAC_SECRET}
       W2_SHADOW_MODE: "false"
       NODE_FUNCTION_ALLOW_BUILTIN: "fs,crypto"
       # Used by W7 MCP n8n-write approval branch + notify workflow to call the

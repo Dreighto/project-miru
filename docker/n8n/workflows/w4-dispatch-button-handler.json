@@ -1,0 +1,589 @@
+{
+  "name": "W4 Dispatch Button Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "w4-dispatch",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "w4001-webhook",
+      "name": "w4001-webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 400],
+      "webhookId": "w4-dispatch-button"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ accepted: true, trace_id: $json.body && $json.body.token ? $json.body.token : null }) }}",
+        "options": {}
+      },
+      "id": "w4001a-respond",
+      "name": "w4001a-respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [400, 400]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4002-parse-input (PRO-84)\n// Extract callback fields from W7's POST body. W4's webhook is invoked by\n// w7-call-w4 (an HTTP node) which POSTs JSON.stringify({...callback fields}).\n// n8n places the parsed body under $json.body for webhook nodes.\nconst body = $input.item.json.body || $input.item.json || {};\n\nconst required = ['token', 'action', 'nonce', 'ts_hex', 'hmac_hex', 'chat_id', 'message_id'];\nfor (const k of required) {\n  if (body[k] == null) {\n    return { json: { _abort: true, _abort_reason: 'missing field in W7 payload: ' + k, raw_body: body } };\n  }\n}\n\nreturn { json: {\n  token: String(body.token),\n  action: String(body.action),\n  nonce: String(body.nonce),\n  ts_hex: String(body.ts_hex),\n  hmac_hex: String(body.hmac_hex),\n  ts_unix_seconds: body.ts_unix_seconds != null ? Number(body.ts_unix_seconds) : null,\n  callback_age_seconds: body.callback_age_seconds != null ? Number(body.callback_age_seconds) : null,\n  callback_query_id: body.callback_query_id || null,\n  chat_id: body.chat_id,\n  message_id: body.message_id,\n  from_user_id: body.from_user_id != null ? body.from_user_id : null\n}};"
+      },
+      "id": "w4002-parse-input",
+      "name": "w4002-parse-input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 400]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4003-hmac-validate (PRO-84)\n// Defense-in-depth: re-validate the Telegram callback HMAC even though W7 already\n// validated it. Algorithm matches w7004-hmac-validate verbatim — single source of truth\n// for the callback HMAC contract (TELEGRAM_CALLBACK_SECRET). Replay window: -60s to +600s.\n// Note: this is the TELEGRAM CALLBACK HMAC (truncated 32 hex chars), NOT the listener HMAC.\n// The listener HMAC is computed separately in w4023-build-listener-request and uses\n// W4_LISTENER_HMAC_SECRET (full 64 hex chars over raw body).\nconst crypto = require('crypto');\n\nconst data = $input.item.json;\nif (data._abort) {\n  return { json: { ...data, validated: false, reject_reason: data._abort_reason } };\n}\n\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret || secret.length < 32) {\n  return { json: { ...data, validated: false, reject_reason: 'TELEGRAM_CALLBACK_SECRET missing or too short' } };\n}\n\nconst payload = data.token + data.action + data.nonce + data.ts_hex;\nconst expected = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\n\nlet hmac_ok = false;\ntry {\n  hmac_ok = crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(data.hmac_hex, 'hex'));\n} catch (e) {\n  return { json: { ...data, validated: false, reject_reason: 'hmac comparison threw: ' + e.message } };\n}\n\nif (!hmac_ok) {\n  return { json: { ...data, validated: false, reject_reason: 'hmac mismatch' } };\n}\n\nif (data.ts_unix_seconds != null) {\n  const now_seconds = Math.floor(Date.now() / 1000);\n  const age = now_seconds - data.ts_unix_seconds;\n  if (age > 600) return { json: { ...data, validated: false, reject_reason: 'callback older than 10 min (age=' + age + 's)' } };\n  if (age < -60) return { json: { ...data, validated: false, reject_reason: 'callback timestamp in future (age=' + age + 's)' } };\n}\n\nreturn { json: { ...data, validated: true } };"
+      },
+      "id": "w4003-hmac-validate",
+      "name": "w4003-hmac-validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "vb1",
+              "leftValue": "={{ $json.validated }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "w4004-validate-branch",
+      "name": "w4004-validate-branch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1000, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const d = $('w4002-parse-input').item.json; const r = $json.reject_reason || 'unknown'; const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); return JSON.stringify({ chat_id: d.chat_id, message_id: d.message_id, text: '<b>\\u26A0 Dispatch HMAC failed</b>\\n<i>' + esc(r) + '</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }); })() }}",
+        "options": {}
+      },
+      "id": "w4005-abort-hmac",
+      "name": "w4005-abort-hmac",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4006-lookup-pending-dispatch (PRO-84)\n// Read /miru-data/pending_callbacks.jsonl, walk in reverse to find the latest\n// kind='dispatch' row matching the current token. That row was written by\n// w7-store-pending-dispatch when the second-stage Dispatch button was emitted.\n// Pulls worker, issue context, and dispatch message coordinates needed for\n// label verification, prompt assembly, and final editMessageText.\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\n\nconst data = $input.item.json;\nconst targetToken = data.token;\n\nlet content = '';\ntry {\n  if (fs.existsSync(PENDING)) content = fs.readFileSync(PENDING, 'utf8');\n} catch (e) {\n  return { json: { ...data, found: false, lookup_error: 'pending_callbacks read error: ' + e.message } };\n}\n\nconst lines = content.split('\\n').filter(Boolean);\nlet dispatchRow = null;\nlet finalRow = null; // Latest row with kind='dispatch' that ALSO has a final status\nfor (let i = lines.length - 1; i >= 0; i--) {\n  let row;\n  try { row = JSON.parse(lines[i]); } catch (e) { continue; }\n  if (row.token !== targetToken) continue;\n  if (row.kind !== 'dispatch') continue;\n  // The most recent dispatch row carries the latest status. We capture it as\n  // dispatchRow; if it's already at a terminal status the caller can decide.\n  if (!dispatchRow) {\n    dispatchRow = row;\n  }\n  if (!finalRow && (row.status === 'dispatched' || row.status === 'cursor_handoff' || row.status === 'failed')) {\n    finalRow = row;\n  }\n  if (dispatchRow) break;\n}\n\nif (!dispatchRow) {\n  return { json: { ...data, found: false, lookup_error: 'no kind=dispatch row for token (W7 emit chain may have failed)' } };\n}\n\nreturn { json: {\n  ...data,\n  found: true,\n  trace_id: dispatchRow.trace_id || dispatchRow.token,\n  worker: dispatchRow.worker,\n  flow: dispatchRow.flow,\n  issue_id: dispatchRow.issue_id,\n  issue_identifier: dispatchRow.issue_identifier,\n  issue_url: dispatchRow.issue_url,\n  dispatch_chat_id: dispatchRow.dispatch_chat_id != null ? dispatchRow.dispatch_chat_id : data.chat_id,\n  dispatch_message_id: dispatchRow.dispatch_message_id != null ? dispatchRow.dispatch_message_id : data.message_id,\n  prompt_path: dispatchRow.prompt_path,\n  prior_status: dispatchRow.status,\n  prior_dispatched_at: dispatchRow.dispatched_at || null\n}};"
+      },
+      "id": "w4006-lookup-pending-dispatch",
+      "name": "w4006-lookup-pending-dispatch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "fb1",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "w4007-found-branch",
+      "name": "w4007-found-branch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1400, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const d = $('w4002-parse-input').item.json; const e = $json.lookup_error || 'unknown'; const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); return JSON.stringify({ chat_id: d.chat_id, message_id: d.message_id, text: '<b>\\u26A0 Dispatch context not found</b>\\n<i>' + esc(e) + '</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }); })() }}",
+        "options": {}
+      },
+      "id": "w4008-abort-not-found",
+      "name": "w4008-abort-not-found",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linear.app/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linearApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query W4Labels($id: String!) { issue(id: $id) { id identifier url labels { nodes { name } } } }', variables: { id: $json.issue_id } }) }}",
+        "options": {}
+      },
+      "id": "w4009-fetch-labels",
+      "name": "w4009-fetch-labels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 400],
+      "credentials": {
+        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4010-verify-label (PRO-84)\n// Confirms the worker label is still attached to the issue. Catches the operator-\n// removed-label race: between the Approve tap and the Dispatch tap, the operator\n// could have manually removed the worker label in Linear. Aborting here prevents\n// dispatching a worker whose label has been retracted.\nconst prior = $('w4006-lookup-pending-dispatch').item.json;\nconst resp = $input.item.json;\n\nconst issue = resp && resp.data && resp.data.issue;\nif (!issue) {\n  return { json: { ...prior, label_present: false, label_check_error: 'Linear query returned no issue (errors=' + JSON.stringify(resp && resp.errors || null) + ')' } };\n}\n\nconst labels = (issue.labels && issue.labels.nodes) || [];\nconst names = labels.map(l => l.name);\nconst present = names.includes(prior.worker);\n\n// Also capture the canonical issue url + identifier from Linear in case W7's\n// pending row was missing them (defensive).\nconst issue_url = issue.url || prior.issue_url;\nconst issue_identifier = issue.identifier || prior.issue_identifier;\n\nif (!present) {\n  return { json: { ...prior, label_present: false, label_check_error: 'worker label \"' + prior.worker + '\" not in issue labels [' + names.join(', ') + ']', issue_url, issue_identifier, current_label_names: names } };\n}\n\nreturn { json: { ...prior, label_present: true, issue_url, issue_identifier, current_label_names: names } };"
+      },
+      "id": "w4010-verify-label",
+      "name": "w4010-verify-label",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "lpb1",
+              "leftValue": "={{ $json.label_present }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "w4011-label-branch",
+      "name": "w4011-label-branch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2000, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const d = $json; const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); return JSON.stringify({ chat_id: d.dispatch_chat_id, message_id: d.dispatch_message_id, text: '<b>\\u26A0 Worker label was removed \\u2014 dispatch aborted</b>\\n<i>' + esc(d.issue_identifier || '?') + '</i>\\n<code>' + esc(d.label_check_error || '') + '</code>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }); })() }}",
+        "options": {}
+      },
+      "id": "w4012-abort-label-removed",
+      "name": "w4012-abort-label-removed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cb1",
+              "leftValue": "={{ $json.worker }}",
+              "rightValue": "cursor",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "w4013-cursor-branch",
+      "name": "w4013-cursor-branch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2200, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const d = $json; const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); const url = d.issue_url || ('https://linear.app/project-miru/issue/' + (d.issue_identifier || '')); return JSON.stringify({ chat_id: d.dispatch_chat_id, message_id: d.dispatch_message_id, text: '<b>\\uD83D\\uDD17 Cursor needs manual dispatch</b>\\n<i>' + esc(d.issue_identifier || '?') + '</i>\\n<a href=\"' + esc(url) + '\">Tap to open in Linear</a>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }); })() }}",
+        "options": {}
+      },
+      "id": "w4014-edit-cursor",
+      "name": "w4014-edit-cursor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2400, 600],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4015-update-pending-cursor (PRO-84)\n// Append a pending_callbacks dispatch row marking the cursor handoff completed.\n// No prompt JSON written, no listener POST (cursor stays manual per locked decision).\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\nconst prior = $('w4010-verify-label').item.json;\nconst editResp = $input.item.json;\n\nconst row = {\n  schema_version: 'v1',\n  kind: 'dispatch',\n  token: prior.token,\n  trace_id: prior.trace_id,\n  worker: prior.worker,\n  flow: prior.flow,\n  issue_id: prior.issue_id,\n  issue_identifier: prior.issue_identifier,\n  issue_url: prior.issue_url,\n  dispatch_chat_id: prior.dispatch_chat_id,\n  dispatch_message_id: prior.dispatch_message_id,\n  prompt_path: prior.prompt_path,\n  status: 'cursor_handoff',\n  handed_off_at: new Date().toISOString(),\n  edit_message_ok: !(editResp && editResp.error)\n};\nfs.appendFileSync(PENDING, JSON.stringify(row) + '\\n');\nreturn { json: { ...prior, _cursor_handoff_persisted: true } };"
+      },
+      "id": "w4015-update-pending-cursor",
+      "name": "w4015-update-pending-cursor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2600, 600]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linear.app/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linearApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query W4Issue($id: String!) { issue(id: $id) { id identifier title description url comments(first: 20) { nodes { body createdAt user { name } } } } }', variables: { id: $json.issue_id } }) }}",
+        "options": {}
+      },
+      "id": "w4020-fetch-issue-context",
+      "name": "w4020-fetch-issue-context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2400, 200],
+      "credentials": {
+        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4021-assemble-prompt (PRO-84)\n// Build the prompt JSON object to write at data/n8n_inbox/<trace_id>.json.\n// schema_version='v1' per PRO-83 listener contract. The listener reads this file,\n// extracts the top-level `prompt` field as a string, and pipes it to the worker on stdin.\n// Other top-level fields are audit/replay metadata — not consumed by the listener.\nconst prior = $('w4010-verify-label').item.json;\nconst resp = $input.item.json;\n\nconst issue = (resp && resp.data && resp.data.issue) || {};\nconst title = issue.title || '';\nconst description = issue.description || '';\nconst url = issue.url || prior.issue_url;\nconst identifier = issue.identifier || prior.issue_identifier;\nconst comments = (issue.comments && issue.comments.nodes) || [];\n\nconst commentSection = comments.length === 0\n  ? '_No comments yet._'\n  : comments.map(c => '---\\n**' + (c.user && c.user.name ? c.user.name : 'unknown') + '** at ' + (c.createdAt || '?') + '\\n\\n' + (c.body || '')).join('\\n\\n');\n\nconst worker = prior.worker;\nconst trace_id = prior.trace_id;\n\nconst promptText = [\n  'You are working on Linear ticket ' + identifier + ' \\u2014 ' + title + '.',\n  '',\n  'Linear issue URL: ' + url,\n  'Trace ID for this dispatch: ' + trace_id,\n  '',\n  'Before starting work:',\n  '- Read CLAUDE.md (project root) for the latest worker rules.',\n  '- Read AGENTS.md if present.',\n  '- Check for any relevant canon refs the ticket links to.',\n  '',\n  '## Ticket description',\n  '',\n  description || '_No description provided._',\n  '',\n  '## Recent comments',\n  '',\n  commentSection,\n  '',\n  '## Completion contract',\n  '',\n  'When done, end your work with exactly one of:',\n  '- STATUS: CONFIRMED WORKING',\n  '- STATUS: INCONCLUSIVE',\n  '- STATUS: FAILED',\n  '',\n  'Plus a one-paragraph summary of what changed and what didn\\'t.',\n  '',\n  'Run the hygiene gate (pre-commit run) before opening any PR. Append a row to',\n  'data/cc_completion_log.jsonl per the locked convention. Move the Linear ticket',\n  'to In Review when ready for operator review (only operator/Claude Chat moves to Done).',\n  '',\n  'Include the trace ID (' + trace_id + ') in your PR description so it can be correlated',\n  'with this dispatch in routing_history.jsonl and the listener trace logs.'\n].join('\\n');\n\nconst promptDoc = {\n  schema_version: 'v1',\n  trace_id,\n  worker,\n  ticket_id: prior.issue_id,\n  ticket_identifier: identifier,\n  ticket_url: url,\n  ticket_title: title,\n  created_at: new Date().toISOString(),\n  prompt: promptText\n};\n\nreturn { json: { ...prior, prompt_doc: promptDoc, prompt_doc_string: JSON.stringify(promptDoc) } };"
+      },
+      "id": "w4021-assemble-prompt",
+      "name": "w4021-assemble-prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2600, 200]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4022-write-prompt-file (PRO-84)\n// Write the assembled prompt JSON to /miru-data/n8n_inbox/<trace_id>.json. The host\n// path is data/n8n_inbox/<trace_id>.json (mounted at /miru-data inside the n8n\n// container per docker-compose volumes block). Matches the listener's INBOX_DIR\n// resolution (services/dispatch_listener/src/index.js, REPO_ROOT/data/n8n_inbox).\n// Atomic write: temp file + rename, mirrors src/receipt.js convention.\nconst fs = require('fs');\nconst path = require('path');\nconst INBOX_HOST = 'data/n8n_inbox';\nconst INBOX_CONTAINER = '/miru-data/n8n_inbox';\n\nconst data = $input.item.json;\nconst trace_id = data.trace_id;\nconst content = data.prompt_doc_string;\n\ntry {\n  if (!fs.existsSync(INBOX_CONTAINER)) fs.mkdirSync(INBOX_CONTAINER, { recursive: true });\n} catch (e) {\n  return { json: { ...data, prompt_write_ok: false, prompt_write_error: 'mkdir failed: ' + e.message } };\n}\n\nconst tmpPath = path.join(INBOX_CONTAINER, trace_id + '.json.tmp');\nconst finalPath = path.join(INBOX_CONTAINER, trace_id + '.json');\n\ntry {\n  fs.writeFileSync(tmpPath, content, 'utf8');\n  fs.renameSync(tmpPath, finalPath);\n} catch (e) {\n  try { fs.unlinkSync(tmpPath); } catch (_) { /* best effort */ }\n  return { json: { ...data, prompt_write_ok: false, prompt_write_error: 'write/rename failed: ' + e.message } };\n}\n\n// prompt_path returned to caller is the HOST-relative path, which is what the\n// listener expects (it joins with REPO_ROOT). We do NOT send the container path.\nreturn { json: { ...data, prompt_write_ok: true, prompt_path_host: INBOX_HOST + '/' + trace_id + '.json' } };"
+      },
+      "id": "w4022-write-prompt-file",
+      "name": "w4022-write-prompt-file",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2800, 200]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4023-build-listener-request (PRO-84)\n// Serialize the listener request body ONCE and HMAC the exact bytes that will be\n// sent. The listener (services/dispatch_listener/src/hmac.js) does HMAC-SHA256\n// over the raw request body using W4_LISTENER_HMAC_SECRET, full 64 hex chars,\n// constant-time compared via crypto.timingSafeEqual. If n8n re-serializes between\n// signing and sending, the HMAC will mismatch — so the HTTP node downstream MUST\n// send body_string verbatim (specifyBody:string + body=body_string, NOT a JSON object).\nconst crypto = require('crypto');\nconst secret = $env.W4_LISTENER_HMAC_SECRET;\nif (!secret || secret.length < 16) {\n  return { json: { ...$input.item.json, listener_prep_ok: false, listener_prep_error: 'W4_LISTENER_HMAC_SECRET missing or too short — check docker-compose env passthrough' } };\n}\n\nconst data = $input.item.json;\n\nconst bodyObj = {\n  schema_version: 'v1',\n  trace_id: data.trace_id,\n  worker: data.worker,\n  prompt_path: data.prompt_path_host,\n  timeout_seconds: 600\n};\nconst body_string = JSON.stringify(bodyObj);\nconst hmac_hex = crypto.createHmac('sha256', secret).update(body_string).digest('hex');\n\nreturn { json: { ...data, listener_prep_ok: true, listener_body_string: body_string, listener_hmac_hex: hmac_hex } };"
+      },
+      "id": "w4023-build-listener-request",
+      "name": "w4023-build-listener-request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3000, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:19100/dispatch",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-W4-HMAC", "value": "={{ $json.listener_hmac_hex }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "string",
+        "body": "={{ $json.listener_body_string }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "fullResponse": true
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "w4024-post-listener",
+      "name": "w4024-post-listener",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3200, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "id": "sr202",
+                    "leftValue": "={{ $json.statusCode }}",
+                    "rightValue": 202,
+                    "operator": { "type": "number", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "ok"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "id": "sr409",
+                    "leftValue": "={{ $json.statusCode }}",
+                    "rightValue": 409,
+                    "operator": { "type": "number", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "already"
+            }
+          ]
+        },
+        "options": { "fallbackOutput": "extra", "renameFallbackOutput": "fail" }
+      },
+      "id": "w4025-status-router",
+      "name": "w4025-status-router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [3400, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const d = $('w4023-build-listener-request').item.json; const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); const ts = new Date().toISOString(); return JSON.stringify({ chat_id: d.dispatch_chat_id, message_id: d.dispatch_message_id, text: '<b>\\uD83D\\uDE80 Dispatched at ' + esc(ts) + '</b>\\n<i>' + esc(d.issue_identifier || '?') + ' \\u2014 ' + esc(d.worker) + '</i>\\n<i>waiting on receipt</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }); })() }}",
+        "options": {}
+      },
+      "id": "w4026-edit-success",
+      "name": "w4026-edit-success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3600, 100],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4027-update-pending-dispatched (PRO-84)\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\nconst prior = $('w4023-build-listener-request').item.json;\n\nconst row = {\n  schema_version: 'v1',\n  kind: 'dispatch',\n  token: prior.token,\n  trace_id: prior.trace_id,\n  worker: prior.worker,\n  flow: prior.flow,\n  issue_id: prior.issue_id,\n  issue_identifier: prior.issue_identifier,\n  issue_url: prior.issue_url,\n  dispatch_chat_id: prior.dispatch_chat_id,\n  dispatch_message_id: prior.dispatch_message_id,\n  prompt_path: prior.prompt_path_host,\n  status: 'dispatched',\n  dispatched_at: new Date().toISOString()\n};\nfs.appendFileSync(PENDING, JSON.stringify(row) + '\\n');\nreturn { json: { ...prior, _dispatched_persisted: true } };"
+      },
+      "id": "w4027-update-pending-dispatched",
+      "name": "w4027-update-pending-dispatched",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3800, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const d = $('w4023-build-listener-request').item.json; const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); const prior_ts = d.prior_dispatched_at || 'earlier'; return JSON.stringify({ chat_id: d.dispatch_chat_id, message_id: d.dispatch_message_id, text: '<b>\\u26A0 Already dispatched</b>\\n<i>' + esc(d.issue_identifier || '?') + ' \\u2014 ' + esc(d.worker) + '</i>\\n<i>at ' + esc(prior_ts) + '</i>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }); })() }}",
+        "options": {}
+      },
+      "id": "w4028-edit-already",
+      "name": "w4028-edit-already",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3600, 250],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4030-write-dlq (PRO-84)\n// Append a DLQ row for genuine failures (401/403/5xx) — deliberately NOT the 409\n// branch. 409 is idempotency working as designed (operator double-tap or two W4\n// instances raced); treating it as DLQ would pollute calibration data with system-\n// correct behavior. See locked design decision §3 in the plan. Schema matches\n// services/dispatch_listener/src/dlq.js so consumers can read both sources.\nconst fs = require('fs');\nconst DLQ = '/miru-data/dispatch_dlq.jsonl';\n\nconst prior = $('w4023-build-listener-request').item.json;\nconst resp = $input.item.json || {};\nconst statusCode = resp.statusCode != null ? resp.statusCode : 0;\nconst respBody = (resp.body && (typeof resp.body === 'string' ? resp.body : JSON.stringify(resp.body))) || '';\n\nlet error_class;\nif (statusCode === 401) error_class = 'hmac_reject_w4_to_listener';\nelse if (statusCode === 403) error_class = 'allowlist_reject';\nelse if (statusCode >= 500) error_class = 'listener_5xx';\nelse if (statusCode === 0) error_class = 'listener_unreachable';\nelse error_class = 'listener_unexpected_status_' + statusCode;\n\nconst row = {\n  schema_version: 'v1',\n  trace_id: prior.trace_id,\n  worker: prior.worker,\n  prompt_path: prior.prompt_path_host,\n  exit_code: null,\n  stderr_tail: respBody.slice(0, 4096),\n  error_class,\n  timestamp: new Date().toISOString()\n};\nfs.appendFileSync(DLQ, JSON.stringify(row) + '\\n');\n\nreturn { json: { ...prior, dlq_written: true, dlq_error_class: error_class, dlq_status_code: statusCode, dlq_response_body: respBody.slice(0, 1024) } };"
+      },
+      "id": "w4030-write-dlq",
+      "name": "w4030-write-dlq",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3600, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const d = $json; const esc = (s) => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); return JSON.stringify({ chat_id: d.dispatch_chat_id, message_id: d.dispatch_message_id, text: '<b>\\u274C Dispatch failed: ' + esc(d.dlq_status_code != null ? String(d.dlq_status_code) : 'unreachable') + '</b>\\n<i>' + esc(d.issue_identifier || '?') + ' \\u2014 ' + esc(d.worker) + '</i>\\n<code>' + esc(d.dlq_error_class) + '</code>', parse_mode: 'HTML', reply_markup: { inline_keyboard: [] } }); })() }}",
+        "options": {}
+      },
+      "id": "w4031-edit-failure",
+      "name": "w4031-edit-failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3800, 400],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "w4001-webhook": {
+      "main": [[{"node": "w4001a-respond", "type": "main", "index": 0}]]
+    },
+    "w4001a-respond": {
+      "main": [[{"node": "w4002-parse-input", "type": "main", "index": 0}]]
+    },
+    "w4002-parse-input": {
+      "main": [[{"node": "w4003-hmac-validate", "type": "main", "index": 0}]]
+    },
+    "w4003-hmac-validate": {
+      "main": [[{"node": "w4004-validate-branch", "type": "main", "index": 0}]]
+    },
+    "w4004-validate-branch": {
+      "main": [
+        [{"node": "w4006-lookup-pending-dispatch", "type": "main", "index": 0}],
+        [{"node": "w4005-abort-hmac", "type": "main", "index": 0}]
+      ]
+    },
+    "w4006-lookup-pending-dispatch": {
+      "main": [[{"node": "w4007-found-branch", "type": "main", "index": 0}]]
+    },
+    "w4007-found-branch": {
+      "main": [
+        [{"node": "w4009-fetch-labels", "type": "main", "index": 0}],
+        [{"node": "w4008-abort-not-found", "type": "main", "index": 0}]
+      ]
+    },
+    "w4009-fetch-labels": {
+      "main": [[{"node": "w4010-verify-label", "type": "main", "index": 0}]]
+    },
+    "w4010-verify-label": {
+      "main": [[{"node": "w4011-label-branch", "type": "main", "index": 0}]]
+    },
+    "w4011-label-branch": {
+      "main": [
+        [{"node": "w4013-cursor-branch", "type": "main", "index": 0}],
+        [{"node": "w4012-abort-label-removed", "type": "main", "index": 0}]
+      ]
+    },
+    "w4013-cursor-branch": {
+      "main": [
+        [{"node": "w4014-edit-cursor", "type": "main", "index": 0}],
+        [{"node": "w4020-fetch-issue-context", "type": "main", "index": 0}]
+      ]
+    },
+    "w4014-edit-cursor": {
+      "main": [[{"node": "w4015-update-pending-cursor", "type": "main", "index": 0}]]
+    },
+    "w4020-fetch-issue-context": {
+      "main": [[{"node": "w4021-assemble-prompt", "type": "main", "index": 0}]]
+    },
+    "w4021-assemble-prompt": {
+      "main": [[{"node": "w4022-write-prompt-file", "type": "main", "index": 0}]]
+    },
+    "w4022-write-prompt-file": {
+      "main": [[{"node": "w4023-build-listener-request", "type": "main", "index": 0}]]
+    },
+    "w4023-build-listener-request": {
+      "main": [[{"node": "w4024-post-listener", "type": "main", "index": 0}]]
+    },
+    "w4024-post-listener": {
+      "main": [[{"node": "w4025-status-router", "type": "main", "index": 0}]]
+    },
+    "w4025-status-router": {
+      "main": [
+        [{"node": "w4026-edit-success", "type": "main", "index": 0}],
+        [{"node": "w4028-edit-already", "type": "main", "index": 0}],
+        [{"node": "w4030-write-dlq", "type": "main", "index": 0}]
+      ]
+    },
+    "w4026-edit-success": {
+      "main": [[{"node": "w4027-update-pending-dispatched", "type": "main", "index": 0}]]
+    },
+    "w4030-write-dlq": {
+      "main": [[{"node": "w4031-edit-failure", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
