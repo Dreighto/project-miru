@@ -2,6 +2,11 @@ services:
   n8n:
     image: n8nio/n8n:latest
     container_name: miru-n8n
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
     restart: unless-stopped
     ports:
       - "15678:5678"

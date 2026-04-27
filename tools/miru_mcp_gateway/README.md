@@ -9,20 +9,23 @@ docs write tools (gated by env).
 - **Public URL:** `https://room.taila28611.ts.net/mcp/<SECRET>/mcp`
 - **Public health:** `https://room.taila28611.ts.net/mcp/<SECRET>/health`
 - **Internal routes (behind loopback):** `/mcp` and `/health` — Tailscale strips the `/mcp/<SECRET>` prefix before forwarding, so the gateway sees bare paths.
-- **Tools:** Stage 1–2 read surfaces (24 tools) plus optional `n8n_write_*`
-  (21) and `docs_*` writes (3) — see below.
+- **Tools:** filesystem, system, optional GitHub / n8n reads (gated), n8n writes,
+  docs writes, optional aggregator / audit read / worker status — see below.
 - **Auth:** URL-path secret enforced at the Tailscale Funnel edge. The gateway itself binds 127.0.0.1; no tailnet peer, LAN host, or internet address can reach the unsecreted routes.
 
 ## Tool categories
 
-| Category   | Prefix              | Count | Enabled when                                  |
-| ---------- | ------------------- | ----- | --------------------------------------------- |
-| filesystem | `fs_*`              | 9     | always (Stage 1 baseline)                     |
-| system     | `system_*`          | 3     | always                                        |
-| github     | `github_*`          | 7     | `GITHUB_TOKEN_READ` set in `.env`             |
-| n8n        | `n8n_*`             | 5     | `N8N_API_KEY` set in `.env`                   |
-| n8n_write  | `n8n_*` (mutations) | 21    | `N8N_API_KEY` + `MIRU_N8N_WRITE_ENABLED=true` |
-| docs_write | `docs_*`            | 3     | `MIRU_DOCS_WRITE_ENABLED=true`                |
+| Category      | Prefix               | Enabled when                                          |
+| ------------- | -------------------- | ----------------------------------------------------- |
+| filesystem    | `fs_*`               | always                                                |
+| system        | `system_*`           | always                                                |
+| github        | `github_*`           | `GITHUB_TOKEN_READ` + `MIRU_GITHUB_READ_ENABLED=true` |
+| n8n           | `n8n_*`              | `N8N_API_KEY` + `MIRU_N8N_READ_ENABLED=true`          |
+| n8n_write     | `n8n_*` (mutations)  | `N8N_API_KEY` + `MIRU_N8N_WRITE_ENABLED=true`         |
+| docs_write    | `docs_*`             | `MIRU_DOCS_WRITE_ENABLED=true`                        |
+| activity      | `activity_since`     | `MIRU_AGGREGATOR_ENABLED=true`                        |
+| audit_read    | `gateway_audit_tail` | `MIRU_AUDIT_READ_ENABLED=true`                        |
+| worker_status | `worker_status`      | `MIRU_WORKER_STATUS_ENABLED=true`                     |
 
 Categories disable cleanly if their env vars are missing — the gateway still
 starts, only `MIRU_MCP_URL_SECRET` is fatal. The startup banner prints the
@@ -53,42 +56,81 @@ denied.
   `pm_stdout/stderr/restart`, `miru_ai_stdout/stderr/restart`,
   `dispatcher_stdout/stderr`, `startup`. Call with `name=""` to list them.
 
-### github (read-only)
+When `MIRU_SYSTEM_LOGS_ENABLED=true`, docker-backed keys are added:
+`n8n_stdout`, `n8n_stderr`, `n8n_combined`. Split streams use the container
+json-file log from `docker inspect -f '{{.LogPath}}'` when readable; otherwise
+`docker logs` (no invalid `--stdout`/`--stderr` flags) is used. Combined mode
+merges CLI stdout and stderr so Docker client messages are not dropped.
+`--since 1h` with `--since 4h` fallback and `--tail`, container
+`MIRU_N8N_CONTAINER_NAME` default `miru-n8n`. Requires Docker CLI on PATH.
 
-Disabled cleanly if `GITHUB_TOKEN_READ` is missing. `GITHUB_TOKEN_WRITE` is
-ignored on purpose — these tools never need it.
+### github (read-only, PRO-131)
 
-- `github_get_repo_status(owner, repo)`
-- `github_list_recent_commits(owner, repo, limit=20, ref=None)`
-- `github_get_pr(owner, repo, number)`
-- `github_list_open_prs(owner, repo, limit=20)`
-- `github_get_issue(owner, repo, number)`
-- `github_search_repo_files(owner, repo, query, limit=30)`
-- `github_read_file(owner, repo, path, ref=None)` — same deny patterns as
-  filesystem; refuses files >256 KB.
+Requires **`GITHUB_TOKEN_READ`** and **`MIRU_GITHUB_READ_ENABLED=true`**.
+`GITHUB_TOKEN_WRITE` is ignored on purpose.
 
-Optional repo allowlist via `MIRU_GITHUB_REPO_ALLOWLIST=Dreighto/*,anthropics/*`
-(comma-separated `owner/repo` or `owner/*` patterns). Empty = any repo the
-token can see. The check happens before any HTTP call.
+- `github_get_repo_status`, `github_list_recent_commits`, `github_get_pr`,
+  `github_list_open_prs`, `github_get_issue`, `github_search_repo_files`,
+  `github_read_file` — same semantics as before.
+- **`github_get_pr_diff(owner, repo, number, max_lines=2000)`** — per-file
+  patches from `GET /pulls/{n}/files`; `max_lines` hard-capped at 8000;
+  generated lockfiles listed under `skipped_paths`.
+- **`github_list_pr_reviews`**, **`github_get_pr_review_comments`** (REST +
+  GraphQL thread `thread_resolved` when available),
+  **`github_get_pr_check_runs`** (check runs + `app_slug`).
 
-All HTTP calls use a 10s timeout. List limits cap at 100.
+Optional repo allowlist via `MIRU_GITHUB_REPO_ALLOWLIST`. All HTTP calls use a
+10s timeout.
 
-### n8n (read-only)
+### n8n (read-only, PRO-132)
 
-Disabled cleanly if `N8N_API_KEY` is missing. Base URL defaults to
-`http://localhost:15678` (override with `MIRU_N8N_BASE_URL`).
+Requires **`N8N_API_KEY`** and **`MIRU_N8N_READ_ENABLED=true`**. Base URL
+`MIRU_N8N_BASE_URL` (default `http://localhost:15678`).
 
-- `n8n_list_workflows(active_only=False, limit=50)`
-- `n8n_get_workflow_summary(workflow_id)` — counts + node-type histogram
-  only. Never returns raw `nodes`/`connections` (those contain hardcoded
-  webhook URLs and credential references).
-- `n8n_list_recent_executions(workflow_id=None, limit=20)`
-- `n8n_get_execution_summary(execution_id)`
-- `n8n_read_routing_history(limit=50)` — primary source: tail of
-  `data/spike_ntfy_log.jsonl`. Fallback: `/api/v1/executions` summary list.
+- `n8n_list_workflows`, `n8n_get_workflow_summary`, `n8n_list_recent_executions`,
+  `n8n_get_execution_summary`, `n8n_read_routing_history`
+- **`n8n_list_executions(status?, workflow_id?, since?, limit=20)`** — richer
+  list with `workflow_name` and `error_message` when available.
+- **`n8n_get_execution(execution_id, include_node_data=False, approval_request_id?)`**
+  — per-node diagnosis (shapes by default). `include_node_data=True` queues
+  Telegram approval (`operation: read_execution_include_data` on the pending
+  JSONL); after W7/operator drops
+  `data/mcp_gateway_execution_cache/<request_id>.json`, call again with
+  `approval_request_id`. Dev bypass: `MIRU_N8N_EXECUTION_DATA_SKIP_APPROVAL=true`.
 
-All output passes through redaction. List limits cap at 100–500 depending
-on the tool.
+All output passes through `redact()` (extra patterns for DB URLs, webhook
+paths, etc.).
+
+### activity (PRO-134)
+
+- **`activity_since(minutes=30, sources?)`** — merges Linear (needs
+  `LINEAR_API_KEY` + `MIRU_LINEAR_TEAM_ID`), GitHub commits (repos from
+  `MIRU_GITHUB_REPO_ALLOWLIST` or optional `MIRU_ACTIVITY_GITHUB_REPOS=owner/repo`),
+  n8n executions, and filesystem `mtime` scans under `MIRU_FS_ALLOW_ROOT`.
+  Parallel per-source 5s budget; max 200 events; `partial` / `truncated` flags.
+
+### audit_read (PRO-135)
+
+- **`gateway_audit_tail(log_kind='writes', category?, since?, limit=50, summary=True)`**
+  — tail `mcp_gateway_writes.jsonl`, `mcp_gateway_reads.jsonl`, or
+  `mcp_gateway_docs_writes.jsonl` under `logs/` (`log_kind` = `writes` |
+  `reads` | `docs`), optional filters, `chain_intact` via hash verification on
+  the returned slice.
+
+### worker_status (PRO-136)
+
+- **`worker_status(worker_name?)`** — git snapshot per worker from
+  `MIRU_WORKERS_CONFIG=name:path,name:path` and/or `MIRU_WORKERS_YAML` (repo-relative
+  or absolute path to YAML with `workers: [{name, worktree_path}]`). Paths must
+  sit under `MIRU_FS_ALLOW_ROOT` or `MIRU_WORKER_PATH_ALLOWLIST` prefixes.
+
+### Security primitives (PRO-137)
+
+Always-on per-tool **rate limits** (in-memory sliding 60s window) and **regex
+parameter validation** for common identifiers (`owner`, `repo`, `path`,
+`workflow_id`, `execution_id`, …). Tune with `MIRU_RATE_LIMIT_GITHUB_READ`,
+`MIRU_RATE_LIMIT_N8N_READ`, `MIRU_RATE_LIMIT_DEFAULT`, etc. (see `config.py`).
+Optional filesystem read-audit rows: `MIRU_READ_AUDIT_FS=true`.
 
 ### n8n_write (Stage 3)
 
@@ -141,12 +183,19 @@ content is rejected if it contains a substring matching a known env secret
 Audit log: `logs/mcp_gateway_docs_writes.jsonl` (same 10 MiB rotation as
 writes).
 
-### Write audit logs
+### Audit logs (writes, reads, hash chain PRO-135)
 
 `tools/miru_mcp_gateway/audit.py` appends JSON lines and rotates when the
 active file exceeds **10 MiB**: active → `.1`, shift `.1`→`.2` … `.4`→`.5`,
-drop previous `.5`. Same scheme for `mcp_gateway_writes.jsonl` and
-`mcp_gateway_docs_writes.jsonl` under `logs/`.
+drop previous `.5`. Files under `logs/`:
+
+- `mcp_gateway_writes.jsonl` — n8n write tool audits (**hash-chained**).
+- `mcp_gateway_docs_writes.jsonl` — docs writes (**hash-chained**).
+- `mcp_gateway_reads.jsonl` — per-tool read invocations (PRO-131/132/137;
+  **hash-chained**).
+
+Legacy rows without `row_hash` remain readable; chain verification treats them
+as `unverified` where noted in `gateway_audit_tail`.
 
 ### Redaction
 
@@ -159,7 +208,7 @@ returning (including write tools' JSON payloads where applicable). Two passes:
    of those values has it replaced with `<REDACTED:NAMED:VARNAME>`.
 2. **Pattern scrub** — regex replacements for `ghp_`/`github_pat_`/`gho_`/
    `ghu_`/`ghs_`/`ghr_` shapes, JWTs, `Bearer …`, n8n webhook URLs,
-   Telegram bot URLs.
+   Telegram bot URLs, `postgresql://…`, `/webhook/…`, raw `X-N8N-API-KEY:` lines.
 
 After rotating any secret in `.env`, restart the gateway so the substring
 set rebuilds.

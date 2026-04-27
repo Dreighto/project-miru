@@ -92,7 +92,7 @@ def _audit_docs(
     result: str,
     error: str | None,
 ) -> None:
-    _, docs_log = gw_audit.default_audit_paths(cfg.fs_root)
+    _, docs_log, _ = gw_audit.default_audit_paths(cfg.fs_root)
     row = {
         "ts": gw_audit._utc_iso(),
         "tool": tool,
@@ -104,7 +104,7 @@ def _audit_docs(
         "result": result,
         "error": error,
     }
-    gw_audit.append_jsonl(docs_log, _redact.redact_dict(row))
+    gw_audit.append_jsonl_chained(docs_log, _redact.redact_dict(row))
 
 
 def _assert_docs_path_allowed(cfg: Any, raw_path: str) -> tuple[Path, str]:
@@ -381,6 +381,8 @@ def register(mcp, cfg) -> int:
         cfg.disabled_categories["docs_write"] = "MIRU_DOCS_WRITE_ENABLED not set"
         return 0
     _CFG = cfg
+    from miru_mcp_gateway.gateway_security import wrap_tool_entry
+
     for func in TOOL_FUNCTIONS:
-        mcp.tool(func)
+        mcp.tool(wrap_tool_entry(func, cfg))
     return len(TOOL_FUNCTIONS)

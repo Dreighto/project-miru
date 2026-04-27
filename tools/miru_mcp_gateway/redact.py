@@ -86,6 +86,19 @@ _PATTERN_SCRUBS: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"https?://api\.telegram\.org/bot[0-9]+:[A-Za-z0-9_\-]+"),
         "<REDACTED:TG_BOT_URL>",
     ),
+    # PRO-132: n8n / container / REST leakage patterns
+    (
+        re.compile(r"postgresql://[^\s]+", re.IGNORECASE),
+        "<REDACTED:DB_URL>",
+    ),
+    (
+        re.compile(r"/webhook/[a-zA-Z0-9_-]+", re.IGNORECASE),
+        "<REDACTED:WEBHOOK_PATH>",
+    ),
+    (
+        re.compile(r"X-N8N-API-KEY:\s*\S+", re.IGNORECASE),
+        "X-N8N-API-KEY: <REDACTED>",
+    ),
 ]
 
 

@@ -7,6 +7,7 @@ Rotation: when the active log exceeds 10 MiB, rename to ``.jsonl.1`` and shift
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import shutil
 from datetime import UTC, datetime
@@ -55,12 +56,58 @@ def _rotate_if_needed(path: Path) -> None:
 
 
 def append_jsonl(path: Path, row: dict[str, Any]) -> None:
-    """Append one JSON object as a single line. Creates parent dirs."""
+    """Append one JSON object as a single line. Creates parent dirs.
+
+    Prefer :func:`append_jsonl_chained` for gateway audit logs (PRO-135).
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     _rotate_if_needed(path)
     line = json.dumps(row, separators=(",", ":"), ensure_ascii=False) + "\n"
     with path.open("a", encoding="utf-8") as fh:
         fh.write(line)
+
+
+def _read_last_json_object_for_chain(path: Path) -> dict[str, Any] | None:
+    """Return the last JSON object on ``path`` if parseable, else None."""
+    if not path.exists() or path.stat().st_size == 0:
+        return None
+    try:
+        size = path.stat().st_size
+        chunk = min(size, 65536)
+        with path.open("rb") as fh:
+            fh.seek(size - chunk)
+            data = fh.read()
+        text = data.decode("utf-8", errors="replace")
+        for line in reversed(text.splitlines()):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                return json.loads(line)
+            except ValueError:
+                continue
+    except OSError:
+        return None
+    return None
+
+
+def append_jsonl_chained(path: Path, row: dict[str, Any]) -> None:
+    """Append one audit row with SHA256 hash chain (PRO-135).
+
+    ``row`` must not contain ``prev_hash`` or ``row_hash``; they are added
+    here. Legacy tail rows without ``row_hash`` start a fresh chain link
+    (``prev_hash`` is null).
+    """
+    body = {k: v for k, v in row.items() if k not in ("prev_hash", "row_hash")}
+    last = _read_last_json_object_for_chain(path)
+    prev_hash: str | None = None
+    if last and isinstance(last.get("row_hash"), str) and last["row_hash"]:
+        prev_hash = str(last["row_hash"])
+    body["prev_hash"] = prev_hash
+    canonical = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    row_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    final_row = {**body, "row_hash": row_hash}
+    append_jsonl(path, final_row)
 
 
 def caller_from_fastmcp_context(ctx: Any | None) -> str:
@@ -86,13 +133,47 @@ def caller_from_fastmcp_context(ctx: Any | None) -> str:
     return "unknown"
 
 
-def default_audit_paths(repo_root: Path) -> tuple[Path, Path]:
-    """Standard locations under repo ``logs/``."""
+def default_audit_paths(repo_root: Path) -> tuple[Path, Path, Path]:
+    """Standard locations under repo ``logs/``.
+
+    Returns ``(writes_log, docs_writes_log, reads_log)``.
+    """
     log_dir = repo_root / "logs"
     return (
         log_dir / "mcp_gateway_writes.jsonl",
         log_dir / "mcp_gateway_docs_writes.jsonl",
+        log_dir / "mcp_gateway_reads.jsonl",
     )
+
+
+def append_read_audit(repo_root: Path, row: dict[str, Any]) -> None:
+    """Append one row to the read-audit JSONL (PRO-131 / PRO-132) with hash chain."""
+    *_, reads_log = default_audit_paths(repo_root)
+    append_jsonl_chained(reads_log, row)
+
+
+def validate_audit_chain_slice(rows: list[dict[str, Any]]) -> tuple[bool, int | None]:
+    """Verify per-row ``row_hash`` and intra-slice ``prev_hash`` links (PRO-135).
+
+    The first row in the slice that carries ``row_hash`` is not required to
+    chain to a predecessor outside the slice (tail-read of a longer log).
+    """
+    prev_row_hash: str | None = None
+    first_hashed = True
+    for i, row in enumerate(rows):
+        rh = row.get("row_hash")
+        if not rh:
+            continue
+        body = {k: v for k, v in row.items() if k != "row_hash"}
+        canonical = json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        expect = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        if expect != rh:
+            return False, i
+        if not first_hashed and body.get("prev_hash") != prev_row_hash:
+            return False, i
+        first_hashed = False
+        prev_row_hash = rh
+    return True, None
 
 
 def notify_approval_webhook(url: str | None, request_id: str) -> None:

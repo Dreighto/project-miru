@@ -67,6 +67,24 @@ class GatewayConfig:
     docs_write_enabled: bool = False
     docs_write_path_allowlist: tuple[str, ...] = ()
 
+    # PRO-131 / PRO-132 / PRO-134 / PRO-135 / PRO-136 feature gates
+    github_read_enabled: bool = False
+    n8n_read_enabled: bool = False
+    system_logs_enabled: bool = False
+    aggregator_enabled: bool = False
+    audit_read_enabled: bool = False
+    worker_status_enabled: bool = False
+    linear_api_key: str | None = None
+    linear_team_id: str | None = None
+    n8n_container_name: str = "miru-n8n"
+    workers_config_raw: str = ""
+    workers_yaml_path: Path | None = None
+    worker_path_allow_prefixes: tuple[str, ...] = ()
+    n8n_execution_data_skip_approval: bool = False
+
+    # PRO-137 rate limits (calls per 60s sliding window, per category)
+    rate_limit_by_category: dict[str, int] = field(default_factory=dict)
+
     # Populated by each category's register() if it refuses to start. The
     # banner reads this to print "github : DISABLED -- <reason>" lines.
     disabled_categories: dict[str, str] = field(default_factory=dict)
@@ -78,6 +96,11 @@ class GatewayConfig:
     @property
     def mcp_gateway_pending_writes_path(self) -> Path:
         return self.data_dir / "mcp_gateway_pending_writes.jsonl"
+
+    @property
+    def mcp_gateway_execution_cache_dir(self) -> Path:
+        """PRO-132: W7 or operator drops approved includeData JSON here."""
+        return self.data_dir / "mcp_gateway_execution_cache"
 
     @property
     def public_prefix(self) -> str:
@@ -147,6 +170,58 @@ def _comma_tuple(name: str) -> tuple[str, ...]:
     return tuple(p.strip() for p in raw.split(",") if p.strip())
 
 
+def _load_rate_limits() -> dict[str, int]:
+    """PRO-137: per-category calls per minute (sliding window)."""
+    keys = (
+        ("linear_read", "MIRU_RATE_LIMIT_LINEAR_READ"),
+        ("linear_write", "MIRU_RATE_LIMIT_LINEAR_WRITE"),
+        ("github_read", "MIRU_RATE_LIMIT_GITHUB_READ"),
+        ("n8n_read", "MIRU_RATE_LIMIT_N8N_READ"),
+        ("n8n_write", "MIRU_RATE_LIMIT_N8N_WRITE"),
+        ("docs_write", "MIRU_RATE_LIMIT_DOCS_WRITE"),
+        ("filesystem_read", "MIRU_RATE_LIMIT_FILESYSTEM_READ"),
+        ("system_logs", "MIRU_RATE_LIMIT_SYSTEM_LOGS"),
+        ("aggregator", "MIRU_RATE_LIMIT_AGGREGATOR"),
+        ("audit_read", "MIRU_RATE_LIMIT_AUDIT_READ"),
+        ("worker_read", "MIRU_RATE_LIMIT_WORKER_READ"),
+        ("default", "MIRU_RATE_LIMIT_DEFAULT"),
+    )
+    defaults: dict[str, int] = {
+        "linear_read": 60,
+        "linear_write": 30,
+        "github_read": 60,
+        "n8n_read": 60,
+        "n8n_write": 10,
+        "docs_write": 20,
+        "filesystem_read": 120,
+        "system_logs": 60,
+        "aggregator": 30,
+        "audit_read": 60,
+        "worker_read": 30,
+        "default": 30,
+    }
+    out = dict(defaults)
+    for cat, env_name in keys:
+        raw = os.environ.get(env_name, "").strip()
+        if not raw:
+            continue
+        try:
+            out[cat] = max(1, int(raw))
+        except ValueError:
+            continue
+    return out
+
+
+def _workers_yaml_path(fs_root: Path) -> Path | None:
+    raw = os.environ.get("MIRU_WORKERS_YAML", "").strip()
+    if not raw:
+        return None
+    p = Path(raw)
+    if not p.is_absolute():
+        p = (fs_root / p).resolve()
+    return p
+
+
 def _default_docs_write_globs() -> tuple[str, ...]:
     """PRO-123 default positive allowlist (repo-relative posix globs)."""
     roots = ("tools", "services", "pm", "miru_ai", "dispatcher", "docker", "windows")
@@ -196,6 +271,21 @@ def load() -> GatewayConfig:
     raw_docs_allow = _comma_tuple("MIRU_DOCS_WRITE_PATH_ALLOWLIST")
     docs_write_path_allowlist = raw_docs_allow if raw_docs_allow else _default_docs_write_globs()
 
+    github_read_enabled = _truthy_env("MIRU_GITHUB_READ_ENABLED")
+    n8n_read_enabled = _truthy_env("MIRU_N8N_READ_ENABLED")
+    system_logs_enabled = _truthy_env("MIRU_SYSTEM_LOGS_ENABLED")
+    aggregator_enabled = _truthy_env("MIRU_AGGREGATOR_ENABLED")
+    audit_read_enabled = _truthy_env("MIRU_AUDIT_READ_ENABLED")
+    worker_status_enabled = _truthy_env("MIRU_WORKER_STATUS_ENABLED")
+    linear_api_key = os.environ.get("LINEAR_API_KEY", "").strip() or None
+    linear_team_id = os.environ.get("MIRU_LINEAR_TEAM_ID", "").strip() or None
+    n8n_container_name = os.environ.get("MIRU_N8N_CONTAINER_NAME", "").strip() or "miru-n8n"
+    workers_config_raw = os.environ.get("MIRU_WORKERS_CONFIG", "").strip()
+    workers_yaml_path = _workers_yaml_path(fs_root)
+    worker_path_allow_prefixes = _comma_tuple("MIRU_WORKER_PATH_ALLOWLIST")
+    n8n_execution_data_skip_approval = _truthy_env("MIRU_N8N_EXECUTION_DATA_SKIP_APPROVAL")
+    rate_limit_by_category = _load_rate_limits()
+
     return GatewayConfig(
         host=host,
         port=port,
@@ -212,4 +302,18 @@ def load() -> GatewayConfig:
         n8n_write_approval_notify_url=n8n_write_approval_notify_url,
         docs_write_enabled=docs_write_enabled,
         docs_write_path_allowlist=docs_write_path_allowlist,
+        github_read_enabled=github_read_enabled,
+        n8n_read_enabled=n8n_read_enabled,
+        system_logs_enabled=system_logs_enabled,
+        aggregator_enabled=aggregator_enabled,
+        audit_read_enabled=audit_read_enabled,
+        worker_status_enabled=worker_status_enabled,
+        linear_api_key=linear_api_key,
+        linear_team_id=linear_team_id,
+        n8n_container_name=n8n_container_name,
+        workers_config_raw=workers_config_raw,
+        workers_yaml_path=workers_yaml_path,
+        worker_path_allow_prefixes=worker_path_allow_prefixes,
+        n8n_execution_data_skip_approval=n8n_execution_data_skip_approval,
+        rate_limit_by_category=rate_limit_by_category,
     )
