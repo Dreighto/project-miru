@@ -183,17 +183,21 @@ def main(argv: list[str] | None = None) -> int:
     print(f"CC log:          {CC_LOG}")
     print()
 
-    if not db_path.exists():
-        if args.bootstrap:
-            print(f"DB does not exist; bootstrapping schema at {db_path} ...")
-            _bootstrap_db(db_path)
-            print("schema applied, WAL mode enabled")
-        else:
-            print(
-                f"ERROR: DB does not exist at {db_path}. Re-run with --bootstrap to create it.",
-                file=sys.stderr,
-            )
-            return 2
+    # Bugbot fix #1 (MED, PR #31): apply --bootstrap unconditionally when the
+    # flag is set, not only when the DB file is missing. SCHEMA_SQL uses
+    # `CREATE TABLE IF NOT EXISTS` so re-applying is idempotent and ensures
+    # schema correctness against a partial/manually-created DB file.
+    if args.bootstrap:
+        action = "bootstrapping" if not db_path.exists() else "re-applying schema (idempotent)"
+        print(f"--bootstrap: {action} at {db_path} ...")
+        _bootstrap_db(db_path)
+        print("schema applied, WAL mode enabled")
+    elif not db_path.exists():
+        print(
+            f"ERROR: DB does not exist at {db_path}. Re-run with --bootstrap to create it.",
+            file=sys.stderr,
+        )
+        return 2
 
     rh_rows, rh_bad = _parse_jsonl(ROUTING_HISTORY)
     cc_rows, cc_bad = _parse_jsonl(CC_LOG)
@@ -217,8 +221,14 @@ def main(argv: list[str] | None = None) -> int:
     assert len(prepared) == expected
 
     if args.dry_run:
-        print("\n[--dry-run] not writing to DB. Sample row:")
-        print(json.dumps(prepared[0], indent=2)[:500])
+        # Bugbot fix #2 (LOW, PR #31): guard prepared[0] when both inputs are
+        # empty (zero valid rows on either side) to avoid IndexError.
+        print("\n[--dry-run] not writing to DB.")
+        if prepared:
+            print("Sample row:")
+            print(json.dumps(prepared[0], indent=2)[:500])
+        else:
+            print("No rows to insert (both source files empty).")
         return 0
 
     conn = sqlite3.connect(str(db_path))
