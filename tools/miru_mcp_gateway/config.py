@@ -82,6 +82,10 @@ class GatewayConfig:
     worker_path_allow_prefixes: tuple[str, ...] = ()
     n8n_execution_data_skip_approval: bool = False
 
+    # PRO-163: miru_memory SQLite tools
+    memory_enabled: bool = False
+    memory_db_path: Path | None = None
+
     # PRO-137 rate limits (calls per 60s sliding window, per category)
     rate_limit_by_category: dict[str, int] = field(default_factory=dict)
 
@@ -184,6 +188,7 @@ def _load_rate_limits() -> dict[str, int]:
         ("aggregator", "MIRU_RATE_LIMIT_AGGREGATOR"),
         ("audit_read", "MIRU_RATE_LIMIT_AUDIT_READ"),
         ("worker_read", "MIRU_RATE_LIMIT_WORKER_READ"),
+        ("memory_write", "MIRU_RATE_LIMIT_MEMORY_WRITE"),
         ("default", "MIRU_RATE_LIMIT_DEFAULT"),
     )
     defaults: dict[str, int] = {
@@ -198,6 +203,7 @@ def _load_rate_limits() -> dict[str, int]:
         "aggregator": 30,
         "audit_read": 60,
         "worker_read": 30,
+        "memory_write": 60,
         "default": 30,
     }
     out = dict(defaults)
@@ -286,6 +292,15 @@ def load() -> GatewayConfig:
     n8n_execution_data_skip_approval = _truthy_env("MIRU_N8N_EXECUTION_DATA_SKIP_APPROVAL")
     rate_limit_by_category = _load_rate_limits()
 
+    memory_enabled = _truthy_env("MIRU_MEMORY_ENABLED")
+    raw_mem_db = os.environ.get("MIRU_MEMORY_DB_PATH", "").strip()
+    memory_db_path: Path | None = None
+    if raw_mem_db:
+        p = Path(raw_mem_db)
+        memory_db_path = p if p.is_absolute() else (fs_root / p).resolve()
+    elif memory_enabled:
+        memory_db_path = fs_root / "data" / "miru_memory.db"
+
     return GatewayConfig(
         host=host,
         port=port,
@@ -316,4 +331,6 @@ def load() -> GatewayConfig:
         worker_path_allow_prefixes=worker_path_allow_prefixes,
         n8n_execution_data_skip_approval=n8n_execution_data_skip_approval,
         rate_limit_by_category=rate_limit_by_category,
+        memory_enabled=memory_enabled,
+        memory_db_path=memory_db_path,
     )
