@@ -10,6 +10,7 @@ Exit 0 if valid, 1 if any file fails validation.
 
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 
 
@@ -32,6 +33,36 @@ def validate_workflow(path: Path) -> list[str]:
 
     # Build set of node names for connection integrity check
     node_names = {node.get("name") for node in data.get("nodes", []) if node.get("name")}
+
+    # Duplicate node ids (duplicate objects in `nodes` break activation: Conflicting Trigger Path, etc.)
+    node_ids = [n.get("id") for n in data.get("nodes", []) if n.get("id")]
+    for nid, cnt in Counter(node_ids).items():
+        if cnt > 1:
+            errors.append(f"{path}: duplicate node id {nid!r} appears {cnt} times")
+
+    # Same webhookId twice in one workflow → n8n blocks activation (Conflicting Trigger Path / URL path taken)
+    w_rows: list[tuple[str, str]] = []
+    for node in data.get("nodes", []):
+        wid = node.get("webhookId")
+        if not wid:
+            continue
+        w_rows.append((str(wid), str(node.get("name") or node.get("id") or "?")))
+    for wid, cnt in Counter(w for w, _ in w_rows).items():
+        if cnt > 1:
+            names = [lbl for w, lbl in w_rows if w == wid]
+            errors.append(
+                f"{path}: duplicate webhookId {wid!r} on {cnt} nodes {names} "
+                "(n8n will not activate: conflicting trigger / webhook path)"
+            )
+
+    # At most one Telegram trigger per workflow (W7 contract; also catches bad merges)
+    tg = [n for n in data.get("nodes", []) if n.get("type") == "n8n-nodes-base.telegramTrigger"]
+    if len(tg) > 1:
+        tnames = [n.get("name") for n in tg]
+        errors.append(
+            f"{path}: {len(tg)} telegram trigger nodes {tnames} — use a single trigger; "
+            "import/merge conflicts cause Conflicting Trigger Path on activation"
+        )
 
     # Connection integrity: every connection source + target must reference a real node
     connections = data.get("connections", {})
