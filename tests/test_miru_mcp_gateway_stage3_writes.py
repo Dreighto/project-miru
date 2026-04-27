@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import miru_readonly_filesystem_mcp as stdio_mcp
 from miru_mcp_gateway import audit as gw_audit
 from miru_mcp_gateway import n8n_write_tools as nw
 
@@ -26,10 +27,10 @@ class MiruMcpGatewayStage3WritesTests(unittest.TestCase):
         log.write_text('{"x":1}\n', encoding="utf-8")
         orig_stat = Path.stat
 
-        def stat_patch(self: Path):
-            if self.resolve() == log.resolve():
+        def stat_patch(self: Path, *args, **kwargs):
+            if self == log:
                 return SimpleNamespace(st_size=gw_audit._ROTATE_BYTES + 1)
-            return orig_stat(self)
+            return orig_stat(self, *args, **kwargs)
 
         with patch.object(Path, "stat", stat_patch):
             gw_audit.append_jsonl(log, {"after": "rotate"})
@@ -96,6 +97,35 @@ class MiruMcpGatewayStage3WritesTests(unittest.TestCase):
         self.assertEqual(row["kind"], "intent")
         self.assertEqual(row["request_id"], rid)
         self.assertEqual(row["operation"], "create_workflow")
+
+    def test_trigger_webhook_audits_shared_request_transport_errors(self) -> None:
+        cfg = SimpleNamespace(
+            n8n_api_key="k",
+            n8n_base_url="http://n.example",
+            n8n_write_workflow_allowlist=(),
+            fs_root=self.root,
+        )
+        nw._CFG = cfg
+        nw._API_KEY = "k"
+        nw._BASE_URL = "http://n.example"
+
+        err = nw.requests.exceptions.ConnectionError("boom")
+        with (
+            patch.object(nw.requests, "request", side_effect=err) as req,
+            self.assertRaises(stdio_mcp.McpError),
+        ):
+            nw.n8n_trigger_webhook("test", {"x": 1})
+
+        req.assert_called_once()
+        self.assertEqual(req.call_args.args[:2], ("POST", "http://n.example/webhook/test"))
+        self.assertEqual(req.call_args.kwargs["json"], {"x": 1})
+        writes_log = self.root / "logs" / "mcp_gateway_writes.jsonl"
+        row = json.loads(writes_log.read_text(encoding="utf-8").strip())
+        self.assertEqual(row["tool"], "n8n_trigger_webhook")
+        self.assertEqual(row["target_id"], "/webhook/test")
+        self.assertEqual(row["result"], "failure")
+        self.assertIn("n8n_write: transport error on /webhook/test", row["error"])
+        self.assertIn("boom", row["error"])
 
 
 if __name__ == "__main__":

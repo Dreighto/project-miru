@@ -80,6 +80,7 @@ def _n8n_request(
     *,
     params: dict[str, Any] | None = None,
     json_body: Any | None = None,
+    include_response_metadata: bool = False,
 ) -> Any:
     if requests is None:
         raise stdio_mcp.McpError("n8n_write: 'requests' library not installed", -32000)
@@ -118,6 +119,11 @@ def _n8n_request(
     if not (200 <= resp.status_code < 300):
         body = _redact.redact(resp.text[:800])
         raise stdio_mcp.McpError(f"n8n_write: HTTP {resp.status_code} on {path}: {body}", -32000)
+    if include_response_metadata:
+        return {
+            "http_status": resp.status_code,
+            "body_preview": _redact.redact(resp.text[:4000]),
+        }
     if not resp.content.strip():
         return {}
     try:
@@ -265,24 +271,19 @@ def n8n_trigger_webhook(
     if "/webhook/" not in path and not path.startswith("/webhook"):
         path = "/webhook/" + raw.lstrip("/")
     try:
-        if requests is None:
-            raise stdio_mcp.McpError("n8n_write: 'requests' library not installed", -32000)
-        url = f"{_BASE_URL}{path}"
-        resp = requests.post(
-            url,
-            json=payload or {},
-            headers={"User-Agent": "miru-mcp-gateway/0.3"},
-            timeout=_HTTP_TIMEOUT_S,
+        out = _n8n_request(
+            "POST",
+            path,
+            json_body=payload or {},
+            include_response_metadata=True,
         )
-        text = _redact.redact(resp.text[:4000])
-        out = {"http_status": resp.status_code, "body_preview": text}
         _audit_n8n(
             tool="n8n_trigger_webhook",
             caller=caller,
             params=params,
             target_id=path,
-            result="success" if resp.ok else "failure",
-            error=None if resp.ok else f"HTTP {resp.status_code}",
+            result="success",
+            error=None,
         )
         return _json_response(out)
     except stdio_mcp.McpError as exc:
@@ -290,7 +291,7 @@ def n8n_trigger_webhook(
             tool="n8n_trigger_webhook",
             caller=caller,
             params=params,
-            target_id=raw,
+            target_id=path,
             result="failure",
             error=str(exc),
         )
