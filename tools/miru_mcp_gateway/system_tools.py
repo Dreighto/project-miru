@@ -13,6 +13,7 @@ Approved scope (matches CLAUDE.md):
 
 from __future__ import annotations
 
+import contextlib
 import json
 import socket
 import sys
@@ -33,8 +34,9 @@ from miru_mcp_gateway import redact as _redact  # noqa: E402
 # socket connect-test which only tells us "is something listening".
 try:
     import psutil  # type: ignore
+
     _HAS_PSUTIL = True
-except ImportError:  # noqa: BLE001
+except ImportError:
     _HAS_PSUTIL = False
 
 
@@ -89,6 +91,11 @@ _BODY_PREVIEW_BYTES = 240
 # the tool running at all proves the gateway is up.
 _SELF_PORT = 18766
 
+# PRO-132: docker logs for n8n container (set in register() when enabled).
+_N8N_DOCKER_LOGS_ENABLED = False
+_N8N_DOCKER_CONTAINER = "miru-n8n"
+_DOCKER_LOG_NAMES = frozenset({"n8n_stdout", "n8n_stderr", "n8n_combined"})
+
 
 # --- Tools --------------------------------------------------------------
 
@@ -119,10 +126,10 @@ def system_check_ports() -> str:
                 if pid:
                     try:
                         pname = psutil.Process(pid).name()
-                    except Exception:  # noqa: BLE001
+                    except Exception:
                         pname = ""
                 psutil_listeners.setdefault(lport, (pid, pname))
-        except Exception:  # noqa: BLE001 -- fall back to socket probe
+        except Exception:
             psutil_listeners = {}
 
     for port, label in APPROVED_PORTS:
@@ -163,8 +170,8 @@ def system_check_health_endpoints() -> str:
     Returns JSON string: list of {service, url_probed, status_code, ok,
     body_preview}. body_preview is truncated and redacted.
     """
-    import urllib.request
     import urllib.error
+    import urllib.request
 
     results: list[dict[str, Any]] = []
     for service, primary, fallback in APPROVED_HEALTH_ENDPOINTS:
@@ -243,12 +250,22 @@ def system_tail_safe_log(name: str, lines: int = 100) -> str:
     'mcp_gateway_stdout', 'dispatcher_stderr'). Raw paths are not accepted.
     `lines` is capped at 500. Total output is capped at 256 KB.
 
+    When ``MIRU_SYSTEM_LOGS_ENABLED`` is set at gateway startup, docker-backed
+    keys ``n8n_stdout``, ``n8n_stderr``, and ``n8n_combined`` are also allowed.
+
     Use system_tail_safe_log('') to get the list of approved log names.
     """
     if not name:
-        return json.dumps(
-            {"approved_logs": sorted(APPROVED_LOG_FILES.keys())}, indent=2
-        )
+        keys = sorted(APPROVED_LOG_FILES.keys())
+        if _N8N_DOCKER_LOGS_ENABLED:
+            keys = sorted(set(keys) | _DOCKER_LOG_NAMES)
+        return json.dumps({"approved_logs": keys}, indent=2)
+
+    lines = max(1, min(int(lines), _MAX_LOG_LINES))
+
+    if _N8N_DOCKER_LOGS_ENABLED and name in _DOCKER_LOG_NAMES:
+        return _redact.redact(_docker_n8n_logs(name, lines))
+
     if name not in APPROVED_LOG_FILES:
         raise stdio_mcp.McpError(
             f"system: log not approved: {name!r}. "
@@ -256,7 +273,6 @@ def system_tail_safe_log(name: str, lines: int = 100) -> str:
             -32000,
         )
 
-    lines = max(1, min(int(lines), _MAX_LOG_LINES))
     log_path = APPROVED_LOG_FILES[name]
     if not log_path.exists():
         return _redact.redact(
@@ -266,15 +282,59 @@ def system_tail_safe_log(name: str, lines: int = 100) -> str:
 
     try:
         text = _tail_text(log_path, lines, _MAX_LOG_BYTES)
-    except Exception as exc:  # noqa: BLE001
-        raise stdio_mcp.McpError(
-            f"system: failed to read log {name}: {exc!r}", -32000
-        ) from exc
+    except Exception as exc:
+        raise stdio_mcp.McpError(f"system: failed to read log {name}: {exc!r}", -32000) from exc
 
     return _redact.redact(text)
 
 
 # --- Helpers ------------------------------------------------------------
+
+
+def _docker_n8n_logs(name: str, lines: int) -> str:
+    """Run ``docker logs`` with ``--since`` + ``--tail`` (PRO-132)."""
+    import subprocess
+
+    stream_flag: list[str] = []
+    if name == "n8n_stdout":
+        stream_flag = ["--stdout"]
+    elif name == "n8n_stderr":
+        stream_flag = ["--stderr"]
+    tail_n = min(500, max(1, lines))
+    container = _N8N_DOCKER_CONTAINER
+    for since in ("1h", "4h"):
+        cmd = [
+            "docker",
+            "logs",
+            container,
+            f"--since={since}",
+            f"--tail={tail_n}",
+            *stream_flag,
+        ]
+        try:
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=20,
+                encoding="utf-8",
+                errors="replace",
+            )
+        except FileNotFoundError:
+            raise stdio_mcp.McpError("system: docker CLI not found on PATH", -32000) from None
+        except subprocess.TimeoutExpired as exc:
+            raise stdio_mcp.McpError(f"system: docker logs timed out for {name!r}", -32000) from exc
+        err = (proc.stderr or "").strip()
+        low = err.lower()
+        if "no such container" in low or "does not exist" in low:
+            raise stdio_mcp.McpError(
+                f"system: n8n docker container not running or not found: {container!r}",
+                -32000,
+            )
+        out = proc.stdout or ""
+        if out.strip():
+            return out
+    return f"[docker logs: no output in last 4h for {container!r}]\n"
 
 
 def _socket_listening(host: str, port: int) -> bool:
@@ -286,10 +346,8 @@ def _socket_listening(host: str, port: int) -> bool:
     except OSError:
         return False
     finally:
-        try:
+        with contextlib.suppress(Exception):
             sock.close()
-        except Exception:  # noqa: BLE001
-            pass
 
 
 def _safe_text(b: bytes) -> str:
@@ -320,11 +378,17 @@ TOOL_FUNCTIONS = (
 )
 
 
-def register(mcp, cfg) -> int:  # noqa: ARG001
+def register(mcp, cfg) -> int:
     """Register system_* tools. Always enabled (no env requirement).
 
     Returns the count registered.
     """
+    global _N8N_DOCKER_LOGS_ENABLED, _N8N_DOCKER_CONTAINER
+    _N8N_DOCKER_LOGS_ENABLED = bool(getattr(cfg, "system_logs_enabled", False))
+    _N8N_DOCKER_CONTAINER = getattr(cfg, "n8n_container_name", None) or "miru-n8n"
+
+    from miru_mcp_gateway.gateway_security import wrap_tool_entry
+
     for func in TOOL_FUNCTIONS:
-        mcp.tool(func)
+        mcp.tool(wrap_tool_entry(func, cfg))
     return len(TOOL_FUNCTIONS)

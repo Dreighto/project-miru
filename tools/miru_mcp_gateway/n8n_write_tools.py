@@ -51,7 +51,7 @@ def _audit_n8n(
     result: str,
     error: str | None,
 ) -> None:
-    writes_log, _ = gw_audit.default_audit_paths(_cfg().fs_root)
+    writes_log, _, _ = gw_audit.default_audit_paths(_cfg().fs_root)
     row = {
         "ts": gw_audit._utc_iso(),
         "tool": tool,
@@ -61,7 +61,7 @@ def _audit_n8n(
         "result": result,
         "error": error,
     }
-    gw_audit.append_jsonl(writes_log, row)
+    gw_audit.append_jsonl_chained(writes_log, row)
 
 
 def _assert_workflow_allowed(workflow_id: str) -> None:
@@ -146,10 +146,11 @@ def _append_pending_write_intent(
     workflow_id: str | None,
     workflow_json: dict[str, Any] | None,
     request_id: str,
+    execution_id: str | None = None,
 ) -> None:
     cfg = _cfg()
     cfg.data_dir.mkdir(parents=True, exist_ok=True)
-    row = {
+    row: dict[str, Any] = {
         "kind": "intent",
         "request_id": request_id,
         "intent_written_at": gw_audit._utc_iso(),
@@ -157,6 +158,8 @@ def _append_pending_write_intent(
         "workflow_id": workflow_id,
         "workflow_json": workflow_json,
     }
+    if execution_id:
+        row["execution_id"] = execution_id
     with cfg.mcp_gateway_pending_writes_path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(row, separators=(",", ":"), ensure_ascii=False) + "\n")
     gw_audit.notify_approval_webhook(
@@ -1001,6 +1004,8 @@ def register(mcp, cfg) -> int:
     allow = tuple(getattr(cfg, "n8n_write_workflow_allowlist", ()) or ())
     _WORKFLOW_ALLOWLIST = frozenset(allow) if allow else frozenset()
 
+    from miru_mcp_gateway.gateway_security import wrap_tool_entry
+
     for func in TOOL_FUNCTIONS:
-        mcp.tool(func)
+        mcp.tool(wrap_tool_entry(func, cfg))
     return len(TOOL_FUNCTIONS)

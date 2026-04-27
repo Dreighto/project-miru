@@ -44,19 +44,22 @@ _TOOLS_DIR = _PKG_DIR.parent
 if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
 
-from miru_mcp_gateway import config as gw_config
 from miru_mcp_gateway import (
+    activity_tools,
+    audit_read_tools,
     docs_write_tools,
     fs_tools,
     github_tools,
     n8n_tools,
     n8n_write_tools,
     system_tools,
+    worker_tools,
 )
+from miru_mcp_gateway import config as gw_config
 from miru_mcp_gateway import redact as gw_redact
 
 SERVER_NAME = "miru-fs-gateway"
-SERVER_VERSION = "0.3.0"
+SERVER_VERSION = "0.4.0"
 
 # Order matters: filesystem first (Stage 1, always on), then system status,
 # then external categories. Each module owns its own enable check via
@@ -68,6 +71,9 @@ CATEGORIES: tuple[tuple[str, Any], ...] = (
     ("n8n", n8n_tools),
     ("n8n_write", n8n_write_tools),
     ("docs_write", docs_write_tools),
+    ("activity", activity_tools),
+    ("audit_read", audit_read_tools),
+    ("worker_status", worker_tools),
 )
 
 
@@ -149,6 +155,12 @@ def _print_category_summary(cfg: gw_config.GatewayConfig, counts: dict[str, int]
                     extra += "  (approval notify URL set)"
             elif name == "docs_write":
                 extra = f"  ({len(cfg.docs_write_path_allowlist)} path glob(s))"
+            elif name == "activity":
+                extra = "  (activity_since)"
+            elif name == "audit_read":
+                extra = "  (gateway_audit_tail)"
+            elif name == "worker_status":
+                extra = "  (worker_status)"
             print(f"  {name:<11} : {c} tools{extra}", flush=True)
             total += c
         else:

@@ -37,7 +37,7 @@ from miru_mcp_gateway import redact as _redact  # noqa: E402
 
 try:
     import requests  # type: ignore
-except ImportError:  # noqa: BLE001
+except ImportError:
     requests = None  # type: ignore
 
 
@@ -65,7 +65,7 @@ def _assert_repo_allowed(owner: str, repo: str) -> None:
     candidate_b = f"{owner}/*".lower()
     for pattern in _ALLOWLIST:
         p = pattern.lower()
-        if p == candidate_a or p == candidate_b:
+        if p in (candidate_a, candidate_b):
             return
         # fnmatch lets the operator write things like 'Dreighto/*' or
         # 'anthropics/claude-*' if they want narrower control.
@@ -102,9 +102,7 @@ def _gh_get(path: str, params: dict[str, Any] | None = None) -> Any:
             -32000,
         )
     if not _TOKEN:
-        raise stdio_mcp.McpError(
-            "github: GITHUB_TOKEN_READ not configured", -32000
-        )
+        raise stdio_mcp.McpError("github: GITHUB_TOKEN_READ not configured", -32000)
 
     url = f"{_API_BASE}{path}"
     headers = {
@@ -114,9 +112,7 @@ def _gh_get(path: str, params: dict[str, Any] | None = None) -> Any:
         "User-Agent": "miru-mcp-gateway/0.2",
     }
     try:
-        resp = requests.get(
-            url, headers=headers, params=params, timeout=_HTTP_TIMEOUT_S
-        )
+        resp = requests.get(url, headers=headers, params=params, timeout=_HTTP_TIMEOUT_S)
     except requests.exceptions.Timeout as exc:
         raise stdio_mcp.McpError(
             f"github: timeout after {_HTTP_TIMEOUT_S}s on {path}", -32000
@@ -139,9 +135,7 @@ def _gh_get(path: str, params: dict[str, Any] | None = None) -> Any:
             -32000,
         )
     if resp.status_code == 404:
-        raise stdio_mcp.McpError(
-            f"github: 404 Not Found: {path}", -32000
-        )
+        raise stdio_mcp.McpError(f"github: 404 Not Found: {path}", -32000)
     if not (200 <= resp.status_code < 300):
         body_preview = _redact.redact(resp.text[:_BODY_SUMMARY_BYTES])
         raise stdio_mcp.McpError(
@@ -152,9 +146,7 @@ def _gh_get(path: str, params: dict[str, Any] | None = None) -> Any:
     try:
         return resp.json()
     except ValueError as exc:
-        raise stdio_mcp.McpError(
-            f"github: non-JSON response on {path}", -32000
-        ) from exc
+        raise stdio_mcp.McpError(f"github: non-JSON response on {path}", -32000) from exc
 
 
 def _clamp(value: int, default: int) -> int:
@@ -263,8 +255,7 @@ def github_list_recent_commits(
             {
                 "sha": c.get("sha", "")[:12],
                 "ts": (commit.get("author") or {}).get("date", ""),
-                "author": author_obj.get("login")
-                or (commit.get("author") or {}).get("name", ""),
+                "author": author_obj.get("login") or (commit.get("author") or {}).get("name", ""),
                 "message_first_line": _summarize_message(commit.get("message")),
             }
         )
@@ -354,9 +345,7 @@ def github_get_issue(owner: str, repo: str, number: int) -> str:
     return json.dumps(_redact.redact_dict(payload), indent=2)
 
 
-def github_search_repo_files(
-    owner: str, repo: str, query: str, limit: int = 30
-) -> str:
+def github_search_repo_files(owner: str, repo: str, query: str, limit: int = 30) -> str:
     """Search filenames within a single repo using GitHub code search.
 
     `query` is GitHub code search syntax (e.g. 'foo extension:py'). The
@@ -370,9 +359,7 @@ def github_search_repo_files(
         raise stdio_mcp.McpError("github: query must not be empty", -32602)
     n = _clamp(limit, 30)
     full_q = f"repo:{owner}/{repo} {query.strip()}"
-    raw = _gh_get(
-        "/search/code", params={"q": full_q, "per_page": n}
-    )
+    raw = _gh_get("/search/code", params={"q": full_q, "per_page": n})
     out: list[dict[str, Any]] = []
     for item in (raw or {}).get("items", []) or []:
         path = item.get("path", "")
@@ -388,9 +375,7 @@ def github_search_repo_files(
     return json.dumps(_redact.redact_dict(out), indent=2)
 
 
-def github_read_file(
-    owner: str, repo: str, path: str, ref: str | None = None
-) -> str:
+def github_read_file(owner: str, repo: str, path: str, ref: str | None = None) -> str:
     """Read a single text file from a GitHub repo.
 
     `path` must NOT match the Stage 1 deny list (.env, *.key, *.pem,
@@ -404,9 +389,7 @@ def github_read_file(
         params["ref"] = ref
     obj = _gh_get(f"/repos/{owner}/{repo}/contents/{path}", params=params)
     if isinstance(obj, list):
-        raise stdio_mcp.McpError(
-            f"github: path is a directory, not a file: {path}", -32000
-        )
+        raise stdio_mcp.McpError(f"github: path is a directory, not a file: {path}", -32000)
     encoding = obj.get("encoding")
     size = int(obj.get("size", 0))
     if size > _FILE_HARD_CAP_BYTES:
@@ -415,12 +398,328 @@ def github_read_file(
             -32000,
         )
     if encoding != "base64":
-        raise stdio_mcp.McpError(
-            f"github: unexpected encoding {encoding!r} for {path}", -32000
-        )
+        raise stdio_mcp.McpError(f"github: unexpected encoding {encoding!r} for {path}", -32000)
     raw = base64.b64decode(obj.get("content", "") or "", validate=False)
     text = raw.decode("utf-8", errors="replace")
     return _redact.redact(text)
+
+
+# --- PRO-131: PR review surface ----------------------------------------
+
+_GENERATED_FILENAMES = frozenset(
+    {
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "Gemfile.lock",
+        "go.sum",
+        "Cargo.lock",
+        "poetry.lock",
+        "composer.lock",
+    }
+)
+
+
+def _gh_graphql(query: str, variables: dict[str, Any]) -> dict[str, Any]:
+    if requests is None:
+        raise stdio_mcp.McpError(
+            "github: 'requests' library not installed; pip install requests",
+            -32000,
+        )
+    if not _TOKEN:
+        raise stdio_mcp.McpError("github: GITHUB_TOKEN_READ not configured", -32000)
+    try:
+        resp = requests.post(
+            "https://api.github.com/graphql",
+            json={"query": query, "variables": variables},
+            headers={
+                "Authorization": f"Bearer {_TOKEN}",
+                "Content-Type": "application/json",
+                "User-Agent": "miru-mcp-gateway/0.4",
+            },
+            timeout=_HTTP_TIMEOUT_S,
+        )
+    except requests.exceptions.RequestException as exc:
+        raise stdio_mcp.McpError(
+            f"github: graphql transport: {_redact.redact(str(exc))}", -32000
+        ) from exc
+    if resp.status_code != 200:
+        raise stdio_mcp.McpError(
+            f"github: graphql HTTP {resp.status_code}: {_redact.redact(resp.text[:400])}",
+            -32000,
+        )
+    try:
+        body = resp.json()
+    except ValueError as exc:
+        raise stdio_mcp.McpError("github: graphql non-JSON", -32000) from exc
+    if body.get("errors"):
+        raise stdio_mcp.McpError(
+            f"github: graphql errors: {_redact.redact(str(body.get('errors'))[:500])}",
+            -32000,
+        )
+    return body.get("data") or {}
+
+
+def _pr_review_thread_resolution(owner: str, repo: str, number: int) -> dict[str, bool]:
+    """Map REST review comment id (str) -> thread isResolved (GraphQL)."""
+    q = """
+    query ($owner: String!, $name: String!, $pr: Int!) {
+      repository(owner: $owner, name: $name) {
+        pullRequest(number: $pr) {
+          reviewThreads(first: 100) {
+            nodes {
+              isResolved
+              comments(first: 50) {
+                nodes { databaseId }
+              }
+            }
+          }
+        }
+      }
+    }
+    """
+    try:
+        data = _gh_graphql(q, {"owner": owner, "name": repo, "pr": int(number)})
+    except stdio_mcp.McpError:
+        return {}
+    repo_node = (data.get("repository") or {}).get("pullRequest") or {}
+    threads = ((repo_node.get("reviewThreads") or {}).get("nodes")) or []
+    out: dict[str, bool] = {}
+    for th in threads:
+        if not isinstance(th, dict):
+            continue
+        resolved = bool(th.get("isResolved"))
+        for c in ((th.get("comments") or {}).get("nodes")) or []:
+            if isinstance(c, dict) and c.get("databaseId") is not None:
+                out[str(c["databaseId"])] = resolved
+    return out
+
+
+def _gh_get_all_pages(path: str, params_base: dict[str, Any]) -> list[Any]:
+    """Paginate GitHub REST GET using per_page=100 and page=N."""
+    all_items: list[Any] = []
+    page = 1
+    while True:
+        params = {**params_base, "per_page": 100, "page": page}
+        chunk = _gh_get(path, params=params)
+        if not isinstance(chunk, list):
+            break
+        if not chunk:
+            break
+        all_items.extend(chunk)
+        if len(chunk) < 100:
+            break
+        page += 1
+        if page > 50:
+            break
+    return all_items
+
+
+def _should_skip_generated_file(filename: str, file_obj: dict[str, Any]) -> bool:
+    base = (filename or "").split("/")[-1].lower()
+    return base in {x.lower() for x in _GENERATED_FILENAMES} or (
+        file_obj.get("patch") is None and int(file_obj.get("changes", 0) or 0) > 5000
+    )
+
+
+def github_get_pr_diff(owner: str, repo: str, number: int, max_lines: int = 2000) -> str:
+    """Structured per-file diff for a PR (GET /pulls/{n}/files).
+
+    Respects ``max_lines`` (default 2000, hard cap 8000) across all ``patch``
+    bodies after redaction. Large/generated/binary files are listed under
+    ``skipped_paths`` instead of inline patches.
+    """
+    _assert_repo_allowed(owner, repo)
+    try:
+        ml = int(max_lines)
+    except (TypeError, ValueError):
+        ml = 2000
+    ml = max(1, min(ml, 8000))
+
+    raw_files = _gh_get_all_pages(
+        f"/repos/{owner}/{repo}/pulls/{int(number)}/files",
+        {},
+    )
+    files_out: list[dict[str, Any]] = []
+    skipped: list[str] = []
+    total_lines = 0
+    truncated = False
+    original_line_count = 0
+
+    for f in raw_files:
+        if not isinstance(f, dict):
+            continue
+        fn = str(f.get("filename", ""))
+        if _should_skip_generated_file(fn, f):
+            skipped.append(fn)
+            continue
+        patch = f.get("patch")
+        if patch is None:
+            skipped.append(fn)
+            continue
+        plines = patch.count("\n") + (1 if patch else 0)
+        original_line_count += plines
+        patch_truncated_by_github = False
+        if plines >= 999:
+            patch_truncated_by_github = True
+        slice_patch = patch
+        add_lines = slice_patch.count("\n") + (1 if slice_patch else 0)
+        if total_lines + add_lines > ml:
+            remaining = ml - total_lines
+            if remaining <= 0:
+                truncated = True
+                continue
+            slice_patch = "\n".join(slice_patch.splitlines()[: max(1, remaining)])
+            truncated = True
+            add_lines = slice_patch.count("\n") + 1
+        total_lines += add_lines
+        files_out.append(
+            {
+                "filename": fn,
+                "status": f.get("status", ""),
+                "additions": int(f.get("additions", 0)),
+                "deletions": int(f.get("deletions", 0)),
+                "changes": int(f.get("changes", 0)),
+                "patch": slice_patch,
+                "patch_truncated_by_github": patch_truncated_by_github,
+            }
+        )
+        if total_lines >= ml:
+            truncated = True
+            break
+
+    payload: dict[str, Any] = {
+        "owner": owner,
+        "repo": repo,
+        "number": int(number),
+        "truncated": truncated,
+        "original_line_count_estimate": original_line_count,
+        "max_lines_budget": ml,
+        "skipped_paths": skipped,
+        "files": files_out,
+    }
+    return json.dumps(_redact.redact_dict(payload), indent=2)
+
+
+def github_list_pr_reviews(owner: str, repo: str, number: int) -> str:
+    """List review submissions on a PR (id, author, state, submitted_at, body_summary)."""
+    _assert_repo_allowed(owner, repo)
+    raw = _gh_get_all_pages(
+        f"/repos/{owner}/{repo}/pulls/{int(number)}/reviews",
+        {},
+    )
+    out: list[dict[str, Any]] = []
+    for r in raw:
+        if not isinstance(r, dict):
+            continue
+        user = r.get("user") or {}
+        out.append(
+            {
+                "id": r.get("id"),
+                "author": user.get("login", ""),
+                "user_type": user.get("type", ""),
+                "state": r.get("state", ""),
+                "submitted_at": r.get("submitted_at", ""),
+                "body_summary": _summarize_body(r.get("body")),
+            }
+        )
+    return json.dumps(_redact.redact_dict(out), indent=2)
+
+
+def github_get_pr_review_comments(
+    owner: str, repo: str, number: int, review_id: int | None = None
+) -> str:
+    """Line-level review comments; grouped by path. Optional ``review_id`` filter.
+
+    Includes ``in_reply_to_id``, ``is_outdated``, ``has_suggestion``, bot hint,
+    and ``thread_resolved`` when GraphQL succeeds.
+    """
+    _assert_repo_allowed(owner, repo)
+    raw = _gh_get_all_pages(
+        f"/repos/{owner}/{repo}/pulls/{int(number)}/comments",
+        {},
+    )
+    resolved_map = _pr_review_thread_resolution(owner, repo, int(number))
+
+    comments: list[dict[str, Any]] = []
+    for c in raw:
+        if not isinstance(c, dict):
+            continue
+        if review_id is not None and c.get("pull_request_review_id") != review_id:
+            continue
+        body = c.get("body") or ""
+        user = c.get("user") or {}
+        login = str(user.get("login", ""))
+        utype = str(user.get("type", ""))
+        is_bot = utype == "Bot" or login.lower().endswith("[bot]") or "bot" in login.lower()
+        cid = c.get("id")
+        is_outdated = c.get("line") is None and c.get("original_line") is not None
+        has_sug = "```suggestion" in str(body).lower()
+        thr_res = resolved_map.get(str(cid)) if cid is not None else None
+        comments.append(
+            {
+                "id": cid,
+                "path": c.get("path", ""),
+                "line": c.get("line"),
+                "original_line": c.get("original_line"),
+                "side": c.get("side", ""),
+                "position": c.get("position"),
+                "user": login,
+                "user_type": utype,
+                "is_bot_heuristic": is_bot,
+                "created_at": c.get("created_at", ""),
+                "updated_at": c.get("updated_at", ""),
+                "in_reply_to_id": c.get("in_reply_to_id"),
+                "pull_request_review_id": c.get("pull_request_review_id"),
+                "is_outdated": is_outdated,
+                "has_suggestion": has_sug,
+                "thread_resolved": thr_res,
+                "body_summary": _summarize_body(body),
+            }
+        )
+    comments.sort(key=lambda x: (str(x.get("path", "")), str(x.get("created_at", ""))))
+
+    by_path: dict[str, list[dict[str, Any]]] = {}
+    for row in comments:
+        p = str(row.get("path", "")) or "_"
+        by_path.setdefault(p, []).append(row)
+
+    return json.dumps(_redact.redact_dict({"by_path": by_path, "flat": comments}), indent=2)
+
+
+def github_get_pr_check_runs(owner: str, repo: str, number: int) -> str:
+    """CI / check runs for the PR head commit (REST check-runs API)."""
+    _assert_repo_allowed(owner, repo)
+    pr = _gh_get(f"/repos/{owner}/{repo}/pulls/{int(number)}")
+    head = pr.get("head") or {}
+    sha = str(head.get("sha", ""))
+    if not sha:
+        raise stdio_mcp.McpError("github: could not resolve PR head sha", -32000)
+
+    raw = _gh_get(
+        f"/repos/{owner}/{repo}/commits/{sha}/check-runs",
+        params={"per_page": 100},
+    )
+    items = (raw or {}).get("check_runs") if isinstance(raw, dict) else []
+    out: list[dict[str, Any]] = []
+    for run in items or []:
+        if not isinstance(run, dict):
+            continue
+        app = run.get("app") or {}
+        out.append(
+            {
+                "id": run.get("id"),
+                "name": run.get("name", ""),
+                "status": run.get("status", ""),
+                "conclusion": run.get("conclusion"),
+                "app_slug": app.get("slug", ""),
+                "app_name": app.get("name", ""),
+                "details_url": run.get("details_url", ""),
+                "started_at": run.get("started_at", ""),
+                "completed_at": run.get("completed_at", ""),
+            }
+        )
+    return json.dumps(_redact.redact_dict({"head_sha": sha[:12], "check_runs": out}), indent=2)
 
 
 # --- Manifest + register hook ------------------------------------------
@@ -433,19 +732,22 @@ TOOL_FUNCTIONS = (
     github_get_issue,
     github_search_repo_files,
     github_read_file,
+    github_get_pr_diff,
+    github_list_pr_reviews,
+    github_get_pr_review_comments,
+    github_get_pr_check_runs,
 )
 
 
 def register(mcp, cfg) -> int:
-    """Register github_* tools iff GITHUB_TOKEN_READ is set.
-
-    Records a reason in cfg.disabled_categories['github'] and returns 0
-    when disabled. Stage 1 still loads.
-    """
+    """Register github_* tools iff token + MIRU_GITHUB_READ_ENABLED (PRO-131)."""
     global _TOKEN, _ALLOWLIST
 
     if not getattr(cfg, "github_token", None):
         cfg.disabled_categories["github"] = "GITHUB_TOKEN_READ missing"
+        return 0
+    if not getattr(cfg, "github_read_enabled", False):
+        cfg.disabled_categories["github"] = "MIRU_GITHUB_READ_ENABLED not set to true"
         return 0
     if requests is None:
         cfg.disabled_categories["github"] = "'requests' library not installed"
@@ -454,6 +756,8 @@ def register(mcp, cfg) -> int:
     _TOKEN = cfg.github_token
     _ALLOWLIST = tuple(cfg.github_allowlist or ())
 
+    from miru_mcp_gateway.gateway_security import wrap_tool_entry
+
     for func in TOOL_FUNCTIONS:
-        mcp.tool(func)
+        mcp.tool(wrap_tool_entry(func, cfg))
     return len(TOOL_FUNCTIONS)

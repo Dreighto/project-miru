@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import fnmatch
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 # The stdio MCP file is a sibling under tools/. Make sure the parent of this
 # package (i.e. tools/) is importable before we try to pull it in.
@@ -23,7 +24,6 @@ if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
 
 import miru_readonly_filesystem_mcp as stdio_mcp  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Expanded deny policy (Stage 1 mandatory expansion -- see plan §5)
@@ -51,17 +51,12 @@ DENIED_PATH_SEGMENTS_OPTIONAL: frozenset[str] = frozenset(
     {"node_modules", "__pycache__", ".venv", "venv"}
 )
 
-ALL_DENIED_SEGMENTS: frozenset[str] = (
-    DENIED_PATH_SEGMENTS_MANDATORY | DENIED_PATH_SEGMENTS_OPTIONAL
-)
+ALL_DENIED_SEGMENTS: frozenset[str] = DENIED_PATH_SEGMENTS_MANDATORY | DENIED_PATH_SEGMENTS_OPTIONAL
 
 
 def _matches_filename_deny(name: str) -> bool:
     lower = name.lower()
-    for pattern in DENIED_FILENAME_PATTERNS:
-        if fnmatch.fnmatch(lower, pattern.lower()):
-            return True
-    return False
+    return any(fnmatch.fnmatch(lower, pattern.lower()) for pattern in DENIED_FILENAME_PATTERNS)
 
 
 def _has_denied_segment(path: Path) -> bool:
@@ -70,23 +65,16 @@ def _has_denied_segment(path: Path) -> bool:
     except ValueError:
         # Outside ROOT -- the original resolver will catch this separately.
         return False
-    for part in rel.parts:
-        if part.lower() in ALL_DENIED_SEGMENTS:
-            return True
-    return False
+    return any(part.lower() in ALL_DENIED_SEGMENTS for part in rel.parts)
 
 
 _original_is_denied: Callable[[Path], bool] = stdio_mcp._is_denied
 
 
 def _is_denied_extended(path: Path) -> bool:
-    if _original_is_denied(path):
-        return True
-    if _matches_filename_deny(path.name):
-        return True
-    if _has_denied_segment(path):
-        return True
-    return False
+    return (
+        _original_is_denied(path) or _matches_filename_deny(path.name) or _has_denied_segment(path)
+    )
 
 
 # Apply the patch. From now on, every code path inside stdio_mcp that calls
@@ -116,10 +104,7 @@ def is_denied_path_string(path: str) -> bool:
     name = parts[-1] if parts else ""
     if name and _matches_filename_deny(name):
         return True
-    for part in parts:
-        if part.lower() in ALL_DENIED_SEGMENTS:
-            return True
-    return False
+    return any(part.lower() in ALL_DENIED_SEGMENTS for part in parts)
 
 
 # ---------------------------------------------------------------------------
@@ -163,24 +148,28 @@ def fs_list_directory(path: str) -> str:
     return stdio_mcp._list_directory({"path": path})
 
 
-def fs_list_directory_with_sizes(path: str, sortBy: str = "name") -> str:
+def fs_list_directory_with_sizes(
+    path: str,
+    sortBy: str = "name",  # noqa: N803
+) -> str:
     """List a directory with file sizes in bytes. sortBy must be 'name' or 'size'."""
     if sortBy not in ("name", "size"):
-        raise stdio_mcp.McpError(
-            "sortBy must be 'name' or 'size'", -32602
-        )
+        raise stdio_mcp.McpError("sortBy must be 'name' or 'size'", -32602)
     return stdio_mcp._list_directory_with_sizes({"path": path, "sortBy": sortBy})
 
 
-def fs_directory_tree(path: str, excludePatterns: list[str] | None = None) -> str:
+def fs_directory_tree(
+    path: str,
+    excludePatterns: list[str] | None = None,  # noqa: N803
+) -> str:
     """Return a recursive JSON tree. Denied entries are omitted."""
-    return stdio_mcp._directory_tree(
-        {"path": path, "excludePatterns": list(excludePatterns or [])}
-    )
+    return stdio_mcp._directory_tree({"path": path, "excludePatterns": list(excludePatterns or [])})
 
 
 def fs_search_files(
-    path: str, pattern: str, excludePatterns: list[str] | None = None
+    path: str,
+    pattern: str,
+    excludePatterns: list[str] | None = None,  # noqa: N803
 ) -> str:
     """Search filenames matching `pattern` (fnmatch syntax) under `path`.
     Denied paths are skipped.
@@ -218,11 +207,13 @@ TOOL_FUNCTIONS = (
 )
 
 
-def register(mcp, cfg) -> int:  # noqa: ARG001 -- cfg unused here, signature is uniform
+def register(mcp, cfg) -> int:
     """Register all fs_* tools with the given FastMCP instance.
 
     Filesystem is the always-on category. Returns the count registered.
     """
+    from miru_mcp_gateway.gateway_security import wrap_tool_entry
+
     for func in TOOL_FUNCTIONS:
-        mcp.tool(func)
+        mcp.tool(wrap_tool_entry(func, cfg))
     return len(TOOL_FUNCTIONS)
