@@ -50,6 +50,8 @@ data/routing_history.jsonl
 
 # n8n W7 pending_callbacks runtime log (intent + decided rows; idempotency state)
 data/pending_callbacks.jsonl
+# MCP gateway pending write intents (runtime state; regenerated per session)
+data/mcp_gateway_pending_writes.jsonl
 
 # n8n W4 dispatch DLQ runtime log (append-only; rotate via future GC ticket)
 data/dispatch_dlq.jsonl
