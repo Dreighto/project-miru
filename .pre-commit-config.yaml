@@ -46,6 +46,8 @@ repos:
         entry: python tools/validate_n8n_workflow.py
         language: system
         files: ^docker/n8n/workflows/.*\.json$
+        # Partial workflow pieces (merged into W7 by script); not full exports.
+        exclude: ^docker/n8n/workflows/fragments/
         pass_filenames: true
 
       - id: jsonl-line-validation

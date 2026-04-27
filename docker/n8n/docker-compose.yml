@@ -23,6 +23,10 @@ services:
       TELEGRAM_CALLBACK_SECRET: ${TELEGRAM_CALLBACK_SECRET}
       W2_SHADOW_MODE: "false"
       NODE_FUNCTION_ALLOW_BUILTIN: "fs,crypto"
+      # Used by W7 MCP n8n-write approval branch + notify workflow to call the
+      # local n8n Public API from inside the container (5678 = internal port).
+      N8N_API_KEY: ${N8N_API_KEY}
+      N8N_INTERNAL_API_BASE: "http://127.0.0.1:5678"
 
 volumes:
   n8n_data:

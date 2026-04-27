@@ -30,7 +30,6 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 18766
 DEFAULT_ROOT = Path(r"D:\dev\miru")
@@ -61,9 +60,24 @@ class GatewayConfig:
     n8n_api_key: str | None = None
     n8n_base_url: str = DEFAULT_N8N_BASE_URL
 
+    # Stage 3 / 3.5 write surfaces (PRO-122 / PRO-123)
+    n8n_write_enabled: bool = False
+    n8n_write_workflow_allowlist: tuple[str, ...] = ()
+    n8n_write_approval_notify_url: str | None = None
+    docs_write_enabled: bool = False
+    docs_write_path_allowlist: tuple[str, ...] = ()
+
     # Populated by each category's register() if it refuses to start. The
     # banner reads this to print "github : DISABLED -- <reason>" lines.
     disabled_categories: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def data_dir(self) -> Path:
+        return self.fs_root / "data"
+
+    @property
+    def mcp_gateway_pending_writes_path(self) -> Path:
+        return self.data_dir / "mcp_gateway_pending_writes.jsonl"
 
     @property
     def public_prefix(self) -> str:
@@ -87,7 +101,7 @@ def _validate_secret(secret: str) -> str:
         raise SystemExit(
             f"FATAL: MIRU_MCP_URL_SECRET is shorter than {MIN_SECRET_HEX_LEN} chars "
             f"(got {len(cleaned)}). Generate with: "
-            f"python -c \"import secrets; print(secrets.token_hex(32))\""
+            f'python -c "import secrets; print(secrets.token_hex(32))"'
         )
     if any(c not in "0123456789abcdefABCDEF" for c in cleaned):
         raise SystemExit(
@@ -108,21 +122,43 @@ def _load_github_settings() -> tuple[str | None, tuple[str, ...]]:
     raw_allow = os.environ.get("MIRU_GITHUB_REPO_ALLOWLIST", "").strip()
     allowlist: tuple[str, ...] = ()
     if raw_allow:
-        allowlist = tuple(
-            piece.strip() for piece in raw_allow.split(",") if piece.strip()
-        )
+        allowlist = tuple(piece.strip() for piece in raw_allow.split(",") if piece.strip())
 
     return read_token, allowlist
 
 
 def _load_n8n_settings() -> tuple[str | None, str]:
     api_key = os.environ.get("N8N_API_KEY", "").strip() or None
-    base_url = (
-        os.environ.get("MIRU_N8N_BASE_URL", "").strip() or DEFAULT_N8N_BASE_URL
-    )
+    base_url = os.environ.get("MIRU_N8N_BASE_URL", "").strip() or DEFAULT_N8N_BASE_URL
     # Strip trailing slash so we can `${base}/api/v1/...` cleanly.
     base_url = base_url.rstrip("/")
     return api_key, base_url
+
+
+def _truthy_env(name: str) -> bool:
+    v = os.environ.get(name, "").strip().lower()
+    return v in ("1", "true", "yes", "on")
+
+
+def _comma_tuple(name: str) -> tuple[str, ...]:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return ()
+    return tuple(p.strip() for p in raw.split(",") if p.strip())
+
+
+def _default_docs_write_globs() -> tuple[str, ...]:
+    """PRO-123 default positive allowlist (repo-relative posix globs)."""
+    roots = ("tools", "services", "pm", "miru_ai", "dispatcher", "docker", "windows")
+    readme_globs = tuple(f"{r}/**/README.md" for r in roots)
+    return (
+        "*.md",
+        "docs/**/*.md",
+        "docs/**/*.txt",
+        *readme_globs,
+        ".cursor/rules/*.md",
+        ".claude/**/*.md",
+    )
 
 
 def load() -> GatewayConfig:
@@ -150,6 +186,16 @@ def load() -> GatewayConfig:
     github_token, github_allowlist = _load_github_settings()
     n8n_api_key, n8n_base_url = _load_n8n_settings()
 
+    n8n_write_enabled = _truthy_env("MIRU_N8N_WRITE_ENABLED")
+    n8n_write_workflow_allowlist = _comma_tuple("MIRU_N8N_WRITE_WORKFLOW_ALLOWLIST")
+    n8n_write_approval_notify_url = (
+        os.environ.get("MIRU_N8N_WRITE_APPROVAL_NOTIFY_URL", "").strip() or None
+    )
+
+    docs_write_enabled = _truthy_env("MIRU_DOCS_WRITE_ENABLED")
+    raw_docs_allow = _comma_tuple("MIRU_DOCS_WRITE_PATH_ALLOWLIST")
+    docs_write_path_allowlist = raw_docs_allow if raw_docs_allow else _default_docs_write_globs()
+
     return GatewayConfig(
         host=host,
         port=port,
@@ -161,4 +207,9 @@ def load() -> GatewayConfig:
         github_allowlist=github_allowlist,
         n8n_api_key=n8n_api_key,
         n8n_base_url=n8n_base_url,
+        n8n_write_enabled=n8n_write_enabled,
+        n8n_write_workflow_allowlist=n8n_write_workflow_allowlist,
+        n8n_write_approval_notify_url=n8n_write_approval_notify_url,
+        docs_write_enabled=docs_write_enabled,
+        docs_write_path_allowlist=docs_write_path_allowlist,
     )

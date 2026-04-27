@@ -44,25 +44,30 @@ _TOOLS_DIR = _PKG_DIR.parent
 if str(_TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(_TOOLS_DIR))
 
-from miru_mcp_gateway import config as gw_config  # noqa: E402
-from miru_mcp_gateway import fs_tools  # noqa: E402
-from miru_mcp_gateway import github_tools  # noqa: E402
-from miru_mcp_gateway import n8n_tools  # noqa: E402
-from miru_mcp_gateway import redact as gw_redact  # noqa: E402
-from miru_mcp_gateway import system_tools  # noqa: E402
-
+from miru_mcp_gateway import config as gw_config
+from miru_mcp_gateway import (
+    docs_write_tools,
+    fs_tools,
+    github_tools,
+    n8n_tools,
+    n8n_write_tools,
+    system_tools,
+)
+from miru_mcp_gateway import redact as gw_redact
 
 SERVER_NAME = "miru-fs-gateway"
-SERVER_VERSION = "0.2.0"
+SERVER_VERSION = "0.3.0"
 
 # Order matters: filesystem first (Stage 1, always on), then system status,
 # then external categories. Each module owns its own enable check via
 # register(mcp, cfg) -> int.
 CATEGORIES: tuple[tuple[str, Any], ...] = (
     ("filesystem", fs_tools),
-    ("system",     system_tools),
-    ("github",     github_tools),
-    ("n8n",        n8n_tools),
+    ("system", system_tools),
+    ("github", github_tools),
+    ("n8n", n8n_tools),
+    ("n8n_write", n8n_write_tools),
+    ("docs_write", docs_write_tools),
 )
 
 
@@ -77,7 +82,7 @@ def _build_server(cfg: gw_config.GatewayConfig):
     except ImportError as exc:
         raise SystemExit(
             "FATAL: fastmcp is not installed. Install with:\n"
-            "    pip install --user \"fastmcp>=2.5,<3\"\n"
+            '    pip install --user "fastmcp>=2.5,<3"\n'
             f"Original error: {exc}"
         ) from exc
 
@@ -87,7 +92,7 @@ def _build_server(cfg: gw_config.GatewayConfig):
     for name, mod in CATEGORIES:
         try:
             counts[name] = mod.register(mcp, cfg)
-        except Exception as exc:  # noqa: BLE001 -- one bad category should not kill the gateway
+        except Exception as exc:
             cfg.disabled_categories[name] = f"register() raised: {exc!r}"
             counts[name] = 0
 
@@ -122,9 +127,7 @@ class _RootAlias:
         await self.app(scope, receive, send)
 
 
-def _print_category_summary(
-    cfg: gw_config.GatewayConfig, counts: dict[str, int]
-) -> None:
+def _print_category_summary(cfg: gw_config.GatewayConfig, counts: dict[str, int]) -> None:
     """Banner footer: one line per category, total at the end."""
     total = 0
     for name, _mod in CATEGORIES:
@@ -137,6 +140,15 @@ def _print_category_summary(
                 extra = "  (allowlist: any repo the token can see)"
             elif name == "n8n":
                 extra = f"  (base: {cfg.n8n_base_url})"
+            elif name == "n8n_write":
+                if cfg.n8n_write_workflow_allowlist:
+                    extra = f"  (allowlist: {', '.join(cfg.n8n_write_workflow_allowlist)})"
+                else:
+                    extra = "  (allowlist: any workflow id)"
+                if cfg.n8n_write_approval_notify_url:
+                    extra += "  (approval notify URL set)"
+            elif name == "docs_write":
+                extra = f"  ({len(cfg.docs_write_path_allowlist)} path glob(s))"
             print(f"  {name:<11} : {c} tools{extra}", flush=True)
             total += c
         else:
@@ -239,7 +251,7 @@ def main() -> int:
     except KeyboardInterrupt:
         print(f"[{SERVER_NAME}] shutdown requested", flush=True)
         return 0
-    except Exception:  # noqa: BLE001 -- surface the traceback to stderr for the launcher
+    except Exception:
         traceback.print_exc()
         return 1
 

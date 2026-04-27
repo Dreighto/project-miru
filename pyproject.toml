@@ -19,6 +19,10 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
 # E501 (line length) is enforced softly via the formatter; not a hard error.
 ignore = ["E501"]
 
+# server.py mutates sys.path before miru_mcp_gateway imports (script entrypoint).
+[tool.ruff.lint.per-file-ignores]
+"tools/miru_mcp_gateway/server.py" = ["E402"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
