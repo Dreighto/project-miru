@@ -11,10 +11,12 @@
 
 ## Repo Boundary — Hard Rule
 
-- Canonical repo root: D:\dev\miru
-- Never leave this repo unless the operator explicitly authorizes it for a specific task
+- Canonical repo: `Dreighto/project-miru`. Local checkouts live under `D:\dev\miru*`.
+- Worktrees: each worker may have its own Git worktree under a sibling path (e.g. `D:\dev\miru-cursor`, `D:\dev\miru-codex`). All worktrees share the same repo, same branches, same canon. Operating inside any of them counts as operating within the repo.
+- The boundary rule applies to the **repo**, not the working directory path. A worker in its own worktree is in scope for normal work.
+- Never access, modify, or read files outside `D:\dev\miru*` worktrees without explicit operator authorization.
 - If a task requires leaving the repo: STOP. Explain what you need to do and why. Wait for operator decision before proceeding.
-- Never access, modify, or read files outside the repo root without explicit operator authorization
+- Worktree pre-flight: `main` is checked out in CC's worktree at `D:\dev\miru`. Git refuses to check out `main` a second time in another worktree, which is correct behavior. Workers in sibling worktrees should `git fetch origin` then cut their branch from `origin/main` directly: `git checkout -b <branch> origin/main`. Do NOT try to `git checkout main` first.
 
 ## No Overlap Rule
 
