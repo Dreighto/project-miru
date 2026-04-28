@@ -49,6 +49,7 @@ from miru_mcp_gateway import (
     audit_read_tools,
     docs_write_tools,
     fs_tools,
+    git_tools,
     github_tools,
     memory_tools,
     n8n_tools,
@@ -72,6 +73,7 @@ CATEGORIES: tuple[tuple[str, Any], ...] = (
     ("n8n", n8n_tools),
     ("n8n_write", n8n_write_tools),
     ("docs_write", docs_write_tools),
+    ("git_write", git_tools),
     ("activity", activity_tools),
     ("audit_read", audit_read_tools),
     ("worker_status", worker_tools),
@@ -157,6 +159,8 @@ def _print_category_summary(cfg: gw_config.GatewayConfig, counts: dict[str, int]
                     extra += "  (approval notify URL set)"
             elif name == "docs_write":
                 extra = f"  ({len(cfg.docs_write_path_allowlist)} path glob(s))"
+            elif name == "git_write":
+                extra = "  (git_commit_and_push)"
             elif name == "activity":
                 extra = "  (activity_since)"
             elif name == "audit_read":

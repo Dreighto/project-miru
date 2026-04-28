@@ -23,6 +23,7 @@ docs write tools (gated by env).
 | n8n           | `n8n_*`              | `N8N_API_KEY` + `MIRU_N8N_READ_ENABLED=true`          |
 | n8n_write     | `n8n_*` (mutations)  | `N8N_API_KEY` + `MIRU_N8N_WRITE_ENABLED=true`         |
 | docs_write    | `docs_*`             | `MIRU_DOCS_WRITE_ENABLED=true`                        |
+| git_write     | `git_*`              | `MIRU_GIT_WRITE_ENABLED=true`                         |
 | activity      | `activity_since`     | `MIRU_AGGREGATOR_ENABLED=true`                        |
 | audit_read    | `gateway_audit_tail` | `MIRU_AUDIT_READ_ENABLED=true`                        |
 | worker_status | `worker_status`      | `MIRU_WORKER_STATUS_ENABLED=true`                     |
@@ -182,6 +183,22 @@ content is rejected if it contains a substring matching a known env secret
 
 Audit log: `logs/mcp_gateway_docs_writes.jsonl` (same 10 MiB rotation as
 writes).
+
+### git_write (PRO-187)
+
+Requires `MIRU_GIT_WRITE_ENABLED=true`.
+
+- **`git_commit_and_push(paths, message, branch)`** stages only the explicit
+  allowlisted paths, runs `pre-commit run --files <paths>`, commits with the
+  supplied message, then runs a normal tracking-branch `git push`.
+
+This is a direct-execution Pattern B tool: no per-call Telegram approval.
+Server-side allowlist: `CLAUDE.md`, `PROJECT_MIRU_INSTRUCTIONS.md`, `docs/**`,
+and future `skills/**`. Hard denies include append-only JSONL files,
+`card_catalog.db`, `miru_memory.db`, worker rule files other than `CLAUDE.md`,
+and `docker/n8n/workflows/**`.
+
+Every invocation writes a hash-chained row to `logs/mcp_gateway_writes.jsonl`.
 
 ### Audit logs (writes, reads, hash chain PRO-135)
 

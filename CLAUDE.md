@@ -161,6 +161,7 @@ Full root-cause history and rationale: `docs/n8n/WORKFLOW_MAP.md` (PRO-159 entry
 - Use git MCP to check what files are currently changed before starting work
 - Never use a tool just because it is available — only use it if it helps this specific task
 - Never write to the database through any MCP tool
+- `git_commit_and_push` (PRO-187) is for Claude Chat / orchestrator-scoped commits only. It may commit allowlisted canon/docs/skills files after hygiene, but must not be used for worker code changes, workflow JSON, DB files, append-only JSONL files, force-push, branch creation, rebase, reset, merge, cherry-pick, amend, or `--no-verify`.
 
 ## Database Rules
 
@@ -312,6 +313,15 @@ Field definitions:
 **Emit cadence:** at the start of each major phase, before any operation expected to take >60 s (CI wait, Bugbot wait), and on significant state changes (branch cut, PR opened).
 
 **Stall detection (orchestrator side):** if `now − max(heartbeat.ts for ticket_id) > 5 minutes` AND no terminal marker exists in `cc_completion_log.jsonl`, the worker is considered `STALLED`. Threshold is tunable; 5 min is the starting point. Source: PRO-180 (research-sourced, 2026-04-28).
+
+### Orchestrator-side modules (PRO-187 follow-on, 2026-04-28)
+
+Production worker coordination helpers live under `tools/orchestrator/`. Workers should not create parallel implementations elsewhere.
+
+- `stall_detector.py` reads `data/cc_heartbeat_log.jsonl` and `data/cc_completion_log.jsonl` to emit `StallEvent` rows using the PRO-178 taxonomy.
+- `recovery_router.py` maps stall classes to deterministic recovery actions and forces human escalation for schema, security, scope expansion, or irreversible-operation contexts.
+- `task_store.py` owns active worker task state and prompt-hash idempotency in `worker_tasks`.
+- `worktree_manager.py` owns orchestrator-side file collision claims in `worktree_registry`; this augments, but does not replace, git worktree isolation.
 
 ## Craft Guides — load on demand
 
