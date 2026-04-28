@@ -656,7 +656,7 @@
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w7008-build-mutation\n// Branch on action -> compute next label_ids + Linear GraphQL mutation body.\n// Reached only for original-message actions {a, t, r} via w7-action-router-1.\n// 'o' (Override) is now routed to w7-mint-picker-keyboard instead \u2014 its branch\n// here is retained as a defensive fallback only.\nconst data = $input.item.json;\nconst labelsMap = data.labels_map || {};\nconst existingIds = (data.issue_existing_label_ids || []).slice();\nconst chosenWorker = data.chosen_worker;\n\nconst pendingApprovalId = labelsMap['pending-approval'];\nconst triageId = labelsMap['triage'];\nconst manualInterventionId = labelsMap['manual-intervention-required'];\nconst chosenWorkerId = labelsMap[chosenWorker];\n\nconst actionLabelMap = { a: 'Approve', o: 'Override', t: 'Triage', r: 'Request Revision' };\nconst actionLabel = actionLabelMap[data.action] || ('Unknown(' + data.action + ')');\n\nif (!pendingApprovalId) {\n  return { json: { ...data, _build_error: 'pending-approval label id missing from labels_map' } };\n}\n\nlet nextIds = existingIds.filter(id => id !== pendingApprovalId);\n\nif (data.action === 'a') {\n  // Approve: keep worker label, drop pending-approval (already filtered)\n  // No-op beyond the filter.\n} else if (data.action === 'o') {\n  // Defensive fallback: Override should now route to picker-mint.\n  if (chosenWorkerId) nextIds = nextIds.filter(id => id !== chosenWorkerId);\n  if (triageId && !nextIds.includes(triageId)) nextIds.push(triageId);\n} else if (data.action === 't') {\n  // Triage: add triage label\n  if (triageId && !nextIds.includes(triageId)) nextIds.push(triageId);\n} else if (data.action === 'r') {\n  // Request Revision: add manual-intervention-required\n  if (manualInterventionId && !nextIds.includes(manualInterventionId)) nextIds.push(manualInterventionId);\n} else {\n  return { json: { ...data, _build_error: 'unknown action code: ' + data.action } };\n}\n\nconst decided_at = new Date().toISOString();\nconst commentBody = '**W7 callback decided: ' + actionLabel + '**\\n\\n'\n  + 'Tap source: Telegram inline button\\n'\n  + 'Decided at: ' + decided_at + '\\n'\n  + 'Decided by user_id: ' + (data.from_user_id != null ? data.from_user_id : 'unknown') + '\\n'\n  + 'Original proposal: ' + chosenWorker + ' (conf ' + (data.confidence != null ? data.confidence : 'n/a') + ', risk ' + (data.risk || 'n/a') + ')\\n'\n  + 'Callback age at decision: ' + (data.callback_age_seconds != null ? data.callback_age_seconds + 's' : 'unknown') + '\\n\\n'\n  + 'trace_id: ' + (data.trace_id || 'unknown');\n\nconst mutation_body_obj = {\n  query: 'mutation W7Apply($issueId: String!, $labelIds: [String!]!, $commentBody: String!) { issueUpdate(id: $issueId, input: { labelIds: $labelIds }) { success issue { identifier } } commentCreate(input: { issueId: $issueId, body: $commentBody }) { success comment { id } } }',\n  variables: { issueId: data.issue_id, labelIds: nextIds, commentBody }\n};\n\nreturn { json: { ...data, action_label: actionLabel, decided_at, next_label_ids: nextIds, mutation_body_obj } };"
+        "jsCode": "// w7008-build-mutation\n// Branch on action -> compute next label_ids + Linear GraphQL mutation body.\n// Reached only for original-message actions {a, t, r} via w7-action-router-1.\n// 'o' (Override) is now routed to w7-mint-picker-keyboard instead \u2014 its branch\n// here is retained as a defensive fallback only.\nconst data = $input.item.json;\nconst labelsMap = data.labels_map || {};\nconst existingIds = (data.issue_existing_label_ids || []).slice();\nconst chosenWorker = data.chosen_worker;\n\nconst pendingApprovalId = labelsMap['pending-approval'];\nconst triageId = labelsMap['triage'];\nconst manualInterventionId = labelsMap['manual-intervention-required'];\nconst chosenWorkerId = labelsMap[chosenWorker];\n\nconst actionLabelMap = { a: 'Approve', o: 'Override', t: 'Triage', r: 'Request Revision' };\nconst actionLabel = actionLabelMap[data.action] || ('Unknown(' + data.action + ')');\n\nif (!pendingApprovalId) {\n  return { json: { ...data, _build_error: 'pending-approval label id missing from labels_map' } };\n}\n\nlet nextIds = existingIds.filter(id => id !== pendingApprovalId);\n\nif (data.action === 'a') {\n  // Approve: ensure worker label is present (PRO-157), drop pending-approval (already filtered).\n  if (!chosenWorkerId) {\n    return { json: { ...data, _build_error: 'worker label id for \"' + chosenWorker + '\" missing from labels_map' } };\n  }\n  if (!nextIds.includes(chosenWorkerId)) {\n    nextIds.push(chosenWorkerId);\n  }\n} else if (data.action === 'o') {\n  // Defensive fallback: Override should now route to picker-mint.\n  if (chosenWorkerId) nextIds = nextIds.filter(id => id !== chosenWorkerId);\n  if (triageId && !nextIds.includes(triageId)) nextIds.push(triageId);\n} else if (data.action === 't') {\n  // Triage: add triage label\n  if (triageId && !nextIds.includes(triageId)) nextIds.push(triageId);\n} else if (data.action === 'r') {\n  // Request Revision: add manual-intervention-required\n  if (manualInterventionId && !nextIds.includes(manualInterventionId)) nextIds.push(manualInterventionId);\n} else {\n  return { json: { ...data, _build_error: 'unknown action code: ' + data.action } };\n}\n\nconst decided_at = new Date().toISOString();\nconst commentBody = '**W7 callback decided: ' + actionLabel + '**\\n\\n'\n  + 'Tap source: Telegram inline button\\n'\n  + 'Decided at: ' + decided_at + '\\n'\n  + 'Decided by user_id: ' + (data.from_user_id != null ? data.from_user_id : 'unknown') + '\\n'\n  + 'Original proposal: ' + chosenWorker + ' (conf ' + (data.confidence != null ? data.confidence : 'n/a') + ', risk ' + (data.risk || 'n/a') + ')\\n'\n  + 'Callback age at decision: ' + (data.callback_age_seconds != null ? data.callback_age_seconds + 's' : 'unknown') + '\\n\\n'\n  + 'trace_id: ' + (data.trace_id || 'unknown');\n\nconst mutation_body_obj = {\n  query: 'mutation W7Apply($issueId: String!, $labelIds: [String!]!, $commentBody: String!) { issueUpdate(id: $issueId, input: { labelIds: $labelIds }) { success issue { identifier } } commentCreate(input: { issueId: $issueId, body: $commentBody }) { success comment { id } } }',\n  variables: { issueId: data.issue_id, labelIds: nextIds, commentBody }\n};\n\nreturn { json: { ...data, action_label: actionLabel, decided_at, next_label_ids: nextIds, mutation_body_obj } };"
       },
       "id": "w7008-build-mutation",
       "name": "w7008-build-mutation",
@@ -666,6 +666,82 @@
         1700,
         100
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "w7008eb1",
+              "leftValue": "={{ $json._build_error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "w7008-error-branch",
+      "name": "w7008-error-branch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1800,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w7008-error-edit-message (PRO-157)\n// Reached when w7008-build-mutation returns _build_error. Mirrors the\n// w7-picker-error-* pattern: surface the error to the operator on Telegram\n// instead of letting w7009-linear-mutate fire with a missing mutation_body_obj.\nfunction esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\n\nconst data = $input.item.json;\nconst errMsg = data._build_error || 'unknown build error';\n\nconst text = '<b>\\u26A0 W7 build error</b>\\n'\n  + '<i>' + esc(data.issue_identifier || '?') + '</i>\\n'\n  + '<code>' + esc(errMsg) + '</code>';\n\nconst telegram_error_body = {\n  chat_id: data.chat_id,\n  message_id: data.message_id,\n  text,\n  parse_mode: 'HTML',\n  reply_markup: { inline_keyboard: [] }\n};\n\nreturn { json: { ...data, telegram_error_body } };"
+      },
+      "id": "w7008-error-edit-message",
+      "name": "w7008-error-edit-message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.telegram_error_body) }}",
+        "options": {}
+      },
+      "id": "w7008-error-edit",
+      "name": "w7008-error-edit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        300
+      ],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -1009,13 +1085,20 @@
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "darb1",
               "leftValue": "={{ $json.action }}",
               "rightValue": "d",
-              "operator": { "type": "string", "operation": "equals" }
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -1026,7 +1109,10 @@
       "name": "w7-dispatch-action-branch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1100, 100],
+      "position": [
+        1100,
+        100
+      ],
       "notes": "PRO-84: routes 'd' (Dispatch) action to W4 sub-workflow BEFORE w7006-lookup-pending, since the original Approve token already has a 'decided' row that would falsely reject the dispatch tap as duplicate."
     },
     {
@@ -1036,7 +1122,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -1048,7 +1137,10 @@
       "name": "w7-call-w4",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1300, 100],
+      "position": [
+        1300,
+        100
+      ],
       "continueOnFail": true,
       "notes": "PRO-84: invoke W4 via internal n8n webhook (localhost:5678 -> /webhook/w4-dispatch). n8n's Telegram bot allows only one webhook URL, so W4 cannot have its own Telegram Trigger; W7 calls it via HTTP. W4 re-validates HMAC for defense in depth."
     },
@@ -1062,18 +1154,29 @@
       "name": "w7-determine-dispatch-target",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2500, 350]
+      "position": [
+        2500,
+        350
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "gde1",
               "leftValue": "={{ $json._no_dispatch }}",
               "rightValue": false,
-              "operator": { "type": "boolean", "operation": "false", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -1084,19 +1187,25 @@
       "name": "w7-gate-dispatch-emit",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [2700, 350]
+      "position": [
+        2700,
+        350
+      ]
     },
     {
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w7-build-dispatch-message (PRO-84)\n// Builds the second-stage Telegram sendMessage payload with a 'Dispatch' inline button.\n// Mints a NEW callback_data for action='d' using the SAME token (so W4's pending_callbacks\n// lookup can correlate). HMAC anchor + algorithm match w7004 / w7-mint-picker-keyboard.\n// Per-worker button label: claude-code/codex/gemini get '🚀 Dispatch <worker>',\n// cursor gets '🔗 Open in Linear (Cursor)' (degenerate path handled in W4).\nconst crypto = require('crypto');\nconst ANCHOR_UNIX = 1767225600;\n\nconst data = $input.item.json;\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret) throw new Error('TELEGRAM_CALLBACK_SECRET not set');\n\nconst token = data.token;\nconst worker = data.dispatch_target_worker;\n\nconst LABEL_MAP = {\n  'claude-code': '\\uD83D\\uDE80 Dispatch Claude Code',\n  'codex': '\\uD83D\\uDE80 Dispatch Codex',\n  'gemini': '\\uD83D\\uDE80 Dispatch Gemini CLI',\n  'cursor': '\\uD83D\\uDD17 Open in Linear (Cursor)'\n};\nconst buttonText = LABEL_MAP[worker];\nif (!buttonText) throw new Error('no button label mapping for worker: ' + worker);\n\nconst nonce = crypto.randomBytes(4).toString('hex');\nconst ts_minutes = Math.floor((Math.floor(Date.now()/1000) - ANCHOR_UNIX) / 60);\nconst ts_hex = ts_minutes.toString(16).padStart(8, '0').slice(-8);\nconst payload = token + 'd' + nonce + ts_hex;\nconst hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\nconst callback_data = token + 'd' + nonce + ts_hex + hmac;\nif (callback_data.length !== 61) throw new Error('dispatch callback_data length mismatch: ' + callback_data.length);\n\nfunction esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\n\nconst issue_identifier = data.issue_identifier || data.task_identifier || '?';\nconst text = '<b>\\u2705 Approved: ' + esc(worker) + '</b>\\n<i>' + esc(issue_identifier) + '</i>';\n\nconst telegram_send_body = {\n  chat_id: data.chat_id,\n  text,\n  parse_mode: 'HTML',\n  reply_markup: { inline_keyboard: [[{ text: buttonText, callback_data }]] }\n};\n\nreturn { json: { ...data, dispatch_callback_data: callback_data, dispatch_button_text: buttonText, dispatch_minted_at: new Date().toISOString(), telegram_send_body } };"
+        "jsCode": "// w7-build-dispatch-message (PRO-84)\n// Builds the second-stage Telegram sendMessage payload with a 'Dispatch' inline button.\n// Mints a NEW callback_data for action='d' using the SAME token (so W4's pending_callbacks\n// lookup can correlate). HMAC anchor + algorithm match w7004 / w7-mint-picker-keyboard.\n// Per-worker button label: claude-code/codex/gemini get '\ud83d\ude80 Dispatch <worker>',\n// cursor gets '\ud83d\udd17 Open in Linear (Cursor)' (degenerate path handled in W4).\nconst crypto = require('crypto');\nconst ANCHOR_UNIX = 1767225600;\n\nconst data = $input.item.json;\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret) throw new Error('TELEGRAM_CALLBACK_SECRET not set');\n\nconst token = data.token;\nconst worker = data.dispatch_target_worker;\n\nconst LABEL_MAP = {\n  'claude-code': '\\uD83D\\uDE80 Dispatch Claude Code',\n  'codex': '\\uD83D\\uDE80 Dispatch Codex',\n  'gemini': '\\uD83D\\uDE80 Dispatch Gemini CLI',\n  'cursor': '\\uD83D\\uDD17 Open in Linear (Cursor)'\n};\nconst buttonText = LABEL_MAP[worker];\nif (!buttonText) throw new Error('no button label mapping for worker: ' + worker);\n\nconst nonce = crypto.randomBytes(4).toString('hex');\nconst ts_minutes = Math.floor((Math.floor(Date.now()/1000) - ANCHOR_UNIX) / 60);\nconst ts_hex = ts_minutes.toString(16).padStart(8, '0').slice(-8);\nconst payload = token + 'd' + nonce + ts_hex;\nconst hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\nconst callback_data = token + 'd' + nonce + ts_hex + hmac;\nif (callback_data.length !== 61) throw new Error('dispatch callback_data length mismatch: ' + callback_data.length);\n\nfunction esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\n\nconst issue_identifier = data.issue_identifier || data.task_identifier || '?';\nconst text = '<b>\\u2705 Approved: ' + esc(worker) + '</b>\\n<i>' + esc(issue_identifier) + '</i>';\n\nconst telegram_send_body = {\n  chat_id: data.chat_id,\n  text,\n  parse_mode: 'HTML',\n  reply_markup: { inline_keyboard: [[{ text: buttonText, callback_data }]] }\n};\n\nreturn { json: { ...data, dispatch_callback_data: callback_data, dispatch_button_text: buttonText, dispatch_minted_at: new Date().toISOString(), telegram_send_body } };"
       },
       "id": "w7-build-dispatch-message",
       "name": "w7-build-dispatch-message",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2900, 250]
+      "position": [
+        2900,
+        250
+      ]
     },
     {
       "parameters": {
@@ -1105,7 +1214,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -1117,7 +1229,10 @@
       "name": "w7-send-dispatch-message",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3100, 250],
+      "position": [
+        3100,
+        250
+      ],
       "continueOnFail": true
     },
     {
@@ -1130,7 +1245,10 @@
       "name": "w7-store-pending-dispatch",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3300, 250]
+      "position": [
+        3300,
+        250
+      ]
     }
   ],
   "connections": {
@@ -1180,36 +1298,106 @@
     },
     "w7005-validate-branch": {
       "main": [
-        [{"node": "w7-dispatch-action-branch", "type": "main", "index": 0}],
-        [{"node": "w7-noop-rejected", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w7-dispatch-action-branch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w7-noop-rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w7-dispatch-action-branch": {
       "main": [
-        [{"node": "w7-call-w4", "type": "main", "index": 0}],
-        [{"node": "w7006-lookup-pending", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w7-call-w4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w7006-lookup-pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w7011-mark-decided": {
-      "main": [[{"node": "w7-determine-dispatch-target", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w7-determine-dispatch-target",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w7-picker-mark-decided": {
-      "main": [[{"node": "w7-determine-dispatch-target", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w7-determine-dispatch-target",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w7-determine-dispatch-target": {
-      "main": [[{"node": "w7-gate-dispatch-emit", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w7-gate-dispatch-emit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w7-gate-dispatch-emit": {
       "main": [
-        [{"node": "w7-build-dispatch-message", "type": "main", "index": 0}],
+        [
+          {
+            "node": "w7-build-dispatch-message",
+            "type": "main",
+            "index": 0
+          }
+        ],
         []
       ]
     },
     "w7-build-dispatch-message": {
-      "main": [[{"node": "w7-send-dispatch-message", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w7-send-dispatch-message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w7-send-dispatch-message": {
-      "main": [[{"node": "w7-store-pending-dispatch", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w7-store-pending-dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w7006-lookup-pending": {
       "main": [
@@ -1316,7 +1504,7 @@
       "main": [
         [
           {
-            "node": "w7009-linear-mutate",
+            "node": "w7008-error-branch",
             "type": "main",
             "index": 0
           }
@@ -1532,6 +1720,35 @@
         [
           {
             "node": "w7-mcp-edit-triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w7008-error-branch": {
+      "main": [
+        [
+          {
+            "node": "w7008-error-edit-message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w7009-linear-mutate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w7008-error-edit-message": {
+      "main": [
+        [
+          {
+            "node": "w7008-error-edit",
             "type": "main",
             "index": 0
           }
