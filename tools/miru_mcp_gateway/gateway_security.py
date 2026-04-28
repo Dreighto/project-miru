@@ -33,6 +33,7 @@ _MODULE_CATEGORY: dict[str, str] = {
     "miru_mcp_gateway.activity_tools": "aggregator",
     "miru_mcp_gateway.audit_read_tools": "audit_read",
     "miru_mcp_gateway.worker_tools": "worker_read",
+    "miru_mcp_gateway.memory_tools": "memory_write",
 }
 
 _PARAM_REGEX: dict[str, re.Pattern[str]] = {

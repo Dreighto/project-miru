@@ -50,6 +50,7 @@ from miru_mcp_gateway import (
     docs_write_tools,
     fs_tools,
     github_tools,
+    memory_tools,
     n8n_tools,
     n8n_write_tools,
     system_tools,
@@ -74,6 +75,7 @@ CATEGORIES: tuple[tuple[str, Any], ...] = (
     ("activity", activity_tools),
     ("audit_read", audit_read_tools),
     ("worker_status", worker_tools),
+    ("memory", memory_tools),
 )
 
 
