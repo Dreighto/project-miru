@@ -34,6 +34,7 @@ _MODULE_CATEGORY: dict[str, str] = {
     "miru_mcp_gateway.audit_read_tools": "audit_read",
     "miru_mcp_gateway.worker_tools": "worker_read",
     "miru_mcp_gateway.memory_tools": "memory_write",
+    "miru_mcp_gateway.git_tools": "git_write",
 }
 
 _PARAM_REGEX: dict[str, re.Pattern[str]] = {
@@ -54,6 +55,7 @@ _PARAM_REGEX: dict[str, re.Pattern[str]] = {
     "review_id": re.compile(r"^[0-9]{1,18}$"),
     "worker_name": re.compile(r"^[a-zA-Z0-9_-]{1,40}$"),
     "log_kind": re.compile(r"^(writes|reads|docs)$"),
+    "branch": re.compile(r"^(?!/)(?!.*//)(?!.*\.\.)(?!.*@\{)(?!.*\.$)[a-zA-Z0-9._/-]{1,160}$"),
 }
 
 _rate_events: dict[str, list[float]] = defaultdict(list)

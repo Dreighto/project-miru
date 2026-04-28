@@ -86,6 +86,9 @@ class GatewayConfig:
     memory_enabled: bool = False
     memory_db_path: Path | None = None
 
+    # PRO-187: orchestrator-scoped git commit/push tool
+    git_write_enabled: bool = False
+
     # PRO-137 rate limits (calls per 60s sliding window, per category)
     rate_limit_by_category: dict[str, int] = field(default_factory=dict)
 
@@ -189,6 +192,7 @@ def _load_rate_limits() -> dict[str, int]:
         ("audit_read", "MIRU_RATE_LIMIT_AUDIT_READ"),
         ("worker_read", "MIRU_RATE_LIMIT_WORKER_READ"),
         ("memory_write", "MIRU_RATE_LIMIT_MEMORY_WRITE"),
+        ("git_write", "MIRU_RATE_LIMIT_GIT_WRITE"),
         ("default", "MIRU_RATE_LIMIT_DEFAULT"),
     )
     defaults: dict[str, int] = {
@@ -204,6 +208,7 @@ def _load_rate_limits() -> dict[str, int]:
         "audit_read": 60,
         "worker_read": 30,
         "memory_write": 60,
+        "git_write": 10,
         "default": 30,
     }
     out = dict(defaults)
@@ -301,6 +306,8 @@ def load() -> GatewayConfig:
     elif memory_enabled:
         memory_db_path = fs_root / "data" / "miru_memory.db"
 
+    git_write_enabled = _truthy_env("MIRU_GIT_WRITE_ENABLED")
+
     return GatewayConfig(
         host=host,
         port=port,
@@ -333,4 +340,5 @@ def load() -> GatewayConfig:
         rate_limit_by_category=rate_limit_by_category,
         memory_enabled=memory_enabled,
         memory_db_path=memory_db_path,
+        git_write_enabled=git_write_enabled,
     )
