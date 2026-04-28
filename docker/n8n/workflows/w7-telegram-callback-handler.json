@@ -677,12 +677,13 @@
           },
           "conditions": [
             {
-              "id": "be1",
-              "leftValue": "={{ $json._build_error || '' }}",
+              "id": "w7008eb1",
+              "leftValue": "={{ $json._build_error }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
-                "operation": "notEquals"
+                "operation": "notEmpty",
+                "singleValue": true
               }
             }
           ],
@@ -690,8 +691,8 @@
         },
         "options": {}
       },
-      "id": "w7008b-build-error-gate",
-      "name": "w7008b-build-error-gate",
+      "id": "w7008-error-branch",
+      "name": "w7008-error-branch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
@@ -700,15 +701,47 @@
       ]
     },
     {
-      "parameters": {},
-      "id": "w7-noop-build-error",
-      "name": "w7-noop-build-error",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w7008-error-edit-message (PRO-157)\n// Reached when w7008-build-mutation returns _build_error. Mirrors the\n// w7-picker-error-* pattern: surface the error to the operator on\n// Telegram instead of letting w7009-linear-mutate fire with a missing\n// mutation_body_obj.\nfunction esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\n\nconst data = $input.item.json;\nconst errMsg = data._build_error || 'unknown build error';\n\nconst text = '<b>\u26a0 W7 build error</b>\n'\n  + '<i>' + esc(data.issue_identifier || '?') + '</i>\n'\n  + '<code>' + esc(errMsg) + '</code>';\n\nconst telegram_error_body = {\n  chat_id: data.chat_id,\n  message_id: data.message_id,\n  text,\n  parse_mode: 'HTML',\n  reply_markup: { inline_keyboard: [] }\n};\n\nreturn { json: { ...data, telegram_error_body } };"
+      },
+      "id": "w7008-error-edit-message",
+      "name": "w7008-error-edit-message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
-        1800,
+        2000,
         300
       ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.telegram_error_body) }}",
+        "options": {}
+      },
+      "id": "w7008-error-edit",
+      "name": "w7008-error-edit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        300
+      ],
+      "continueOnFail": true
     },
     {
       "parameters": {
@@ -1471,7 +1504,7 @@
       "main": [
         [
           {
-            "node": "w7008b-build-error-gate",
+            "node": "w7008-error-branch",
             "type": "main",
             "index": 0
           }
@@ -1693,11 +1726,11 @@
         ]
       ]
     },
-    "w7008b-build-error-gate": {
+    "w7008-error-branch": {
       "main": [
         [
           {
-            "node": "w7-noop-build-error",
+            "node": "w7008-error-edit-message",
             "type": "main",
             "index": 0
           }
@@ -1705,6 +1738,17 @@
         [
           {
             "node": "w7009-linear-mutate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w7008-error-edit-message": {
+      "main": [
+        [
+          {
+            "node": "w7008-error-edit",
             "type": "main",
             "index": 0
           }
