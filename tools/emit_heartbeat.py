@@ -1,0 +1,85 @@
+"""
+emit_heartbeat.py — append a heartbeat row to data/cc_heartbeat_log.jsonl.
+
+Usage (from repo root):
+    python tools/emit_heartbeat.py \
+        --worker-id claude-code-1 \
+        --ticket-id PRO-XXX \
+        --step running_pre_commit \
+        [--branch dreighto/pro-xxx-...] \
+        [--last-file tests/test_x.py] \
+        [--stall-signal "awaiting_external: bugbot"] \
+        [--outputs path/a path/b]
+
+The file is append-only.  Never truncate, sort, or deduplicate it.
+Schema: PRO-180 (locked 2026-04-28, PROVISIONAL).
+"""
+
+import argparse
+import json
+import os
+import sys
+from datetime import UTC, datetime
+
+HEARTBEAT_LOG = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "data",
+    "cc_heartbeat_log.jsonl",
+)
+
+
+def emit(
+    worker_id: str,
+    ticket_id: str,
+    step: str,
+    branch: str | None = None,
+    last_file_written: str | None = None,
+    stall_signal: str | None = None,
+    outputs: list[str] | None = None,
+) -> None:
+    row = {
+        "ts": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "worker_id": worker_id,
+        "ticket_id": ticket_id,
+        "status": "IN_PROGRESS",
+        "step": step,
+        "branch": branch,
+        "last_file_written": last_file_written,
+        "stall_signal": stall_signal,
+        "outputs": outputs or [],
+    }
+    line = json.dumps(row, separators=(",", ":"))
+    os.makedirs(os.path.dirname(HEARTBEAT_LOG), exist_ok=True)
+    with open(HEARTBEAT_LOG, "a", encoding="utf-8") as fh:
+        fh.write(line + "\n")
+    print(f"[heartbeat] {line}", file=sys.stderr)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Emit a worker heartbeat row.")
+    parser.add_argument("--worker-id", required=True, help="Stable worker identifier")
+    parser.add_argument("--ticket-id", required=True, help="Linear ticket ID")
+    parser.add_argument("--step", required=True, help="Current task phase label")
+    parser.add_argument("--branch", default=None, help="Current git branch")
+    parser.add_argument(
+        "--last-file", default=None, dest="last_file", help="Most recently written file"
+    )
+    parser.add_argument(
+        "--stall-signal", default=None, dest="stall_signal", help="Stall signal string or omit"
+    )
+    parser.add_argument("--outputs", nargs="*", default=[], help="Artifact paths produced so far")
+    args = parser.parse_args()
+
+    emit(
+        worker_id=args.worker_id,
+        ticket_id=args.ticket_id,
+        step=args.step,
+        branch=args.branch,
+        last_file_written=args.last_file,
+        stall_signal=args.stall_signal,
+        outputs=args.outputs,
+    )
+
+
+if __name__ == "__main__":
+    main()

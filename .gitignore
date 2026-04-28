@@ -56,6 +56,9 @@ data/mcp_gateway_pending_writes.jsonl
 # n8n W4 dispatch DLQ runtime log (append-only; rotate via future GC ticket)
 data/dispatch_dlq.jsonl
 
+# Worker heartbeat liveness log (append-only; orchestrator stall detection — PRO-180)
+data/cc_heartbeat_log.jsonl
+
 # n8n W4 inbox runtime artifacts (prompts + receipts; .gitkeep is tracked)
 data/n8n_inbox/*.json
 data/n8n_inbox/*.result.json

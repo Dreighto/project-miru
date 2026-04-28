@@ -76,14 +76,15 @@ Source: locked 2026-04-25 after CC shipped 4 clean ticket fixes (PRO-60, PRO-65,
 
 ## Append-only data files — Hard Rule
 
-Four files in `data/` are strictly append-only. Never edit, never truncate, never sort, never deduplicate, never read-modify-write. Only `fs.appendFileSync` (or the equivalent strict-append shell `>>`) is allowed.
+Five files in `data/` are strictly append-only. Never edit, never truncate, never sort, never deduplicate, never read-modify-write. Only `fs.appendFileSync` (or the equivalent strict-append shell `>>`) is allowed.
 
 - `data/cc_completion_log.jsonl` — completion markers (tracked)
 - `data/routing_history.jsonl` — W2 routing decisions (gitignored)
 - `data/pending_callbacks.jsonl` — Telegram callback ledger (gitignored)
 - `data/dispatch_dlq.jsonl` — dispatch dead-letter queue (gitignored)
+- `data/cc_heartbeat_log.jsonl` — worker heartbeat / liveness signal (gitignored)
 
-Pre-commit hooks `trailing-whitespace` and `end-of-file-fixer` exclude `^data/.*\.jsonl$` so they cannot rewrite these files structurally (locked 2026-04-28 per PRO-159). If you find yourself wanting to weaken that exclude or add a hook that read-modify-writes any of the four: STOP, escalate to operator. The append-only invariant is enforced by `tests/test_jsonl_append_only_invariant.py` — that test failing means the contract is breaking.
+Pre-commit hooks `trailing-whitespace` and `end-of-file-fixer` exclude `^data/.*\.jsonl$` so they cannot rewrite these files structurally (locked 2026-04-28 per PRO-159). If you find yourself wanting to weaken that exclude or add a hook that read-modify-writes any of the five: STOP, escalate to operator. The append-only invariant is enforced by `tests/test_jsonl_append_only_invariant.py` — that test failing means the contract is breaking.
 
 Full root-cause history and rationale: `docs/n8n/WORKFLOW_MAP.md` (PRO-159 entry).
 
@@ -182,6 +183,26 @@ Every task must end with exactly one of:
 
 Plus a summary of what changed and what did not.
 
+### Stall classification (PROVISIONAL — promote to adopted after first validated use)
+
+Terminal states (above) cover task completion. Workers also signal stall conditions during a task using the four classes below. Sourced from Augment Code's published multi-agent failure taxonomy (PRO-178); flagged provisional until a real stall-recovery event in this project validates the schema.
+
+| Class                     | Worker emits                                                                                                                                    | Orchestrator response                                                                                                                             |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Transient**             | Heartbeat lapse past TTL (PRO-180) with no error and no terminal state. No worker emit required — orchestrator infers from heartbeat staleness. | Auto-unstick: branch hygiene, rebase-on-main, missing env key the orchestrator controls, ambiguous spec covered by locked design.                 |
+| **Ambiguous spec**        | `STATUS: INCONCLUSIVE` plus one specific question. Question MUST be a single concrete item, not "I'm not sure how to proceed."                  | Orchestrator checks the locked design (Linear ticket description). If covered → answer via Linear comment. If not covered → escalate to operator. |
+| **Dependency starvation** | `STATUS: BLOCKED_ON: <ticket_id>` (e.g. `BLOCKED_ON: PRO-180`). Worker stops, does not retry.                                                   | Orchestrator reroutes, resequences, or marks task as waiting. Not a stall — expected behavior in parallel-worker setups.                          |
+| **Human-required**        | `STATUS: ESCALATE: <category>` where category is one of `SECURITY`, `SCOPE_EXPANSION`, `DESIGN_CHANGE`, `IRREVERSIBLE_OP`, `REPEATED_FAILURE`.  | Orchestrator writes Linear comment, pings operator via Telegram, parks task.                                                                      |
+
+Rules:
+
+- Existing terminal states (CONFIRMED_WORKING / INCONCLUSIVE / FAILED) are unchanged. The new states (BLOCKED_ON, ESCALATE) are non-terminal stall signals — task continues once the block clears or operator decides.
+- For `INCONCLUSIVE` with an ambiguous-spec question: the question must be answerable in one Linear comment. If the worker needs more than one back-and-forth, escalate instead.
+- For `ESCALATE`: the category determines orchestrator behavior. `SECURITY` and `IRREVERSIBLE_OP` always go to operator immediately. `SCOPE_EXPANSION` may be filed as a follow-up Linear ticket and the in-scope work continued. `DESIGN_CHANGE` always goes to operator. `REPEATED_FAILURE` (same worker stalling on same task >2 times) always goes to operator.
+- `routing_decisions.outcome` enum (success / failure / partial / deferred / legacy) is sufficient — these stall signals are mid-task states, not terminal outcomes, so the existing outcome enum doesn't need expansion.
+
+Promotion criteria: first validated stall-recovery event in this project (orchestrator correctly classifies a real worker stall, takes the matching action, and the recovery succeeds) → promote section to "adopted" via the Lesson Promotion Discipline (Notion canon, 2026-04-28).
+
 ### Hygiene gate (locked 2026-04-25 per PRO-107)
 
 Tasks involving code changes are not complete until lint + format + schema validation pass locally before PR creation. Worker MUST run `pre-commit run` (default scope: staged files) and confirm green before opening a PR. Local hygiene gate runs lint, format, and schema validation. Pytest is enforced via CI on every PR (`.github/workflows/hygiene.yml`). Local pytest will be re-enabled once the test suite is clean — see PRO-109.
@@ -192,6 +213,42 @@ If hygiene fails:
 - If issues are pre-existing or out of scope: STOP, report the failures to operator, do NOT push a PR with known lint failures hoping CI will catch them.
 
 Bypass policy: `git commit --no-verify` is allowed only for emergency hotfixes. The bypass MUST be logged in the commit message (`HYGIENE BYPASS: <reason>`) and reported to operator. Legacy files (those not touched by the current PR) are not subject to retroactive lint enforcement. Hooks fire on changed files only.
+
+### Heartbeat emission (PROVISIONAL — promote after first validated stall-recovery use)
+
+Workers emit a heartbeat row to `data/cc_heartbeat_log.jsonl` during long-running tasks so the orchestrator can detect stalls without operator intervention. The file is append-only (gitignored) — same hard rules as the other five append-only files. Use `tools/emit_heartbeat.py` to write rows; do not hand-roll the append logic per-task.
+
+**Schema (one JSON object per line):**
+
+```jsonl
+{
+  "ts": "2026-04-28T08:12:00Z",
+  "worker_id": "claude-code-1",
+  "ticket_id": "PRO-XXX",
+  "status": "IN_PROGRESS",
+  "step": "running_pre_commit",
+  "branch": "dreighto/pro-xxx-...",
+  "last_file_written": "tests/test_x.py",
+  "stall_signal": null,
+  "outputs": []
+}
+```
+
+Field definitions:
+
+- `ts` (ISO 8601 UTC with `Z`) — heartbeat emit time.
+- `worker_id` (string) — stable per-worker identifier (e.g. `claude-code-1`).
+- `ticket_id` (string) — Linear ticket the worker is on.
+- `status` (enum) — `IN_PROGRESS` only. Terminal states go in `cc_completion_log.jsonl`.
+- `step` (string) — short label of current phase (e.g. `pre_flight`, `writing_tests`, `running_pre_commit`, `opening_pr`, `awaiting_bugbot`, `post_merge_cleanup`).
+- `branch` (string or null) — current git branch.
+- `last_file_written` (string or null) — most recently written/staged file.
+- `stall_signal` (string or null) — populated when the worker detects a likely stall (e.g. `"awaiting_external: bugbot"`, `"deny_rule_hit: <rule>"`, `"ambiguous_spec_question_pending"`). Null otherwise.
+- `outputs` (array of strings) — artifact paths produced so far. Used by dependent tickets.
+
+**Emit cadence:** at the start of each major phase, before any operation expected to take >60 s (CI wait, Bugbot wait), and on significant state changes (branch cut, PR opened).
+
+**Stall detection (orchestrator side):** if `now − max(heartbeat.ts for ticket_id) > 5 minutes` AND no terminal marker exists in `cc_completion_log.jsonl`, the worker is considered `STALLED`. Threshold is tunable; 5 min is the starting point. Source: PRO-180 (research-sourced, 2026-04-28).
 
 ## Craft Guides — load on demand
 
