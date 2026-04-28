@@ -9,8 +9,16 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
+      # Append-only jsonl files under data/ are NEVER rewritten by any tool.
+      # Stripping trailing whitespace or normalizing EOF is a read-modify-write
+      # truncation, which violates the strict append-only contract enforced by
+      # the CC Completion Ping watcher (PRO-159). cc_completion_log.jsonl is
+      # the only currently-tracked file in this set, but excluding the whole
+      # data/*.jsonl glob future-proofs the rule.
       - id: trailing-whitespace
+        exclude: ^data/.*\.jsonl$
       - id: end-of-file-fixer
+        exclude: ^data/.*\.jsonl$
       - id: check-merge-conflict
       - id: check-added-large-files
       - id: check-yaml
