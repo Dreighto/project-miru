@@ -74,6 +74,19 @@ If any of those fail: open the PR for operator review, do not self-merge.
 
 Source: locked 2026-04-25 after CC shipped 4 clean ticket fixes (PRO-60, PRO-65, PRO-72, PRO-68 + PRO-73) with consistent pre-flight discipline.
 
+## Append-only data files — Hard Rule
+
+Four files in `data/` are strictly append-only. Never edit, never truncate, never sort, never deduplicate, never read-modify-write. Only `fs.appendFileSync` (or the equivalent strict-append shell `>>`) is allowed.
+
+- `data/cc_completion_log.jsonl` — completion markers (tracked)
+- `data/routing_history.jsonl` — W2 routing decisions (gitignored)
+- `data/pending_callbacks.jsonl` — Telegram callback ledger (gitignored)
+- `data/dispatch_dlq.jsonl` — dispatch dead-letter queue (gitignored)
+
+Pre-commit hooks `trailing-whitespace` and `end-of-file-fixer` exclude `^data/.*\.jsonl$` so they cannot rewrite these files structurally (locked 2026-04-28 per PRO-159). If you find yourself wanting to weaken that exclude or add a hook that read-modify-writes any of the four: STOP, escalate to operator. The append-only invariant is enforced by `tests/test_jsonl_append_only_invariant.py` — that test failing means the contract is breaking.
+
+Full root-cause history and rationale: `docs/n8n/WORKFLOW_MAP.md` (PRO-159 entry).
+
 ## MCP Tool Usage Rules
 
 - Use MCP tools when they genuinely help the task
