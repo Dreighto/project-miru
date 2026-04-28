@@ -72,7 +72,23 @@ If any of those fail: open the PR for operator review, do not self-merge.
 - Force-push or destructive git operations (these are hard rules under access progression, not just merge policy)
 - This ticket itself (PR for PRO-76 falls in the operator-merge column — worker rule file change)
 
-Source: locked 2026-04-25 after CC shipped 4 clean ticket fixes (PRO-60, PRO-65, PRO-72, PRO-68 + PRO-73) with consistent pre-flight discipline.
+**Post-merge cleanup — worker responsibility (locked 2026-04-28 per PRO-180):**
+
+Whoever opened the PR is responsible for post-merge cleanup. The operator should NOT be cleaning up branches manually after merging.
+
+After a PR is merged (whether self-merged or operator-merged):
+
+1. The worker (or Claude Chat, if it owned the PR) checks out `main`.
+2. Pulls latest.
+3. Verifies the merged branch shows up under `git branch --merged main` (squash-merges may not — see PRO-157/PRO-159/PRO-160 pattern; safe to delete with `git branch -d` when remote tracking is gone).
+4. Runs `git branch -d <branch-name>` (lowercase `-d`, safe-delete only — never `-D`).
+5. Reports deletion. If anything looks off (branch not merged, working tree unexpectedly dirty, etc.): STOP and report.
+
+If operator merges via the GitHub UI and the worker is not present in that session, the next worker that picks up a ticket on `main` is responsible for noticing stale branches in their pre-flight and cleaning them up before cutting a new branch. Pre-flight already requires "branch does NOT exist locally or remotely" — a stale local branch from a merged PR violates that and must be deleted before proceeding.
+
+Operator should never have to ask a worker to clean up a branch. If you find yourself doing it, that's a discipline violation worth noting.
+
+Source: locked 2026-04-25 after CC shipped 4 clean ticket fixes (PRO-60, PRO-65, PRO-72, PRO-68 + PRO-73) with consistent pre-flight discipline. Post-merge cleanup rule added 2026-04-28 per PRO-180 retro.
 
 ## Append-only data files — Hard Rule
 
