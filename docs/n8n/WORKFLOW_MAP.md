@@ -156,9 +156,9 @@ W2 has two poll branches: an **unlabeled-poll branch** (picks up tickets with no
 
 When the operator taps Approve on a Telegram routing proposal, W7 logs the decision and generates a dispatch token, but **does NOT write the proposed worker label to the Linear issue**. W4 dispatch then validates that the worker label is present on the issue and aborts with `worker label "X" not in issue labels [...]`. Result: every ticket that goes through the unlabeled-poll branch fails dispatch on first approval. Manual workaround: operator (or Claude Chat via Linear MCP) adds the label before retry. Once labeled, the ticket falls into PRO-153's broken branch — double bug.
 
-### PRO-159 — cc_completion_log.jsonl append-only invariant violated (URGENT)
+### PRO-159 — cc_completion_log.jsonl append-only invariant (FIXED 2026-04-28)
 
-A guard exists that monitors `data/cc_completion_log.jsonl` for row-count regressions (it should be append-only). The guard fired during PRO-156's import on 2026-04-27 (24 → 22 rows). Root cause not yet identified — something in the PRO-156 PR's import or verification steps wrote to / truncated / rewrote the file. The guard is doing its job; the violator is unknown.
+A guard in the CC Completion Ping workflow monitors `data/cc_completion_log.jsonl` for row-count regressions. It fired during PRO-156 work on 2026-04-27 (`rows now=22, last_seen=24`). Root cause: of the four append-only files only `cc_completion_log.jsonl` is tracked in git; the unprotected `trailing-whitespace` and `end-of-file-fixer` pre-commit hooks therefore had it in scope, and any time the file was staged those hooks could read-modify-write the whole file (a truncation, not an append). Two transient-uncommitted appends were lost in this manner during PRO-156. **Fix (PRO-159):** both rewrite-style hooks now `exclude: ^data/.*\.jsonl$`, making the rewrite path structurally impossible. Regression test: `tests/test_jsonl_append_only_invariant.py` fails loudly if either exclude is removed. The two lost rows are unrecoverable — they were never committed and are absent from every git ref and stash.
 
 ### PRO-160 — CC Completion Ping watcher not idempotent (HIGH)
 
@@ -176,6 +176,6 @@ W2's Linear GraphQL query filters for `state: Todo` (or stricter). Tickets in `B
 
 ## Operational notes from 2026-04-27 session
 
-- **Append-only files in `data/`** (`cc_completion_log.jsonl`, `routing_history.jsonl`, `pending_callbacks.jsonl`, `dispatch_dlq.jsonl`) are guarded for invariant violations. Any write path that rewrites, truncates, deduplicates, or atomic-renames over these files will trigger the guard. Treat them as strictly append-only via `fs.appendFileSync`.
+- **Append-only files in `data/`** (`cc_completion_log.jsonl`, `routing_history.jsonl`, `pending_callbacks.jsonl`, `dispatch_dlq.jsonl`) are guarded for invariant violations. Any write path that rewrites, truncates, deduplicates, or atomic-renames over these files will trigger the guard. Treat them as strictly append-only via `fs.appendFileSync`. Pre-commit hooks that read-modify-write whole-file content (`trailing-whitespace`, `end-of-file-fixer`) explicitly exclude `^data/.*\.jsonl$` (PRO-159); never weaken those excludes.
 - **Memory layer (PRO-156) shipped 2026-04-27.** SQLite at `data/miru_memory.db`, 6 tables (`routing_decisions`, `agenda`, `decisions`, `worker_perf`, `stack_state`, `peer_review`), accessed via `mcp-server-sqlite` through the MCP gateway. JSONL writers in n8n still write to JSONL — migration to memory DB is a future ticket. Workers reading memory should query the SQLite DB; workers writing routing decisions still go through JSONL until parity is verified.
 - **W4 Dispatch Listener (PRO-83)** is live on host port 19100, HMAC-gated, spawning Claude Code / Codex / Gemini CLIs as detached children. Workflow id `TwRAHqoZqNhGRHKo`. This workflow is NOT yet documented in the Active Workflows section above — drift to fix in a follow-up.
