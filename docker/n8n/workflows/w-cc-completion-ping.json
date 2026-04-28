@@ -5,7 +5,10 @@
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "seconds", "secondsInterval": 60 }
+            {
+              "field": "seconds",
+              "secondsInterval": 60
+            }
           ]
         }
       },
@@ -13,30 +16,44 @@
       "name": "ccp001-schedule-trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [200, 300]
+      "position": [
+        200,
+        300
+      ]
     },
     {
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForAllItems",
-        "jsCode": "// ccp002-read-and-diff\n// Tail-read /miru-data/cc_completion_log.jsonl and compare row count to last\n// seen count stored in $getWorkflowStaticData('global').cc_completion_last_count.\n// Emits one item with {new_rows, current_count, regressed, last_count}.\n//\n// Restart-safe: n8n persists 'global' static data across container restarts when\n// the execution finishes successfully (no exceptions downstream).\n//\n// First-run init: when last_count is undefined (workflow never ran before), seed\n// it to current row count and emit empty new_rows. Avoids backfiring on every\n// historical row at first activation (covers BOOTSTRAP + any prior real markers).\n//\n// Regression handling: if current_count < last_count, the file appears truncated\n// or replaced. This violates the append-only convention. Emit regressed=true\n// so the downstream alert fires; do NOT update last_count (operator decides).\nconst fs = require('fs');\nconst PATH = '/miru-data/cc_completion_log.jsonl';\n\nconst staticData = $getWorkflowStaticData('global');\nconst lastCount = staticData.cc_completion_last_count;\nconst regressionAlerted = staticData.cc_completion_regression_alerted === true;\n\nlet content = '';\ntry {\n  content = fs.readFileSync(PATH, 'utf8');\n} catch (e) {\n  if (e && e.code === 'ENOENT') {\n    const missingRegressed = lastCount != null && lastCount > 0;\n    const shouldAlert = missingRegressed && !regressionAlerted;\n    if (shouldAlert) staticData.cc_completion_regression_alerted = true;\n    return [{ json: { new_rows: [], current_count: 0, regressed: shouldAlert, last_count: lastCount == null ? 0 : lastCount, _file_missing: true } }];\n  }\n  throw e;\n}\n\nconst rows = content.split('\\n').filter(line => line.trim().length > 0);\nconst currentCount = rows.length;\n\nif (lastCount == null) {\n  staticData.cc_completion_last_count = currentCount;\n  staticData.cc_completion_regression_alerted = false;\n  return [{ json: { new_rows: [], current_count: currentCount, regressed: false, last_count: currentCount, _init: true } }];\n}\n\nif (currentCount < lastCount) {\n  if (regressionAlerted) {\n    return [{ json: { new_rows: [], current_count: currentCount, regressed: false, last_count: lastCount } }];\n  }\n  staticData.cc_completion_regression_alerted = true;\n  return [{ json: { new_rows: [], current_count: currentCount, regressed: true, last_count: lastCount } }];\n}\n\nconst newRows = rows.slice(lastCount);\nstaticData.cc_completion_regression_alerted = false;\nstaticData.cc_completion_last_count = currentCount;\nreturn [{ json: { new_rows: newRows, current_count: currentCount, regressed: false, last_count: currentCount } }];"
+        "jsCode": "// ccp002-read-and-diff\n// Hash-set diff of /miru-data/cc_completion_log.jsonl.\n// State key: cc_completion_pinged_hashes (array of SHA-1 hex strings in workflow static data).\n// New rows = rows whose SHA-1 hash is not in the pinged set.\n//\n// Restart-safe: n8n persists 'global' static data across container restarts when\n// the execution finishes successfully (no exceptions downstream).\n//\n// State-wipe / first-run init: when pinged_hashes is empty/undefined AND file has rows,\n// seed the set with all current row hashes and emit no pings. Anti-spam guarantee —\n// historical rows never re-fire on workflow restart or static-data reset.\n//\n// Regression alert: fires ONCE (gated by cc_completion_regression_alerted) when\n// pinged_hashes is non-empty AND fewer than 50% of those hashes are present in the\n// current file. Clears automatically when >=50% are present again.\n//\n// ENOENT: missing file when pinged_hashes is non-empty triggers the regression alert.\n//\n// Note on best-effort hashing: new hashes are stored AFTER the diff is emitted.\n// If a downstream Telegram send fails, the next poll will retry the row because\n// its hash is not yet persisted. Trade-off: occasional duplicate sends are preferable\n// to silently dropping rows.\nconst fs = require('fs');\nconst crypto = require('crypto');\nconst PATH = '/miru-data/cc_completion_log.jsonl';\n\nfunction hashRow(line) {\n  return crypto.createHash('sha1').update(line.trim()).digest('hex');\n}\n\nconst staticData = ('global');\nlet pinnedHashes = staticData.cc_completion_pinged_hashes;\nif (!Array.isArray(pinnedHashes)) pinnedHashes = [];\nconst pinnedSet = new Set(pinnedHashes);\nconst regressionAlerted = staticData.cc_completion_regression_alerted === true;\n\nlet content = '';\ntry {\n  content = fs.readFileSync(PATH, 'utf8');\n} catch (e) {\n  if (e && e.code === 'ENOENT') {\n    const shouldAlert = pinnedSet.size > 0 && !regressionAlerted;\n    if (shouldAlert) staticData.cc_completion_regression_alerted = true;\n    return [{ json: { new_rows: [], current_count: 0, regressed: shouldAlert, last_count: pinnedSet.size, _file_missing: true } }];\n  }\n  throw e;\n}\n\nconst rows = content.split('\n').filter(line => line.trim().length > 0);\nconst currentCount = rows.length;\n\n// State-wipe init: pinged set empty but file has rows — seed silently, no pings.\nif (pinnedSet.size === 0 && currentCount > 0) {\n  staticData.cc_completion_pinged_hashes = rows.map(hashRow);\n  staticData.cc_completion_regression_alerted = false;\n  return [{ json: { new_rows: [], current_count: currentCount, regressed: false, last_count: 0, _init: true } }];\n}\n\n// Compute how many pinned hashes are still present in the current file.\nconst currentHashSet = new Set(rows.map(hashRow));\nlet presentCount = 0;\nfor (const h of pinnedSet) {\n  if (currentHashSet.has(h)) presentCount++;\n}\nconst presentRatio = pinnedSet.size > 0 ? presentCount / pinnedSet.size : 1;\nconst isRegressed = pinnedSet.size > 0 && presentRatio < 0.5;\n\nif (isRegressed) {\n  if (regressionAlerted) {\n    // Already alerted; suppress until recovery.\n    return [{ json: { new_rows: [], current_count: currentCount, regressed: false, last_count: pinnedSet.size } }];\n  }\n  staticData.cc_completion_regression_alerted = true;\n  return [{ json: { new_rows: [], current_count: currentCount, regressed: true, last_count: pinnedSet.size } }];\n}\n\n// Recovery: clear alert flag when >=50% of pinned hashes are present again.\nif (regressionAlerted) {\n  staticData.cc_completion_regression_alerted = false;\n}\n\n// Diff: new rows are those not yet hashed.\nconst newRows = rows.filter(line => !pinnedSet.has(hashRow(line)));\n\n// Store new hashes after diff (best-effort, see header comment).\nstaticData.cc_completion_pinged_hashes = [...pinnedHashes, ...newRows.map(hashRow)];\n\nreturn [{ json: { new_rows: newRows, current_count: currentCount, regressed: false, last_count: pinnedSet.size } }];"
       },
       "id": "ccp002-read-and-diff",
       "name": "ccp002-read-and-diff",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [400, 300]
+      "position": [
+        400,
+        300
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "rb1",
               "leftValue": "={{ $json.regressed }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -47,7 +64,10 @@
       "name": "ccp003-regressed-branch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [600, 300]
+      "position": [
+        600,
+        300
+      ]
     },
     {
       "parameters": {
@@ -59,7 +79,10 @@
       "name": "ccp004a-build-regression-msg",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [800, 200]
+      "position": [
+        800,
+        200
+      ]
     },
     {
       "parameters": {
@@ -68,7 +91,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -80,7 +106,10 @@
       "name": "ccp004b-send-regression",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1000, 200],
+      "position": [
+        1000,
+        200
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
@@ -94,7 +123,10 @@
       "name": "ccp005-split-rows",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
-      "position": [800, 400]
+      "position": [
+        800,
+        400
+      ]
     },
     {
       "parameters": {
@@ -106,18 +138,29 @@
       "name": "ccp006-parse-and-build",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1000, 400]
+      "position": [
+        1000,
+        400
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "sb1",
               "leftValue": "={{ $json._skip }}",
               "rightValue": false,
-              "operator": { "type": "boolean", "operation": "false", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -128,7 +171,10 @@
       "name": "ccp007-skip-branch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1200, 400]
+      "position": [
+        1200,
+        400
+      ]
     },
     {
       "parameters": {
@@ -137,7 +183,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -149,7 +198,10 @@
       "name": "ccp008-send-telegram",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1400, 400],
+      "position": [
+        1400,
+        400
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
@@ -160,35 +212,102 @@
       "name": "ccp-noop-skipped",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [1400, 560]
+      "position": [
+        1400,
+        560
+      ]
     }
   ],
   "connections": {
     "ccp001-schedule-trigger": {
-      "main": [[{"node": "ccp002-read-and-diff", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "ccp002-read-and-diff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "ccp002-read-and-diff": {
-      "main": [[{"node": "ccp003-regressed-branch", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "ccp003-regressed-branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "ccp003-regressed-branch": {
       "main": [
-        [{"node": "ccp004a-build-regression-msg", "type": "main", "index": 0}],
-        [{"node": "ccp005-split-rows", "type": "main", "index": 0}]
+        [
+          {
+            "node": "ccp004a-build-regression-msg",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ccp005-split-rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "ccp004a-build-regression-msg": {
-      "main": [[{"node": "ccp004b-send-regression", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "ccp004b-send-regression",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "ccp005-split-rows": {
-      "main": [[{"node": "ccp006-parse-and-build", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "ccp006-parse-and-build",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "ccp006-parse-and-build": {
-      "main": [[{"node": "ccp007-skip-branch", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "ccp007-skip-branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "ccp007-skip-branch": {
       "main": [
-        [{"node": "ccp008-send-telegram", "type": "main", "index": 0}],
-        [{"node": "ccp-noop-skipped", "type": "main", "index": 0}]
+        [
+          {
+            "node": "ccp008-send-telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "ccp-noop-skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },

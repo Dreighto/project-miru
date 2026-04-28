@@ -49,4 +49,12 @@ export default [
       globals: NODE_COMMONJS_GLOBALS,
     },
   },
+  // Node CommonJS test scripts (tests/w2, tests/w8, tests/test_*.js, etc.)
+  {
+    files: ['tests/**/*.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: NODE_COMMONJS_GLOBALS,
+    },
+  },
 ];
