@@ -194,6 +194,50 @@ Do not promote LLM routing to live until ALL are true:
 
 ---
 
+## V1 Logging Schema — Locked (PRO-200, 2026-04-29)
+
+All rows appended to `data/routing_history.jsonl` by the LLM routing block (T1+)
+**must** include the following fields in addition to the existing phase-1 fields.
+This is additive — do not remove or rename existing fields.
+
+```json
+{
+  "ticket_id": "<Linear ticket identifier, e.g. PRO-200>",
+  "synopsis_hash": "<sha256[:16] of ticket_id — stable cross-row identifier>",
+  "model_id": "<model name used, e.g. claude-haiku-4-5-20251001>",
+  "model_version": "<model version string or null if unknown>",
+  "timestamp": "<ISO 8601 UTC with Z suffix>",
+  "confidence_raw": "<float 0.0-1.0 raw model output — before any post-processing>",
+  "multi_pass_results": "<array of per-pass {worker, confidence} objects, or null if single-pass>",
+  "worker_proposed": "<worker the LLM block proposed before operator review>",
+  "worker_executed": "<worker that actually ran the task — null until post-dispatch>",
+  "operator_disposition": "<approve | override | triage | request_revision | null>",
+  "override_reason_tag": "<short slug if operator overrode, e.g. wrong_worker, scope_mismatch — else null>",
+  "latency_ms": "<integer milliseconds for the LLM call — null if fallback>",
+  "input_tokens": "<integer — null if not available>",
+  "output_tokens": "<integer — null if not available>",
+  "cost_usd": "<float — null if not calculable>",
+  "prompt_package_sha": "<sha256[:16] of the prompt template used — placeholder null until T-pkg lands>",
+  "w2_fallback_triggered": "<boolean — true if deterministic fallback fired instead of LLM>"
+}
+```
+
+### Field rules
+
+- `ticket_id` maps to `task_identifier` for Linear-sourced tasks; use `null` for synthetic/test rows.
+- `synopsis_hash` is `sha256(ticket_id)[:16]`. Use the same algorithm as `build_corpus.py`.
+- `confidence_raw` is the model's stated confidence before confidence-gate logic. Preserve it even when the gate forces a fallback.
+- `operator_disposition` is populated by the W7 callback writer when the operator taps a Telegram button.
+- `worker_executed` is populated by the dispatcher after the task is handed off. It may arrive in a separate row (same `trace_id`, `source: w7_callback_decided` or similar).
+- `prompt_package_sha` is a placeholder (`null`) until T-pkg (prompt package management) lands.
+- `w2_fallback_triggered: true` when the deterministic path fired because LLM confidence < gate threshold, timeout, or malformed JSON.
+
+### Additive only — hard rule
+
+Never remove, rename, or change the type of an existing field. New schema revisions are v2+, not replacements of v1. The corpus extractor and scoring script depend on stable field names.
+
+---
+
 ## Related Files
 
 | File                                                   | Relationship                                  |
