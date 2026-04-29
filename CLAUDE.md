@@ -247,6 +247,14 @@ Every task must end with exactly one of:
 
 Plus a summary of what changed and what did not.
 
+### Bugbot findings handling (CC) — see AGENTS.md
+
+Before declaring `CONFIRMED_WORKING` on any PR, CC must execute the Bugbot completion sequence
+defined in `AGENTS.md` (repo root). That sequence covers: polling for Bugbot check-run completion,
+categorizing findings by severity, auto-fixing Low/Medium (one iteration max), surfacing High
+findings and override-condition findings to the operator. Do not declare `CONFIRMED_WORKING` until
+Bugbot is clean or all findings have been addressed or surfaced.
+
 ### Stall classification (PROVISIONAL — promote to adopted after first validated use)
 
 Terminal states (above) cover task completion. Workers also signal stall conditions during a task using the four classes below. Sourced from Augment Code's published multi-agent failure taxonomy (PRO-178); flagged provisional until a real stall-recovery event in this project validates the schema.
