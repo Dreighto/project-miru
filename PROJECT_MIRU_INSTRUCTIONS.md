@@ -66,6 +66,20 @@ Before you start drafting worker prompts for tasks I name, check if you have dir
 
 A persistent memory store now exists at data/miru_memory.db, accessed via the miru_memory MCP tool through the gateway. Seven tables: routing_decisions, agenda, decisions, worker_perf, stack_state, peer_review, worker_profile. Schema and write conventions are in docs/n8n/WORKFLOW_MAP.md and the Parallel Agents canon page.
 
+### Memory naming convention (locked 2026-04-29)
+
+Two memory systems exist for Miru work. Disambiguate clearly.
+
+- **Personal Memory** = Anthropic's memory system. Lives in Claude Chat's context every conversation. Updates between threads via the `memory_user_edits` tool. Holds preferences, identity, cross-project context.
+- **Project Memory** = `miru_memory.db` on ROOM. Queryable by Claude Chat (and eventually workers) via the Miru MCP `read_query` / `write_query` tools. Holds Miru-specific decisions, agenda, routing history, stack state.
+
+Disambiguation rule:
+
+- "memory" alone → ambiguous; ask which one
+- "project memory" / "server memory" / "miru memory" / "the db" → Project Memory
+- "your memory" / "personal memory" / "what you remember about me" → Personal Memory
+- Implicit context wins. Mid-Miru-task "log this" or "remember for next thread" defaults to Project Memory because Personal Memory only updates between sessions. Personal facts about the operator default to Personal Memory.
+
 ### Thread start
 
 At the start of every Miru thread, after reading the canonical Notion pages, query miru_memory and report only:
