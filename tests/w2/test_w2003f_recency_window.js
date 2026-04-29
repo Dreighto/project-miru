@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // tests/w2/test_w2003f_recency_window.js
 //
-// PRO-208: Boundary-crossing regression test for w2003f-detect-manual-dispatch
-// 24h recency window addition.
+// PRO-208/PRO-211: Boundary-crossing regression test for w2003f-detect-manual-dispatch
+// 24h recency window + triage-capture-before-cutoff fix.
 //
 // PRO-189 pattern: loads jsCode from the live workflow JSON file on disk,
 // evals it via vm.Script to confirm it parses, then exercises the algorithm
@@ -322,6 +322,66 @@ const FIXTURES = [
         LABEL
       );
       return r && r.should_emit_dispatch === true;
+    },
+  },
+  // PRO-211: triage row older than 24h must still set triagedFirst + priorTriageTraceId
+  {
+    id: 'L-old-triage-row-captures-correlation',
+    name: 'triage row 30h ago → triaged_first=true, trace reused, should_emit=true (PRO-211 fix)',
+    run: () => {
+      const TRIAGE_TRACE = 'triage-trace-pro-191';
+      const r = runNode(
+        [],
+        [
+          {
+            task_id: ISSUE_ID,
+            outcome: 'triage',
+            timestamp: hoursAgo(30),
+            trace_id: TRIAGE_TRACE,
+          },
+        ],
+        ISSUE_ID,
+        LABEL
+      );
+      return (
+        r &&
+        r.should_emit_dispatch === true &&
+        r.triaged_first === true &&
+        r.trace_id === TRIAGE_TRACE
+      );
+    },
+  },
+  // PRO-211: decided-outcome row older than 24h must NOT block dedupe (only triage captured)
+  {
+    id: 'M-old-triage-plus-old-decided-emits',
+    name: 'triage row 30h ago + dispatched row 26h ago → triaged_first=true, should_emit=true (PRO-211)',
+    run: () => {
+      const TRIAGE_TRACE = 'triage-trace-boundary';
+      const r = runNode(
+        [],
+        [
+          {
+            task_id: ISSUE_ID,
+            outcome: 'triage',
+            timestamp: hoursAgo(30),
+            trace_id: TRIAGE_TRACE,
+          },
+          {
+            task_id: ISSUE_ID,
+            outcome: 'dispatched',
+            timestamp: hoursAgo(26),
+            trace_id: 'old-dispatch-trace',
+          },
+        ],
+        ISSUE_ID,
+        LABEL
+      );
+      return (
+        r &&
+        r.should_emit_dispatch === true &&
+        r.triaged_first === true &&
+        r.trace_id === TRIAGE_TRACE
+      );
     },
   },
 ];
