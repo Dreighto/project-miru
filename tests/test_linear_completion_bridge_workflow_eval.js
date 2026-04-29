@@ -429,6 +429,29 @@ test('wlcb010 jsonBody gates state move on status === CONFIRMED_WORKING', () => 
   );
 });
 
+test('wlcb010 jsonBody reads from wlcb008-resolve-ids, not $json (Bugbot regression)', () => {
+  // Regression guard for Bugbot finding on PR #39 commit 21db3c4d:
+  // wlcb010 runs AFTER wlcb009-post-comment (an HTTP request node). $json at
+  // wlcb010's input is the Linear API response from wlcb009, NOT the resolved
+  // data from wlcb008. Reading $json.status / $json._in_review_state_id would
+  // always be undefined, causing the gating expression to evaluate to no-op
+  // and the state move to NEVER fire in production.
+  // Fix: explicitly reference $('wlcb008-resolve-ids').item.json.
+  const n010 = wf.nodes.find((n) => n.id === 'wlcb010-move-in-review');
+  const body = n010.parameters.jsonBody;
+  assert.ok(
+    body.includes("$('wlcb008-resolve-ids').item.json"),
+    "wlcb010 must read state via $('wlcb008-resolve-ids').item.json, not bare $json"
+  );
+  // Hard guard: bare $json must not appear at all in the gating expression.
+  // (The whole jsonBody expression must reference the named node selector.)
+  const gatingHalf = body.split('?')[0]; // condition portion before the ternary
+  assert.ok(
+    !gatingHalf.match(/\$json\./),
+    'wlcb010 gating expression must not use bare $json (would read HTTP response)'
+  );
+});
+
 // ---- summary ----
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);

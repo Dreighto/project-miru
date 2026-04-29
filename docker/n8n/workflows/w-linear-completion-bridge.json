@@ -211,7 +211,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ ($json._linear_skip || $json._in_review_state_id == null || $json.status !== 'CONFIRMED_WORKING') ? JSON.stringify({query:'query{__typename}'}) : JSON.stringify({ query: 'mutation LCBStateMove($id: String!, $stateId: String!) { issueUpdate(id: $id, input: { stateId: $stateId }) { success } }', variables: { id: $json._issue_id, stateId: $json._in_review_state_id } }) }}",
+        "jsonBody": "={{ ($('wlcb008-resolve-ids').item.json._linear_skip || $('wlcb008-resolve-ids').item.json._in_review_state_id == null || $('wlcb008-resolve-ids').item.json.status !== 'CONFIRMED_WORKING') ? JSON.stringify({query:'query{__typename}'}) : JSON.stringify({ query: 'mutation LCBStateMove($id: String!, $stateId: String!) { issueUpdate(id: $id, input: { stateId: $stateId }) { success } }', variables: { id: $('wlcb008-resolve-ids').item.json._issue_id, stateId: $('wlcb008-resolve-ids').item.json._in_review_state_id } }) }}",
         "options": {}
       },
       "id": "wlcb010-move-in-review",
