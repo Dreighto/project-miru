@@ -503,6 +503,74 @@
       "typeVersion": 4.2,
       "position": [3800, 400],
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linear.app/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linearApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ query: 'query W4StatesLookup($teamId: String!) { team(id: $teamId) { states { nodes { id name type } } } }', variables: { teamId: 'f9d6193c-4572-40a9-b834-c408439f1aa1' } }) }}",
+        "options": {}
+      },
+      "id": "w4040-fetch-team-states",
+      "name": "w4040-fetch-team-states",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4000, 100],
+      "credentials": {
+        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4041-resolve-in-progress (PRO-196)\n// Extract the 'In Progress' state from w4040 team states response.\n// Match by name, not type — both 'In Progress' and 'In Review' have type='started'.\n// Sets _state_move_skip=true if state not found so w4042 becomes a no-op.\nconst prior = $('w4027-update-pending-dispatched').item.json;\nconst resp = $input.item.json;\n\nconst data = (resp && resp.data) || {};\nconst states = (data.team && data.team.states && data.team.states.nodes) || [];\nconst inProgress = states.find(s => s.name === 'In Progress');\n\nif (!inProgress) {\n  return { json: { ...prior, _state_move_skip: true, _state_move_err: 'no In Progress state found in team states' } };\n}\n\nreturn { json: { ...prior, _state_move_skip: false, _in_progress_state_id: inProgress.id } };"
+      },
+      "id": "w4041-resolve-in-progress",
+      "name": "w4041-resolve-in-progress",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4200, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.linear.app/graphql",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "linearApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json._state_move_skip ? JSON.stringify({query:'query{__typename}'}) : JSON.stringify({ query: 'mutation W4ToInProgress($id: String!, $stateId: String!) { issueUpdate(id: $id, input: { stateId: $stateId }) { success } }', variables: { id: $json.issue_id, stateId: $json._in_progress_state_id } }) }}",
+        "options": {}
+      },
+      "id": "w4042-move-in-progress",
+      "name": "w4042-move-in-progress",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [4400, 100],
+      "credentials": {
+        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+      },
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000
     }
   ],
   "connections": {
@@ -578,6 +646,15 @@
     },
     "w4026-edit-success": {
       "main": [[{"node": "w4027-update-pending-dispatched", "type": "main", "index": 0}]]
+    },
+    "w4027-update-pending-dispatched": {
+      "main": [[{"node": "w4040-fetch-team-states", "type": "main", "index": 0}]]
+    },
+    "w4040-fetch-team-states": {
+      "main": [[{"node": "w4041-resolve-in-progress", "type": "main", "index": 0}]]
+    },
+    "w4041-resolve-in-progress": {
+      "main": [[{"node": "w4042-move-in-progress", "type": "main", "index": 0}]]
     },
     "w4030-write-dlq": {
       "main": [[{"node": "w4031-edit-failure", "type": "main", "index": 0}]]
