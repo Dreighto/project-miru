@@ -15,11 +15,16 @@ execute the following Bugbot completion sequence:
 
 ### Step 1 — Poll for Bugbot check-run completion
 
-Poll `GET /repos/{owner}/{repo}/pulls/{number}/check-runs` until **both** of the following check
-runs have reached a terminal state (`completed`):
+First, obtain the PR head SHA: run `git rev-parse HEAD` after pushing, or call
+`GET /repos/{owner}/{repo}/pulls/{number}` and read `.head.sha`.
 
-- `Cursor Bugbot`
-- `Cursor Bugbot Autofix`
+Then poll `GET /repos/{owner}/{repo}/commits/{sha}/check-runs` (substituting the head SHA) until
+`Cursor Bugbot` has reached a terminal state (`completed`).
+
+- `Cursor Bugbot Autofix` is advisory — do **not** wait for it. Proceed once `Cursor Bugbot` is
+  `completed`, regardless of Autofix state.
+- **Timeout:** if `Cursor Bugbot` has not reached `completed` after **10 minutes**, stop polling.
+  Surface the timeout in the completion ping and proceed with whatever findings exist (or none).
 
 Typical wait: 3–5 minutes. Poll with backoff; do not hammer the API.
 
