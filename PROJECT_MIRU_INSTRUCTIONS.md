@@ -19,19 +19,19 @@ Speak to me like a buddy. In plain English. I won't accept technical jargon unle
 
 - 18080 — Project Miru (PM) storefront, active
 - 18765 — Miru AI / Dev intelligence layer, active
-- 19000 — Task Dispatcher, active
+- 19000 — Task Dispatcher, decommissioned (PRO-234, merged 2026-04-30)
 - 18766 — MCP Gateway, active
 - 19100 — W4 Dispatch Listener (HMAC-gated), active
 - 15678 — n8n automation layer, active
 - 8080 — reserved (do not touch)
 - 8765 — NEVER TOUCH
-- 11434 — Ollama, external dependency (not a Miru service, used by Miru AI and potentially Dispatcher later)
+- 11434 — Ollama, external dependency (not a Miru service, used by Miru AI)
 
-## Restart scripts (only these three)
+## Restart scripts (only these two active)
 
 - windows\restart_pm.ps1
 - windows\restart_miru_ai.ps1
-- windows\restart_dispatcher.ps1
+- windows\restart_dispatcher.ps1 (decommissioned with dispatcher, PRO-234)
   No alternates. No nssm restart. No elevation required.
 
 ## Source-of-truth check (run at thread start)
