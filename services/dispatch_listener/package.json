@@ -5,7 +5,8 @@
   "description": "Miru W4 Dispatch Listener — host webhook service that spawns claude/gemini/codex on HMAC-signed POST.",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test": "node --test test/*.test.js"
   },
   "engines": {
     "node": ">=20"

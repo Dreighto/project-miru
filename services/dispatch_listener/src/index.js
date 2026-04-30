@@ -13,6 +13,7 @@ const { isAllowed, ALLOWLIST, MISSING_BINARIES, MISSING_DEBUG } = require('./all
 const { tryReadReceipt, writePlaceholderReceipt, writeTerminalReceipt } = require('./receipt');
 const { writeDlqEntry } = require('./dlq');
 const { spawnWorker } = require('./spawn');
+const { leaseSlot, releaseSlot, getLeaseByTraceId } = require('./worktree');
 
 const PORT = 19100;
 const BIND_HOST = '127.0.0.1';
@@ -91,6 +92,8 @@ function sweepOrphanedReceipts() {
           stderrTail: 'listener restarted while child was in flight',
           errorClass: 'listener_restarted',
         });
+        const orphanSlot = getLeaseByTraceId(traceId);
+        if (orphanSlot) releaseSlot(orphanSlot);
       } catch (err) {
         log.error('orphan_receipt_dlq_failed', { trace_id: traceId, error: err.message });
       }
@@ -191,6 +194,24 @@ app.post(
       return res.status(409).json({ error: 'already_dispatched' });
     }
 
+    const slotPath = leaseSlot(traceId, worker);
+    if (slotPath === null) {
+      log.warn('no_worktree_available', { trace_id: traceId, worker });
+      try {
+        writeDlqEntry({
+          traceId,
+          worker,
+          promptPath,
+          exitCode: null,
+          stderrTail: 'no worktree slot available',
+          errorClass: 'no_worktree_available',
+        });
+      } catch (err) {
+        log.error('dlq_write_failed', { error: err.message });
+      }
+      return res.status(503).json({ error: 'no_worktree_available' });
+    }
+
     const promptAbs = path.isAbsolute(promptPath) ? promptPath : path.join(REPO_ROOT, promptPath);
     let promptText;
     try {
@@ -203,6 +224,7 @@ app.post(
       }
       promptText = promptDoc.prompt;
     } catch (err) {
+      releaseSlot(slotPath);
       log.warn('prompt_read_failed', { trace_id: traceId, error: err.message });
       try {
         writeDlqEntry({
@@ -223,6 +245,7 @@ app.post(
     try {
       writePlaceholderReceipt({ inboxDir: INBOX_DIR, traceId, worker, startedAt });
     } catch (err) {
+      releaseSlot(slotPath);
       if (err.code === 'EEXIST') {
         log.info('already_dispatched_placeholder_race', { trace_id: traceId });
         return res.status(409).json({ error: 'already_dispatched' });
@@ -238,10 +261,12 @@ app.post(
         worker,
         promptText,
         timeoutSeconds,
-        cwd: REPO_ROOT,
+        cwd: slotPath,
         traceLogDir: TRACE_LOG_DIR,
+        onDone: () => releaseSlot(slotPath),
       });
     } catch (err) {
+      releaseSlot(slotPath);
       log.error('spawn_failed', { trace_id: traceId, error: err.message });
       try {
         writeTerminalReceipt({
