@@ -89,6 +89,13 @@ class GatewayConfig:
     # PRO-187: orchestrator-scoped git commit/push tool
     git_write_enabled: bool = False
 
+    # PRO-225: Perplexity search
+    perplexity_api_key: str | None = None
+    perplexity_enabled: bool = False
+
+    # PRO-225: service restart tools
+    restart_tools_enabled: bool = False
+
     # PRO-137 rate limits (calls per 60s sliding window, per category)
     rate_limit_by_category: dict[str, int] = field(default_factory=dict)
 
@@ -234,16 +241,22 @@ def _workers_yaml_path(fs_root: Path) -> Path | None:
 
 
 def _default_docs_write_globs() -> tuple[str, ...]:
-    """PRO-123 default positive allowlist (repo-relative posix globs)."""
-    roots = ("tools", "services", "pm", "miru_ai", "dispatcher", "docker", "windows")
-    readme_globs = tuple(f"{r}/**/README.md" for r in roots)
+    """PRO-123/PRO-225 default positive allowlist (repo-relative posix globs)."""
     return (
         "*.md",
         "docs/**/*.md",
         "docs/**/*.txt",
-        *readme_globs,
+        "tools/**/*.md",
+        "services/**/*.md",
+        "pm/**/*.md",
+        "miru_ai/**/*.md",
+        "dispatcher/**/*.md",
+        "docker/**/*.md",
+        "windows/**/*.md",
+        "skills/**/*.md",
         ".cursor/rules/*.md",
         ".claude/**/*.md",
+        "data/config/*",
     )
 
 
@@ -308,6 +321,10 @@ def load() -> GatewayConfig:
 
     git_write_enabled = _truthy_env("MIRU_GIT_WRITE_ENABLED")
 
+    perplexity_api_key = os.environ.get("PERPLEXITY_API_KEY", "").strip() or None
+    perplexity_enabled = bool(perplexity_api_key)
+    restart_tools_enabled = _truthy_env("MIRU_RESTART_TOOLS_ENABLED")
+
     return GatewayConfig(
         host=host,
         port=port,
@@ -341,4 +358,7 @@ def load() -> GatewayConfig:
         memory_enabled=memory_enabled,
         memory_db_path=memory_db_path,
         git_write_enabled=git_write_enabled,
+        perplexity_api_key=perplexity_api_key,
+        perplexity_enabled=perplexity_enabled,
+        restart_tools_enabled=restart_tools_enabled,
     )

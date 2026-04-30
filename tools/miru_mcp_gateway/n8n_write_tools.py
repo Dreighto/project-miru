@@ -961,6 +961,28 @@ def n8n_delete_tag(tag_id: str, ctx: Any = None) -> str:
         raise
 
 
+def n8n_trigger_w2_route(
+    issue_id: str,
+    trace_id_predecessor: str | None = None,
+    reason: str | None = None,
+    ctx: Any = None,
+) -> str:
+    """Trigger the W2 worker-selection router webhook for manual dispatch.
+
+    ``issue_id`` is the Linear ticket ID (e.g. 'PRO-225'). ``trace_id_predecessor``
+    links this routing decision to a prior trace. ``reason`` is a short plain-English
+    note explaining why this manual trigger was needed.
+    """
+    if not issue_id or not issue_id.strip():
+        raise stdio_mcp.McpError("n8n_write: issue_id is required", -32602)
+    payload: dict[str, Any] = {"issue_id": issue_id.strip()}
+    if trace_id_predecessor:
+        payload["trace_id_predecessor"] = trace_id_predecessor
+    if reason:
+        payload["reason"] = reason
+    return n8n_trigger_webhook("w2-route", payload, ctx)
+
+
 TOOL_FUNCTIONS = (
     n8n_activate_workflow,
     n8n_deactivate_workflow,
@@ -983,6 +1005,7 @@ TOOL_FUNCTIONS = (
     n8n_create_tag,
     n8n_update_tag,
     n8n_delete_tag,
+    n8n_trigger_w2_route,
 )
 
 
