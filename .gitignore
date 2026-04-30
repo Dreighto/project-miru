@@ -64,6 +64,9 @@ data/n8n_inbox/*.json
 data/n8n_inbox/*.result.json
 !data/n8n_inbox/.gitkeep
 
+# Build artifacts: pipeline log JSONs (regenerated per run; previously bleeding into commits)
+data/**/*_log.json
+
 # Dispatcher runtime databases (job history — regenerated at startup)
 dispatcher/data/jobs.db
 windows/dispatcher_jobs.db
