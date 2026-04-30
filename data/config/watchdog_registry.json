@@ -1,0 +1,70 @@
+{
+  "version": "1.0.0",
+  "description": "n8n loop watchdog configuration — maps workflow IDs to monitoring profiles",
+  "healthchecks_ping_url": "https://hc-ping.com/7c0c6906-a330-4d7f-b438-254bfd2d25ad",
+  "alert_cooldown_minutes": 60,
+  "dedup_safety_rails": {
+    "max_ticket_age_hours": 48,
+    "skip_if_operator_comments": true
+  },
+  "workflows": {
+    "0W7Tt6WUv5G6Pc3x": {
+      "name": "DLQ Watcher",
+      "class": "periodic",
+      "expected_interval_seconds": 30,
+      "silence_threshold_multiplier": 4,
+      "notes": "Polls dispatch_dlq.jsonl every 30s. Very chatty — 2880 executions/day."
+    },
+    "UCM67hqZR74Fz8US": {
+      "name": "CC Completion Ping",
+      "class": "periodic",
+      "expected_interval_seconds": 60,
+      "silence_threshold_multiplier": 4,
+      "notes": "Watches cc_completion_log.jsonl every 60s."
+    },
+    "6aCG6L5Z4VvqWogq": {
+      "name": "W2 Worker Selection Router",
+      "class": "periodic",
+      "expected_interval_seconds": 180,
+      "silence_threshold_multiplier": 3,
+      "notes": "Polls Linear every 3 min for Todo tickets."
+    },
+    "9hRoVyMWkbi0Wba5": {
+      "name": "W2 Pending-Approval Watchdog",
+      "class": "periodic",
+      "expected_interval_seconds": 300,
+      "silence_threshold_multiplier": 3,
+      "notes": "Re-mints expired Telegram buttons. Estimated ~5 min cadence."
+    },
+    "tFEbP14EnGQ69YZn": {
+      "name": "W1 Planning Intake",
+      "class": "event_driven",
+      "max_consecutive_failures": 3,
+      "notes": "Fires on Notion page creation. Known 504 pattern (PRO-191)."
+    },
+    "l5wzFuWnJ2zSoMM2": {
+      "name": "W1 Error Handler",
+      "class": "event_driven",
+      "max_consecutive_failures": 3,
+      "notes": "Global error handler. Fires on any workflow error."
+    },
+    "rJiLlMFKQh8t4Y9K": {
+      "name": "W7 Telegram Callback Handler",
+      "class": "event_driven",
+      "max_consecutive_failures": 3,
+      "notes": "Fires on Telegram button press (Approve/Override/Triage)."
+    },
+    "TwRAHqoZqNhGRHKo": {
+      "name": "W4 Dispatch Button Handler",
+      "class": "event_driven",
+      "max_consecutive_failures": 3,
+      "notes": "HMAC-gated webhook on port 19100. Fires on dispatch."
+    },
+    "0pvjt2ooD0VEWWgE": {
+      "name": "MCP n8n Write Approval Notify",
+      "class": "event_driven",
+      "max_consecutive_failures": 3,
+      "notes": "Fires when MCP gateway attempts a gated n8n write."
+    }
+  }
+}
