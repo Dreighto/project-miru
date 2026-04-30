@@ -185,9 +185,20 @@ A guard in the CC Completion Ping workflow monitors `data/cc_completion_log.json
 
 The CC Completion Ping watcher (workflow `UCM67hqZR74Fz8US`) previously tracked "new" markers via last-seen line count. When the JSONL file was rewritten or regressed, the watcher re-pinged every remaining marker — including markers from days-ago tickets and historical test markers. Symptom: false-positive Telegram completion storm (~15 pings in seconds) when the JSONL was touched in any non-pure-append way. **Fix (PRO-160):** `ccp002-read-and-diff` replaced count-based diff with SHA-1 hash-set diff. State lives in `cc_completion_pinged_hashes` (workflow static data). State-wipe protection seeds the set silently on first run or reset — no historical storms. Regression alert threshold changed to 50% hash-presence check (idempotent regardless of file rewrites). Best-effort persistence: hashes stored after emit, so a failed Telegram send yields a retry rather than a silent drop. `tests/test_cc_completion_ping_diff.js` (8 cases) verifies the algorithm.
 
-### PRO-126 — W7 mutation_body_obj earlier bug (open)
+### PRO-126 — W7 mutation_body_obj undefined → "undefined" is not valid JSON (FIXED 2026-04-30)
 
-Earlier W7 bug related to how the Linear GraphQL mutation body is constructed. Diagnostic context captured in the ticket; root cause may share lineage with PRO-157.
+Both `w7008-build-mutation` and `w7-picker-build-mutation` (Code nodes) had heterogeneous return shapes: error early-returns set `_build_error` (string) but left `mutation_body_obj` undefined; success returns set `mutation_body_obj` but left `_build_error` undefined. Downstream IF nodes (`w7008-error-branch`, `w7-picker-error-branch`) tested `_build_error` with operator `string.notEmpty` + `typeValidation: strict`. Strict-string validation on undefined is non-deterministic across n8n versions — could let a no-mutation-body item reach the HTTP node, where `={{ JSON.stringify($json.mutation_body_obj) }}` resolved to the literal string `"undefined"` and the n8n HTTP parser threw `"undefined" is not valid JSON`. Production hit in execution 3242 on 2026-04-27.
+
+**Fix (PRO-126, 2026-04-30):** make the return shape fully uniform across both Code nodes. Final contract — both nodes return EXACTLY one of:
+
+- error: `{ ...data, _build_error: '<msg>',  mutation_body_obj: null }`
+- success: `{ ...data, _build_error: '',       mutation_body_obj: {...}, ... }`
+
+`_build_error` is always a string (empty string on success, non-empty on error). `mutation_body_obj` is always either an object or `null` — never undefined. The IF's `string.notEmpty` operator now behaves deterministically on every code path. Defense in depth: if any future change misroutes an error item to the HTTP node, the body resolves to `"null"` (valid JSON, Linear API rejects clearly) rather than the parser-breaking `"undefined"`. No node connections or IF conditions changed.
+
+Regression test: `tests/w7/test_w7_pro126_mutation_body_consistency.js` (36 cases, boundary-crossing per PRO-189). Patch script: `tools/patch_w7_pro126.py` (idempotent — rerunnable; skips already-applied patches).
+
+**Contract for future Code nodes that feed an IF + HTTP-body chain:** match this shape. Always set both the error sentinel AND the payload field. Never leave either undefined.
 
 ### PRO-196 — Linear Completion Bridge v1 known limitations (shipped 2026-04-29)
 
