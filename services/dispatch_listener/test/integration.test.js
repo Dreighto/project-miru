@@ -10,7 +10,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const express = require('express');
 
-const { leaseSlot, releaseSlot } = require('../src/worktree');
+const { leaseSlot, releaseSlot, WORKTREE_SLOTS } = require('../src/worktree');
 
 function makeTestServer() {
   const app = express();
@@ -50,11 +50,9 @@ function post(port, path, body) {
   });
 }
 
-test('returns 503 with no_worktree_available when both slots are leased', async (t) => {
-  const slot1 = leaseSlot('pre-lease-1', 'claude-code');
-  const slot2 = leaseSlot('pre-lease-2', 'claude-code');
-  assert.ok(slot1, 'pre-lease slot1 should succeed');
-  assert.ok(slot2, 'pre-lease slot2 should succeed');
+test('returns 503 with no_worktree_available when all slots are leased', async (t) => {
+  const preLeased = WORKTREE_SLOTS.map((_, i) => leaseSlot(`pre-lease-${i}`, 'claude-code'));
+  assert.ok(preLeased.every(Boolean), 'all pre-leases should succeed');
 
   const server = makeTestServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -66,8 +64,7 @@ test('returns 503 with no_worktree_available when both slots are leased', async 
     assert.strictEqual(resp.body.error, 'no_worktree_available');
   } finally {
     await new Promise((resolve) => server.close(resolve));
-    releaseSlot(slot1);
-    releaseSlot(slot2);
+    for (const slot of preLeased) releaseSlot(slot);
   }
 });
 

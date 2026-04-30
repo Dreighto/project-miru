@@ -21,13 +21,15 @@ test('two concurrent leases return different slots', () => {
   releaseSlot(slot2);
 });
 
-test('third lease returns null when both slots occupied', () => {
-  const slot1 = leaseSlot('trace-c1', 'claude-code');
-  const slot2 = leaseSlot('trace-c2', 'claude-code');
-  const slot3 = leaseSlot('trace-c3', 'claude-code');
-  assert.strictEqual(slot3, null);
-  releaseSlot(slot1);
-  releaseSlot(slot2);
+test('lease beyond capacity returns null', () => {
+  const leased = [];
+  for (let i = 0; i < WORKTREE_SLOTS.length; i++) {
+    leased.push(leaseSlot(`trace-c${i}`, 'claude-code'));
+  }
+  assert.ok(leased.every(Boolean), 'all slots should lease successfully');
+  const overflow = leaseSlot('trace-overflow', 'claude-code');
+  assert.strictEqual(overflow, null);
+  for (const slot of leased) releaseSlot(slot);
 });
 
 test('releaseSlot frees a slot so a subsequent lease succeeds', () => {
