@@ -1,29 +1,29 @@
 #!/usr/bin/env python3
 """
-PRO-126: Fix w7008-build-mutation + w7-picker-build-mutation return-shape
-inconsistency that lets undefined mutation_body_obj reach the HTTP node.
+PRO-126: Make w7008-build-mutation + w7-picker-build-mutation return shapes
+fully uniform.
 
-Root cause: both Code nodes have heterogeneous return shapes:
-  - error early-returns: `{ ...data, _build_error: 'msg' }`  (no mutation_body_obj)
-  - success return:      `{ ...data, ..., mutation_body_obj }` (no _build_error)
+Two-part fix (one PR, two commits):
 
-Downstream IF (w7008-error-branch / w7-picker-error-branch) tests
-`_build_error` with string.notEmpty + typeValidation: strict. On the success
-path, `_build_error` is undefined, and strict-string validation on undefined
-is non-deterministic across n8n versions — under some conditions the IF
-routes wrong and an item with no mutation_body_obj reaches the HTTP node,
-producing the literal string "undefined" as the JSON body and the n8n
-parser throws `"undefined" is not valid JSON`.
+  Part 1: success path always sets `_build_error: ''` (string, not undefined).
+          Makes the downstream IF (string.notEmpty + typeValidation: strict)
+          behave deterministically — fixes the "undefined" is not valid JSON
+          failure observed in execution 3242 (2026-04-27).
 
-Fix: make `_build_error` always be a string. Empty string on success,
-non-empty string on error. The IF's strict-string notEmpty operator now
-behaves deterministically because the value is always a string.
+  Part 2: error early-returns also set `mutation_body_obj: null`. Defense in
+          depth: if any future change misroutes an error item to the HTTP
+          node, we send `null` (Linear API rejects with a clear error)
+          rather than the literal string "undefined" (n8n parser throws).
 
-Concretely, this patches the SUCCESS return of each Code node to include
-`_build_error: ''`. The error early-returns already have `_build_error`
-set to a non-empty string and don't need changes (mutation_body_obj
-remaining absent on those paths is fine — the IF will correctly route
-them to the error path).
+Final contract — both Code nodes return EXACTLY one of:
+  - error:   { ...data, _build_error: '<msg>',  mutation_body_obj: null }
+  - success: { ...data, _build_error: '',       mutation_body_obj: {...}, ... }
+
+`_build_error` is always a string. `mutation_body_obj` is always an object
+or null — never undefined. Downstream IF tests `_build_error notEmpty`;
+strict-string typing now holds for every code path.
+
+Idempotent: rerunnable; patches already applied are skipped.
 """
 
 import json
@@ -31,9 +31,10 @@ import sys
 
 WORKFLOW_PATH = "docker/n8n/workflows/w7-telegram-callback-handler.json"
 
-# Each entry: (node_name, old_substring_in_jsCode, new_substring)
-# Match is exact-substring, must be unique within the jsCode.
+# Each entry: (node_name, old_substring, new_substring).
+# Match must be unique inside the named node's jsCode.
 PATCHES = [
+    # ── Part 1: success-path returns ─────────────────────────────────────────
     (
         "w7008-build-mutation",
         "return { json: { ...data, action_label: actionLabel, decided_at, next_label_ids: nextIds, mutation_body_obj } };",
@@ -43,6 +44,39 @@ PATCHES = [
         "w7-picker-build-mutation",
         "return { json: { ...data, picker_label_name: labelName, picker_display: display, override_flag_picker: overrideFlag, decided_at, next_label_ids: nextIds, mutation_body_obj } };",
         "return { json: { ...data, picker_label_name: labelName, picker_display: display, override_flag_picker: overrideFlag, decided_at, next_label_ids: nextIds, mutation_body_obj, _build_error: '' } };",
+    ),
+    # ── Part 2: error early-returns (defense in depth) ───────────────────────
+    # w7008-build-mutation: 3 error paths
+    (
+        "w7008-build-mutation",
+        "return { json: { ...data, _build_error: 'pending-approval label id missing from labels_map' } };",
+        "return { json: { ...data, _build_error: 'pending-approval label id missing from labels_map', mutation_body_obj: null } };",
+    ),
+    (
+        "w7008-build-mutation",
+        "return { json: { ...data, _build_error: 'worker label id for \"' + chosenWorker + '\" missing from labels_map' } };",
+        "return { json: { ...data, _build_error: 'worker label id for \"' + chosenWorker + '\" missing from labels_map', mutation_body_obj: null } };",
+    ),
+    (
+        "w7008-build-mutation",
+        "return { json: { ...data, _build_error: 'unknown action code: ' + data.action } };",
+        "return { json: { ...data, _build_error: 'unknown action code: ' + data.action, mutation_body_obj: null } };",
+    ),
+    # w7-picker-build-mutation: 3 error paths
+    (
+        "w7-picker-build-mutation",
+        "return { json: { ...data, _build_error: 'unknown picker action: ' + data.action } };",
+        "return { json: { ...data, _build_error: 'unknown picker action: ' + data.action, mutation_body_obj: null } };",
+    ),
+    (
+        "w7-picker-build-mutation",
+        "return { json: { ...data, _build_error: 'picker label not in labels_map: ' + labelName + ' (ensure label exists in Linear so w2006 picks it up)' } };",
+        "return { json: { ...data, _build_error: 'picker label not in labels_map: ' + labelName + ' (ensure label exists in Linear so w2006 picks it up)', mutation_body_obj: null } };",
+    ),
+    (
+        "w7-picker-build-mutation",
+        "return { json: { ...data, _build_error: 'pending-approval label id missing from labels_map' } };",
+        "return { json: { ...data, _build_error: 'pending-approval label id missing from labels_map', mutation_body_obj: null } };",
     ),
 ]
 
@@ -60,12 +94,15 @@ def patch(path: str) -> None:
         js = node["parameters"].get("jsCode")
         if js is None:
             sys.exit(f"node has no jsCode: {node_name}")
+        if new in js:
+            print(f"already applied: {node_name}: {old[:60]}...")
+            continue
         if old not in js:
-            sys.exit(f"old substring not found in {node_name} jsCode")
+            sys.exit(f"old substring not found in {node_name}: {old[:60]}...")
         if js.count(old) > 1:
-            sys.exit(f"old substring matches multiple times in {node_name} jsCode")
+            sys.exit(f"old substring matches multiple times in {node_name}")
         node["parameters"]["jsCode"] = js.replace(old, new, 1)
-        print(f"patched {node_name}")
+        print(f"patched {node_name}: {old[:60]}...")
 
     with open(path, "w", encoding="utf-8") as f:
         json.dump(workflow, f, indent=2, ensure_ascii=False)

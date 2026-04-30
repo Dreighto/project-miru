@@ -351,5 +351,87 @@ function nNotEmpty(value) {
   }
 }
 
+// ── Step 7: Defense-in-depth — error paths set mutation_body_obj === null ──
+// Final contract: both Code nodes return EXACTLY one of:
+//   error:   { ...data, _build_error: '<msg>',  mutation_body_obj: null }
+//   success: { ...data, _build_error: '',       mutation_body_obj: {...}, ... }
+// Verifies that if a future change misroutes an error item to the HTTP node,
+// the body resolves to "null" (Linear API rejects clearly) rather than
+// "undefined" (n8n parser throws — the original PRO-126 failure mode).
+const errorCases = [
+  [
+    'w7008-build-mutation',
+    'missing-pending-approval',
+    {
+      action: 'a',
+      chosen_worker: 'claude-code',
+      labels_map: {},
+    },
+  ],
+  [
+    'w7008-build-mutation',
+    'missing-worker-label',
+    {
+      action: 'a',
+      chosen_worker: 'gemini',
+      issue_existing_label_ids: ['lp'],
+      labels_map: { 'pending-approval': 'lp' },
+    },
+  ],
+  [
+    'w7008-build-mutation',
+    'unknown-action',
+    {
+      action: 'z',
+      chosen_worker: 'claude-code',
+      issue_existing_label_ids: ['lp'],
+      labels_map: { 'pending-approval': 'lp', 'claude-code': 'lcc' },
+    },
+  ],
+  [
+    'w7-picker-build-mutation',
+    'unknown-picker-action',
+    {
+      action: 'q',
+      labels_map: {},
+    },
+  ],
+  [
+    'w7-picker-build-mutation',
+    'missing-picker-label',
+    {
+      action: 'g',
+      labels_map: { 'pending-approval': 'lp', 'claude-code': 'lcc' },
+    },
+  ],
+  [
+    'w7-picker-build-mutation',
+    'picker-missing-pending-approval',
+    {
+      action: 'c',
+      labels_map: { 'claude-code': 'lcc' },
+    },
+  ],
+];
+for (const [nodeName, label, input] of errorCases) {
+  const out = runBuildMutation(nodeName, input);
+  if (out.json.mutation_body_obj === null)
+    ok(`error path: ${nodeName} ${label} → mutation_body_obj === null`);
+  else
+    fail(
+      `error path mutation_body_obj`,
+      `${nodeName} ${label}: expected null, got ${JSON.stringify(out.json.mutation_body_obj)}`
+    );
+  // Stringifying null produces "null" (valid JSON) — not "undefined" (parser-failing).
+  const stringified = JSON.stringify(out.json.mutation_body_obj);
+  if (stringified === 'null')
+    ok(`error path: ${nodeName} ${label} → JSON.stringify produces "null" (valid JSON)`);
+  else
+    fail(
+      `error path stringify`,
+      `${nodeName} ${label}: expected "null", got ${JSON.stringify(stringified)}`
+    );
+}
+
 console.log(`\n${passed + failed} checks: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
