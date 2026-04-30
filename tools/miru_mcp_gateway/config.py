@@ -103,6 +103,11 @@ class GatewayConfig:
     # PRO-225: service restart tools
     restart_tools_enabled: bool = False
 
+    # PRO-235: dispatch_worker — trigger CC workers via dispatch listener
+    dispatch_enabled: bool = False
+    dispatch_hmac_secret: str | None = None
+    dispatch_listener_url: str = "http://127.0.0.1:19100"
+
     # PRO-137 rate limits (calls per 60s sliding window, per category)
     rate_limit_by_category: dict[str, int] = field(default_factory=dict)
 
@@ -210,6 +215,7 @@ def _load_rate_limits() -> dict[str, int]:
         ("perplexity", "MIRU_RATE_LIMIT_PERPLEXITY"),
         ("restart", "MIRU_RATE_LIMIT_RESTART"),
         ("telegram", "MIRU_RATE_LIMIT_TELEGRAM"),
+        ("dispatch", "MIRU_RATE_LIMIT_DISPATCH"),
         ("default", "MIRU_RATE_LIMIT_DEFAULT"),
     )
     defaults: dict[str, int] = {
@@ -229,6 +235,7 @@ def _load_rate_limits() -> dict[str, int]:
         "perplexity": 20,
         "restart": 5,
         "telegram": 20,
+        "dispatch": 5,
         "default": 30,
     }
     out = dict(defaults)
@@ -341,6 +348,12 @@ def load() -> GatewayConfig:
     perplexity_enabled = bool(perplexity_api_key)
     restart_tools_enabled = _truthy_env("MIRU_RESTART_TOOLS_ENABLED")
 
+    dispatch_hmac_secret = os.environ.get("W4_LISTENER_HMAC_SECRET", "").strip() or None
+    dispatch_listener_url = (
+        os.environ.get("MIRU_DISPATCH_LISTENER_URL", "http://127.0.0.1:19100").strip().rstrip("/")
+    )
+    dispatch_enabled = _truthy_env("MIRU_DISPATCH_ENABLED") and bool(dispatch_hmac_secret)
+
     return GatewayConfig(
         host=host,
         port=port,
@@ -380,4 +393,7 @@ def load() -> GatewayConfig:
         perplexity_api_key=perplexity_api_key,
         perplexity_enabled=perplexity_enabled,
         restart_tools_enabled=restart_tools_enabled,
+        dispatch_enabled=dispatch_enabled,
+        dispatch_hmac_secret=dispatch_hmac_secret,
+        dispatch_listener_url=dispatch_listener_url,
     )
