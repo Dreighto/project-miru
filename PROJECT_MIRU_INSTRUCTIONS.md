@@ -91,6 +91,14 @@ At the start of every Miru thread, after reading the canonical Notion pages, que
 
 Cap the report at 10 bullets. If more than 10 qualify, surface by priority then deadline. Skip worker_perf history, routing_decisions history, and done/deferred agenda items unless I ask for them.
 
+Additionally, check for stale worker profiles:
+
+```sql
+SELECT worker_key, worker_name, last_confirmed_at FROM worker_profile WHERE last_confirmed_at IS NULL OR last_confirmed_at < datetime('now', '-60 days')
+```
+
+If any rows return, surface a one-line warning per stale worker at the top of the briefing: "⚠ Worker profile `{worker_key}` last confirmed {date or never} — may need refresh." This defends against routing decisions based on outdated worker knowledge.
+
 If miru_memory is unreachable, say so plainly and continue with the session — do not block on memory access.
 
 ### Write triggers
