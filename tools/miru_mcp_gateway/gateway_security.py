@@ -38,6 +38,7 @@ _MODULE_CATEGORY: dict[str, str] = {
     "miru_mcp_gateway.perplexity_tools": "perplexity",
     "miru_mcp_gateway.restart_tools": "restart",
     "miru_mcp_gateway.linear_write_tools": "linear_write",
+    "miru_mcp_gateway.telegram_tools": "telegram",
 }
 
 _PARAM_REGEX: dict[str, re.Pattern[str]] = {
@@ -59,6 +60,7 @@ _PARAM_REGEX: dict[str, re.Pattern[str]] = {
     "worker_name": re.compile(r"^[a-zA-Z0-9_-]{1,40}$"),
     "log_kind": re.compile(r"^(writes|reads|docs)$"),
     "branch": re.compile(r"^(?!/)(?!.*//)(?!.*\.\.)(?!.*@\{)(?!.*\.$)[a-zA-Z0-9._/-]{1,160}$"),
+    "chat_id": re.compile(r"^(-?[0-9]{1,15}|@[a-zA-Z0-9_]{5,32})$"),
 }
 
 _rate_events: dict[str, list[float]] = defaultdict(list)

@@ -58,6 +58,7 @@ from miru_mcp_gateway import (
     perplexity_tools,
     restart_tools,
     system_tools,
+    telegram_tools,
     worker_tools,
 )
 from miru_mcp_gateway import config as gw_config
@@ -84,6 +85,7 @@ CATEGORIES: tuple[tuple[str, Any], ...] = (
     ("perplexity", perplexity_tools),
     ("restart", restart_tools),
     ("linear_write", linear_write_tools),
+    ("telegram", telegram_tools),
 )
 
 
