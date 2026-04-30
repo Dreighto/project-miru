@@ -963,19 +963,26 @@ def n8n_delete_tag(tag_id: str, ctx: Any = None) -> str:
 
 def n8n_trigger_w2_route(
     issue_id: str,
+    issue_identifier: str | None = None,
     trace_id_predecessor: str | None = None,
     reason: str | None = None,
     ctx: Any = None,
 ) -> str:
     """Trigger the W2 worker-selection router webhook for manual dispatch.
 
-    ``issue_id`` is the Linear ticket ID (e.g. 'PRO-225'). ``trace_id_predecessor``
-    links this routing decision to a prior trace. ``reason`` is a short plain-English
-    note explaining why this manual trigger was needed.
+    ``issue_id`` MUST be the Linear internal UUID (e.g. 'abc123-...'). The W2 workflow
+    uses this for its Linear API lookup via ``issue(id: $issueId)``; passing a ticket
+    key like 'PRO-225' here will cause the lookup to fail silently.
+    ``issue_identifier`` is the human-readable ticket key (e.g. 'PRO-225'), used for
+    logging and Telegram notifications — pass this alongside the UUID.
+    ``trace_id_predecessor`` links this routing decision to a prior trace.
+    ``reason`` is a short plain-English note explaining why this manual trigger was needed.
     """
     if not issue_id or not issue_id.strip():
-        raise stdio_mcp.McpError("n8n_write: issue_id is required", -32602)
+        raise stdio_mcp.McpError("n8n_write: issue_id (Linear UUID) is required", -32602)
     payload: dict[str, Any] = {"issue_id": issue_id.strip()}
+    if issue_identifier:
+        payload["issue_identifier"] = issue_identifier
     if trace_id_predecessor:
         payload["trace_id_predecessor"] = trace_id_predecessor
     if reason:
