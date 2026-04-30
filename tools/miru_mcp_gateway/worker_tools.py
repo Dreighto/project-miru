@@ -1,7 +1,10 @@
-"""PRO-136: per-worker git worktree status snapshot."""
+"""PRO-136: per-worker git worktree status snapshot.
+PRO-228: worker_availability — idle/busy state from heartbeat log.
+"""
 
 from __future__ import annotations
 
+import datetime
 import json
 import re
 import subprocess
@@ -195,7 +198,141 @@ def worker_status(worker_name: str | None = None) -> str:
     return json.dumps(out, indent=2)
 
 
-TOOL_FUNCTIONS = (worker_status,)
+_IDLE_THRESHOLD_S = 300  # 5 minutes — no heartbeat in this window → idle
+_HEARTBEAT_READ_LINES = 500
+_COMPLETION_READ_LINES = 1000
+
+
+def _read_last_jsonl(path: Path, n: int) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    rows: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+            if isinstance(obj, dict):
+                rows.append(obj)
+        except ValueError:
+            continue
+    return rows[-n:]
+
+
+def _match_heartbeat(worker_name: str, latest: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
+    """Find the latest heartbeat row for a configured worker name.
+
+    Tries exact match first, then prefix match to handle suffixed IDs like
+    'claude-code-1' matching configured name 'claude-code'.
+    """
+    if worker_name in latest:
+        return latest[worker_name]
+    for wid, row in latest.items():
+        if wid.startswith(worker_name):
+            return row
+    return None
+
+
+def worker_availability(worker_name: str | None = None) -> str:
+    """Return idle/busy state per configured worker slot (PRO-228).
+
+    Reads ``data/cc_heartbeat_log.jsonl`` (last 500 rows) to find each
+    worker's most recent heartbeat. A worker is idle if:
+      - No heartbeat found, OR
+      - Last heartbeat is older than 5 minutes, OR
+      - The heartbeat's ticket_id has a completion marker in
+        ``data/cc_completion_log.jsonl``.
+
+    ``worker_name``: optional filter; if omitted returns all configured slots.
+    """
+    cfg = _CFG
+    if cfg is None:
+        raise stdio_mcp.McpError("worker_availability: not configured", -32000)
+    workers = _WORKERS
+    if not workers:
+        raise stdio_mcp.McpError("worker_availability: no workers configured", -32000)
+    if worker_name:
+        wn = worker_name.strip()
+        if wn not in workers:
+            raise stdio_mcp.McpError(f"worker_availability: unknown worker {wn!r}", -32602)
+        targets = [wn]
+    else:
+        targets = sorted(workers.keys())
+
+    # Build latest-heartbeat-per-worker_id map
+    hb_rows = _read_last_jsonl(
+        cfg.fs_root / "data" / "cc_heartbeat_log.jsonl", _HEARTBEAT_READ_LINES
+    )
+    latest: dict[str, dict[str, Any]] = {}
+    for row in hb_rows:
+        wid = str(row.get("worker_id", "")).strip()
+        if not wid:
+            continue
+        existing = latest.get(wid)
+        if existing is None or str(row.get("ts", "")) > str(existing.get("ts", "")):
+            latest[wid] = row
+
+    # Collect completed ticket IDs from completion log
+    cp_rows = _read_last_jsonl(
+        cfg.fs_root / "data" / "cc_completion_log.jsonl", _COMPLETION_READ_LINES
+    )
+    completed_tickets: set[str] = set()
+    for row in cp_rows:
+        tid = str(row.get("ticket_id", "")).strip()
+        if tid and tid.lower() != "null":
+            completed_tickets.add(tid)
+
+    now_utc = datetime.datetime.now(datetime.UTC)
+
+    out: dict[str, Any] = {}
+    for wid in targets:
+        row = _match_heartbeat(wid, latest)
+        if row is None:
+            out[wid] = {
+                "is_idle": True,
+                "current_ticket": None,
+                "current_step": None,
+                "last_heartbeat_ts": None,
+                "branch": str(workers[wid]) if wid in workers else None,
+                "stall_signal": None,
+            }
+            continue
+
+        ts_str = str(row.get("ts", "")).strip()
+        ticket = str(row.get("ticket_id", "")).strip() or None
+
+        is_idle = True
+        if ts_str:
+            try:
+                hb_ts = datetime.datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                is_idle = (now_utc - hb_ts).total_seconds() > _IDLE_THRESHOLD_S
+            except (ValueError, OverflowError):
+                is_idle = True
+
+        # Completion marker overrides active heartbeat
+        if ticket and ticket in completed_tickets:
+            is_idle = True
+
+        out[wid] = {
+            "is_idle": is_idle,
+            "current_ticket": ticket if not is_idle else None,
+            "current_step": (str(row.get("step", "")).strip() or None) if not is_idle else None,
+            "last_heartbeat_ts": ts_str or None,
+            "branch": str(row.get("branch", "")).strip() or None,
+            "stall_signal": (str(row.get("stall_signal", "")).strip() or None)
+            if not is_idle
+            else None,
+        }
+
+    return json.dumps(out, indent=2)
+
+
+TOOL_FUNCTIONS = (worker_status, worker_availability)
 
 
 def register(mcp, cfg) -> int:
