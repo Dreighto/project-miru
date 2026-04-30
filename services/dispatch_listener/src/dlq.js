@@ -11,6 +11,7 @@ const ERROR_CLASSES = new Set([
   'allowlist_reject',
   'bad_request',
   'listener_restarted',
+  'no_worktree_available',
 ]);
 
 function writeDlqEntry({ traceId, worker, promptPath, exitCode, stderrTail, errorClass }) {

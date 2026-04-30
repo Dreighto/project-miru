@@ -66,7 +66,7 @@ function readTail(filePath, maxBytes) {
   }
 }
 
-function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLogDir }) {
+function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLogDir, onDone }) {
   const workerSpec = spec(worker);
   if (!workerSpec) {
     throw new Error(`worker ${worker} not in allowlist (defensive guard)`);
@@ -205,6 +205,7 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
     } catch (_e) {
       /* best effort */
     }
+    if (typeof onDone === 'function') onDone();
   });
 
   child.on('exit', (code, signal) => {
@@ -264,6 +265,7 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
     } catch (_e) {
       /* best effort */
     }
+    if (typeof onDone === 'function') onDone();
   });
 
   return { pid: child.pid, startedAt };
