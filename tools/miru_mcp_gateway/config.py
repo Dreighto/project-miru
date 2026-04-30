@@ -86,6 +86,9 @@ class GatewayConfig:
     memory_enabled: bool = False
     memory_db_path: Path | None = None
 
+    # PRO-226: Linear write tools
+    linear_write_enabled: bool = False
+
     # PRO-187: orchestrator-scoped git commit/push tool
     git_write_enabled: bool = False
 
@@ -323,6 +326,7 @@ def load() -> GatewayConfig:
     elif memory_enabled:
         memory_db_path = fs_root / "data" / "miru_memory.db"
 
+    linear_write_enabled = _truthy_env("MIRU_LINEAR_WRITE_ENABLED")
     git_write_enabled = _truthy_env("MIRU_GIT_WRITE_ENABLED")
 
     perplexity_api_key = os.environ.get("PERPLEXITY_API_KEY", "").strip() or None
@@ -361,6 +365,7 @@ def load() -> GatewayConfig:
         rate_limit_by_category=rate_limit_by_category,
         memory_enabled=memory_enabled,
         memory_db_path=memory_db_path,
+        linear_write_enabled=linear_write_enabled,
         git_write_enabled=git_write_enabled,
         perplexity_api_key=perplexity_api_key,
         perplexity_enabled=perplexity_enabled,
