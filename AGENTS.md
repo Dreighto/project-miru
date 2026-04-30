@@ -69,3 +69,24 @@ to the operator.
 - **Does not apply to:** Codex, Cursor, Gemini, Copilot, Windsurf workers.
 - **Does not modify:** dispatcher runtime code, W4, W7, or any other section of this file unrelated
   to PR completion and Bugbot handling.
+
+---
+
+## Return-to-main — Hard Rule (all workers, locked 2026-04-30)
+
+Every task session ends on `main` with a clean working tree. This applies to every worker.
+
+**After a task completes (CONFIRMED_WORKING):**
+
+1. Complete post-merge cleanup (see worker-specific rule file for steps).
+2. Run `git checkout main && git pull origin main`.
+3. Confirm `git status` shows no staged or unstaged tracked changes.
+4. Sign off. Do not leave the session on a feature branch.
+
+**After a task ends without a merge (INCONCLUSIVE, FAILED, interrupted):**
+
+1. On the task branch: stash in-progress work (`git stash push -m "<ticket>-wip"`) or make a WIP commit so nothing is lost.
+2. Run `git checkout main`.
+3. Confirm clean state, then sign off.
+
+**Why this is a hard rule:** A worker that ends on a feature branch leaves the repo in an ambiguous state. The next session — by the same worker or a different one — starts blind to the checked-out branch and may cut a new task branch from the wrong base, or accidentally stage work from a prior task into a new PR. This failure mode occurred in PRO-214 cleanup and required operator intervention.

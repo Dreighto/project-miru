@@ -137,6 +137,16 @@ Operator should never have to ask a worker to clean up a branch. If you find you
 
 Source: locked 2026-04-25 after CC shipped 4 clean ticket fixes (PRO-60, PRO-65, PRO-72, PRO-68 + PRO-73) with consistent pre-flight discipline. Post-merge cleanup rule added 2026-04-28 per PRO-180 retro.
 
+**Return-to-main — Hard Rule (locked 2026-04-30):**
+
+Every task session ends on `main` with a clean working tree. No exceptions.
+
+- After post-merge cleanup (steps 1–5 above): confirm `git branch --show-current` is `main` and `git status` shows no staged or unstaged tracked changes before signing off.
+- If a task ends without a merge (INCONCLUSIVE, FAILED, or mid-session interruption): stash or WIP-commit any in-progress work on the task branch, then `git checkout main` before ending the session.
+- A worker that ends a session on a feature branch — even with a clean working tree — is in violation. The next session starts blind to which branch is checked out and will cut work from the wrong base.
+
+This rule was added after PRO-214 cleanup required operator intervention to restore a clean `main` state.
+
 ## Append-only data files — Hard Rule
 
 Five files in `data/` are strictly append-only. Never edit, never truncate, never sort, never deduplicate, never read-modify-write. Only `fs.appendFileSync` (or the equivalent strict-append shell `>>`) is allowed.
