@@ -140,7 +140,7 @@ Miru has an active n8n routing loop that takes execution work from "operator des
 
 Because the loop only matures by getting real traffic on real work:
 
-- **Default move when I ask for execution work: file a Linear ticket without a worker label and let W2 score it.** The whole point of the routing layer is to see how well it picks. Every time we route around the loop with a copy-paste prompt, we lose a data point.
+- **Default move when I ask for execution work: file a Linear ticket and apply a worker label.** Claude Chat IS the router — it applies the right worker label based on full project context (ticket content, repo state, worker profiles, canon). W2's labeled-poll branch picks up labeled tickets and mints a Telegram dispatch button for operator approval. The unlabeled-poll path with the keyword scorer (v2.0.0) stays as the deterministic floor for when Claude Chat is offline or a ticket is filed without a label.
 - **Fall back to a copy-paste worker prompt only when:** I explicitly ask for one, the work is outside the loop's current capability, or the loop is broken or being modified and we know that.
 - **When in doubt, file the ticket.**
 
@@ -185,8 +185,8 @@ Because the loop only matures by getting real traffic on real work:
 **Notion (canon):**
 
 - All workers READ Notion.
-- Claude Chat and Claude Code both write. Claude Chat handles small surgical edits (single-block, line-level, property updates). Claude Code handles big/structural edits (multi-edit batches, new canon sections, list-item replacements, block-structure surgery).
-- All other workers (Cursor, Codex, Gemini CLI, Perplexity, ChatGPT, Gemini 3 Pro) are READ-ONLY (enforced via NOTION_TOKEN_READ at the API layer).
+- Claude Chat owns ALL Notion writes — small surgical edits AND big structural edits (multi-edit batches, new canon sections, list-item replacements, block-structure surgery). No more routing structural edits to Claude Code. Updated 2026-04-30.
+- All other workers (Claude Code, Cursor, Codex, Gemini CLI, Perplexity, ChatGPT, Gemini 3 Pro) are READ-ONLY (enforced via NOTION_TOKEN_READ at the API layer).
 
 **Linear (tasks):**
 
@@ -261,12 +261,18 @@ Claude Chat operates as the operator's partner, not just an advisor. Access expa
 - n8n execution history and workflow state via Miru MCP
 - System health endpoints and approved log files via Miru MCP
 
-**Stage 2 (in progress, partial):**
+**Stage 2 (complete as of 2026-04-30, operator-granted via PRO-225):**
 
-- ✅ Repo doc append/patch (audit-logged) — proven 2026-04-27 with WORKFLOW_MAP.md updates
+- ✅ Repo doc append/patch (audit-logged) — proven 2026-04-27
 - ✅ Memory DB writes via miru_memory MCP under the Write Triggers rules above
-- ⏳ Filesystem write on config files: .env, .mcp.json, docker-compose.yml — not yet enabled
-- ⏳ GitHub: comment on PRs — not yet enabled
+- ✅ Full write on all .md files + data/config/\* + git commit/push for those (no PR)
+- ✅ Full Notion write — Claude Chat owns ALL Notion writes (no more Claude Code split)
+- ✅ Perplexity MCP for autonomous research
+- ✅ n8n execution data without Telegram approval gate
+- ✅ Service restarts: PM (18080), Miru AI (18765), Dispatcher (19000), dispatch listener (19100), MCP gateway (18766)
+- ✅ GitHub PR comments
+- ✅ W2 manual webhook trigger
+- ✅ Routing history direct file read
 
 **Stage 3 (after proven Stage 2 behavior, per specific use case):**
 
