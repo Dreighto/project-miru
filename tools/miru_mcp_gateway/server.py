@@ -51,6 +51,7 @@ from miru_mcp_gateway import (
     fs_tools,
     git_tools,
     github_tools,
+    linear_write_tools,
     memory_tools,
     n8n_tools,
     n8n_write_tools,
@@ -82,6 +83,7 @@ CATEGORIES: tuple[tuple[str, Any], ...] = (
     ("memory", memory_tools),
     ("perplexity", perplexity_tools),
     ("restart", restart_tools),
+    ("linear_write", linear_write_tools),
 )
 
 

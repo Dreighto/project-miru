@@ -37,6 +37,7 @@ _MODULE_CATEGORY: dict[str, str] = {
     "miru_mcp_gateway.git_tools": "git_write",
     "miru_mcp_gateway.perplexity_tools": "perplexity",
     "miru_mcp_gateway.restart_tools": "restart",
+    "miru_mcp_gateway.linear_write_tools": "linear_write",
 }
 
 _PARAM_REGEX: dict[str, re.Pattern[str]] = {
