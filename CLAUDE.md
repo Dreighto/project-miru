@@ -80,6 +80,15 @@ PRO-180 shipped cleanly via ticket-only dispatch in 3 minutes. The Linear ticket
 
 CC may self-merge PRs that fall in the low-risk column below. Operator reviews and merges anything in the high-risk column.
 
+**No PR needed — commit direct to main:**
+
+Small, obviously-correct changes that carry no meaningful risk of breakage may be committed directly to main without opening a PR. Bugbot and CI do not need to run on these.
+
+- Version bumps in CI config (e.g. `node-version`, action runner pins) — one-liners
+- Typo or wording fixes in worker rule files (CLAUDE.md, AGENTS.md, etc.) — no logic change
+- Completion log entries (`data/cc_completion_log.jsonl` appends)
+- Lint / format-only auto-fixes with no logic change
+
 **CC merges (fixes):**
 
 - Single-file edits to existing files
@@ -88,8 +97,9 @@ CC may self-merge PRs that fall in the low-risk column below. Operator reviews a
 - Config changes (.env, docker-compose env vars)
 - Test fixtures, log rotation, hygiene tasks
 - Lint / format / comment-only changes
+- Worker rule file additions or substantive edits (CLAUDE.md, AGENTS.md, CURSOR.md, etc.) — new rules, not typos
 - PRs that reference one Linear ticket
-- Bugbot reviewed and green
+- Bugbot not required — skip Bugbot wait for PRs in this column
 
 **Operator merges (changes):**
 
@@ -98,7 +108,6 @@ CC may self-merge PRs that fall in the low-risk column below. Operator reviews a
 - Schema or data model changes
 - Anything touching `card_catalog.db` or its schema
 - Anything that changes `routing_history.jsonl` schema
-- Worker rule file changes (CLAUDE.md, AGENTS.md, CURSOR.md, etc.)
 - Infrastructure (gateway, MCPs, port assignments)
 - First implementation of something new (e.g. W3 build)
 
@@ -107,17 +116,15 @@ CC may self-merge PRs that fall in the low-risk column below. Operator reviews a
 **Hard requirements before CC self-merges:**
 
 1. PR is in the CC-merge column above (CC must explicitly check)
-2. Bugbot has reviewed AND raised no non-trivial findings
-3. CC's own completion contract reports CONFIRMED WORKING (not INCONCLUSIVE)
-4. The PR references a Linear ticket
-5. Branch was cut clean from main (no concern braiding)
+2. CC's own completion contract reports CONFIRMED WORKING (not INCONCLUSIVE)
+3. Branch was cut clean from main (no concern braiding)
+4. Bugbot: not required for CC-merge column — do not wait for it
 
 If any of those fail: open the PR for operator review, do not self-merge.
 
 **Never self-merge:**
 
 - Force-push or destructive git operations (these are hard rules under access progression, not just merge policy)
-- This ticket itself (PR for PRO-76 falls in the operator-merge column — worker rule file change)
 
 **Post-merge cleanup — worker responsibility (locked 2026-04-28 per PRO-180):**
 
