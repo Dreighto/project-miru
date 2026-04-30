@@ -47,6 +47,7 @@ if str(_TOOLS_DIR) not in sys.path:
 from miru_mcp_gateway import (
     activity_tools,
     audit_read_tools,
+    dispatch_tools,
     docs_write_tools,
     fs_tools,
     git_tools,
@@ -86,6 +87,7 @@ CATEGORIES: tuple[tuple[str, Any], ...] = (
     ("restart", restart_tools),
     ("linear_write", linear_write_tools),
     ("telegram", telegram_tools),
+    ("dispatch", dispatch_tools),
 )
 
 
