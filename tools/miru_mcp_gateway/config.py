@@ -89,6 +89,10 @@ class GatewayConfig:
     # PRO-226: Linear write tools
     linear_write_enabled: bool = False
 
+    # PRO-227: Telegram direct send
+    telegram_bot_token: str | None = None
+    telegram_default_chat_id: str | None = None
+
     # PRO-187: orchestrator-scoped git commit/push tool
     git_write_enabled: bool = False
 
@@ -205,6 +209,7 @@ def _load_rate_limits() -> dict[str, int]:
         ("git_write", "MIRU_RATE_LIMIT_GIT_WRITE"),
         ("perplexity", "MIRU_RATE_LIMIT_PERPLEXITY"),
         ("restart", "MIRU_RATE_LIMIT_RESTART"),
+        ("telegram", "MIRU_RATE_LIMIT_TELEGRAM"),
         ("default", "MIRU_RATE_LIMIT_DEFAULT"),
     )
     defaults: dict[str, int] = {
@@ -223,6 +228,7 @@ def _load_rate_limits() -> dict[str, int]:
         "git_write": 10,
         "perplexity": 20,
         "restart": 5,
+        "telegram": 20,
         "default": 30,
     }
     out = dict(defaults)
@@ -327,6 +333,8 @@ def load() -> GatewayConfig:
         memory_db_path = fs_root / "data" / "miru_memory.db"
 
     linear_write_enabled = _truthy_env("MIRU_LINEAR_WRITE_ENABLED")
+    telegram_bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or None
+    telegram_default_chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip() or None
     git_write_enabled = _truthy_env("MIRU_GIT_WRITE_ENABLED")
 
     perplexity_api_key = os.environ.get("PERPLEXITY_API_KEY", "").strip() or None
@@ -366,6 +374,8 @@ def load() -> GatewayConfig:
         memory_enabled=memory_enabled,
         memory_db_path=memory_db_path,
         linear_write_enabled=linear_write_enabled,
+        telegram_bot_token=telegram_bot_token,
+        telegram_default_chat_id=telegram_default_chat_id,
         git_write_enabled=git_write_enabled,
         perplexity_api_key=perplexity_api_key,
         perplexity_enabled=perplexity_enabled,
