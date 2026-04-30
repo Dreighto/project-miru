@@ -21,6 +21,7 @@ from __future__ import annotations
 import base64
 import fnmatch
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -51,6 +52,7 @@ _BODY_SUMMARY_BYTES = 1500
 # --- Module-level state populated at register() ------------------------
 
 _TOKEN: str | None = None
+_WRITE_TOKEN: str | None = None
 _ALLOWLIST: tuple[str, ...] = ()
 
 
@@ -722,6 +724,70 @@ def github_get_pr_check_runs(owner: str, repo: str, number: int) -> str:
     return json.dumps(_redact.redact_dict({"head_sha": sha[:12], "check_runs": out}), indent=2)
 
 
+# --- PR comment (write) ------------------------------------------------
+
+
+def _gh_post(path: str, json_body: dict) -> Any:
+    """POST to api.github.com using the write token."""
+    if requests is None:
+        raise stdio_mcp.McpError(
+            "github: 'requests' library not installed; pip install requests", -32000
+        )
+    if not _WRITE_TOKEN:
+        raise stdio_mcp.McpError(
+            "github: GITHUB_TOKEN_WRITE not configured; cannot post comments", -32000
+        )
+    url = f"{_API_BASE}{path}"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Authorization": f"Bearer {_WRITE_TOKEN}",
+        "User-Agent": "miru-mcp-gateway/0.4",
+    }
+    try:
+        resp = requests.post(url, json=json_body, headers=headers, timeout=_HTTP_TIMEOUT_S)
+    except requests.exceptions.Timeout as exc:
+        raise stdio_mcp.McpError(
+            f"github: timeout after {_HTTP_TIMEOUT_S}s on POST {path}", -32000
+        ) from exc
+    except requests.exceptions.RequestException as exc:
+        raise stdio_mcp.McpError(
+            f"github: transport error on POST {path}: {_redact.redact(str(exc))}", -32000
+        ) from exc
+    if resp.status_code == 401:
+        raise stdio_mcp.McpError(
+            "github: 401 Unauthorized -- GITHUB_TOKEN_WRITE may be expired", -32000
+        )
+    if not (200 <= resp.status_code < 300):
+        body_preview = _redact.redact(resp.text[:_BODY_SUMMARY_BYTES])
+        raise stdio_mcp.McpError(
+            f"github: HTTP {resp.status_code} on POST {path}: {body_preview}", -32000
+        )
+    try:
+        return resp.json()
+    except ValueError as exc:
+        raise stdio_mcp.McpError(f"github: non-JSON response on POST {path}", -32000) from exc
+
+
+def github_create_pr_comment(owner: str, repo: str, number: int, body: str) -> str:
+    """Post a comment on a pull request (uses GITHUB_TOKEN_WRITE).
+
+    Returns JSON: {id, html_url, created_at}. Body is limited to 65535 chars.
+    """
+    _assert_repo_allowed(owner, repo)
+    if not body or not body.strip():
+        raise stdio_mcp.McpError("github: comment body must not be empty", -32602)
+    if len(body) > 65535:
+        raise stdio_mcp.McpError("github: comment body exceeds 65535 chars", -32602)
+    obj = _gh_post(f"/repos/{owner}/{repo}/issues/{int(number)}/comments", {"body": body})
+    payload = {
+        "id": obj.get("id"),
+        "html_url": obj.get("html_url", ""),
+        "created_at": obj.get("created_at", ""),
+    }
+    return json.dumps(_redact.redact_dict(payload), indent=2)
+
+
 # --- Manifest + register hook ------------------------------------------
 
 TOOL_FUNCTIONS = (
@@ -736,6 +802,7 @@ TOOL_FUNCTIONS = (
     github_list_pr_reviews,
     github_get_pr_review_comments,
     github_get_pr_check_runs,
+    github_create_pr_comment,
 )
 
 
@@ -753,7 +820,9 @@ def register(mcp, cfg) -> int:
         cfg.disabled_categories["github"] = "'requests' library not installed"
         return 0
 
+    global _WRITE_TOKEN
     _TOKEN = cfg.github_token
+    _WRITE_TOKEN = os.environ.get("GITHUB_TOKEN_WRITE", "").strip() or None
     _ALLOWLIST = tuple(cfg.github_allowlist or ())
 
     from miru_mcp_gateway.gateway_security import wrap_tool_entry
