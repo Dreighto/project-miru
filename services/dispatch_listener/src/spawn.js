@@ -154,6 +154,13 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
     throw err;
   }
 
+  // Strip ANTHROPIC_API_KEY from the child env so claude.cmd falls back to its
+  // stored OAuth credentials (~/.claude/). If the key is present (e.g. from
+  // .env for other services) it overrides stored auth and causes "Invalid API
+  // key" when the stored-credential flow would have worked fine.
+  const childEnv = { ...process.env };
+  delete childEnv.ANTHROPIC_API_KEY;
+
   let child;
   try {
     // detached:true was empirically incompatible with stdio file fds on this
@@ -166,7 +173,7 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
       cwd,
       windowsHide: true,
       stdio: [promptFd, stdoutFd, stderrFd],
-      env: { ...process.env },
+      env: childEnv,
     });
   } catch (err) {
     fs.closeSync(promptFd);
