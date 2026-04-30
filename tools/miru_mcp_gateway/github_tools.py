@@ -788,6 +788,59 @@ def github_create_pr_comment(owner: str, repo: str, number: int, body: str) -> s
     return json.dumps(_redact.redact_dict(payload), indent=2)
 
 
+def github_create_issue(
+    owner: str,
+    repo: str,
+    title: str,
+    body: str | None = None,
+    labels: list[str] | None = None,
+) -> str:
+    """Create a new GitHub issue (uses GITHUB_TOKEN_WRITE).
+
+    ``owner``/``repo`` must be in the allowlist. ``title`` max 256 chars.
+    ``body`` max 65535 chars. ``labels`` items must be 1-50 chars each.
+    Both title and body are scanned for known secret substrings.
+    Returns JSON: {number, url, state}.
+    """
+    _assert_repo_allowed(owner, repo)
+    if not title or not title.strip():
+        raise stdio_mcp.McpError("github: title must not be empty", -32602)
+    if len(title) > 256:
+        raise stdio_mcp.McpError("github: title exceeds 256 chars", -32602)
+    if body and len(body) > 65535:
+        raise stdio_mcp.McpError("github: body exceeds 65535 chars", -32602)
+
+    # Secret-content guard
+    check_text = title + " " + (body or "")
+    hits = _redact.find_named_secret_substrings(check_text)
+    if hits:
+        raise stdio_mcp.McpError(
+            f"github: content contains known secret substring: {hits[0]}", -32000
+        )
+
+    # Validate labels
+    clean_labels: list[str] = []
+    for lbl in labels or []:
+        lbl = str(lbl).strip()
+        if not lbl or len(lbl) > 50:
+            raise stdio_mcp.McpError(f"github: label must be 1-50 chars: {lbl!r}", -32602)
+        clean_labels.append(lbl)
+
+    payload: dict[str, Any] = {"title": title.strip()}
+    if body:
+        payload["body"] = body
+    if clean_labels:
+        payload["labels"] = clean_labels
+
+    obj = _gh_post(f"/repos/{owner}/{repo}/issues", payload)
+    out = {
+        "number": obj.get("number"),
+        "url": obj.get("html_url", ""),
+        "state": obj.get("state", "open"),
+    }
+    return json.dumps(_redact.redact_dict(out), indent=2)
+
+
 # --- Manifest + register hook ------------------------------------------
 
 TOOL_FUNCTIONS = (
@@ -803,6 +856,7 @@ TOOL_FUNCTIONS = (
     github_get_pr_review_comments,
     github_get_pr_check_runs,
     github_create_pr_comment,
+    github_create_issue,
 )
 
 
