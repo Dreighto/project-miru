@@ -200,6 +200,8 @@ def _load_rate_limits() -> dict[str, int]:
         ("worker_read", "MIRU_RATE_LIMIT_WORKER_READ"),
         ("memory_write", "MIRU_RATE_LIMIT_MEMORY_WRITE"),
         ("git_write", "MIRU_RATE_LIMIT_GIT_WRITE"),
+        ("perplexity", "MIRU_RATE_LIMIT_PERPLEXITY"),
+        ("restart", "MIRU_RATE_LIMIT_RESTART"),
         ("default", "MIRU_RATE_LIMIT_DEFAULT"),
     )
     defaults: dict[str, int] = {
@@ -216,6 +218,8 @@ def _load_rate_limits() -> dict[str, int]:
         "worker_read": 30,
         "memory_write": 60,
         "git_write": 10,
+        "perplexity": 20,
+        "restart": 5,
         "default": 30,
     }
     out = dict(defaults)

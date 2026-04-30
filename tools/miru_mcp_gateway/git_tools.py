@@ -55,7 +55,6 @@ _DENIED_EXACT = frozenset(
         "data/cc_heartbeat_log.jsonl",
     }
 )
-_DENIED_WORKER_RULE_FILES: frozenset[str] = frozenset()
 _DENIED_DB_NAMES = frozenset({"card_catalog.db", "miru_memory.db"})
 _GLOB_CHARS = frozenset("*?[")
 
@@ -183,8 +182,6 @@ def _assert_rel_allowed(rel: str) -> None:
         raise stdio_mcp.McpError(f"git_write: path rejected by filesystem deny list: {rel}", -32000)
     if rel in _DENIED_EXACT:
         raise stdio_mcp.McpError(f"git_write: append-only data file denied: {rel}", -32000)
-    if name in _DENIED_WORKER_RULE_FILES:
-        raise stdio_mcp.McpError(f"git_write: worker rule file denied: {rel}", -32000)
     if (
         name in _DENIED_DB_NAMES
         or lower.endswith("/card_catalog.db")
