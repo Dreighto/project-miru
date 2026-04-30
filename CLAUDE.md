@@ -4,7 +4,7 @@
 
 - 18080 = Project Miru UI — ACTIVE
 - 18765 = Miru AI — ACTIVE
-- 19000 = Task Dispatcher — ACTIVE
+- 19000 = Task Dispatcher — DECOMMISSIONED (PRO-234, 2026-04-30; code kept, service stopped)
 - 8080 = RESERVED — do not touch
 - 8765 = NEVER TOUCH under any circumstances
 - 11434 = Ollama — local dependency, not Miru-owned
