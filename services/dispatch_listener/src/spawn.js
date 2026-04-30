@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 
 const log = require('./log');
 const { spec } = require('./allowlist');
@@ -66,6 +66,31 @@ function readTail(filePath, maxBytes) {
   }
 }
 
+// PRO-233: run `cmd /c <binary> --version` before the real spawn to confirm
+// the binary is reachable in this process's environment. Synchronous on
+// purpose — the caller is already committed to spawning; this probe adds at
+// most 10s and the result goes straight into the structured log.
+function probeWorkerBinary(binary, cwd) {
+  try {
+    const output = execSync(`cmd /c "${binary}" --version`, {
+      cwd,
+      timeout: 10000,
+      encoding: 'utf8',
+      windowsHide: true,
+      env: { ...process.env },
+    });
+    return { ok: true, output: (output || '').trim().slice(0, 300) };
+  } catch (err) {
+    const combined = String(err.stderr || err.stdout || err.message || '').trim();
+    return {
+      ok: false,
+      exit_code: err.status != null ? err.status : null,
+      signal: err.signal || null,
+      output: combined.slice(0, 300),
+    };
+  }
+}
+
 function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLogDir, onDone }) {
   const workerSpec = spec(worker);
   if (!workerSpec) {
@@ -80,6 +105,25 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
   const stderrFd = fs.openSync(stderrPath, 'a');
 
   const binary = workerSpec.binaryPath || workerSpec.binary;
+
+  // PRO-233: pre-spawn diagnostics — binary path, cwd, PATH snapshot, version probe.
+  const pathDirs = (process.env.PATH || '').split(path.delimiter);
+  log.info('spawn_pre_diagnostic', {
+    trace_id: traceId,
+    worker,
+    binary_path: binary,
+    binary_raw: workerSpec.binary,
+    flags: workerSpec.flags,
+    cwd,
+    path_dirs_count: pathDirs.length,
+    path_first_10: pathDirs.slice(0, 10).join(path.delimiter),
+    appdata: process.env.APPDATA || null,
+    localappdata: process.env.LOCALAPPDATA || null,
+  });
+
+  const probe = probeWorkerBinary(binary, cwd);
+  log.info('spawn_version_probe', { trace_id: traceId, binary_path: binary, ...probe });
+
   // Prompt is written to a temp file and the file is opened as a read-only
   // file descriptor passed directly to the child as stdio[0]. This sidesteps
   // every cmd-level escaping concern:
@@ -146,8 +190,18 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
     trace_id: traceId,
     worker,
     pid: child.pid,
+    pid_defined: child.pid != null,
     timeout_seconds: timeoutSeconds,
   });
+
+  if (child.pid == null) {
+    log.error('spawn_pid_undefined', {
+      trace_id: traceId,
+      worker,
+      binary_path: binary,
+      cwd,
+    });
+  }
 
   // Per Node child_process semantics, `error` and `exit` can BOTH fire for the
   // same spawn. Without a guard, both handlers would write a terminal receipt
