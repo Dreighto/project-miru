@@ -6,9 +6,11 @@ McpError. Outputs run through redact() to scrub any credential that may have
 leaked into a service log.
 
 Approved scope (matches CLAUDE.md):
-    Ports         15678 18080 18765 18766 19000
-    Endpoints     mcp_gateway, pm, miru_ai, dispatcher, n8n
-    Log files     stdout/stderr/restart logs for the four Miru services + startup.log
+    Ports         15678 18080 18765 18766 19100
+    Endpoints     mcp_gateway, pm, miru_ai, dispatch_listener, n8n
+    Log files     stdout/stderr/restart logs for the active Miru services + startup.log
+
+Port 19000 (task_dispatcher Flask app) was decommissioned PRO-234 (2026-04-30).
 """
 
 from __future__ import annotations
@@ -48,7 +50,7 @@ APPROVED_PORTS: tuple[tuple[int, str], ...] = (
     (18080, "pm"),
     (18765, "miru_ai"),
     (18766, "mcp_gateway"),
-    (19000, "dispatcher"),
+    (19100, "dispatch_listener"),
 )
 
 # (service, primary_url, fallback_url_or_None)
@@ -57,7 +59,7 @@ APPROVED_HEALTH_ENDPOINTS: tuple[tuple[str, str, str | None], ...] = (
     ("mcp_gateway", "http://127.0.0.1:18766/health", None),
     ("pm", "http://127.0.0.1:18080/__pm_health", "http://127.0.0.1:18080/"),
     ("miru_ai", "http://127.0.0.1:18765/api/health", None),
-    ("dispatcher", "http://127.0.0.1:19000/api/health", "http://127.0.0.1:19000/health"),
+    ("dispatch_listener", "http://127.0.0.1:19100/health", None),
     ("n8n", "http://localhost:15678/", None),
 )
 
@@ -104,7 +106,7 @@ def system_check_ports() -> str:
     """Check whether each approved Miru service port is listening on loopback.
 
     Approved ports: 15678 (n8n), 18080 (pm), 18765 (miru_ai),
-    18766 (mcp_gateway), 19000 (dispatcher).
+    18766 (mcp_gateway), 19100 (dispatch_listener).
 
     Returns JSON string: list of {port, label, listening, pid, process_name}.
     pid/process_name are populated only if psutil is available.

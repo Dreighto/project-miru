@@ -35,11 +35,6 @@ _APPROVED_RESTARTS: dict[str, dict[str, Any]] = {
         "mode": "script",
         "script": str(_REPO_ROOT / "windows" / "restart_miru_ai.ps1"),
     },
-    "dispatcher": {
-        "label": "Task Dispatcher (port 19000)",
-        "mode": "script",
-        "script": str(_REPO_ROOT / "windows" / "restart_dispatcher.ps1"),
-    },
     "dispatch_listener": {
         "label": "Dispatch Listener (MiruDispatchListener scheduled task)",
         "mode": "scheduled_task",
@@ -71,7 +66,7 @@ def _run_ps(args: list[str]) -> tuple[int, str, str]:
 def service_restart(service: str, ctx: Any = None) -> str:
     """Restart an approved Miru service.
 
-    ``service`` must be one of: pm, miru_ai, dispatcher, dispatch_listener.
+    ``service`` must be one of: pm, miru_ai, dispatch_listener.
     Returns JSON with ok, service, label, returncode, stdout_tail, stderr_tail.
     """
     svc = (service or "").strip().lower()

@@ -48,7 +48,7 @@ denied.
 ### system
 
 - `system_check_ports()` — liveness check on the 5 approved Miru ports
-  (15678 n8n, 18080 pm, 18765 miru_ai, 18766 mcp_gateway, 19000 dispatcher).
+  (15678 n8n, 18080 pm, 18765 miru_ai, 18766 mcp_gateway, 19100 dispatch_listener).
 - `system_check_health_endpoints()` — probe rich health URLs first
   (`/__pm_health`, `/api/health`), fall back to `/` if the rich path 404s.
 - `system_tail_safe_log(name, lines=100)` — tail an approved log file by
