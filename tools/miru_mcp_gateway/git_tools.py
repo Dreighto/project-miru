@@ -23,8 +23,29 @@ _CFG: Any = None
 _GIT_TIMEOUT_S = 120
 _OUTPUT_PREVIEW_CHARS = 6000
 
-_ALLOWED_EXACT = frozenset({"CLAUDE.md", "PROJECT_MIRU_INSTRUCTIONS.md"})
+_ALLOWED_EXACT = frozenset(
+    {
+        "CLAUDE.md",
+        "PROJECT_MIRU_INSTRUCTIONS.md",
+        "GEMINI.md",
+        "AGENTS.md",
+        "CURSOR.md",
+        "CODEX.md",
+        "COPILOT.md",
+    }
+)
 _ALLOWED_PREFIXES = ("docs/", "skills/")
+_ALLOWED_SERVICE_MD_PREFIXES = (
+    "tools/",
+    "services/",
+    "pm/",
+    "miru_ai/",
+    "dispatcher/",
+    "docker/",
+    "windows/",
+    ".claude/",
+    ".cursor/",
+)
 _DENIED_EXACT = frozenset(
     {
         "data/cc_completion_log.jsonl",
@@ -33,9 +54,6 @@ _DENIED_EXACT = frozenset(
         "data/dispatch_dlq.jsonl",
         "data/cc_heartbeat_log.jsonl",
     }
-)
-_DENIED_WORKER_RULE_FILES = frozenset(
-    {"GEMINI.md", "CURSOR.md", "CODEX.md", "COPILOT.md", "AGENTS.md"}
 )
 _DENIED_DB_NAMES = frozenset({"card_catalog.db", "miru_memory.db"})
 _GLOB_CHARS = frozenset("*?[")
@@ -164,8 +182,6 @@ def _assert_rel_allowed(rel: str) -> None:
         raise stdio_mcp.McpError(f"git_write: path rejected by filesystem deny list: {rel}", -32000)
     if rel in _DENIED_EXACT:
         raise stdio_mcp.McpError(f"git_write: append-only data file denied: {rel}", -32000)
-    if name in _DENIED_WORKER_RULE_FILES:
-        raise stdio_mcp.McpError(f"git_write: worker rule file denied: {rel}", -32000)
     if (
         name in _DENIED_DB_NAMES
         or lower.endswith("/card_catalog.db")
@@ -177,6 +193,10 @@ def _assert_rel_allowed(rel: str) -> None:
     if rel in _ALLOWED_EXACT:
         return
     if any(rel.startswith(prefix) for prefix in _ALLOWED_PREFIXES):
+        return
+    if rel.startswith("data/config/"):
+        return
+    if lower.endswith(".md") and any(rel.startswith(p) for p in _ALLOWED_SERVICE_MD_PREFIXES):
         return
     raise stdio_mcp.McpError(f"git_write: path not in orchestrator allowlist: {rel}", -32000)
 

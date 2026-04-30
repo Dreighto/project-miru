@@ -59,6 +59,8 @@ def _is_denied_docs_path(rel_posix: str) -> bool:
         return True
     if lower.startswith("docker/n8n/workflows/") and name.endswith(".json"):
         return True
+    if lower.startswith("data/config/"):
+        return any(name.endswith(suf) for suf in _CODE_SUFFIXES_DENY)
     deny_suffixes = _CONFIG_SUFFIXES_DENY + _CODE_SUFFIXES_DENY
     return any(name.endswith(suf) for suf in deny_suffixes)
 
