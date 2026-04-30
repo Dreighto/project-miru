@@ -12,7 +12,10 @@
       "name": "w4001-webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [200, 400],
+      "position": [
+        200,
+        400
+      ],
       "webhookId": "w4-dispatch-button"
     },
     {
@@ -25,7 +28,10 @@
       "name": "w4001a-respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [400, 400]
+      "position": [
+        400,
+        400
+      ]
     },
     {
       "parameters": {
@@ -37,30 +43,44 @@
       "name": "w4002-parse-input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [600, 400]
+      "position": [
+        600,
+        400
+      ]
     },
     {
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w4003-hmac-validate (PRO-84)\n// Defense-in-depth: re-validate the Telegram callback HMAC even though W7 already\n// validated it. Algorithm matches w7004-hmac-validate verbatim — single source of truth\n// for the callback HMAC contract (TELEGRAM_CALLBACK_SECRET). Replay window: -60s to +600s.\n// Note: this is the TELEGRAM CALLBACK HMAC (truncated 32 hex chars), NOT the listener HMAC.\n// The listener HMAC is computed separately in w4023-build-listener-request and uses\n// W4_LISTENER_HMAC_SECRET (full 64 hex chars over raw body).\nconst crypto = require('crypto');\n\nconst data = $input.item.json;\nif (data._abort) {\n  return { json: { ...data, validated: false, reject_reason: data._abort_reason } };\n}\n\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret || secret.length < 32) {\n  return { json: { ...data, validated: false, reject_reason: 'TELEGRAM_CALLBACK_SECRET missing or too short' } };\n}\n\nconst payload = data.token + data.action + data.nonce + data.ts_hex;\nconst expected = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\n\nlet hmac_ok = false;\ntry {\n  hmac_ok = crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(data.hmac_hex, 'hex'));\n} catch (e) {\n  return { json: { ...data, validated: false, reject_reason: 'hmac comparison threw: ' + e.message } };\n}\n\nif (!hmac_ok) {\n  return { json: { ...data, validated: false, reject_reason: 'hmac mismatch' } };\n}\n\nif (data.ts_unix_seconds != null) {\n  const now_seconds = Math.floor(Date.now() / 1000);\n  const age = now_seconds - data.ts_unix_seconds;\n  if (age > 600) return { json: { ...data, validated: false, reject_reason: 'callback older than 10 min (age=' + age + 's)' } };\n  if (age < -60) return { json: { ...data, validated: false, reject_reason: 'callback timestamp in future (age=' + age + 's)' } };\n}\n\nreturn { json: { ...data, validated: true } };"
+        "jsCode": "// w4003-hmac-validate (PRO-84)\n// Defense-in-depth: re-validate the Telegram callback HMAC even though W7 already\n// validated it. Algorithm matches w7004-hmac-validate verbatim \u2014 single source of truth\n// for the callback HMAC contract (TELEGRAM_CALLBACK_SECRET). Replay window: -60s to +600s.\n// Note: this is the TELEGRAM CALLBACK HMAC (truncated 32 hex chars), NOT the listener HMAC.\n// The listener HMAC is computed separately in w4023-build-listener-request and uses\n// W4_LISTENER_HMAC_SECRET (full 64 hex chars over raw body).\nconst crypto = require('crypto');\n\nconst data = $input.item.json;\nif (data._abort) {\n  return { json: { ...data, validated: false, reject_reason: data._abort_reason } };\n}\n\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret || secret.length < 32) {\n  return { json: { ...data, validated: false, reject_reason: 'TELEGRAM_CALLBACK_SECRET missing or too short' } };\n}\n\nconst payload = data.token + data.action + data.nonce + data.ts_hex;\nconst expected = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\n\nlet hmac_ok = false;\ntry {\n  hmac_ok = crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(data.hmac_hex, 'hex'));\n} catch (e) {\n  return { json: { ...data, validated: false, reject_reason: 'hmac comparison threw: ' + e.message } };\n}\n\nif (!hmac_ok) {\n  return { json: { ...data, validated: false, reject_reason: 'hmac mismatch' } };\n}\n\nif (data.ts_unix_seconds != null) {\n  const now_seconds = Math.floor(Date.now() / 1000);\n  const age = now_seconds - data.ts_unix_seconds;\n  if (age > 600) return { json: { ...data, validated: false, reject_reason: 'callback older than 10 min (age=' + age + 's)' } };\n  if (age < -60) return { json: { ...data, validated: false, reject_reason: 'callback timestamp in future (age=' + age + 's)' } };\n}\n\nreturn { json: { ...data, validated: true } };"
       },
       "id": "w4003-hmac-validate",
       "name": "w4003-hmac-validate",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [800, 400]
+      "position": [
+        800,
+        400
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "vb1",
               "leftValue": "={{ $json.validated }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -71,7 +91,10 @@
       "name": "w4004-validate-branch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1000, 400]
+      "position": [
+        1000,
+        400
+      ]
     },
     {
       "parameters": {
@@ -79,7 +102,12 @@
         "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -90,7 +118,10 @@
       "name": "w4005-abort-hmac",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 600],
+      "position": [
+        1200,
+        600
+      ],
       "continueOnFail": true
     },
     {
@@ -103,18 +134,29 @@
       "name": "w4006-lookup-pending-dispatch",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, 400]
+      "position": [
+        1200,
+        400
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "fb1",
               "leftValue": "={{ $json.found }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -125,7 +167,10 @@
       "name": "w4007-found-branch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1400, 400]
+      "position": [
+        1400,
+        400
+      ]
     },
     {
       "parameters": {
@@ -133,7 +178,12 @@
         "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -144,7 +194,10 @@
       "name": "w4008-abort-not-found",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1600, 600],
+      "position": [
+        1600,
+        600
+      ],
       "continueOnFail": true
     },
     {
@@ -155,7 +208,12 @@
         "nodeCredentialType": "linearApi",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -166,9 +224,15 @@
       "name": "w4009-fetch-labels",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1600, 400],
+      "position": [
+        1600,
+        400
+      ],
       "credentials": {
-        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -184,18 +248,29 @@
       "name": "w4010-verify-label",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1800, 400]
+      "position": [
+        1800,
+        400
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "lpb1",
               "leftValue": "={{ $json.label_present }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -206,7 +281,10 @@
       "name": "w4011-label-branch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [2000, 400]
+      "position": [
+        2000,
+        400
+      ]
     },
     {
       "parameters": {
@@ -214,7 +292,12 @@
         "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -225,19 +308,29 @@
       "name": "w4012-abort-label-removed",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2200, 600],
+      "position": [
+        2200,
+        600
+      ],
       "continueOnFail": true
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "cb1",
               "leftValue": "={{ $json.worker }}",
               "rightValue": "cursor",
-              "operator": { "type": "string", "operation": "equals" }
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -248,7 +341,10 @@
       "name": "w4013-cursor-branch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [2200, 400]
+      "position": [
+        2200,
+        400
+      ]
     },
     {
       "parameters": {
@@ -256,7 +352,12 @@
         "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -267,7 +368,10 @@
       "name": "w4014-edit-cursor",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2400, 600],
+      "position": [
+        2400,
+        600
+      ],
       "continueOnFail": true
     },
     {
@@ -280,7 +384,10 @@
       "name": "w4015-update-pending-cursor",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2600, 600]
+      "position": [
+        2600,
+        600
+      ]
     },
     {
       "parameters": {
@@ -290,7 +397,12 @@
         "nodeCredentialType": "linearApi",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -301,9 +413,15 @@
       "name": "w4020-fetch-issue-context",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2400, 200],
+      "position": [
+        2400,
+        200
+      ],
       "credentials": {
-        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -313,13 +431,16 @@
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w4021-assemble-prompt (PRO-84)\n// Build the prompt JSON object to write at data/n8n_inbox/<trace_id>.json.\n// schema_version='v1' per PRO-83 listener contract. The listener reads this file,\n// extracts the top-level `prompt` field as a string, and pipes it to the worker on stdin.\n// Other top-level fields are audit/replay metadata — not consumed by the listener.\nconst prior = $('w4010-verify-label').item.json;\nconst resp = $input.item.json;\n\nconst issue = (resp && resp.data && resp.data.issue) || {};\nconst title = issue.title || '';\nconst description = issue.description || '';\nconst url = issue.url || prior.issue_url;\nconst identifier = issue.identifier || prior.issue_identifier;\nconst comments = (issue.comments && issue.comments.nodes) || [];\n\nconst commentSection = comments.length === 0\n  ? '_No comments yet._'\n  : comments.map(c => '---\\n**' + (c.user && c.user.name ? c.user.name : 'unknown') + '** at ' + (c.createdAt || '?') + '\\n\\n' + (c.body || '')).join('\\n\\n');\n\nconst worker = prior.worker;\nconst trace_id = prior.trace_id;\n\nconst promptText = [\n  'You are working on Linear ticket ' + identifier + ' \\u2014 ' + title + '.',\n  '',\n  'Linear issue URL: ' + url,\n  'Trace ID for this dispatch: ' + trace_id,\n  '',\n  'Before starting work:',\n  '- Read CLAUDE.md (project root) for the latest worker rules.',\n  '- Read AGENTS.md if present.',\n  '- Check for any relevant canon refs the ticket links to.',\n  '',\n  '## Ticket description',\n  '',\n  description || '_No description provided._',\n  '',\n  '## Recent comments',\n  '',\n  commentSection,\n  '',\n  '## Completion contract',\n  '',\n  'When done, end your work with exactly one of:',\n  '- STATUS: CONFIRMED WORKING',\n  '- STATUS: INCONCLUSIVE',\n  '- STATUS: FAILED',\n  '',\n  'Plus a one-paragraph summary of what changed and what didn\\'t.',\n  '',\n  'Run the hygiene gate (pre-commit run) before opening any PR. Append a row to',\n  'data/cc_completion_log.jsonl per the locked convention. Move the Linear ticket',\n  'to In Review when ready for operator review (only operator/Claude Chat moves to Done).',\n  '',\n  'Include the trace ID (' + trace_id + ') in your PR description so it can be correlated',\n  'with this dispatch in routing_history.jsonl and the listener trace logs.'\n].join('\\n');\n\nconst promptDoc = {\n  schema_version: 'v1',\n  trace_id,\n  worker,\n  ticket_id: prior.issue_id,\n  ticket_identifier: identifier,\n  ticket_url: url,\n  ticket_title: title,\n  created_at: new Date().toISOString(),\n  prompt: promptText\n};\n\nreturn { json: { ...prior, prompt_doc: promptDoc, prompt_doc_string: JSON.stringify(promptDoc) } };"
+        "jsCode": "// w4021-assemble-prompt (PRO-84)\n// Build the prompt JSON object to write at data/n8n_inbox/<trace_id>.json.\n// schema_version='v1' per PRO-83 listener contract. The listener reads this file,\n// extracts the top-level `prompt` field as a string, and pipes it to the worker on stdin.\n// Other top-level fields are audit/replay metadata \u2014 not consumed by the listener.\nconst prior = $('w4010-verify-label').item.json;\nconst resp = $input.item.json;\n\nconst issue = (resp && resp.data && resp.data.issue) || {};\nconst title = issue.title || '';\nconst description = issue.description || '';\nconst url = issue.url || prior.issue_url;\nconst identifier = issue.identifier || prior.issue_identifier;\nconst comments = (issue.comments && issue.comments.nodes) || [];\n\nconst commentSection = comments.length === 0\n  ? '_No comments yet._'\n  : comments.map(c => '---\\n**' + (c.user && c.user.name ? c.user.name : 'unknown') + '** at ' + (c.createdAt || '?') + '\\n\\n' + (c.body || '')).join('\\n\\n');\n\nconst worker = prior.worker;\nconst trace_id = prior.trace_id;\n\nconst promptText = [\n  'You are working on Linear ticket ' + identifier + ' \\u2014 ' + title + '.',\n  '',\n  'Linear issue URL: ' + url,\n  'Trace ID for this dispatch: ' + trace_id,\n  '',\n  'Before starting work:',\n  '- Read CLAUDE.md (project root) for the latest worker rules.',\n  '- Read AGENTS.md if present.',\n  '- Check for any relevant canon refs the ticket links to.',\n  '',\n  '## Ticket description',\n  '',\n  description || '_No description provided._',\n  '',\n  '## Recent comments',\n  '',\n  commentSection,\n  '',\n  '## Completion contract',\n  '',\n  'When done, end your work with exactly one of:',\n  '- STATUS: CONFIRMED WORKING',\n  '- STATUS: INCONCLUSIVE',\n  '- STATUS: FAILED',\n  '',\n  'Plus a one-paragraph summary of what changed and what didn\\'t.',\n  '',\n  'Run the hygiene gate (pre-commit run) before opening any PR. Append a row to',\n  'data/cc_completion_log.jsonl per the locked convention. Move the Linear ticket',\n  'to In Review when ready for operator review (only operator/Claude Chat moves to Done).',\n  '',\n  'Include the trace ID (' + trace_id + ') in your PR description so it can be correlated',\n  'with this dispatch in routing_history.jsonl and the listener trace logs.'\n].join('\\n');\n\nconst promptDoc = {\n  schema_version: 'v1',\n  trace_id,\n  worker,\n  ticket_id: prior.issue_id,\n  ticket_identifier: identifier,\n  ticket_url: url,\n  ticket_title: title,\n  created_at: new Date().toISOString(),\n  prompt: promptText\n};\n\nreturn { json: { ...prior, prompt_doc: promptDoc, prompt_doc_string: JSON.stringify(promptDoc) } };"
       },
       "id": "w4021-assemble-prompt",
       "name": "w4021-assemble-prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2600, 200]
+      "position": [
+        2600,
+        200
+      ]
     },
     {
       "parameters": {
@@ -331,19 +452,116 @@
       "name": "w4022-write-prompt-file",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2800, 200]
+      "position": [
+        2800,
+        200
+      ]
     },
     {
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w4023-build-listener-request (PRO-84)\n// Serialize the listener request body ONCE and HMAC the exact bytes that will be\n// sent. The listener (services/dispatch_listener/src/hmac.js) does HMAC-SHA256\n// over the raw request body using W4_LISTENER_HMAC_SECRET, full 64 hex chars,\n// constant-time compared via crypto.timingSafeEqual. If n8n re-serializes between\n// signing and sending, the HMAC will mismatch — so the HTTP node downstream MUST\n// send body_string verbatim (specifyBody:string + body=body_string, NOT a JSON object).\nconst crypto = require('crypto');\nconst secret = $env.W4_LISTENER_HMAC_SECRET;\nif (!secret || secret.length < 16) {\n  return { json: { ...$input.item.json, listener_prep_ok: false, listener_prep_error: 'W4_LISTENER_HMAC_SECRET missing or too short — check docker-compose env passthrough' } };\n}\n\nconst data = $input.item.json;\n\nconst bodyObj = {\n  schema_version: 'v1',\n  trace_id: data.trace_id,\n  worker: data.worker,\n  prompt_path: data.prompt_path_host,\n  timeout_seconds: 600\n};\nconst body_string = JSON.stringify(bodyObj);\nconst hmac_hex = crypto.createHmac('sha256', secret).update(body_string).digest('hex');\n\nreturn { json: { ...data, listener_prep_ok: true, listener_body_string: body_string, listener_hmac_hex: hmac_hex } };"
+        "jsCode": "// w4023-build-listener-request (PRO-84)\n// Serialize the listener request body ONCE and HMAC the exact bytes that will be\n// sent. The listener (services/dispatch_listener/src/hmac.js) does HMAC-SHA256\n// over the raw request body using W4_LISTENER_HMAC_SECRET, full 64 hex chars,\n// constant-time compared via crypto.timingSafeEqual. If n8n re-serializes between\n// signing and sending, the HMAC will mismatch \u2014 so the HTTP node downstream MUST\n// send body_string verbatim (specifyBody:string + body=body_string, NOT a JSON object).\nconst crypto = require('crypto');\nconst secret = $env.W4_LISTENER_HMAC_SECRET;\nif (!secret || secret.length < 16) {\n  return { json: { ...$input.item.json, listener_prep_ok: false, listener_prep_error: 'W4_LISTENER_HMAC_SECRET missing or too short \u2014 check docker-compose env passthrough' } };\n}\n\nconst data = $input.item.json;\n\nconst bodyObj = {\n  schema_version: 'v1',\n  trace_id: data.trace_id,\n  worker: data.worker,\n  prompt_path: data.prompt_path_host,\n  timeout_seconds: 600\n};\nconst body_string = JSON.stringify(bodyObj);\nconst hmac_hex = crypto.createHmac('sha256', secret).update(body_string).digest('hex');\n\nreturn { json: { ...data, listener_prep_ok: true, listener_body_string: body_string, listener_hmac_hex: hmac_hex } };"
       },
       "id": "w4023-build-listener-request",
       "name": "w4023-build-listener-request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3000, 200]
+      "position": [
+        3000,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4023a-validate-approved-credentials (PRO-216)\n// Pre-spawn gate: worker must map in approved_credentials.json dispatch_targets and\n// the allowed env credential must be non-empty before POST /dispatch to the listener.\nconst fs = require('fs');\nconst CONFIG_PATH = '/miru-data/config/approved_credentials.json';\n\nconst data = $input.item.json;\nlet cfg;\ntry {\n  cfg = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));\n} catch (e) {\n  return { json: { ...data, credential_gate_ok: false, credential_gate_reason: 'approved_credentials read/parse failed: ' + e.message } };\n}\n\nconst worker = data.worker;\nconst targets = (cfg && cfg.dispatch_targets) || {};\nconst entry = targets[worker];\nif (!entry || typeof entry.allowed_credential !== 'string' || !entry.allowed_credential) {\n  return { json: { ...data, credential_gate_ok: false, credential_gate_reason: 'worker not in approved dispatch_targets: ' + String(worker) } };\n}\n\nconst envName = entry.allowed_credential;\nconst rawVal = process.env[envName];\nconst val = rawVal != null ? String(rawVal).trim() : '';\nif (!val) {\n  return { json: { ...data, credential_gate_ok: false, credential_gate_reason: 'required env unset or empty: ' + envName + ' (worker ' + String(worker) + ')' } };\n}\n\nreturn { json: { ...data, credential_gate_ok: true } };"
+      },
+      "id": "w4023a-validate-approved-credentials",
+      "name": "w4023a-validate-approved-credentials",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3100,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "credgate-ok",
+              "leftValue": "={{ $json.credential_gate_ok }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "w4023b-credential-gate",
+      "name": "w4023b-credential-gate",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3220,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w4023c-write-credential-dlq (PRO-216)\n// Same append-only row shape as w4030-write-dlq; error_class credential_mismatch.\nconst fs = require('fs');\nconst DLQ = '/miru-data/dispatch_dlq.jsonl';\nconst prior = $('w4023-build-listener-request').item.json;\nconst gate = $input.item.json;\nconst reason = gate.credential_gate_reason || 'credential_mismatch';\nconst row = {\n  schema_version: 'v1',\n  trace_id: prior.trace_id,\n  worker: prior.worker,\n  prompt_path: prior.prompt_path_host != null ? prior.prompt_path_host : null,\n  exit_code: null,\n  stderr_tail: String(reason).slice(0, 4096),\n  error_class: 'credential_mismatch',\n  timestamp: new Date().toISOString()\n};\nfs.appendFileSync(DLQ, JSON.stringify(row) + '\\n');\nreturn { json: { ...prior, ...gate, dlq_written: true, dlq_error_class: 'credential_mismatch' } };"
+      },
+      "id": "w4023c-write-credential-dlq",
+      "name": "w4023c-write-credential-dlq",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3220,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "8460649671",
+        "text": "=<b>Credential gate blocked dispatch</b>\n<i>{{ $json.issue_identifier || \"?\" }} \u2014 {{ $json.worker }}</i>\n<code>{{ $json.credential_gate_reason }}</code>\ntrace: <code>{{ $json.trace_id }}</code>",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "w4023d-operator-credential-alert",
+      "name": "w4023d-operator-credential-alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3400,
+        480
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "5tWWGl8jkCOHqJQg",
+          "name": "telegram-n8n"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -352,7 +570,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "X-W4-HMAC", "value": "={{ $json.listener_hmac_hex }}" }
+            {
+              "name": "X-W4-HMAC",
+              "value": "={{ $json.listener_hmac_hex }}"
+            }
           ]
         },
         "sendBody": true,
@@ -373,7 +594,10 @@
       "name": "w4024-post-listener",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3200, 200],
+      "position": [
+        3200,
+        200
+      ],
       "continueOnFail": true
     },
     {
@@ -382,13 +606,20 @@
           "values": [
             {
               "conditions": {
-                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
                 "conditions": [
                   {
                     "id": "sr202",
                     "leftValue": "={{ $json.statusCode }}",
                     "rightValue": 202,
-                    "operator": { "type": "number", "operation": "equals" }
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
                   }
                 ],
                 "combinator": "and"
@@ -397,13 +628,20 @@
             },
             {
               "conditions": {
-                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
                 "conditions": [
                   {
                     "id": "sr409",
                     "leftValue": "={{ $json.statusCode }}",
                     "rightValue": 409,
-                    "operator": { "type": "number", "operation": "equals" }
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
                   }
                 ],
                 "combinator": "and"
@@ -412,13 +650,19 @@
             }
           ]
         },
-        "options": { "fallbackOutput": "extra", "renameFallbackOutput": "fail" }
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "fail"
+        }
       },
       "id": "w4025-status-router",
       "name": "w4025-status-router",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [3400, 200]
+      "position": [
+        3400,
+        200
+      ]
     },
     {
       "parameters": {
@@ -426,7 +670,12 @@
         "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -437,7 +686,10 @@
       "name": "w4026-edit-success",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3600, 100],
+      "position": [
+        3600,
+        100
+      ],
       "continueOnFail": true
     },
     {
@@ -450,7 +702,10 @@
       "name": "w4027-update-pending-dispatched",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3800, 100]
+      "position": [
+        3800,
+        100
+      ]
     },
     {
       "parameters": {
@@ -458,7 +713,12 @@
         "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -469,20 +729,26 @@
       "name": "w4028-edit-already",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3600, 250],
+      "position": [
+        3600,
+        250
+      ],
       "continueOnFail": true
     },
     {
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w4030-write-dlq (PRO-84)\n// Append a DLQ row for genuine failures (401/403/5xx) — deliberately NOT the 409\n// branch. 409 is idempotency working as designed (operator double-tap or two W4\n// instances raced); treating it as DLQ would pollute calibration data with system-\n// correct behavior. See locked design decision §3 in the plan. Schema matches\n// services/dispatch_listener/src/dlq.js so consumers can read both sources.\nconst fs = require('fs');\nconst DLQ = '/miru-data/dispatch_dlq.jsonl';\n\nconst prior = $('w4023-build-listener-request').item.json;\nconst resp = $input.item.json || {};\nconst statusCode = resp.statusCode != null ? resp.statusCode : 0;\nconst respBody = (resp.body && (typeof resp.body === 'string' ? resp.body : JSON.stringify(resp.body))) || '';\n\nlet error_class;\nif (statusCode === 401) error_class = 'hmac_reject_w4_to_listener';\nelse if (statusCode === 403) error_class = 'allowlist_reject';\nelse if (statusCode >= 500) error_class = 'listener_5xx';\nelse if (statusCode === 0) error_class = 'listener_unreachable';\nelse error_class = 'listener_unexpected_status_' + statusCode;\n\nconst row = {\n  schema_version: 'v1',\n  trace_id: prior.trace_id,\n  worker: prior.worker,\n  prompt_path: prior.prompt_path_host,\n  exit_code: null,\n  stderr_tail: respBody.slice(0, 4096),\n  error_class,\n  timestamp: new Date().toISOString()\n};\nfs.appendFileSync(DLQ, JSON.stringify(row) + '\\n');\n\nreturn { json: { ...prior, dlq_written: true, dlq_error_class: error_class, dlq_status_code: statusCode, dlq_response_body: respBody.slice(0, 1024) } };"
+        "jsCode": "// w4030-write-dlq (PRO-84)\n// Append a DLQ row for genuine failures (401/403/5xx) \u2014 deliberately NOT the 409\n// branch. 409 is idempotency working as designed (operator double-tap or two W4\n// instances raced); treating it as DLQ would pollute calibration data with system-\n// correct behavior. See locked design decision \u00a73 in the plan. Schema matches\n// services/dispatch_listener/src/dlq.js so consumers can read both sources.\nconst fs = require('fs');\nconst DLQ = '/miru-data/dispatch_dlq.jsonl';\n\nconst prior = $('w4023-build-listener-request').item.json;\nconst resp = $input.item.json || {};\nconst statusCode = resp.statusCode != null ? resp.statusCode : 0;\nconst respBody = (resp.body && (typeof resp.body === 'string' ? resp.body : JSON.stringify(resp.body))) || '';\n\nlet error_class;\nif (statusCode === 401) error_class = 'hmac_reject_w4_to_listener';\nelse if (statusCode === 403) error_class = 'allowlist_reject';\nelse if (statusCode >= 500) error_class = 'listener_5xx';\nelse if (statusCode === 0) error_class = 'listener_unreachable';\nelse error_class = 'listener_unexpected_status_' + statusCode;\n\nconst row = {\n  schema_version: 'v1',\n  trace_id: prior.trace_id,\n  worker: prior.worker,\n  prompt_path: prior.prompt_path_host,\n  exit_code: null,\n  stderr_tail: respBody.slice(0, 4096),\n  error_class,\n  timestamp: new Date().toISOString()\n};\nfs.appendFileSync(DLQ, JSON.stringify(row) + '\\n');\n\nreturn { json: { ...prior, dlq_written: true, dlq_error_class: error_class, dlq_status_code: statusCode, dlq_response_body: respBody.slice(0, 1024) } };"
       },
       "id": "w4030-write-dlq",
       "name": "w4030-write-dlq",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3600, 400]
+      "position": [
+        3600,
+        400
+      ]
     },
     {
       "parameters": {
@@ -490,7 +756,12 @@
         "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageText",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -501,7 +772,10 @@
       "name": "w4031-edit-failure",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3800, 400],
+      "position": [
+        3800,
+        400
+      ],
       "continueOnFail": true
     },
     {
@@ -512,7 +786,12 @@
         "nodeCredentialType": "linearApi",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -523,9 +802,15 @@
       "name": "w4040-fetch-team-states",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4000, 100],
+      "position": [
+        4000,
+        100
+      ],
       "credentials": {
-        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
       },
       "continueOnFail": true,
       "retryOnFail": true,
@@ -536,13 +821,16 @@
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w4041-resolve-in-progress (PRO-196)\n// Extract the 'In Progress' state from w4040 team states response.\n// Match by name, not type — both 'In Progress' and 'In Review' have type='started'.\n// Sets _state_move_skip=true if state not found so w4042 becomes a no-op.\nconst prior = $('w4027-update-pending-dispatched').item.json;\nconst resp = $input.item.json;\n\nconst data = (resp && resp.data) || {};\nconst states = (data.team && data.team.states && data.team.states.nodes) || [];\nconst inProgress = states.find(s => s.name === 'In Progress');\n\nif (!inProgress) {\n  return { json: { ...prior, _state_move_skip: true, _state_move_err: 'no In Progress state found in team states' } };\n}\n\nreturn { json: { ...prior, _state_move_skip: false, _in_progress_state_id: inProgress.id } };"
+        "jsCode": "// w4041-resolve-in-progress (PRO-196)\n// Extract the 'In Progress' state from w4040 team states response.\n// Match by name, not type \u2014 both 'In Progress' and 'In Review' have type='started'.\n// Sets _state_move_skip=true if state not found so w4042 becomes a no-op.\nconst prior = $('w4027-update-pending-dispatched').item.json;\nconst resp = $input.item.json;\n\nconst data = (resp && resp.data) || {};\nconst states = (data.team && data.team.states && data.team.states.nodes) || [];\nconst inProgress = states.find(s => s.name === 'In Progress');\n\nif (!inProgress) {\n  return { json: { ...prior, _state_move_skip: true, _state_move_err: 'no In Progress state found in team states' } };\n}\n\nreturn { json: { ...prior, _state_move_skip: false, _in_progress_state_id: inProgress.id } };"
       },
       "id": "w4041-resolve-in-progress",
       "name": "w4041-resolve-in-progress",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [4200, 100]
+      "position": [
+        4200,
+        100
+      ]
     },
     {
       "parameters": {
@@ -552,7 +840,12 @@
         "nodeCredentialType": "linearApi",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -563,9 +856,15 @@
       "name": "w4042-move-in-progress",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [4400, 100],
+      "position": [
+        4400,
+        100
+      ],
       "credentials": {
-        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
       },
       "continueOnFail": true,
       "retryOnFail": true,
@@ -575,89 +874,339 @@
   ],
   "connections": {
     "w4001-webhook": {
-      "main": [[{"node": "w4002-parse-input", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4002-parse-input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4002-parse-input": {
-      "main": [[{"node": "w4001a-respond", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4001a-respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4001a-respond": {
-      "main": [[{"node": "w4003-hmac-validate", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4003-hmac-validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4003-hmac-validate": {
-      "main": [[{"node": "w4004-validate-branch", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4004-validate-branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4004-validate-branch": {
       "main": [
-        [{"node": "w4006-lookup-pending-dispatch", "type": "main", "index": 0}],
-        [{"node": "w4005-abort-hmac", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w4006-lookup-pending-dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w4005-abort-hmac",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w4006-lookup-pending-dispatch": {
-      "main": [[{"node": "w4007-found-branch", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4007-found-branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4007-found-branch": {
       "main": [
-        [{"node": "w4009-fetch-labels", "type": "main", "index": 0}],
-        [{"node": "w4008-abort-not-found", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w4009-fetch-labels",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w4008-abort-not-found",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w4009-fetch-labels": {
-      "main": [[{"node": "w4010-verify-label", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4010-verify-label",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4010-verify-label": {
-      "main": [[{"node": "w4011-label-branch", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4011-label-branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4011-label-branch": {
       "main": [
-        [{"node": "w4013-cursor-branch", "type": "main", "index": 0}],
-        [{"node": "w4012-abort-label-removed", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w4013-cursor-branch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w4012-abort-label-removed",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w4013-cursor-branch": {
       "main": [
-        [{"node": "w4014-edit-cursor", "type": "main", "index": 0}],
-        [{"node": "w4020-fetch-issue-context", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w4014-edit-cursor",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w4020-fetch-issue-context",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w4014-edit-cursor": {
-      "main": [[{"node": "w4015-update-pending-cursor", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4015-update-pending-cursor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4020-fetch-issue-context": {
-      "main": [[{"node": "w4021-assemble-prompt", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4021-assemble-prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4021-assemble-prompt": {
-      "main": [[{"node": "w4022-write-prompt-file", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4022-write-prompt-file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4022-write-prompt-file": {
-      "main": [[{"node": "w4023-build-listener-request", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4023-build-listener-request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4023-build-listener-request": {
-      "main": [[{"node": "w4024-post-listener", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4023a-validate-approved-credentials",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4024-post-listener": {
-      "main": [[{"node": "w4025-status-router", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4025-status-router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4025-status-router": {
       "main": [
-        [{"node": "w4026-edit-success", "type": "main", "index": 0}],
-        [{"node": "w4028-edit-already", "type": "main", "index": 0}],
-        [{"node": "w4030-write-dlq", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w4026-edit-success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w4028-edit-already",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w4030-write-dlq",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w4026-edit-success": {
-      "main": [[{"node": "w4027-update-pending-dispatched", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4027-update-pending-dispatched",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4027-update-pending-dispatched": {
-      "main": [[{"node": "w4040-fetch-team-states", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4040-fetch-team-states",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4040-fetch-team-states": {
-      "main": [[{"node": "w4041-resolve-in-progress", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4041-resolve-in-progress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4041-resolve-in-progress": {
-      "main": [[{"node": "w4042-move-in-progress", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4042-move-in-progress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w4030-write-dlq": {
-      "main": [[{"node": "w4031-edit-failure", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w4031-edit-failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w4023a-validate-approved-credentials": {
+      "main": [
+        [
+          {
+            "node": "w4023b-credential-gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w4023b-credential-gate": {
+      "main": [
+        [
+          {
+            "node": "w4024-post-listener",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w4023c-write-credential-dlq",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w4023c-write-credential-dlq": {
+      "main": [
+        [
+          {
+            "node": "w4023d-operator-credential-alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
