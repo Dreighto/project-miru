@@ -37,7 +37,7 @@ _OAUTH_CHECK_INTERVAL_H = 24
 _HEALTH_ENDPOINTS = {
     "gateway": "http://127.0.0.1:18766/health",
     "dispatch_listener": "http://127.0.0.1:19100/health",
-    "pm": "http://127.0.0.1:18080/health",
+    "pm": "http://127.0.0.1:18080/__pm_health",
     "miru_ai": "http://127.0.0.1:18765/api/health",
     "n8n": "http://127.0.0.1:15678/healthz",
 }
@@ -216,22 +216,77 @@ def _should_run_oauth_check(state: dict) -> bool:
 
 # ── AI analysis ───────────────────────────────────────────────────────────────
 
-_SYSTEM_PROMPT = (
-    "You are a system health monitor for Project Miru. "
-    "Respond with exactly ALL CLEAR unless you see clear evidence of a problem.\n\n"
-    "Alert ONLY on these specific signals:\n"
-    "- A service explicitly listed as 'down' in the SERVICES section\n"
-    "- A log line containing: ERROR, FATAL, crash, panic, unhandled exception, "
-    "segfault, OOM, or similar hard failure keywords\n"
-    "- A DLQ new-entry count above 0\n\n"
-    "Do NOT alert on:\n"
-    "- Services listed as 'up'\n"
-    "- Log lines showing normal cycles: 'ok', 'all_clear', 'healthy', 'poll', 'done'\n"
-    "- Placeholder text like '(no recent errors)', '(file not found)', '(empty)'\n"
-    "- Worker activity or completion entries\n\n"
-    "When in doubt, respond ALL CLEAR. "
-    "If you must alert, start with ALERT: followed by one specific sentence."
-)
+_SYSTEM_PROMPT = """\
+You are a health monitor for Project Miru, a card game price-tracking and deck-management system.
+You analyze service status and log snapshots and return a structured JSON assessment.
+
+## WHAT MIRU LOOKS LIKE WHEN HEALTHY
+
+Miru runs 5 services: dispatch_listener (19100), gateway (18766), miru_ai (18765), pm (18080), n8n (15678).
+When everything is fine:
+- All services show "up"
+- Logs contain normal cycle markers: listener_listening, worker_spawned, worker_exit, all_clear,
+  stall_recovery run, stalls_found=0, poll, GET /health 200, GET /api/health 200
+- DLQ new entries = 0
+- Heartbeat entries show IN_PROGRESS or completed work
+- Completion entries show CONFIRMED_WORKING or INCONCLUSIVE
+
+## WHAT TO ALERT ON (escalate=true)
+
+Alert ONLY when you see concrete evidence of a failure:
+- A service status that does NOT start with "up" (e.g. "down", "http_404", "http_500")
+- Log lines containing: ERROR, FATAL, crash, panic, unhandled exception, segfault, OOM,
+  KeyError, AttributeError, ImportError, ModuleNotFoundError, exit code != 0 (non-timeout)
+- DLQ new-entry count above 0
+
+## WHAT IS NORMAL — DO NOT ALERT
+
+These are expected patterns that look alarming but are not:
+- "WARNING: This is a development server." — Flask always prints this, not a problem
+- "Pushover is enabled but missing required keys" — expected config notice
+- "(no recent errors)", "(file not found)", "(empty)", "(healthy: N cycles, no stalls detected)" — placeholder text
+- "stalls_found=0", "no_stalls_detected" — these mean the system is healthy
+- "worker_exit exit_code=0 status=INCONCLUSIVE" — INCONCLUSIVE is a valid terminal state, not a failure
+- "hmac_reject", "allowlist_reject" — security filters working as intended
+- EADDRINUSE in stderr when the service is listed as "up" — historical startup artifact
+- "=== sentinel run ===" entries — that is this script running normally
+- Access log lines: "GET /... HTTP/1.1" 200 or 304 — normal traffic
+
+## OUTPUT FORMAT
+
+Respond with ONLY a JSON object, no other text:
+{"should_escalate": false, "reason": "All services up, logs show normal idle cycles"}
+{"should_escalate": true, "reason": "miru_ai is down (HTTPError)"}
+
+Rules:
+- should_escalate must be a boolean (true or false), never a string
+- reason must be one specific sentence, 15 words max
+- When should_escalate is false, reason starts with "All services up" or "All clear"
+- When should_escalate is true, reason names the exact service or log line that triggered it
+- If you are uncertain, set should_escalate to false
+
+## FEW-SHOT EXAMPLES
+
+Input: services={gateway:up, dispatch_listener:up, pm:up, miru_ai:up, n8n:up}, DLQ new=0,
+logs show "stalls_found=0", "listener_listening", "all_clear"
+Output: {"should_escalate": false, "reason": "All services up, normal idle cycle logs"}
+
+Input: services={gateway:up, dispatch_listener:up, pm:up, miru_ai:down (HTTPError), n8n:up}, DLQ new=0
+Output: {"should_escalate": true, "reason": "miru_ai is down (HTTPError)"}
+
+Input: services all up, logs show "WARNING: This is a development server", "Pushover missing keys"
+Output: {"should_escalate": false, "reason": "All clear; development server warnings are expected"}
+
+Input: services all up, stall_recovery log shows "stalls_found=0 no_stalls_detected",
+dispatch_listener_stderr shows "(no recent errors — prior startup-race artifact; service is healthy)"
+Output: {"should_escalate": false, "reason": "All services up, all logs show healthy idle patterns"}
+
+Input: services all up, DLQ new=5
+Output: {"should_escalate": true, "reason": "5 new DLQ entries indicate failed dispatches"}
+
+Input: services all up, logs contain "FATAL: startup_missing_binaries"
+Output: {"should_escalate": true, "reason": "dispatch_listener fatal: worker binaries missing"}
+"""
 
 
 def _build_context(
@@ -299,8 +354,9 @@ def _ask_ollama(context: str) -> str | None:
         payload = json.dumps(
             {
                 "model": model,
-                "prompt": f"{_SYSTEM_PROMPT}\n\n{context}",
+                "prompt": f"{_SYSTEM_PROMPT}\n\nHere is the current system snapshot:\n\n{context}",
                 "stream": False,
+                "format": "json",
             }
         ).encode("utf-8")
         req = urllib.request.Request(
@@ -323,10 +379,14 @@ def _ask_openai(context: str, api_key: str) -> str | None:
                 "model": "gpt-4o-mini",
                 "messages": [
                     {"role": "system", "content": _SYSTEM_PROMPT},
-                    {"role": "user", "content": context},
+                    {
+                        "role": "user",
+                        "content": f"Here is the current system snapshot:\n\n{context}",
+                    },
                 ],
                 "max_tokens": 150,
                 "temperature": 0,
+                "response_format": {"type": "json_object"},
             },
             separators=(",", ":"),
         ).encode("utf-8")
@@ -604,9 +664,26 @@ def main() -> None:
 
     _log(f"ai_response={ai_response[:120] if ai_response else '(none)'}")
 
+    # Parse structured JSON response — extract should_escalate and reason
+    ai_escalate = False
+    ai_reason = ""
+    if ai_response:
+        try:
+            parsed = json.loads(ai_response)
+            ai_escalate = bool(parsed.get("should_escalate", False))
+            ai_reason = str(parsed.get("reason", "")).strip()
+        except (ValueError, KeyError):
+            # Fallback: if JSON parse fails, treat any non-empty non-all-clear response
+            # as an escalation signal to fail safely
+            text_upper = ai_response.upper()
+            ai_escalate = "ALERT" in text_upper or "ERROR" in text_upper or "DOWN" in text_upper
+            ai_reason = ai_response[:120]
+            _log(f"ai_json_parse_failed — fallback text check: escalate={ai_escalate}")
+
+    _log(f"ai_escalate={ai_escalate} ai_reason={ai_reason[:80]}")
+
     # Decide whether to alert
-    ai_flagged = ai_response and ai_response.upper().startswith("ALERT")
-    should_alert = bool(hard_alerts) or ai_flagged
+    should_alert = bool(hard_alerts) or ai_escalate
 
     if should_alert:
         if _is_snoozed(state):
@@ -616,8 +693,8 @@ def main() -> None:
             if hard_alerts:
                 for a in hard_alerts:
                     lines.append(f"⚠️ {a}")
-            if ai_flagged:
-                lines.append(f"🤖 {ai_response}")
+            if ai_escalate and ai_reason:
+                lines.append(f"🤖 {ai_reason}")
             lines.append("<i>Reply /snooze 2h to silence for a while</i>")
             _alert("\n".join(lines), tg_token, tg_chat, po_token, po_user, po_enabled)
             _log("alert_sent")
