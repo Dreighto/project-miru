@@ -158,8 +158,21 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
   // stored OAuth credentials (~/.claude/). If the key is present (e.g. from
   // .env for other services) it overrides stored auth and causes "Invalid API
   // key" when the stored-credential flow would have worked fine.
+  // claude.cmd authenticates via ANTHROPIC_API_KEY. The .env stores the active
+  // key under MIRU_ROUTING_KEY (ANTHROPIC_API_KEY is disabled). Map it across
+  // so the spawned worker gets valid credentials without changing .env naming.
   const childEnv = { ...process.env };
-  delete childEnv.ANTHROPIC_API_KEY;
+  if (childEnv.MIRU_ROUTING_KEY) {
+    childEnv.ANTHROPIC_API_KEY = childEnv.MIRU_ROUTING_KEY;
+  } else {
+    delete childEnv.ANTHROPIC_API_KEY;
+  }
+
+  log.info('spawn_auth_debug', {
+    trace_id: traceId,
+    has_api_key: !!childEnv.ANTHROPIC_API_KEY,
+    has_routing_key: !!childEnv.MIRU_ROUTING_KEY,
+  });
 
   let child;
   try {
