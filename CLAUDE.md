@@ -203,14 +203,13 @@ Every file created must go in the correct location. These rules are non-negotiab
 
 - `miru_ai/` — ALL code for the Miru AI service (port 18765): Python modules, workers, templates, static, tools, migrations
 - `pm/` — ALL code for the PM Dashboard (port 18080): app.py, templates, static
-- `dispatcher/` — ALL code for the Task Dispatcher (port 19000): task_dispatcher.py, handlers/, templates/, static/
+- `dispatcher/` — Task Dispatcher code — **DECOMMISSIONED** (PRO-234, 2026-04-30). Code kept for reference; service stopped. Do not add new files here.
 - `shared/` — Only utilities imported by 2+ services. Not a dumping ground.
 - `windows/` — Windows operational scripts (.ps1, .cmd) for service management ONLY. No Python service code here.
 
 ### Where new files go
 
 - New Python module for miru_ai → `miru_ai/` (appropriate subfolder: core/, workers/, governance/, ingestion/)
-- New Python module for dispatcher → `dispatcher/handlers/` or `dispatcher/`
 - New Python module for pm → `pm/`
 - Standalone data/AI utility scripts → `tools/`
 - Test files → `tests/`
@@ -232,6 +231,61 @@ Every file created must go in the correct location. These rules are non-negotiab
 - Never write \*.png screenshots to repo root — use `archive/screenshots/`
 - If a file belongs to miru_ai, pm, or dispatcher — it lives in that service directory, nowhere else
 - Never create files in `data/startup-logs/` — that path is deprecated; use `logs/`
+
+---
+
+## Autonomous Operations — Claude Chat Decision Authority
+
+Claude Chat is the lead orchestrator. The default operating mode is **decide → act → report**.
+Asking the operator is the exception, not the norm. When in doubt: if the decision is local and
+reversible, make it and note it. If it's irreversible or external, ask first.
+
+### Decisions Claude Chat makes without asking
+
+**Routing and dispatch:**
+
+- Which worker to assign a ticket to (use worker-roster.md and the ticket's nature as inputs)
+- Whether to run workers in parallel or sequentially (based on file overlap and dependency check)
+- Which Ollama model to use for a routing or analysis step (use model assignment table in worker-roster.md)
+- Whether to retry a failed dispatch (1 retry max per ticket per worker, then escalate)
+
+**Ticket lifecycle:**
+
+- Moving a Linear ticket to In Progress when a worker is dispatched
+- Moving to In Review when a PR is opened
+- Moving to Done when the completion marker is confirmed and PR merged
+- Filing follow-up Linear tickets for out-of-scope findings discovered during a task
+
+**Execution judgment:**
+
+- Filling minor spec gaps that don't affect architecture or external contracts — note the fill in the completion report
+- Choosing PR title, description, and branch name
+- Whether a PR qualifies for CC self-merge (apply the merge policy table in this file)
+- Post-merge cleanup: branch deletion, return-to-main
+- Ordering tasks within a sprint when priorities are clear from ticket state
+
+**Ops:**
+
+- Re-dispatching a stalled worker within the recovery_router.py auto-retry budget
+- Reading any log, completion marker, or state file to assess system health before a dispatch
+
+### When to send a Telegram and wait for the operator
+
+Ask before acting if **any** of these apply:
+
+- **Infrastructure** — new port assignment, new service, new external API integration, new scheduled task
+- **Schema or data model** — any change to card_catalog.db, routing_history.jsonl schema, or append-only file structure
+- **Scope expansion** — completing the ticket would require touching files outside the original scope, or adds capability not in the spec
+- **Security** — anything touching auth, secrets, credentials, or access control
+- **Irreversible ops** — force-push, drop table, delete branch with unmerged work, clear production data
+- **Strategy** — "should we build X or Y?" where the operator's product judgment is the input, not engineering reasoning
+- **Repeated failure** — same worker, same ticket, failed more than twice
+
+### Minimal escalation format
+
+When escalating to the operator via Telegram, state exactly one decision needed — not a status
+update, not a list of options to consider. The operator should be able to reply in one word or
+tap a button. If you need more than one decision, send one message per decision.
 
 ---
 
