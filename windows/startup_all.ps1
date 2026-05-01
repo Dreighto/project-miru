@@ -243,5 +243,60 @@ try {
     Write-Log "WARNING: MiruServiceWatchdog self-registration failed: $($_.Exception.Message)"
 }
 
+# ════════════════════════════════════════════════════════════════════════════════
+# SELF-REGISTER: MiruStallRecovery (PRO-240)
+# Polls heartbeat/completion logs every 3 min. Auto-re-dispatches stalled workers
+# (1 retry), then Telegram-escalates. Idempotent; skips if already registered.
+# ════════════════════════════════════════════════════════════════════════════════
+Write-Log "--- Checking MiruStallRecovery registration ---"
+try {
+    $stallTask = Get-ScheduledTask -TaskName "MiruStallRecovery" -ErrorAction SilentlyContinue
+    if ($stallTask -and $stallTask.State -ne "Disabled") {
+        Write-Log "MiruStallRecovery already registered state=$($stallTask.State) -- skipping"
+    } else {
+        $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+        if (-not $pythonCmd) {
+            Write-Log "WARNING: python not found -- cannot register MiruStallRecovery"
+        } else {
+            $recoveryScript = Join-Path $repoRoot "tools\orchestrator\recovery_router.py"
+            if (-not (Test-Path $recoveryScript)) {
+                Write-Log "WARNING: recovery_router.py not found at $recoveryScript -- skipping"
+            } else {
+                $srAction = New-ScheduledTaskAction `
+                    -Execute $pythonCmd.Source `
+                    -Argument "tools\orchestrator\recovery_router.py" `
+                    -WorkingDirectory $repoRoot
+
+                $srTrigger = New-ScheduledTaskTrigger `
+                    -Once -At (Get-Date).AddMinutes(3) `
+                    -RepetitionInterval (New-TimeSpan -Minutes 3)
+
+                $srSettings = New-ScheduledTaskSettingsSet `
+                    -AllowStartIfOnBatteries `
+                    -DontStopIfGoingOnBatteries `
+                    -StartWhenAvailable `
+                    -ExecutionTimeLimit (New-TimeSpan -Minutes 3) `
+                    -MultipleInstances IgnoreNew
+
+                $srUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+
+                $srTask = Register-ScheduledTask `
+                    -TaskName    "MiruStallRecovery" `
+                    -Description "Project Miru stall recovery. Polls worker heartbeat log every 3 min. Auto-re-dispatches stalled workers (1 retry budget), Telegram alert on escalation." `
+                    -Action      $srAction `
+                    -Trigger     $srTrigger `
+                    -Settings    $srSettings `
+                    -RunLevel    Limited `
+                    -User        $srUser `
+                    -Force
+
+                Write-Log "MiruStallRecovery registered user=$srUser state=$($srTask.State)"
+            }
+        }
+    }
+} catch {
+    Write-Log "WARNING: MiruStallRecovery self-registration failed: $($_.Exception.Message)"
+}
+
 Write-Log "=== startup_all.ps1 END"
 exit 0
