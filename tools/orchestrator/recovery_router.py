@@ -310,6 +310,12 @@ def route(stalls: list) -> None:
         # Strip trailing -N suffix to get the dispatch worker type
         worker_type = re.sub(r"-\d+$", "", stall.worker_id)
 
+        # Already escalated this stall — skip until the ticket completes.
+        if entry.get("escalated_utc"):
+            _log(f"already_escalated worker={stall.worker_id} ticket={tid_str} -- skipping")
+            state[key] = entry
+            continue
+
         if retry_count < MAX_AUTO_RETRIES and hmac_secret:
             success = _dispatch_recovery(worker_type, stall, hmac_secret, listener_url)
             if success:
@@ -343,6 +349,7 @@ def route(stalls: list) -> None:
         else:
             reason = "budget_exhausted" if retry_count >= MAX_AUTO_RETRIES else "no_hmac_secret"
             _append_dlq(stall, reason)
+            entry["escalated_utc"] = now_iso
             state[key] = entry
             _log(f"escalate worker={stall.worker_id} ticket={tid_str} reason={reason}")
             if tg_token and tg_chat:

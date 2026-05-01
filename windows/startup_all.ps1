@@ -266,9 +266,10 @@ try {
                 # popping a console window on the logged-in user's desktop.
                 $pythonwPath = Join-Path (Split-Path $pythonCmd.Source) "pythonw.exe"
                 $pythonExe = if (Test-Path $pythonwPath) { $pythonwPath } else { $pythonCmd.Source }
+                $srWrapperScript = Join-Path $windowsDir "tasks\run_stall_recovery.ps1"
                 $srAction = New-ScheduledTaskAction `
-                    -Execute $pythonExe `
-                    -Argument "tools\orchestrator\recovery_router.py" `
+                    -Execute "powershell.exe" `
+                    -Argument "-WindowStyle Hidden -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$srWrapperScript`"" `
                     -WorkingDirectory $repoRoot
 
                 $srTrigger = New-ScheduledTaskTrigger `
@@ -326,9 +327,10 @@ try {
                 $pythonwPath2 = Join-Path (Split-Path $pythonCmd2.Source) "pythonw.exe"
                 $pythonExe2 = if (Test-Path $pythonwPath2) { $pythonwPath2 } else { $pythonCmd2.Source }
 
+                $snWrapperScript = Join-Path $windowsDir "tasks\run_sentinel.ps1"
                 $snAction = New-ScheduledTaskAction `
-                    -Execute $pythonExe2 `
-                    -Argument "tools\sentinel\health_check.py" `
+                    -Execute "powershell.exe" `
+                    -Argument "-WindowStyle Hidden -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$snWrapperScript`"" `
                     -WorkingDirectory $repoRoot
 
                 $snTrigger = New-ScheduledTaskTrigger `
