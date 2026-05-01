@@ -1,10 +1,11 @@
 # service_watchdog_task.ps1
 # Called by the "MiruServiceWatchdog" scheduled task every 2 minutes.
-# Polls gateway (18766) and dispatch listener (19100) health endpoints.
+# Polls gateway (18766), dispatch listener (19100), and n8n (15678).
 # If a service has been down for 2+ consecutive polls (>=90s), auto-restarts
-# it via its registered scheduled task and sends a Telegram alert.
+# it and sends a Telegram alert.
+# Ceiling: if a service restarts 3+ times within 10 minutes, stops retrying
+# and sends an escalation alert until the service recovers naturally.
 # Sends a recovery alert when a previously-down service comes back.
-# Runs as the current user with RunLevel=Limited (Interactive logon).
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
@@ -17,13 +18,15 @@ New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $logFile   = Join-Path $logDir "service_watchdog.log"
 $stateFile = Join-Path $logDir "service_watchdog_state.json"
 
+$MAX_RESTARTS_PER_WINDOW = 3
+$RESTART_WINDOW_S        = 600   # 10 minutes
+
 function Write-Log {
     param([string]$Msg)
     $line = "$((Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff'))`t$Msg"
     Add-Content -Path $logFile -Value $line -Encoding UTF8
 }
 
-# Load .env so TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are available
 $commonPath = Join-Path $windowsDir "op_miru_common.ps1"
 if (Test-Path $commonPath) {
     try {
@@ -63,16 +66,24 @@ function Test-Health {
 
 function Read-State {
     $empty = @{
-        gateway           = @{ first_fail_utc = $null }
-        dispatch_listener = @{ first_fail_utc = $null }
+        gateway           = @{ first_fail_utc = $null; restart_count = 0; restart_window_start_utc = $null; escalated = $false }
+        dispatch_listener = @{ first_fail_utc = $null; restart_count = 0; restart_window_start_utc = $null; escalated = $false }
+        n8n               = @{ first_fail_utc = $null; restart_count = 0; restart_window_start_utc = $null; escalated = $false }
     }
     if (-not (Test-Path $stateFile)) { return $empty }
     try {
         $raw = Get-Content $stateFile -Raw -Encoding UTF8 | ConvertFrom-Json
-        return @{
-            gateway           = @{ first_fail_utc = $raw.gateway.first_fail_utc }
-            dispatch_listener = @{ first_fail_utc = $raw.dispatch_listener.first_fail_utc }
+        $result = @{}
+        foreach ($key in $empty.Keys) {
+            $src = $raw.$key
+            $result[$key] = @{
+                first_fail_utc           = if ($src) { $src.first_fail_utc } else { $null }
+                restart_count            = if ($src -and $src.restart_count) { [int]$src.restart_count } else { 0 }
+                restart_window_start_utc = if ($src) { $src.restart_window_start_utc } else { $null }
+                escalated                = if ($src -and $src.escalated) { [bool]$src.escalated } else { $false }
+            }
         }
+        return $result
     } catch {
         return $empty
     }
@@ -81,9 +92,32 @@ function Read-State {
 function Write-State {
     param([hashtable]$S)
     try {
-        $S | ConvertTo-Json -Depth 3 -Compress | Set-Content -Path $stateFile -Encoding UTF8
+        $S | ConvertTo-Json -Depth 4 -Compress | Set-Content -Path $stateFile -Encoding UTF8
     } catch {
         Write-Log "state_write_failed: $($_.Exception.Message)"
+    }
+}
+
+function Invoke-Restart {
+    param([hashtable]$Svc)
+    if ($Svc.restart_type -eq "docker") {
+        try {
+            $result = & docker restart $Svc.container_name 2>&1
+            Write-Log "$($Svc.key)_docker_restart container=$($Svc.container_name) result=$result"
+            return $true
+        } catch {
+            Write-Log "$($Svc.key)_docker_restart_failed: $($_.Exception.Message)"
+            return $false
+        }
+    } else {
+        try {
+            Start-ScheduledTask -TaskName $Svc.restart_task -ErrorAction Stop
+            Write-Log "$($Svc.key)_restart_task_started task=$($Svc.restart_task)"
+            return $true
+        } catch {
+            Write-Log "$($Svc.key)_restart_task_failed: $($_.Exception.Message)"
+            return $false
+        }
     }
 }
 
@@ -92,13 +126,22 @@ $services = @(
         key          = "gateway"
         label        = "MCP Gateway (18766)"
         health_url   = "http://127.0.0.1:18766/health"
+        restart_type = "task"
         restart_task = "MiruRestartMcpGateway"
     },
     @{
         key          = "dispatch_listener"
         label        = "Dispatch Listener (19100)"
         health_url   = "http://127.0.0.1:19100/health"
+        restart_type = "task"
         restart_task = "MiruDispatchListener"
+    },
+    @{
+        key            = "n8n"
+        label          = "n8n (15678)"
+        health_url     = "http://127.0.0.1:15678/healthz"
+        restart_type   = "docker"
+        container_name = "miru-n8n"
     }
 )
 
@@ -113,10 +156,13 @@ foreach ($svc in $services) {
     $healthy = Test-Health -Url $svc.health_url
 
     if ($healthy) {
-        if ($state[$key].first_fail_utc) {
-            Write-Log "${key}_recovered"
-            Send-Telegram "✅ <b>$($svc.label) recovered</b>`nService is responding normally."
-            $state[$key].first_fail_utc = $null
+        if ($state[$key].first_fail_utc -or $state[$key].escalated) {
+            $wasEscalated = $state[$key].escalated
+            Write-Log "${key}_recovered escalated=$wasEscalated"
+            $msg = "✅ <b>$($svc.label) recovered</b>`nService is responding normally."
+            if ($wasEscalated) { $msg += "`n<i>Escalation cleared — watchdog resuming normal monitoring.</i>" }
+            Send-Telegram $msg
+            $state[$key] = @{ first_fail_utc = $null; restart_count = 0; restart_window_start_utc = $null; escalated = $false }
             $changed = $true
         } else {
             Write-Log "${key}_ok"
@@ -124,7 +170,7 @@ foreach ($svc in $services) {
         continue
     }
 
-    # Unhealthy path
+    # First failure — record timestamp, wait for next poll before acting
     if (-not $state[$key].first_fail_utc) {
         $state[$key].first_fail_utc = $nowUtc.ToString("o")
         $changed = $true
@@ -132,28 +178,55 @@ foreach ($svc in $services) {
         continue
     }
 
-    $firstFail = [datetime]::Parse(
-        $state[$key].first_fail_utc,
-        $null,
-        [System.Globalization.DateTimeStyles]::RoundtripKind
-    )
-    $downSec = ($nowUtc - $firstFail).TotalSeconds
+    $firstFail = [datetime]::Parse($state[$key].first_fail_utc, $null, [System.Globalization.DateTimeStyles]::RoundtripKind)
+    $downSec   = ($nowUtc - $firstFail).TotalSeconds
 
-    if ($downSec -ge 90) {
-        Write-Log "${key}_restart_triggered down_sec=$([int]$downSec)"
-        Send-Telegram "🔄 <b>$($svc.label) auto-restart</b>`nDown for $([int]$downSec)s — triggering restart now."
-        try {
-            Start-ScheduledTask -TaskName $svc.restart_task -ErrorAction Stop
-            Write-Log "${key}_restart_task_started task=$($svc.restart_task)"
-        } catch {
-            Write-Log "${key}_restart_task_failed: $($_.Exception.Message)"
-            Send-Telegram "❌ <b>$($svc.label) restart FAILED</b>`nCould not start scheduled task '$($svc.restart_task)': $($_.Exception.Message)"
-        }
-        $state[$key].first_fail_utc = $null
-        $changed = $true
-    } else {
+    if ($downSec -lt 90) {
         Write-Log "${key}_still_down down_sec=$([int]$downSec)"
+        continue
     }
+
+    # Already escalated — don't restart, just log
+    if ($state[$key].escalated) {
+        Write-Log "${key}_escalated_skip down_sec=$([int]$downSec)"
+        continue
+    }
+
+    # Check restart ceiling — reset window if it's expired
+    $windowStart = $state[$key].restart_window_start_utc
+    if ($windowStart) {
+        $winAge = ($nowUtc - [datetime]::Parse($windowStart, $null, [System.Globalization.DateTimeStyles]::RoundtripKind)).TotalSeconds
+        if ($winAge -gt $RESTART_WINDOW_S) {
+            $state[$key].restart_count            = 0
+            $state[$key].restart_window_start_utc = $null
+            $changed = $true
+        }
+    }
+
+    if ($state[$key].restart_count -ge $MAX_RESTARTS_PER_WINDOW) {
+        # Ceiling hit — escalate
+        Write-Log "${key}_ceiling_hit restarts=$($state[$key].restart_count) down_sec=$([int]$downSec)"
+        $state[$key].escalated = $true
+        $changed = $true
+        Send-Telegram "🚨 <b>$($svc.label) — needs your attention</b>`nRestarted $($state[$key].restart_count) times in $($RESTART_WINDOW_S / 60) minutes with no recovery.`nWatchdog has stopped retrying. Check the service manually."
+        continue
+    }
+
+    # Trigger restart
+    Write-Log "${key}_restart_triggered down_sec=$([int]$downSec) attempt=$($state[$key].restart_count + 1)/$MAX_RESTARTS_PER_WINDOW"
+    Send-Telegram "🔄 <b>$($svc.label) auto-restart</b>`nDown for $([int]$downSec)s — restart attempt $($state[$key].restart_count + 1)/$MAX_RESTARTS_PER_WINDOW."
+
+    $ok = Invoke-Restart -Svc $svc
+    if (-not $ok) {
+        Send-Telegram "❌ <b>$($svc.label) restart FAILED</b>`nCould not execute restart command. Check the watchdog log."
+    }
+
+    if (-not $state[$key].restart_window_start_utc) {
+        $state[$key].restart_window_start_utc = $nowUtc.ToString("o")
+    }
+    $state[$key].restart_count  += 1
+    $state[$key].first_fail_utc  = $null
+    $changed = $true
 }
 
 if ($changed) { Write-State -State $state }
