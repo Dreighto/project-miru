@@ -1,8 +1,17 @@
-# State Handoff Log — Template
+# State Handoff Log
 
-This file defines the format for thread-close summaries. Claude writes one at the end of every Miru thread. The next thread reads it at startup to restore context quickly.
+Claude Chat writes the latest handoff directly to this file at every thread close. The next
+thread reads it at startup to restore context without asking the operator to recap.
 
-This file is not the place to solve autonomy or continuity — that's handled by the operating model and Project Memory. This is just the bridge that tells the next thread where to start.
+**How it works:**
+
+- At thread close: Claude Chat runs thread-close hygiene (memory sync, Notion drift check, Linear
+  cleanup), then overwrites the "Latest Handoff" section below with the current handoff.
+- At thread start: read this file. If a handoff exists, start from it. No copy-paste needed.
+- Only the latest handoff is kept here. History goes in Project Memory (agenda table) if needed.
+
+This file is not the place to solve autonomy or continuity — that's handled by the operating
+model and Project Memory. This is just the bridge that tells the next thread where to start.
 
 ---
 
@@ -58,6 +67,15 @@ This file is not the place to solve autonomy or continuity — that's handled by
 
 ## Where It Lives
 
-The latest handoff goes in the operator's next-thread prompt (pasted as a document). It's a one-time context packet — the next thread reads it and works from it.
+The latest handoff is written directly to the "Latest Handoff" section below by Claude Chat
+at thread close. The next thread reads this file at startup — no copy-paste required.
 
-If the operator wants a handoff archived, Claude logs a compact version to Project Memory's agenda table with the handoff content in a notes-style field.
+If the operator wants a handoff archived, Claude logs a compact version to Project Memory's
+agenda table with the handoff content in a notes-style field.
+
+---
+
+## Latest Handoff
+
+_No handoff written yet. Claude Chat will write here at the close of the first thread that uses
+this protocol._

@@ -25,9 +25,10 @@ Use `fs_read_text_file` (gateway tool) to read the following when starting a new
 picking up a task you don't have context on:
 
 1. `CLAUDE.md` — shared project rules (ports, boundaries, PR policy, append-only files)
-2. Check Linear via `linear_get_issue` or `linear_list_issues` for in-progress tickets
-3. Check `activity_since` for recent worker activity (what ran since your last session)
-4. Check `worker_status` to see what workers are currently active
+2. `miru-context/state-handoff-log.md` — previous thread context; start from the latest handoff if one exists
+3. Check Linear via `linear_get_issue` or `linear_list_issues` for in-progress tickets
+4. Check `activity_since` for recent worker activity (what ran since your last session)
+5. Check `worker_status` to see what workers are currently active
 
 Do not run commands, edit files, or dispatch workers until you have read the current state.
 
