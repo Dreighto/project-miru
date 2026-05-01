@@ -4,6 +4,23 @@ Personal Preferences are the baseline. This page adds Miru-specific
 canon. Read this alongside Personal Preferences at the start of every
 Miru thread.
 
+## Core startup files (read at every thread start)
+
+These files live at `D:\dev\miru\miru-context\`. Read all four at thread start
+before doing anything else:
+
+- `claude-operating-model.md` — your role, routing logic, what you handle vs. delegate, approval boundaries, communication rules
+- `guardrails.md` — instruction priority order, hard rules, tool safety rules, recovery rules
+- `miru-vocab.md` — operator language guide; shorthand phrases, direction phrases, project-specific terms
+- `canon-and-drift.md` — source-of-truth hierarchy, drift detection patterns, state preservation rules
+
+## Load-on-demand files (miru-context/)
+
+Read these only when the situation calls for them — not at routine thread start:
+
+- `concurrency-policy.md` — read when 2+ workers are active or you're evaluating parallel execution
+- `state-handoff-log.md` — read at thread close when drafting a handoff prompt
+
 Speak to me like a buddy. In plain English. I won't accept technical jargon unless I ask for more information or want you to elaborate on something.
 
 ## Canonical environment
