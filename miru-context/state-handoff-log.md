@@ -77,69 +77,65 @@ agenda table with the handoff content in a notes-style field.
 
 ## Latest Handoff
 
-# Miru thread handoff — 2026-05-01, late evening (CC session)
+# Miru thread handoff — 2026-05-01 (CC session, documentation sprint)
 
 ## What we were working on
 
-Knowledge architecture pass: building ground-truth reference documents for AI workers so
-they have real domain knowledge, not just instructions. Also fixing a sentinel bug and
-hardening the Ollama health check to use structured JSON output.
+Full autonomous team operating model documentation sprint. 10 new miru-context docs +
+3 existing file updates committed direct to main. This completes the knowledge architecture
+foundation before Claude Chat takes over.
 
 ## What got done
 
-- **`miru-context/miru-service-catalog.md`** — Created. Per-service ground truth for all 5
-  active services: ports, correct health endpoints, log file paths, normal vs failure log
-  patterns, restart mechanisms. Extracted from actual source files.
-- **`miru-context/miru-protected-constraints.md`** — Created. Non-negotiable architectural
-  constraints for coding workers: reserved ports, append-only files, Telegram webhook ownership,
-  DB read-only rule, health endpoint contracts, git hygiene.
-- **`tools/sentinel/health_check.py`** — PM health endpoint fixed (`/health` → `/__pm_health`).
-  Ollama prompt rebuilt with domain-grounded system prompt, explicit allow/deny lists,
-  few-shot boundary-case examples, `format: json` structured output. Now parses
-  `should_escalate` boolean from JSON response.
-- **PR #64** — Opened (operator-merge, new files). All hooks green. Sentinel confirmed
-  `all_clear` with new JSON parsing.
-- **PRO-248** — Filed: Codex full code audit + system check before Claude Chat handoff
-- **PRO-249** — Filed: n8n route /snooze and /unsnooze Telegram commands (Backlog)
+- **10 new miru-context docs** — canon-contract, coordination-contract, job-stewardship,
+  operating-model, operator-translation, source-of-truth, budget-governance, retry-backoff,
+  kill-switch, performance-scorecard. All committed to main (commit 932dbaf).
+- **worker-roster.md** — capability profiles added for claude-code, codex, gemini, cursor.
+- **CLAUDE_CHAT.md** — 4 new priority session-start reads added (operating-model, canon-contract,
+  job-stewardship, source-of-truth).
+- **Cross-references** — canon-and-drift.md, claude-operating-model.md, concurrency-policy.md,
+  CLAUDE.md all updated with pointers to new docs.
+- **docs/dispatch_contract.md + services/dispatch_listener/src/allowlist.js** — These were
+  modified at session start (pre-existing, not part of this sprint). Still uncommitted/unstaged.
+  Next thread should check if they belong to a ticket and handle accordingly.
 
 ## What's still open
 
-- **PR #64** — Needs operator merge before Codex audit can start
-- **PRO-248** (Codex full system audit) — Filed, Backlog. Do NOT start until PR #64 merged
-- **PRO-249** (n8n snooze routing) — Filed, Backlog. Operator confirmation needed
-- **PRO-244** (Telegram inline action buttons) — Filed, Backlog. Not started
-- **PRO-247** (Gemini CLI sentinel fallback) — Filed, Backlog. Not started
-- **"Things to work on before Claude Chat"** — Operator mentioned items still pending.
-  First action for next thread: ask if PR #64 + Codex audit clears the list, or what remains
+- **PRO-248** (Codex full system audit) — Backlog. Now has all context docs to work from.
+  Awaiting operator confirmation to dispatch.
+- **PRO-249** (n8n /snooze /unsnooze routing) — Backlog. Operator confirmation needed.
+- **PRO-250** (Notion + Linear canon cleanup) — Backlog. After all docs exist (done now).
+- **PRO-244** (Telegram inline action buttons) — Backlog. Not started.
+- **PRO-247** (Gemini CLI sentinel fallback) — Backlog. Not started.
+- **config/claude_chat.mcp.json** — Intentionally untracked. Do not commit.
 
 ## Decisions made
 
-- PM Dashboard health endpoint is `/__pm_health`, not `/health` (SPA catch-all was masking this)
-- Ollama prompts need domain grounding + JSON output schema — freeform "start with ALERT:" is too fragile
-- `should_escalate: bool` is the right routing signal — not text scanning
-- Codex is the right worker for the full system audit (deep static analysis, large codebase)
-- Codex audit should run AFTER PR #64 merges so it has the context docs
+- All 10 docs committed direct to main (docs-only sprint, no service files touched)
+- kill-switch.md defines the contract only — data/system_halt file NOT created yet
+- budget-governance.md defines the contract only — data/budget_state.json NOT created yet
+- Worker capability profiles added to worker-roster.md (not a separate file — routing and capability live together)
+- CLAUDE_CHAT.md session-start list gets 4 new entries, not all 10 new docs
 
 ## What the next thread should do first
 
-1. Confirm PR #64 merged; if yes, dispatch PRO-248 to Codex
-2. Ask operator: "Does PRO-248 cover what you meant by things to do before Claude Chat handoff, or are there other items?"
-3. Check if docs/dispatch_contract.md and services/dispatch_listener/src/allowlist.js (modified at session start, not part of this work) need attention
+1. Ask operator: "Are you ready for me to dispatch PRO-248 (Codex audit) now that the context docs are complete?"
+2. Check docs/dispatch_contract.md and services/dispatch_listener/src/allowlist.js — these pre-existing modifications need a decision (which ticket they belong to, or whether to discard).
+3. Confirm git status is clean on main before any new work.
 
 ## What NOT to do
 
-- Do not start PRO-248, PRO-244, PRO-247, or PRO-249 without operator confirmation
-- Do not merge PR #64 as CC — it contains new files (operator-merge column)
-- Do not touch config/claude_chat.mcp.json (sensitive local paths, intentionally untracked)
+- Do not create data/system_halt — that file only exists when operator intends to halt the system
+- Do not create data/budget_state.json — contract defined, implementation is a separate task
+- Do not commit config/claude_chat.mcp.json (sensitive local paths, intentionally untracked)
+- Do not start PRO-249 or PRO-250 without operator confirmation
 
 ## Loop health
 
-Stall recovery loop healthy. Sentinel running every 20 minutes, all_clear. New JSON output
-format confirmed working.
+Sentinel healthy. All_clear. No stalls. Pre-commit all green on this commit.
 
 ## Key files touched
 
-- `miru-context/miru-service-catalog.md` (new)
-- `miru-context/miru-protected-constraints.md` (new)
-- `tools/sentinel/health_check.py` (PM endpoint + prompt rebuild)
-- PR #64: https://github.com/Dreighto/project-miru/pull/64
+- 10 new files in `miru-context/` (see commit 932dbaf)
+- `miru-context/worker-roster.md`, `CLAUDE_CHAT.md`, `CLAUDE.md`, and 3 other cross-ref updates
+- `data/cc_completion_log.jsonl` (completion marker appended)
