@@ -210,7 +210,7 @@ try {
         } else {
             $wdAction = New-ScheduledTaskAction `
                 -Execute "powershell.exe" `
-                -Argument "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$watchdogScript`"" `
+                -Argument "-WindowStyle Hidden -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$watchdogScript`"" `
                 -WorkingDirectory $repoRoot
 
             $wdTrigger = New-ScheduledTaskTrigger `
@@ -262,8 +262,12 @@ try {
             if (-not (Test-Path $recoveryScript)) {
                 Write-Log "WARNING: recovery_router.py not found at $recoveryScript -- skipping"
             } else {
+                # Use pythonw.exe (windowless) so the task runs silently without
+                # popping a console window on the logged-in user's desktop.
+                $pythonwPath = Join-Path (Split-Path $pythonCmd.Source) "pythonw.exe"
+                $pythonExe = if (Test-Path $pythonwPath) { $pythonwPath } else { $pythonCmd.Source }
                 $srAction = New-ScheduledTaskAction `
-                    -Execute $pythonCmd.Source `
+                    -Execute $pythonExe `
                     -Argument "tools\orchestrator\recovery_router.py" `
                     -WorkingDirectory $repoRoot
 
