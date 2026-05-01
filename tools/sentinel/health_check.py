@@ -38,7 +38,7 @@ _HEALTH_ENDPOINTS = {
     "gateway": "http://127.0.0.1:18766/health",
     "dispatch_listener": "http://127.0.0.1:19100/health",
     "pm": "http://127.0.0.1:18080/health",
-    "miru_ai": "http://127.0.0.1:18765/health",
+    "miru_ai": "http://127.0.0.1:18765/api/health",
     "n8n": "http://127.0.0.1:15678/healthz",
 }
 
