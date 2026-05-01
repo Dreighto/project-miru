@@ -222,6 +222,30 @@ Claude Chat's dispatch loop for a ticket:
 
 ---
 
+## Worker Routing Guide
+
+### claude-code (default)
+
+- **Auth:** MIRU_ROUTING_KEY → ANTHROPIC_API_KEY (Anthropic API, billed per token)
+- **Use for:** Complex multi-file work, architecture changes, anything requiring deep reasoning
+- **Permission flag:** `--dangerously-skip-permissions` (auto-approves all tool actions)
+
+### gemini (free tier)
+
+- **Auth:** Personal Google account OAuth (~/.gemini/ stored credentials) — no API charge
+- **Use for:** Simple single-file fixes, log checks, validation tasks, heartbeat emits
+- **Permission flag:** `--yolo` (auto-approves all tool actions — equivalent of dangerously-skip-permissions)
+- **Rate limits:** 60 RPM / 1,000 RPD on Gemini 2.5 Pro free tier — sufficient for current dispatch volume
+- **MCP warning:** Gemini CLI prints "MCP issues detected" to stdout on start — this is cosmetic, does not affect execution
+- **Validated:** 2026-05-01 — tool use (file write/read), stdin prompt, --yolo mode all confirmed working
+
+### Routing heuristic (Claude Chat)
+
+- Single file, clear scope, no architectural decisions → `gemini`
+- Multi-file, reasoning-heavy, or uncertain → `claude-code`
+
+---
+
 ## Environment Variables
 
 | Variable                     | Purpose                                                        |

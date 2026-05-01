@@ -11,14 +11,14 @@ const path = require('path');
 //
 // Stdin behavior verified empirically (2026-04-26):
 //   * claude --print --dangerously-skip-permissions  -- reads prompt from stdin
-//   * gemini -p ""                                   -- stdin appended to (empty) -p
+//   * gemini -p "" --yolo                            -- stdin appended to (empty) -p; --yolo auto-approves all tool actions (equivalent of --dangerously-skip-permissions)
 //   * codex exec -                                   -- explicit `-` reads stdin
 const ALLOWLIST_DEF = Object.freeze({
   'claude-code': {
     binary: 'claude.cmd',
     flags: ['--print', '--dangerously-skip-permissions'],
   },
-  gemini: { binary: 'gemini.cmd', flags: ['-p', ''] },
+  gemini: { binary: 'gemini.cmd', flags: ['-p', '', '--yolo'] },
   codex: { binary: 'codex.cmd', flags: ['exec', '-'] },
 });
 
