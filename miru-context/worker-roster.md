@@ -6,16 +6,28 @@ evaluating parallel execution options.
 
 ---
 
-## AI Workers (Claude Code workers — dispatched via W4 on port 19100)
+## AI Workers (CLI workers — dispatched via W4 on port 19100)
 
-| Worker        | Binary       | Auth                                                                              | Best for                                                              |
-| ------------- | ------------ | --------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `claude-code` | `claude.cmd` | OAuth (subscription, no charge) by default; `use_api_key: true` for complex tasks | Backend code, multi-file refactors, test writing, full task ownership |
-| `gemini`      | `gemini.cmd` | Gemini CLI stored auth                                                            | General coding tasks, analysis, alternative approach pressure-testing |
-| `codex`       | `codex.cmd`  | Stored auth                                                                       | Code analysis, large-context reads                                    |
+| Worker        | Binary       | Auth                                                                              | Best for                                                                                             |
+| ------------- | ------------ | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `claude-code` | `claude.cmd` | OAuth (subscription, no charge) by default; `use_api_key: true` for complex tasks | Backend code, multi-file Python refactors, test writing, full task ownership                         |
+| `gemini`      | `gemini.cmd` | Gemini CLI stored auth                                                            | Second opinions, large-context reads (whole service in one pass), multimodal, alternative approaches |
+| `codex`       | `codex.cmd`  | Stored auth                                                                       | Cross-file bug hunting, contract verification, architecture audits, refactor planning                |
 
 **Auth rule:** Routine dispatches default to OAuth (no API charge). Set `use_api_key: true`
 in the dispatch payload for recovery dispatches or tasks that need full Sonnet-level reasoning.
+
+---
+
+## IDE Workers (manual dispatch — operator triggers via Telegram or direct session)
+
+| Worker   | Access              | Best for                                                                                       |
+| -------- | ------------------- | ---------------------------------------------------------------------------------------------- |
+| `cursor` | Cursor Pro+ desktop | UI/UX execution — HTML templates, CSS, JS, component work, mobile-first layout, gesture wiring |
+
+**Dispatch note:** Cursor is not dispatched via W4. Operator opens a Cursor session directly
+and assigns the ticket. Cursor owns `pm/templates/`, `pm/static/js/`, `pm/static/css/`.
+Python route changes go to `claude-code`, not Cursor.
 
 ---
 
@@ -48,16 +60,19 @@ only when the smaller one returns low confidence or flags something it cannot re
 
 ## Model Assignments by Task Type
 
-| Task                      | Use this                               |
-| ------------------------- | -------------------------------------- |
-| Sentinel health check     | `llama3.2:3b` (Ollama)                 |
-| Stall routing decision    | `llama3.2:3b` (Ollama)                 |
-| General task routing      | `qwen2.5:7b` (Ollama)                  |
-| Code change review        | `qwen2.5-coder:7b` (Ollama)            |
-| Deep code audit           | `qwen2.5-coder:14b` (Ollama)           |
-| Complex backend execution | `claude-code` with `use_api_key: true` |
-| Routine backend execution | `claude-code` with OAuth (default)     |
-| Architecture decision     | Claude Chat (Opus 4.7)                 |
+| Task                                  | Use this                               |
+| ------------------------------------- | -------------------------------------- |
+| Sentinel health check                 | `llama3.2:3b` (Ollama)                 |
+| Stall routing decision                | `llama3.2:3b` (Ollama)                 |
+| General task routing                  | `qwen2.5:7b` (Ollama)                  |
+| Code change review                    | `qwen2.5-coder:7b` (Ollama)            |
+| Deep code audit                       | `qwen2.5-coder:14b` (Ollama)           |
+| Complex backend execution             | `claude-code` with `use_api_key: true` |
+| Routine backend execution             | `claude-code` with OAuth (default)     |
+| UI/UX execution (templates, CSS, JS)  | `cursor` (manual)                      |
+| Cross-file bug / contract audit       | `codex` or `gemini`                    |
+| Second opinion / alternative approach | `gemini`                               |
+| Architecture decision                 | Claude Chat (Opus 4.7)                 |
 
 ---
 
