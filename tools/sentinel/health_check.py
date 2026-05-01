@@ -217,10 +217,20 @@ def _should_run_oauth_check(state: dict) -> bool:
 # ── AI analysis ───────────────────────────────────────────────────────────────
 
 _SYSTEM_PROMPT = (
-    "You are a system health monitor for Project Miru, an autonomous AI worker dispatch system. "
-    "Review the snapshot below and flag anything that looks wrong or unusual. "
-    "Be specific and brief. If everything looks normal, respond with exactly: ALL CLEAR\n"
-    "If something needs attention, start your response with ALERT: followed by 1-2 sentences."
+    "You are a system health monitor for Project Miru. "
+    "Respond with exactly ALL CLEAR unless you see clear evidence of a problem.\n\n"
+    "Alert ONLY on these specific signals:\n"
+    "- A service explicitly listed as 'down' in the SERVICES section\n"
+    "- A log line containing: ERROR, FATAL, crash, panic, unhandled exception, "
+    "segfault, OOM, or similar hard failure keywords\n"
+    "- A DLQ new-entry count above 0\n\n"
+    "Do NOT alert on:\n"
+    "- Services listed as 'up'\n"
+    "- Log lines showing normal cycles: 'ok', 'all_clear', 'healthy', 'poll', 'done'\n"
+    "- Placeholder text like '(no recent errors)', '(file not found)', '(empty)'\n"
+    "- Worker activity or completion entries\n\n"
+    "When in doubt, respond ALL CLEAR. "
+    "If you must alert, start with ALERT: followed by one specific sentence."
 )
 
 
@@ -520,7 +530,8 @@ def main() -> None:
     po_enabled = env.get("PUSHOVER_ENABLED", "false").lower() in {"true", "1", "yes"}
 
     state = _read_state()
-    state = _poll_telegram_commands(tg_token, tg_chat, state)
+    # Note: Telegram getUpdates polling conflicts with the n8n webhook on the same
+    # bot token (HTTP 409). Snooze is set via sentinel_state.json — see PRO-248.
     dlq_count_prev = int(state.get("dlq_count", 0))
 
     services = _check_services()
@@ -529,15 +540,20 @@ def main() -> None:
     log_tails = {}
     for name, path in _WATCH_LOGS.items():
         if name == "stall_recovery":
-            log_tails[name] = _tail_stall_recovery(path, _LOG_TAIL_LINES)
+            pass  # handled as a programmatic hard alert below; excluded from AI context
         elif name == "dispatch_listener_stderr" and services.get(
             "dispatch_listener", ""
         ).startswith("up"):
-            # If the listener is up, EADDRINUSE lines are historical crash-loop noise —
-            # strip them so the AI doesn't alert on pre-fix artifacts.
+            # If the listener is up and the log still contains EADDRINUSE/stack-trace
+            # content, the entire visible tail is a pre-fix crash-loop artifact.
+            # Replace it entirely so the AI doesn't alert on historical noise.
             raw = _tail_file(path, _LOG_TAIL_LINES)
-            filtered = "\n".join(ln for ln in raw.splitlines() if "EADDRINUSE" not in ln)
-            log_tails[name] = filtered if filtered.strip() else "(no recent errors)"
+            if "EADDRINUSE" in raw or "Unhandled 'error' event" in raw:
+                log_tails[name] = (
+                    "(no recent errors — prior startup-race artifact; service is healthy)"
+                )
+            else:
+                log_tails[name] = raw if raw.strip() else "(no recent errors)"
         else:
             log_tails[name] = _tail_file(path, _LOG_TAIL_LINES)
 
@@ -558,6 +574,18 @@ def main() -> None:
         hard_alerts.append(f"Services down: {', '.join(down_services)}")
     if dlq_new >= 3:
         hard_alerts.append(f"{dlq_new} new failed dispatches added to the queue")
+
+    # Programmatic stall-recovery check — excluded from AI context because small
+    # models misread "stalls_found=0 / no stalls detected" as a problem.
+    import re as _re
+
+    stall_log_path = _WATCH_LOGS.get("stall_recovery")
+    if stall_log_path:
+        stall_raw = _tail_file(stall_log_path, _LOG_TAIL_LINES)
+        stall_counts = [int(m) for m in _re.findall(r"stalls_found=(\d+)", stall_raw) if int(m) > 0]
+        if stall_counts:
+            hard_alerts.append(f"Stall recovery detected active stalls: counts={stall_counts}")
+            _log(f"stall_hard_alert: counts={stall_counts}")
 
     # Daily OAuth credential probe
     if _should_run_oauth_check(state):
