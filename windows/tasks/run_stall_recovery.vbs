@@ -1,0 +1,1 @@
+CreateObject("WScript.Shell").Run "powershell.exe -WindowStyle Hidden -NoLogo -NoProfile -ExecutionPolicy Bypass -File """ & CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript.ScriptFullName) & "\run_stall_recovery.ps1""", 0, False

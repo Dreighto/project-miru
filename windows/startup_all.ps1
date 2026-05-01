@@ -204,13 +204,13 @@ try {
     if ($watchdogTask -and $watchdogTask.State -ne "Disabled") {
         Write-Log "MiruServiceWatchdog already registered state=$($watchdogTask.State) -- skipping"
     } else {
-        $watchdogScript = Join-Path $windowsDir "tasks\service_watchdog_task.ps1"
+        $watchdogScript = Join-Path $windowsDir "tasks\run_watchdog.vbs"
         if (-not (Test-Path $watchdogScript)) {
-            Write-Log "WARNING: watchdog script not found at $watchdogScript -- skipping"
+            Write-Log "WARNING: watchdog VBS wrapper not found at $watchdogScript -- skipping"
         } else {
             $wdAction = New-ScheduledTaskAction `
-                -Execute "powershell.exe" `
-                -Argument "-WindowStyle Hidden -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$watchdogScript`"" `
+                -Execute "wscript.exe" `
+                -Argument "`"$watchdogScript`"" `
                 -WorkingDirectory $repoRoot
 
             $wdTrigger = New-ScheduledTaskTrigger `
@@ -266,10 +266,10 @@ try {
                 # popping a console window on the logged-in user's desktop.
                 $pythonwPath = Join-Path (Split-Path $pythonCmd.Source) "pythonw.exe"
                 $pythonExe = if (Test-Path $pythonwPath) { $pythonwPath } else { $pythonCmd.Source }
-                $srWrapperScript = Join-Path $windowsDir "tasks\run_stall_recovery.ps1"
+                $srWrapperScript = Join-Path $windowsDir "tasks\run_stall_recovery.vbs"
                 $srAction = New-ScheduledTaskAction `
-                    -Execute "powershell.exe" `
-                    -Argument "-WindowStyle Hidden -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$srWrapperScript`"" `
+                    -Execute "wscript.exe" `
+                    -Argument "`"$srWrapperScript`"" `
                     -WorkingDirectory $repoRoot
 
                 $srTrigger = New-ScheduledTaskTrigger `
@@ -327,10 +327,10 @@ try {
                 $pythonwPath2 = Join-Path (Split-Path $pythonCmd2.Source) "pythonw.exe"
                 $pythonExe2 = if (Test-Path $pythonwPath2) { $pythonwPath2 } else { $pythonCmd2.Source }
 
-                $snWrapperScript = Join-Path $windowsDir "tasks\run_sentinel.ps1"
+                $snWrapperScript = Join-Path $windowsDir "tasks\run_sentinel.vbs"
                 $snAction = New-ScheduledTaskAction `
-                    -Execute "powershell.exe" `
-                    -Argument "-WindowStyle Hidden -NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$snWrapperScript`"" `
+                    -Execute "wscript.exe" `
+                    -Argument "`"$snWrapperScript`"" `
                     -WorkingDirectory $repoRoot
 
                 $snTrigger = New-ScheduledTaskTrigger `
