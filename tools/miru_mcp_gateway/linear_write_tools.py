@@ -91,24 +91,23 @@ def _linear_gql(query: str, variables: dict[str, Any]) -> dict[str, Any]:
 def _resolve_issue_id(identifier: str) -> str:
     """Resolve a PRO-XXX identifier or pass-through UUID to Linear internal ID.
 
-    Bug fix (PRO-232): the previous implementation used ``issues(filter:)`` to
-    look up by identifier. That list query does not reliably resolve issues by
-    identifier across all Linear API versions and returns empty nodes for some
-    valid identifiers. Use ``issueByIdentifier`` — the canonical singular lookup
-    — instead. UUID pass-through is unchanged; existence is verified downstream.
+    Bug fix (PRO-232): ``issueByIdentifier`` does not exist in Linear's GraphQL
+    schema and returns HTTP 400. Use ``issue(id:)`` — the canonical singular
+    lookup — which accepts both UUIDs and human-readable identifiers (e.g.
+    PRO-232). UUID pass-through is unchanged; existence is verified downstream.
     """
     clean = identifier.strip()
     if len(clean) == 36 and clean.count("-") == 4:
         return clean
     query = """
     query($identifier: String!) {
-      issueByIdentifier(identifier: $identifier) {
+      issue(id: $identifier) {
         id
       }
     }
     """
     data = _linear_gql(query, {"identifier": clean})
-    node = data.get("issueByIdentifier") or {}
+    node = data.get("issue") or {}
     internal_id = node.get("id")
     if not internal_id:
         raise stdio_mcp.McpError(f"linear_write: issue not found: {clean!r}", -32000)
