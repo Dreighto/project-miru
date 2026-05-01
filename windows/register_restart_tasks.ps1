@@ -1,4 +1,4 @@
-# register_restart_tasks.ps1
+﻿# register_restart_tasks.ps1
 # Run this ONCE from an ELEVATED (Administrator) PowerShell window.
 # It registers all five scheduled tasks for Project Miru:
 #

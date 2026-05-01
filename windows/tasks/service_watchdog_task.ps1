@@ -1,4 +1,4 @@
-# service_watchdog_task.ps1
+﻿# service_watchdog_task.ps1
 # Called by the "MiruServiceWatchdog" scheduled task every 2 minutes.
 # Polls gateway (18766), dispatch listener (19100), and n8n (15678).
 # If a service has been down for 2+ consecutive polls (>=90s), auto-restarts

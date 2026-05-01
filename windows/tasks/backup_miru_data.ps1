@@ -1,4 +1,4 @@
-# backup_miru_data.ps1
+﻿# backup_miru_data.ps1
 # Backs up critical non-git files to D:\backups\miru\ and G:\My Drive\Miru Backups\
 # Runs twice daily via MiruBackup scheduled task (registered in startup_all.ps1).
 # Keeps 7 rolling days on both destinations.

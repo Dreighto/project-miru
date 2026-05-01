@@ -530,6 +530,14 @@ def main() -> None:
     for name, path in _WATCH_LOGS.items():
         if name == "stall_recovery":
             log_tails[name] = _tail_stall_recovery(path, _LOG_TAIL_LINES)
+        elif name == "dispatch_listener_stderr" and services.get(
+            "dispatch_listener", ""
+        ).startswith("up"):
+            # If the listener is up, EADDRINUSE lines are historical crash-loop noise —
+            # strip them so the AI doesn't alert on pre-fix artifacts.
+            raw = _tail_file(path, _LOG_TAIL_LINES)
+            filtered = "\n".join(ln for ln in raw.splitlines() if "EADDRINUSE" not in ln)
+            log_tails[name] = filtered if filtered.strip() else "(no recent errors)"
         else:
             log_tails[name] = _tail_file(path, _LOG_TAIL_LINES)
 
