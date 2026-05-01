@@ -66,6 +66,7 @@ These are not one-time approvals. If the operator says "you're driving" in one t
 | "Worker"              | An AI coding assistant that executes tasks (Claude Code, Cursor, Codex, etc.).                                              |
 | "Peer review"         | Sending a design question to Gemini, ChatGPT, or Perplexity for a second opinion.                                           |
 | "CC"                  | Claude Code.                                                                                                                |
+| "adaptive thinking"   | Extended Thinking mode in Claude.ai — Claude's deeper, slower reasoning mode for complex decisions. Same thing.             |
 
 ---
 
