@@ -302,5 +302,65 @@ try {
     Write-Log "WARNING: MiruStallRecovery self-registration failed: $($_.Exception.Message)"
 }
 
+# ════════════════════════════════════════════════════════════════════════════════
+# SELF-REGISTER: MiruSentinel
+# Runs tools/sentinel/health_check.py every 20 minutes. Checks service health,
+# tails key logs, counts DLQ delta, asks AI if anything looks wrong, and sends
+# a Telegram alert only when something needs attention. Silent otherwise.
+# Uses pythonw.exe so no console window appears on the desktop.
+# ════════════════════════════════════════════════════════════════════════════════
+Write-Log "--- Checking MiruSentinel registration ---"
+try {
+    $sentinelTask = Get-ScheduledTask -TaskName "MiruSentinel" -ErrorAction SilentlyContinue
+    if ($sentinelTask -and $sentinelTask.State -ne "Disabled") {
+        Write-Log "MiruSentinel already registered state=$($sentinelTask.State) -- skipping"
+    } else {
+        $pythonCmd2 = Get-Command python -ErrorAction SilentlyContinue
+        if (-not $pythonCmd2) {
+            Write-Log "WARNING: python not found -- cannot register MiruSentinel"
+        } else {
+            $sentinelScript = Join-Path $repoRoot "tools\sentinel\health_check.py"
+            if (-not (Test-Path $sentinelScript)) {
+                Write-Log "WARNING: health_check.py not found at $sentinelScript -- skipping"
+            } else {
+                $pythonwPath2 = Join-Path (Split-Path $pythonCmd2.Source) "pythonw.exe"
+                $pythonExe2 = if (Test-Path $pythonwPath2) { $pythonwPath2 } else { $pythonCmd2.Source }
+
+                $snAction = New-ScheduledTaskAction `
+                    -Execute $pythonExe2 `
+                    -Argument "tools\sentinel\health_check.py" `
+                    -WorkingDirectory $repoRoot
+
+                $snTrigger = New-ScheduledTaskTrigger `
+                    -Once -At (Get-Date).AddMinutes(20) `
+                    -RepetitionInterval (New-TimeSpan -Minutes 20)
+
+                $snSettings = New-ScheduledTaskSettingsSet `
+                    -AllowStartIfOnBatteries `
+                    -DontStopIfGoingOnBatteries `
+                    -StartWhenAvailable `
+                    -ExecutionTimeLimit (New-TimeSpan -Minutes 5) `
+                    -MultipleInstances IgnoreNew
+
+                $snUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+
+                $snTask = Register-ScheduledTask `
+                    -TaskName    "MiruSentinel" `
+                    -Description "Project Miru health sentinel. Runs every 20 min. Checks services, logs, DLQ, and worker activity. AI-powered anomaly detection via Ollama or OpenAI. Telegram alert on issues." `
+                    -Action      $snAction `
+                    -Trigger     $snTrigger `
+                    -Settings    $snSettings `
+                    -RunLevel    Limited `
+                    -User        $snUser `
+                    -Force
+
+                Write-Log "MiruSentinel registered user=$snUser state=$($snTask.State)"
+            }
+        }
+    }
+} catch {
+    Write-Log "WARNING: MiruSentinel self-registration failed: $($_.Exception.Message)"
+}
+
 Write-Log "=== startup_all.ps1 END"
 exit 0
