@@ -75,16 +75,15 @@ Before drafting any worker prompt, check this list. If the task is here, do it y
 
 ## What Gets Routed to Workers
 
-| Task type                                                     | Default worker              | Why                                      |
-| ------------------------------------------------------------- | --------------------------- | ---------------------------------------- |
-| Backend code changes, refactors, scripts, full-task ownership | Claude Code                 | Heavy executor, proven on Miru codebase  |
-| UI work, HTML/CSS, templates, quick Python, live testing      | Cursor                      | Interactive builder, good at visual work |
-| Code analysis, architecture review, large-context reads       | Codex or Gemini CLI         | Analyst/reviewer roles                   |
-| Single-function fixes, autocomplete                           | Copilot                     | Lightweight inline helper                |
-| Overflow when tokens are low or need a fallback               | Windsurf                    | Backup only                              |
-| Pressure-testing design, alternative approaches               | Gemini 3 Pro (chat app)     | Peer architect, not an executor          |
-| Research with citations and practitioner patterns             | Perplexity (chat app + MCP) | Researcher, not a decision-maker         |
-| Structuring, simplifying, orchestration help                  | ChatGPT (chat app)          | Second opinion, not source of truth      |
+| Task type                                                     | Default worker              | Why                                     |
+| ------------------------------------------------------------- | --------------------------- | --------------------------------------- |
+| Backend code changes, refactors, scripts, full-task ownership | Claude Code                 | Heavy executor, proven on Miru codebase |
+| UI work, HTML/CSS, templates, mobile layout, gestures         | Cursor                      | UI/UX execution worker, visual builder  |
+| Cross-file bug hunting, contract verification, audits         | Codex                       | Deep analysis, propose-then-execute     |
+| Large-context reads, second opinions, alternative approaches  | Gemini CLI                  | Validation worker, large context window |
+| Pressure-testing design, alternative approaches               | Gemini (chat app)           | Peer architect, not an executor         |
+| Research with citations and practitioner patterns             | Perplexity (MCP + chat app) | Researcher, not a decision-maker        |
+| Structuring, simplifying, orchestration help                  | ChatGPT (chat app)          | Second opinion, not source of truth     |
 
 ---
 

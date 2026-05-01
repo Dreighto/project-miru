@@ -146,8 +146,9 @@ Not everything needs permission. The test is: **is this new, risky, irreversible
 ### Worker Failed or Timed Out
 
 1. Check DLQ and completion logs for details.
-2. Report to operator in plain English: what failed, why, what the options are.
-3. Don't auto-retry. Wait for operator decision.
+2. If this is the first failure: auto-retry once using the recovery router. Log it.
+3. If the retry also fails, or the budget is exhausted: report to operator in plain English — what failed, why, what the options are. Wait for operator decision.
+4. Never silently retry more than once for the same ticket.
 
 ### Worker Returned Bad Results
 
