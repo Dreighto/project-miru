@@ -591,7 +591,7 @@ def main() -> None:
 
     state = _read_state()
     # Note: Telegram getUpdates polling conflicts with the n8n webhook on the same
-    # bot token (HTTP 409). Snooze is set via sentinel_state.json — see PRO-248.
+    # bot token (HTTP 409). Snooze is set via sentinel_state.json — see PRO-249.
     dlq_count_prev = int(state.get("dlq_count", 0))
 
     services = _check_services()
