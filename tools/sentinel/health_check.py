@@ -425,6 +425,87 @@ def _alert(
         _log("pushover_fallback_used")
 
 
+# ── Snooze (Telegram command polling) ────────────────────────────────────────
+
+
+def _parse_duration_minutes(s: str) -> int | None:
+    """Parse '30m' or '2h' into minutes. Returns None if unparseable."""
+    s = s.strip().lower()
+    if s.endswith("h"):
+        try:
+            return int(s[:-1]) * 60
+        except ValueError:
+            return None
+    if s.endswith("m"):
+        try:
+            return int(s[:-1])
+        except ValueError:
+            return None
+    return None
+
+
+def _poll_telegram_commands(token: str, chat_id: str, state: dict) -> dict:
+    """Poll getUpdates and process /snooze and /unsnooze from the known chat."""
+    if not token or not chat_id:
+        return state
+    offset = int(state.get("telegram_update_offset", 0))
+    try:
+        url = (
+            f"https://api.telegram.org/bot{token}/getUpdates"
+            f"?offset={offset}&limit=100&timeout=0"
+        )
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            data = json.loads(resp.read())
+    except Exception as exc:
+        _log(f"telegram_getUpdates_failed: {exc}")
+        return state
+    if not data.get("ok"):
+        return state
+    for update in data.get("result", []):
+        state["telegram_update_offset"] = update["update_id"] + 1
+        msg = update.get("message") or update.get("channel_post")
+        if not msg:
+            continue
+        if str(msg.get("chat", {}).get("id", "")) != str(chat_id):
+            continue  # ignore messages from other chats
+        text = (msg.get("text") or "").strip()
+        if not text.startswith("/"):
+            continue
+        parts = text.split()
+        cmd = parts[0].lower().lstrip("/").split("@")[0]  # strip bot@username suffix
+        if cmd == "snooze":
+            duration_str = parts[1] if len(parts) > 1 else ""
+            minutes = _parse_duration_minutes(duration_str)
+            if minutes:
+                until = datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=minutes)
+                state["snooze_until_utc"] = until.strftime("%Y-%m-%dT%H:%M:%SZ")
+                _log(f"snooze_set: until={state['snooze_until_utc']}")
+                _send_telegram(
+                    token,
+                    chat_id,
+                    f"🔕 Sentinel snoozed for {duration_str} (until {until.strftime('%H:%M UTC')}). "
+                    f"Send /unsnooze to re-enable early.",
+                )
+            else:
+                _send_telegram(token, chat_id, "Usage: /snooze 30m  or  /snooze 2h")
+        elif cmd == "unsnooze":
+            state.pop("snooze_until_utc", None)
+            _log("snooze_cleared")
+            _send_telegram(token, chat_id, "🔔 Sentinel alerts re-enabled.")
+    return state
+
+
+def _is_snoozed(state: dict) -> bool:
+    until_str = state.get("snooze_until_utc")
+    if not until_str:
+        return False
+    try:
+        until = datetime.datetime.fromisoformat(until_str.replace("Z", "+00:00"))
+        return datetime.datetime.now(datetime.UTC) < until
+    except (ValueError, OverflowError):
+        return False
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
@@ -439,6 +520,7 @@ def main() -> None:
     po_enabled = env.get("PUSHOVER_ENABLED", "false").lower() in {"true", "1", "yes"}
 
     state = _read_state()
+    state = _poll_telegram_commands(tg_token, tg_chat, state)
     dlq_count_prev = int(state.get("dlq_count", 0))
 
     services = _check_services()
@@ -491,14 +573,18 @@ def main() -> None:
     should_alert = bool(hard_alerts) or ai_flagged
 
     if should_alert:
-        lines = ["🔍 <b>Miru Sentinel</b>"]
-        if hard_alerts:
-            for a in hard_alerts:
-                lines.append(f"⚠️ {a}")
-        if ai_flagged:
-            lines.append(f"🤖 {ai_response}")
-        _alert("\n".join(lines), tg_token, tg_chat, po_token, po_user, po_enabled)
-        _log("alert_sent")
+        if _is_snoozed(state):
+            _log(f"alert_suppressed: snoozed until {state.get('snooze_until_utc')}")
+        else:
+            lines = ["🔍 <b>Miru Sentinel</b>"]
+            if hard_alerts:
+                for a in hard_alerts:
+                    lines.append(f"⚠️ {a}")
+            if ai_flagged:
+                lines.append(f"🤖 {ai_response}")
+            lines.append("<i>Reply /snooze 2h to silence for a while</i>")
+            _alert("\n".join(lines), tg_token, tg_chat, po_token, po_user, po_enabled)
+            _log("alert_sent")
     else:
         _log("all_clear")
 
