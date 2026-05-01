@@ -89,22 +89,30 @@ def _linear_gql(query: str, variables: dict[str, Any]) -> dict[str, Any]:
 
 
 def _resolve_issue_id(identifier: str) -> str:
-    """Resolve a PRO-XXX identifier or pass-through UUID to Linear internal ID."""
+    """Resolve a PRO-XXX identifier or pass-through UUID to Linear internal ID.
+
+    Bug fix (PRO-232): the previous implementation used ``issues(filter:)`` to
+    look up by identifier. That list query does not reliably resolve issues by
+    identifier across all Linear API versions and returns empty nodes for some
+    valid identifiers. Use ``issueByIdentifier`` — the canonical singular lookup
+    — instead. UUID pass-through is unchanged; existence is verified downstream.
+    """
     clean = identifier.strip()
     if len(clean) == 36 and clean.count("-") == 4:
         return clean
     query = """
-    query($filter: IssueFilter!) {
-      issues(filter: $filter, first: 1) {
-        nodes { id identifier }
+    query($identifier: String!) {
+      issueByIdentifier(identifier: $identifier) {
+        id
       }
     }
     """
-    data = _linear_gql(query, {"filter": {"identifier": {"eq": clean}}})
-    nodes = ((data.get("issues") or {}).get("nodes")) or []
-    if not nodes:
+    data = _linear_gql(query, {"identifier": clean})
+    node = data.get("issueByIdentifier") or {}
+    internal_id = node.get("id")
+    if not internal_id:
         raise stdio_mcp.McpError(f"linear_write: issue not found: {clean!r}", -32000)
-    return str(nodes[0]["id"])
+    return str(internal_id)
 
 
 def _resolve_user_id(name_or_id: str) -> str:
@@ -495,11 +503,102 @@ def linear_assign_issue(issue_id: str, assignee_id: str, ctx: Any = None) -> str
         raise stdio_mcp.McpError(f"linear_write: {exc!r}", -32000) from exc
 
 
+_DESC_TRUNCATE = 500
+
+
+def linear_get_issue(issue_id: str, ctx: Any = None) -> str:
+    """Return full metadata for a Linear issue (PRO-232).
+
+    ``issue_id`` accepts a human-readable identifier (e.g. 'PRO-232') or the
+    internal UUID. Returns JSON with id, identifier, title, description
+    (truncated to 500 chars), state, labels, assignee, priority, and url.
+    """
+    caller = gw_audit.caller_from_fastmcp_context(ctx)
+    if not issue_id or not issue_id.strip():
+        raise stdio_mcp.McpError("linear_write: issue_id is required", -32602)
+    try:
+        internal_id = _resolve_issue_id(issue_id.strip())
+        query = """
+        query get_issue($id: String!) {
+          issue(id: $id) {
+            id
+            identifier
+            title
+            description
+            state { name type }
+            labels { nodes { name } }
+            assignee { id name displayName }
+            priority
+            url
+          }
+        }
+        """
+        data = _linear_gql(query, {"id": internal_id})
+        node = data.get("issue") or {}
+        if not node:
+            raise stdio_mcp.McpError(f"linear_write: issue not found for id: {internal_id}", -32000)
+
+        desc = node.get("description") or ""
+        if len(desc) > _DESC_TRUNCATE:
+            desc = desc[:_DESC_TRUNCATE] + "\u2026"
+
+        label_names = [
+            lbl.get("name", "")
+            for lbl in ((node.get("labels") or {}).get("nodes") or [])
+            if isinstance(lbl, dict)
+        ]
+
+        payload: dict[str, Any] = {
+            "id": node.get("id"),
+            "identifier": node.get("identifier"),
+            "title": node.get("title"),
+            "description": desc,
+            "state": node.get("state") or {},
+            "labels": label_names,
+            "assignee": node.get("assignee") or None,
+            "priority": node.get("priority"),
+            "url": node.get("url"),
+        }
+        _audit_linear(
+            tool="linear_get_issue",
+            caller=caller,
+            issue_id=issue_id,
+            operation="get",
+            params={"issue_id": issue_id},
+            result="success",
+            error=None,
+        )
+        return json.dumps(_redact.redact_dict(payload), indent=2)
+    except stdio_mcp.McpError as exc:
+        _audit_linear(
+            tool="linear_get_issue",
+            caller=caller,
+            issue_id=issue_id,
+            operation="get",
+            params={"issue_id": issue_id},
+            result="failure",
+            error=str(exc),
+        )
+        raise
+    except Exception as exc:
+        _audit_linear(
+            tool="linear_get_issue",
+            caller=caller,
+            issue_id=issue_id,
+            operation="get",
+            params={"issue_id": issue_id},
+            result="failure",
+            error=repr(exc),
+        )
+        raise stdio_mcp.McpError(f"linear_write: {exc!r}", -32000) from exc
+
+
 TOOL_FUNCTIONS = (
     linear_update_issue_state,
     linear_create_issue,
     linear_add_comment,
     linear_assign_issue,
+    linear_get_issue,
 )
 
 
