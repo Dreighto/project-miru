@@ -41,7 +41,7 @@ function Send-Telegram {
     param([string]$Msg)
     $token  = $env:TELEGRAM_BOT_TOKEN
     $chatId = $env:TELEGRAM_CHAT_ID
-    if (-not $token -or -not $chatId) { return }
+    if (-not $token -or -not $chatId) { return $false }
     try {
         $body = [ordered]@{ chat_id = $chatId; text = $Msg; parse_mode = "HTML" } |
                 ConvertTo-Json -Compress
@@ -49,8 +49,37 @@ function Send-Telegram {
             -Uri "https://api.telegram.org/bot$token/sendMessage" `
             -Method POST -ContentType "application/json" -Body $body `
             -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop | Out-Null
+        return $true
     } catch {
         Write-Log "telegram_send_failed: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+function Send-Pushover {
+    param([string]$Msg, [string]$Title = "Miru Watchdog")
+    $token   = $env:PUSHOVER_API_TOKEN
+    $user    = $env:PUSHOVER_USER_KEY
+    $enabled = $env:PUSHOVER_ENABLED
+    if (-not $token -or -not $user -or $enabled -notin @("true","1","yes")) { return }
+    try {
+        $body = "token=$([uri]::EscapeDataString($token))&user=$([uri]::EscapeDataString($user))&title=$([uri]::EscapeDataString($Title))&message=$([uri]::EscapeDataString($Msg))"
+        Invoke-WebRequest `
+            -Uri "https://api.pushover.net/1/messages.json" `
+            -Method POST -ContentType "application/x-www-form-urlencoded" -Body $body `
+            -UseBasicParsing -TimeoutSec 10 -ErrorAction Stop | Out-Null
+    } catch {
+        Write-Log "pushover_send_failed: $($_.Exception.Message)"
+    }
+}
+
+function Send-Alert {
+    param([string]$Msg, [string]$PushoverTitle = "Miru Watchdog")
+    $tgOk = Send-Telegram -Msg $Msg
+    if (-not $tgOk) {
+        $plain = $Msg -replace '<[^>]+>',''
+        Send-Pushover -Msg $plain -Title $PushoverTitle
+        Write-Log "pushover_fallback_used"
     }
 }
 
@@ -161,7 +190,7 @@ foreach ($svc in $services) {
             Write-Log "${key}_recovered escalated=$wasEscalated"
             $msg = "✅ <b>$($svc.label) recovered</b>`nService is responding normally."
             if ($wasEscalated) { $msg += "`n<i>Escalation cleared — watchdog resuming normal monitoring.</i>" }
-            Send-Telegram $msg
+            Send-Alert $msg
             $state[$key] = @{ first_fail_utc = $null; restart_count = 0; restart_window_start_utc = $null; escalated = $false }
             $changed = $true
         } else {
@@ -208,17 +237,17 @@ foreach ($svc in $services) {
         Write-Log "${key}_ceiling_hit restarts=$($state[$key].restart_count) down_sec=$([int]$downSec)"
         $state[$key].escalated = $true
         $changed = $true
-        Send-Telegram "🚨 <b>$($svc.label) — needs your attention</b>`nRestarted $($state[$key].restart_count) times in $($RESTART_WINDOW_S / 60) minutes with no recovery.`nWatchdog has stopped retrying. Check the service manually."
+        Send-Alert "🚨 <b>$($svc.label) — needs your attention</b>`nRestarted $($state[$key].restart_count) times in $($RESTART_WINDOW_S / 60) minutes with no recovery.`nWatchdog has stopped retrying. Check the service manually." -PushoverTitle "Miru — Service Down"
         continue
     }
 
     # Trigger restart
     Write-Log "${key}_restart_triggered down_sec=$([int]$downSec) attempt=$($state[$key].restart_count + 1)/$MAX_RESTARTS_PER_WINDOW"
-    Send-Telegram "🔄 <b>$($svc.label) auto-restart</b>`nDown for $([int]$downSec)s — restart attempt $($state[$key].restart_count + 1)/$MAX_RESTARTS_PER_WINDOW."
+    Send-Alert "🔄 <b>$($svc.label) auto-restart</b>`nDown for $([int]$downSec)s — restart attempt $($state[$key].restart_count + 1)/$MAX_RESTARTS_PER_WINDOW."
 
     $ok = Invoke-Restart -Svc $svc
     if (-not $ok) {
-        Send-Telegram "❌ <b>$($svc.label) restart FAILED</b>`nCould not execute restart command. Check the watchdog log."
+        Send-Alert "❌ <b>$($svc.label) restart FAILED</b>`nCould not execute restart command. Check the watchdog log." -PushoverTitle "Miru — Restart Failed"
     }
 
     if (-not $state[$key].restart_window_start_utc) {

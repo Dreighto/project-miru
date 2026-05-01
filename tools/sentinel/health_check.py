@@ -4,7 +4,11 @@ MiruSentinel — periodic system health scanner.
 Runs every 20 minutes as the MiruSentinel scheduled task.
 Collects service health, log tails, DLQ delta, and recent worker activity,
 then asks an AI (Ollama first, OpenAI fallback) if anything looks wrong.
-Sends a Telegram alert only when something needs attention — silent otherwise.
+Sends a Telegram alert (+ Pushover fallback) only when something needs
+attention — silent otherwise.
+
+Also runs a daily OAuth credential probe to catch expired/missing Claude
+auth before it silently breaks worker dispatches.
 
 Entry point: python tools/sentinel/health_check.py
 """
@@ -15,6 +19,7 @@ import contextlib
 import datetime
 import http.client
 import json
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -27,6 +32,7 @@ _COMPLETION_LOG = _REPO_ROOT / "data" / "cc_completion_log.jsonl"
 
 _HTTP_TIMEOUT_S = 5
 _LOG_TAIL_LINES = 20
+_OAUTH_CHECK_INTERVAL_H = 24
 
 _HEALTH_ENDPOINTS = {
     "gateway": "http://127.0.0.1:18766/health",
@@ -41,6 +47,10 @@ _WATCH_LOGS = {
     "service_watchdog": _REPO_ROOT / "logs" / "service_watchdog.log",
     "stall_recovery": _REPO_ROOT / "logs" / "stall_recovery.log",
 }
+
+# Claude stores OAuth session data under ~/.claude/
+_CLAUDE_DIR = Path.home() / ".claude"
+_OAUTH_SIGNAL_DIRS = ["sessions", "session-env"]
 
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -144,6 +154,40 @@ def _tail_jsonl(path: Path, n: int) -> list[dict]:
         return rows
     except OSError:
         return []
+
+
+# ── OAuth credential probe ────────────────────────────────────────────────────
+
+
+def _check_oauth_credentials() -> str | None:
+    """Return an alert string if Claude OAuth credentials look missing, else None."""
+    if not _CLAUDE_DIR.exists():
+        return f"Claude credential directory missing: {_CLAUDE_DIR}"
+    for subdir in _OAUTH_SIGNAL_DIRS:
+        target = _CLAUDE_DIR / subdir
+        if target.exists():
+            try:
+                if any(target.iterdir()):
+                    return None  # at least one signal dir has files — looks fine
+            except OSError:
+                pass
+    return (
+        f"Claude OAuth credentials may be missing or cleared. "
+        f"No files found in {_CLAUDE_DIR}/sessions or session-env. "
+        f"Worker dispatches using OAuth will fail silently."
+    )
+
+
+def _should_run_oauth_check(state: dict) -> bool:
+    last = state.get("last_oauth_check_utc")
+    if not last:
+        return True
+    try:
+        last_dt = datetime.datetime.fromisoformat(last.replace("Z", "+00:00"))
+        hours_since = (datetime.datetime.now(datetime.UTC) - last_dt).total_seconds() / 3600
+        return hours_since >= _OAUTH_CHECK_INTERVAL_H
+    except (ValueError, OverflowError):
+        return True
 
 
 # ── AI analysis ───────────────────────────────────────────────────────────────
@@ -285,10 +329,10 @@ def _ask_ai(context: str, openai_key: str) -> str:
     return ""
 
 
-# ── Telegram ─────────────────────────────────────────────────────────────────
+# ── Telegram ──────────────────────────────────────────────────────────────────
 
 
-def _send_telegram(token: str, chat_id: str, msg: str) -> None:
+def _send_telegram(token: str, chat_id: str, msg: str) -> bool:
     try:
         payload = json.dumps(
             {"chat_id": chat_id, "text": msg, "parse_mode": "HTML"},
@@ -303,8 +347,58 @@ def _send_telegram(token: str, chat_id: str, msg: str) -> None:
         )
         conn.getresponse().read()
         conn.close()
+        return True
     except Exception as exc:
         _log(f"telegram_failed: {exc}")
+        return False
+
+
+# ── Pushover ──────────────────────────────────────────────────────────────────
+
+
+def _send_pushover(api_token: str, user_key: str, msg: str, title: str = "Miru Sentinel") -> bool:
+    try:
+        body = urllib.parse.urlencode(
+            {"token": api_token, "user": user_key, "title": title, "message": msg}
+        ).encode("utf-8")
+        conn = http.client.HTTPSConnection("api.pushover.net", timeout=10)
+        conn.request(
+            "POST",
+            "/1/messages.json",
+            body=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        conn.getresponse().read()
+        conn.close()
+        return True
+    except Exception as exc:
+        _log(f"pushover_failed: {exc}")
+        return False
+
+
+def _alert(
+    msg: str,
+    tg_token: str,
+    tg_chat: str,
+    po_token: str,
+    po_user: str,
+    po_enabled: bool,
+) -> None:
+    """Send via Telegram; fall back to Pushover if Telegram fails or is unconfigured."""
+    tg_ok = False
+    if tg_token and tg_chat:
+        tg_ok = _send_telegram(tg_token, tg_chat, msg)
+    if not tg_ok and po_enabled and po_token and po_user:
+        plain = (
+            msg.replace("<b>", "")
+            .replace("</b>", "")
+            .replace("<i>", "")
+            .replace("</i>", "")
+            .replace("<code>", "")
+            .replace("</code>", "")
+        )
+        _send_pushover(po_token, po_user, plain)
+        _log("pushover_fallback_used")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -316,6 +410,9 @@ def main() -> None:
     tg_token = env.get("TELEGRAM_BOT_TOKEN", "")
     tg_chat = env.get("TELEGRAM_CHAT_ID", "")
     openai_key = env.get("OPENAI_API_KEY", "")
+    po_token = env.get("PUSHOVER_API_TOKEN", "")
+    po_user = env.get("PUSHOVER_USER_KEY", "")
+    po_enabled = env.get("PUSHOVER_ENABLED", "false").lower() in {"true", "1", "yes"}
 
     state = _read_state()
     dlq_count_prev = int(state.get("dlq_count", 0))
@@ -343,6 +440,18 @@ def main() -> None:
     if dlq_new >= 3:
         hard_alerts.append(f"{dlq_new} new failed dispatches added to the queue")
 
+    # Daily OAuth credential probe
+    if _should_run_oauth_check(state):
+        oauth_problem = _check_oauth_credentials()
+        if oauth_problem:
+            hard_alerts.append(oauth_problem)
+            _log(f"oauth_probe_failed: {oauth_problem}")
+        else:
+            _log("oauth_probe_ok")
+        state["last_oauth_check_utc"] = datetime.datetime.now(datetime.UTC).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+
     context = _build_context(services, log_tails, dlq_new, heartbeats, completions)
     ai_response = _ask_ai(context, openai_key)
 
@@ -352,16 +461,16 @@ def main() -> None:
     ai_flagged = ai_response and ai_response.upper().startswith("ALERT")
     should_alert = bool(hard_alerts) or ai_flagged
 
-    if should_alert and tg_token and tg_chat:
+    if should_alert:
         lines = ["🔍 <b>Miru Sentinel</b>"]
         if hard_alerts:
             for a in hard_alerts:
                 lines.append(f"⚠️ {a}")
         if ai_flagged:
             lines.append(f"🤖 {ai_response}")
-        _send_telegram(tg_token, tg_chat, "\n".join(lines))
-        _log("telegram_alert_sent")
-    elif not should_alert:
+        _alert("\n".join(lines), tg_token, tg_chat, po_token, po_user, po_enabled)
+        _log("alert_sent")
+    else:
         _log("all_clear")
 
     state["dlq_count"] = dlq_count_now
