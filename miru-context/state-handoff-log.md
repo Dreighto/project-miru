@@ -77,5 +77,69 @@ agenda table with the handoff content in a notes-style field.
 
 ## Latest Handoff
 
-_No handoff written yet. Claude Chat will write here at the close of the first thread that uses
-this protocol._
+# Miru thread handoff — 2026-05-01, late evening (CC session)
+
+## What we were working on
+
+Knowledge architecture pass: building ground-truth reference documents for AI workers so
+they have real domain knowledge, not just instructions. Also fixing a sentinel bug and
+hardening the Ollama health check to use structured JSON output.
+
+## What got done
+
+- **`miru-context/miru-service-catalog.md`** — Created. Per-service ground truth for all 5
+  active services: ports, correct health endpoints, log file paths, normal vs failure log
+  patterns, restart mechanisms. Extracted from actual source files.
+- **`miru-context/miru-protected-constraints.md`** — Created. Non-negotiable architectural
+  constraints for coding workers: reserved ports, append-only files, Telegram webhook ownership,
+  DB read-only rule, health endpoint contracts, git hygiene.
+- **`tools/sentinel/health_check.py`** — PM health endpoint fixed (`/health` → `/__pm_health`).
+  Ollama prompt rebuilt with domain-grounded system prompt, explicit allow/deny lists,
+  few-shot boundary-case examples, `format: json` structured output. Now parses
+  `should_escalate` boolean from JSON response.
+- **PR #64** — Opened (operator-merge, new files). All hooks green. Sentinel confirmed
+  `all_clear` with new JSON parsing.
+- **PRO-248** — Filed: Codex full code audit + system check before Claude Chat handoff
+- **PRO-249** — Filed: n8n route /snooze and /unsnooze Telegram commands (Backlog)
+
+## What's still open
+
+- **PR #64** — Needs operator merge before Codex audit can start
+- **PRO-248** (Codex full system audit) — Filed, Backlog. Do NOT start until PR #64 merged
+- **PRO-249** (n8n snooze routing) — Filed, Backlog. Operator confirmation needed
+- **PRO-244** (Telegram inline action buttons) — Filed, Backlog. Not started
+- **PRO-247** (Gemini CLI sentinel fallback) — Filed, Backlog. Not started
+- **"Things to work on before Claude Chat"** — Operator mentioned items still pending.
+  First action for next thread: ask if PR #64 + Codex audit clears the list, or what remains
+
+## Decisions made
+
+- PM Dashboard health endpoint is `/__pm_health`, not `/health` (SPA catch-all was masking this)
+- Ollama prompts need domain grounding + JSON output schema — freeform "start with ALERT:" is too fragile
+- `should_escalate: bool` is the right routing signal — not text scanning
+- Codex is the right worker for the full system audit (deep static analysis, large codebase)
+- Codex audit should run AFTER PR #64 merges so it has the context docs
+
+## What the next thread should do first
+
+1. Confirm PR #64 merged; if yes, dispatch PRO-248 to Codex
+2. Ask operator: "Does PRO-248 cover what you meant by things to do before Claude Chat handoff, or are there other items?"
+3. Check if docs/dispatch_contract.md and services/dispatch_listener/src/allowlist.js (modified at session start, not part of this work) need attention
+
+## What NOT to do
+
+- Do not start PRO-248, PRO-244, PRO-247, or PRO-249 without operator confirmation
+- Do not merge PR #64 as CC — it contains new files (operator-merge column)
+- Do not touch config/claude_chat.mcp.json (sensitive local paths, intentionally untracked)
+
+## Loop health
+
+Stall recovery loop healthy. Sentinel running every 20 minutes, all_clear. New JSON output
+format confirmed working.
+
+## Key files touched
+
+- `miru-context/miru-service-catalog.md` (new)
+- `miru-context/miru-protected-constraints.md` (new)
+- `tools/sentinel/health_check.py` (PM endpoint + prompt rebuild)
+- PR #64: https://github.com/Dreighto/project-miru/pull/64
