@@ -79,6 +79,11 @@ APPROVED_LOG_FILES: dict[str, Path] = {
     "miru_ai_restart": _LOG_DIR / "miru_ai_restart.log",
     "dispatcher_stdout": _LOG_DIR / "dispatcher_stdout.log",
     "dispatcher_stderr": _LOG_DIR / "dispatcher_stderr.log",
+    "dispatch_listener_stdout": _LOG_DIR / "dispatch_listener_stdout.log",
+    "dispatch_listener_stderr": _LOG_DIR / "dispatch_listener_stderr.log",
+    "dispatch_listener_wrapper": _LOG_DIR / "dispatch_listener_wrapper.log",
+    "service_watchdog": _LOG_DIR / "service_watchdog.log",
+    "stall_recovery": _LOG_DIR / "stall_recovery.log",
     "startup": _LOG_DIR / "startup.log",
 }
 

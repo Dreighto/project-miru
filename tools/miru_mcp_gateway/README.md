@@ -55,7 +55,8 @@ denied.
   name (not arbitrary path). Capped at 500 lines / 256 KB. Output passes
   through redaction. Approved names: `mcp_gateway_stdout/stderr/restart`,
   `pm_stdout/stderr/restart`, `miru_ai_stdout/stderr/restart`,
-  `dispatcher_stdout/stderr`, `startup`. Call with `name=""` to list them.
+  `dispatcher_stdout/stderr`, `dispatch_listener_stdout/stderr/wrapper`,
+  `service_watchdog`, `stall_recovery`, `startup`. Call with `name=""` to list them.
 
 When `MIRU_SYSTEM_LOGS_ENABLED=true`, docker-backed keys are added:
 `n8n_stdout`, `n8n_stderr`, `n8n_combined`. Split streams use the container
