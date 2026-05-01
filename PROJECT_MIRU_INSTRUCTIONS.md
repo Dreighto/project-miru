@@ -6,9 +6,10 @@ Miru thread.
 
 ## Core startup files (read at every thread start)
 
-These files live at `D:\dev\miru\miru-context\`. Read all four at thread start
+These files live at `D:\dev\miru\miru-context\`. Read all five at thread start
 before doing anything else:
 
+- `operator-profile.md` — how to communicate with Dreighto; visual learner, examples-first, plain English rules, tone calibration. Read this first.
 - `claude-operating-model.md` — your role, routing logic, what you handle vs. delegate, approval boundaries, communication rules
 - `guardrails.md` — instruction priority order, hard rules, tool safety rules, recovery rules
 - `miru-vocab.md` — operator language guide; shorthand phrases, direction phrases, project-specific terms
