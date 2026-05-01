@@ -57,6 +57,15 @@ if (-not $nodeCmd) {
     exit 3
 }
 
+# Guard: if port 19100 is already bound, the listener is running -- exit gracefully
+# so the scheduled task sees success and doesn't trigger a crash-respawn loop.
+$portBound = Get-NetTCPConnection -LocalPort 19100 -State Listen -ErrorAction SilentlyContinue |
+             Select-Object -First 1
+if ($portBound) {
+    Write-WrapperLog "port 19100 already listening (PID=$($portBound.OwningProcess)) -- dispatch_listener already running, exiting gracefully"
+    exit 0
+}
+
 $respawns = 0
 $lastExit = -1
 while ($respawns -lt $MAX_RESPAWNS) {

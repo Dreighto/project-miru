@@ -133,6 +133,30 @@ def _tail_file(path: Path, n: int) -> str:
         return "(read error)"
 
 
+# Stall-recovery log emits these lines on every healthy idle cycle.
+# If the entire tail consists only of these, replace with a summary so the
+# AI doesn't misinterpret normal idle output as a problem.
+_STALL_IDLE_TOKENS = frozenset(
+    [
+        "=== stall_recovery run ===",
+        "stalls_found=0",
+        "no_stalls_detected",
+        "=== stall_recovery done ===",
+    ]
+)
+
+
+def _tail_stall_recovery(path: Path, n: int) -> str:
+    raw = _tail_file(path, n)
+    lines = raw.splitlines()
+    # Strip timestamps (tab-delimited prefix) to check the content tokens
+    content = [ln.split("\t", 1)[-1].strip() for ln in lines if ln.strip()]
+    if content and all(tok in _STALL_IDLE_TOKENS for tok in content):
+        runs = sum(1 for tok in content if tok == "=== stall_recovery run ===")
+        return f"(healthy: {runs} stall-check cycle(s) completed, no stalls detected)"
+    return raw
+
+
 def _count_dlq_lines() -> int:
     try:
         if not _DLQ_FILE.exists():
@@ -420,7 +444,12 @@ def main() -> None:
     services = _check_services()
     down_services = [s for s, st in services.items() if not st.startswith("up")]
 
-    log_tails = {name: _tail_file(path, _LOG_TAIL_LINES) for name, path in _WATCH_LOGS.items()}
+    log_tails = {}
+    for name, path in _WATCH_LOGS.items():
+        if name == "stall_recovery":
+            log_tails[name] = _tail_stall_recovery(path, _LOG_TAIL_LINES)
+        else:
+            log_tails[name] = _tail_file(path, _LOG_TAIL_LINES)
 
     dlq_count_now = _count_dlq_lines()
     dlq_new = max(0, dlq_count_now - dlq_count_prev)
