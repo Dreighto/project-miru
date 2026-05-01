@@ -364,5 +364,56 @@ try {
     Write-Log "WARNING: MiruSentinel self-registration failed: $($_.Exception.Message)"
 }
 
+# ════════════════════════════════════════════════════════════════════════════════
+# SELF-REGISTER: MiruBackup
+# Backs up miru_memory.db, .env, and gitignored data files to D:\backups\miru\
+# and G:\My Drive\Miru Backups\ twice daily. Keeps 7 rolling days.
+# Telegram alert on failure only. Idempotent; skips if already registered.
+# ════════════════════════════════════════════════════════════════════════════════
+Write-Log "--- Checking MiruBackup registration ---"
+try {
+    $backupTask = Get-ScheduledTask -TaskName "MiruBackup" -ErrorAction SilentlyContinue
+    if ($backupTask -and $backupTask.State -ne "Disabled") {
+        Write-Log "MiruBackup already registered state=$($backupTask.State) -- skipping"
+    } else {
+        $backupWrapperScript = Join-Path $windowsDir "tasks\run_backup.vbs"
+        if (-not (Test-Path $backupWrapperScript)) {
+            Write-Log "WARNING: backup VBS wrapper not found at $backupWrapperScript -- skipping"
+        } else {
+            $buAction = New-ScheduledTaskAction `
+                -Execute "wscript.exe" `
+                -Argument "`"$backupWrapperScript`"" `
+                -WorkingDirectory $repoRoot
+
+            $buTrigger = New-ScheduledTaskTrigger `
+                -Once -At (Get-Date).AddMinutes(10) `
+                -RepetitionInterval (New-TimeSpan -Hours 12)
+
+            $buSettings = New-ScheduledTaskSettingsSet `
+                -AllowStartIfOnBatteries `
+                -DontStopIfGoingOnBatteries `
+                -StartWhenAvailable `
+                -ExecutionTimeLimit (New-TimeSpan -Minutes 5) `
+                -MultipleInstances IgnoreNew
+
+            $buUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+
+            $buTask = Register-ScheduledTask `
+                -TaskName    "MiruBackup" `
+                -Description "Project Miru data backup. Runs twice daily. Copies miru_memory.db, .env, and gitignored data files to D:\backups\miru\ and G:\My Drive\Miru Backups\. Keeps 7 rolling days. Telegram alert on failure." `
+                -Action      $buAction `
+                -Trigger     $buTrigger `
+                -Settings    $buSettings `
+                -RunLevel    Limited `
+                -User        $buUser `
+                -Force
+
+            Write-Log "MiruBackup registered user=$buUser state=$($buTask.State)"
+        }
+    }
+} catch {
+    Write-Log "WARNING: MiruBackup self-registration failed: $($_.Exception.Message)"
+}
+
 Write-Log "=== startup_all.ps1 END"
 exit 0
