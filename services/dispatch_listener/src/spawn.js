@@ -91,7 +91,16 @@ function probeWorkerBinary(binary, cwd) {
   }
 }
 
-function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLogDir, onDone }) {
+function spawnWorker({
+  traceId,
+  worker,
+  promptText,
+  timeoutSeconds,
+  useApiKey = false,
+  cwd,
+  traceLogDir,
+  onDone,
+}) {
   const workerSpec = spec(worker);
   if (!workerSpec) {
     throw new Error(`worker ${worker} not in allowlist (defensive guard)`);
@@ -154,15 +163,12 @@ function spawnWorker({ traceId, worker, promptText, timeoutSeconds, cwd, traceLo
     throw err;
   }
 
-  // Strip ANTHROPIC_API_KEY from the child env so claude.cmd falls back to its
-  // stored OAuth credentials (~/.claude/). If the key is present (e.g. from
-  // .env for other services) it overrides stored auth and causes "Invalid API
-  // key" when the stored-credential flow would have worked fine.
-  // claude.cmd authenticates via ANTHROPIC_API_KEY. The .env stores the active
-  // key under MIRU_ROUTING_KEY (ANTHROPIC_API_KEY is disabled). Map it across
-  // so the spawned worker gets valid credentials without changing .env naming.
+  // Auth selection: if the caller sets useApiKey=true, map MIRU_ROUTING_KEY to
+  // ANTHROPIC_API_KEY so the worker bills via API (complex/recovery tasks).
+  // Otherwise strip ANTHROPIC_API_KEY so claude.cmd falls back to stored OAuth
+  // credentials — no API charge for routine tasks.
   const childEnv = { ...process.env };
-  if (childEnv.MIRU_ROUTING_KEY) {
+  if (useApiKey && childEnv.MIRU_ROUTING_KEY) {
     childEnv.ANTHROPIC_API_KEY = childEnv.MIRU_ROUTING_KEY;
   } else {
     delete childEnv.ANTHROPIC_API_KEY;

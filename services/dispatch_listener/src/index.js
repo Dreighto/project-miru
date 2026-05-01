@@ -152,7 +152,12 @@ app.post(
       return res.status(400).json({ error: 'bad_request', reason: 'invalid_json' });
     }
 
-    const { trace_id: traceId, worker, prompt_path: promptPath } = payload || {};
+    const {
+      trace_id: traceId,
+      worker,
+      prompt_path: promptPath,
+      use_api_key: useApiKey,
+    } = payload || {};
     let timeoutSeconds = (payload && payload.timeout_seconds) || TIMEOUT_DEFAULT;
 
     if (typeof traceId !== 'string' || !TRACE_ID_RE.test(traceId)) {
@@ -261,6 +266,7 @@ app.post(
         worker,
         promptText,
         timeoutSeconds,
+        useApiKey: useApiKey === true,
         cwd: slotPath,
         traceLogDir: TRACE_LOG_DIR,
         onDone: () => releaseSlot(slotPath),

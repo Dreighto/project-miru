@@ -207,6 +207,7 @@ def _dispatch_recovery(worker_type: str, stall, hmac_secret: str, listener_url: 
             "worker": worker_type,
             "prompt_path": f"data/n8n_inbox/{trace_id}.prompt.json",
             "timeout_seconds": 1200,
+            "use_api_key": True,
         },
         separators=(",", ":"),
     ).encode("utf-8")
