@@ -76,6 +76,61 @@ only when the smaller one returns low confidence or flags something it cannot re
 
 ---
 
+## Worker Capability Profiles
+
+Structured profiles for routing and budget decisions. Routing uses "Best for";
+budget governance uses "Cost bucket"; dispatch wiring uses "Dispatch mode."
+
+### claude-code
+
+| Attribute                      | Value                                                                       |
+| ------------------------------ | --------------------------------------------------------------------------- |
+| Dispatch mode                  | Headless CLI (via W4 / Dispatch Listener on port 19100)                     |
+| Can run headless               | Yes                                                                         |
+| Can be monitored via heartbeat | Yes — emits to `data/cc_heartbeat_log.jsonl`                                |
+| Model / effort tuneable        | Yes — OAuth (default) or `use_api_key: true` for Sonnet-level               |
+| Cost bucket                    | Medium (API-billed on `use_api_key: true`; free via OAuth)                  |
+| Requires operator involvement  | For operator-column PRs, ESCALATE signals, or REPEATED_FAILURE              |
+| Known limitations              | Cannot touch HTML/CSS/JS templates, `.mcp.json` files, or `card_catalog.db` |
+
+### codex
+
+| Attribute                      | Value                                                                               |
+| ------------------------------ | ----------------------------------------------------------------------------------- |
+| Dispatch mode                  | Headless CLI (via W4 / Dispatch Listener on port 19100)                             |
+| Can run headless               | Yes                                                                                 |
+| Can be monitored via heartbeat | Yes — emits heartbeats if configured                                                |
+| Model / effort tuneable        | Yes — standard Codex model                                                          |
+| Cost bucket                    | Low-Medium (API-billed)                                                             |
+| Requires operator involvement  | For scope expansion, ESCALATE signals                                               |
+| Known limitations              | Does not autonomously edit CLAUDE.md or worker prompts; executes assigned work only |
+
+### gemini
+
+| Attribute                      | Value                                                                                                 |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Dispatch mode                  | Headless CLI (via W4 / Dispatch Listener on port 19100)                                               |
+| Can run headless               | Yes                                                                                                   |
+| Can be monitored via heartbeat | Limited — does not emit Miru heartbeat format by default                                              |
+| Model / effort tuneable        | Yes — Gemini Pro, large context                                                                       |
+| Cost bucket                    | Low                                                                                                   |
+| Requires operator involvement  | For ESCALATE signals                                                                                  |
+| Known limitations              | Better as validation/second-opinion worker than primary executor; large context is its main advantage |
+
+### cursor
+
+| Attribute                      | Value                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------- |
+| Dispatch mode                  | IDE manual — operator opens session directly; not dispatched via W4                   |
+| Can run headless               | No — requires operator to open Cursor session                                         |
+| Can be monitored via heartbeat | No                                                                                    |
+| Model / effort tuneable        | Via Cursor Pro+ settings                                                              |
+| Cost bucket                    | None (subscription; no per-task API cost)                                             |
+| Requires operator involvement  | Always — operator-initiated sessions only                                             |
+| Known limitations              | Not suitable for headless automation; UI/UX work only (`pm/templates/`, `pm/static/`) |
+
+---
+
 ## Load-on-demand trigger
 
 Read this file when:
@@ -83,3 +138,4 @@ Read this file when:
 - Choosing which worker to dispatch a task to
 - Evaluating whether to run workers in parallel
 - Deciding which Ollama model to call for an automated task
+- Checking a worker's cost bucket or dispatch mode for budget-aware routing

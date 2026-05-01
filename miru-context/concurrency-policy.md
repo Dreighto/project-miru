@@ -1,5 +1,9 @@
 # Concurrency Policy — Parallel Execution Rules
 
+> For behavioral coordination rules (task ownership, status reporting, worker-to-worker
+> handoffs, help requests), see **coordination-contract.md**. This document covers
+> parallelism limits and file conflict rules.
+
 This is a secondary file. Claude reads it when 2+ workers are active simultaneously or when a routing decision involves parallel execution. It does not need to be read at the start of every thread.
 
 ## Governing Rule

@@ -310,6 +310,9 @@ tap a button. If you need more than one decision, send one message per decision.
 
 ## Completion Contract
 
+> For Claude Code's supervisory responsibilities surrounding these terminal states — what
+> "done" means, the stewardship checklist, and verification methods — see **miru-context/job-stewardship.md**.
+
 Every task must end with exactly one of:
 
 - STATUS: CONFIRMED WORKING

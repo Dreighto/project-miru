@@ -29,6 +29,10 @@ picking up a task you don't have context on:
 3. Check Linear via `linear_get_issue` or `linear_list_issues` for in-progress tickets
 4. Check `activity_since` for recent worker activity (what ran since your last session)
 5. Check `worker_status` to see what workers are currently active
+6. `miru-context/operating-model.md` — full team model and autonomous loop
+7. `miru-context/canon-contract.md` — logging rules and promotion authority
+8. `miru-context/job-stewardship.md` — what "done" means and Claude Code's verification role
+9. `miru-context/source-of-truth.md` — which system wins for each type of state
 
 Do not run commands, edit files, or dispatch workers until you have read the current state.
 

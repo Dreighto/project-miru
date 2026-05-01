@@ -1,5 +1,9 @@
 # Canon and Drift — Source Order, Drift Detection, and State Preservation
 
+> For rules governing how new knowledge enters canon (logging contract, promotion,
+> deduplication), see **canon-contract.md**. This document covers how existing canon
+> stays aligned with reality.
+
 ## Governing Rule
 
 Already-approved work carries forward across threads unless new evidence changes the plan.
