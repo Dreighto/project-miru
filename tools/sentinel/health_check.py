@@ -197,6 +197,10 @@ def _build_context(
 
 
 def _ask_ollama(context: str) -> str | None:
+    # Model preference order for health analysis: fast general models first,
+    # coder models reserved for code review tasks.
+    preferred = ["llama3.2:3b", "qwen2.5:7b", "llama3.2", "qwen2.5", "mistral", "phi"]
+
     try:
         r = urllib.request.urlopen(
             urllib.request.Request(
@@ -210,9 +214,9 @@ def _ask_ollama(context: str) -> str | None:
         if not models:
             return None
         model = next(
-            (m for m in models if any(k in m for k in ("llama3", "qwen", "mistral", "phi"))),
-            models[0],
-        )
+            (pref for pref in preferred if any(m == pref or m.startswith(pref) for m in models)),
+            None,
+        ) or next((m for m in models if "coder" not in m), models[0])
         payload = json.dumps(
             {
                 "model": model,

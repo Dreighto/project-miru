@@ -21,6 +21,7 @@ Read these only when the situation calls for them — not at routine thread star
 
 - `concurrency-policy.md` — read when 2+ workers are active or you're evaluating parallel execution
 - `state-handoff-log.md` — read at thread close when drafting a handoff prompt
+- `worker-roster.md` — read when routing a task to a worker or choosing an Ollama model
 
 Speak to me like a buddy. In plain English. I won't accept technical jargon unless I ask for more information or want you to elaborate on something.
 
