@@ -40,6 +40,9 @@ TICKET: {ticket_id} — {ticket_title}
 WORKER: claude-code-1
 WORKTREE: cut a new branch from origin/main
 
+FIRST ACTION — emit session-start heartbeat before reading any files:
+    python tools/emit_heartbeat.py --worker-id claude-code-1 --ticket-id {ticket_id} --step pre_flight --branch main
+
 ---
 
 TASK
@@ -123,6 +126,35 @@ Confirm green. If failures:
 
 ---
 
+HEARTBEAT PROTOCOL (mandatory — not optional)
+
+Emit a heartbeat at each phase transition using this exact command:
+
+    python tools/emit_heartbeat.py \
+        --worker-id claude-code-1 \
+        --ticket-id {ticket_id} \
+        --step {step} \
+        --branch {branch_or_main}
+
+Required emit points — do NOT skip any of these:
+
+  1. Session start, before reading any files          → --step pre_flight
+  2. After branch is cut, before writing code         → --step writing_code
+  3. Before running pre-commit or tests               → --step running_tests
+  4. Before opening or updating a PR                  → --step opening_pr
+  5. If waiting for CI / Bugbot (>60s wait expected)  → --step awaiting_bugbot
+  6. After merge confirmed, before cleanup            → --step post_merge_cleanup
+
+For any other step expected to take >60s: emit before starting it.
+
+WHY THIS IS MANDATORY: The stall watcher polls every 3 minutes. If 5 minutes pass
+with no heartbeat and no completion marker, it classifies you as STALLED and sends a
+Telegram alert to the operator — triggering manual intervention. Skipping heartbeats
+defeats autonomous operation. This is not a courtesy; it is how the system knows you
+are alive.
+
+---
+
 COMPLETION CONTRACT
 
 Write one row to data/cc_completion_log.jsonl with status CONFIRMED_WORKING, INCONCLUSIVE, or FAILED.
@@ -132,8 +164,8 @@ STATUS: CONFIRMED_WORKING — all acceptance criteria met, hygiene green, deploy
 STATUS: INCONCLUSIVE — partial progress; post one specific question to Linear. Do not re-attempt.
 STATUS: FAILED — blocked; explain what failed and what the operator needs to decide.
 
-Heartbeat: append to data/cc_heartbeat_log.jsonl at the start of each major phase
-(pre_flight, writing_code, running_tests, opening_pr, post_merge_cleanup).
+Heartbeat: see HEARTBEAT PROTOCOL section above — mandatory at each phase, exact
+command provided. Missing heartbeats trigger false stall alerts to the operator.
 
 ---
 
