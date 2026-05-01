@@ -189,5 +189,59 @@ try {
     Write-Log "ERROR starting Miru AI: $($_.Exception.Message)"
 }
 
+Start-Sleep -Seconds 3
+
+# ════════════════════════════════════════════════════════════════════════════════
+# SELF-REGISTER: MiruServiceWatchdog (PRO-238)
+# Registers the service watchdog if not already present. Runs as the current
+# user (NAS\NAS, S4U, RunLevel=Limited) -- no elevation required to register
+# Limited-level tasks for the current account. Idempotent: skips if already
+# registered and enabled. Logs but never aborts startup on failure.
+# ════════════════════════════════════════════════════════════════════════════════
+Write-Log "--- Checking MiruServiceWatchdog registration ---"
+try {
+    $watchdogTask = Get-ScheduledTask -TaskName "MiruServiceWatchdog" -ErrorAction SilentlyContinue
+    if ($watchdogTask -and $watchdogTask.State -ne "Disabled") {
+        Write-Log "MiruServiceWatchdog already registered state=$($watchdogTask.State) -- skipping"
+    } else {
+        $watchdogScript = Join-Path $windowsDir "tasks\service_watchdog_task.ps1"
+        if (-not (Test-Path $watchdogScript)) {
+            Write-Log "WARNING: watchdog script not found at $watchdogScript -- skipping"
+        } else {
+            $wdAction = New-ScheduledTaskAction `
+                -Execute "powershell.exe" `
+                -Argument "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$watchdogScript`"" `
+                -WorkingDirectory $repoRoot
+
+            $wdTrigger = New-ScheduledTaskTrigger `
+                -Once -At (Get-Date).AddMinutes(2) `
+                -RepetitionInterval (New-TimeSpan -Minutes 2)
+
+            $wdSettings = New-ScheduledTaskSettingsSet `
+                -AllowStartIfOnBatteries `
+                -DontStopIfGoingOnBatteries `
+                -StartWhenAvailable `
+                -ExecutionTimeLimit (New-TimeSpan -Minutes 2) `
+                -MultipleInstances IgnoreNew
+
+            $wdUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+
+            $wdTask = Register-ScheduledTask `
+                -TaskName    "MiruServiceWatchdog" `
+                -Description "Project Miru service watchdog. Polls gateway (18766) and dispatch listener (19100) every 2 min. Auto-restarts on failure, Telegram alerts on restart/recovery." `
+                -Action      $wdAction `
+                -Trigger     $wdTrigger `
+                -Settings    $wdSettings `
+                -RunLevel    Limited `
+                -User        $wdUser `
+                -Force
+
+            Write-Log "MiruServiceWatchdog registered user=$wdUser state=$($wdTask.State)"
+        }
+    }
+} catch {
+    Write-Log "WARNING: MiruServiceWatchdog self-registration failed: $($_.Exception.Message)"
+}
+
 Write-Log "=== startup_all.ps1 END"
 exit 0
