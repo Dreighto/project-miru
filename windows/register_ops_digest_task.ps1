@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $TASK_NAME   = 'MiruOpsDigest'
-$SCRIPT_PATH = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..' 'tools' 'ops_digest.ps1'))
+$SCRIPT_PATH = [System.IO.Path]::GetFullPath("$PSScriptRoot\..\tools\ops_digest.ps1")
 
 $action = New-ScheduledTaskAction `
     -Execute 'powershell.exe' `
