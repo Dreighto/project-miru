@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+config/claude_chat.mcp.json
 
 # Local secrets, editor config, and virtualenvs
 .venv/
