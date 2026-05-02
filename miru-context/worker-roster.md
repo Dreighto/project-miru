@@ -106,7 +106,7 @@ budget governance uses "Cost bucket"; dispatch wiring uses "Dispatch mode."
 | Dispatch mode                  | Headless CLI (via W4 / Dispatch Listener on port 19100)                     |
 | Can run headless               | Yes                                                                         |
 | Can be monitored via heartbeat | Yes — emits to `data/cc_heartbeat_log.jsonl`                                |
-| Model / effort tuneable        | OAuth only — no per-dispatch model override                                 |
+| Model / effort tuneable        | Yes — `--model` and `--effort` flags injected at spawn time (PRO-265)       |
 | Cost bucket                    | Free (OAuth subscription; no API billing)                                   |
 | Requires operator involvement  | For operator-column PRs, ESCALATE signals, or REPEATED_FAILURE              |
 | Known limitations              | Cannot touch HTML/CSS/JS templates, `.mcp.json` files, or `card_catalog.db` |
