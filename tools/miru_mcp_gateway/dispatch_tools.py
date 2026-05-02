@@ -29,7 +29,8 @@ import miru_readonly_filesystem_mcp as stdio_mcp  # noqa: E402
 from miru_mcp_gateway import redact as _redact  # noqa: E402
 
 _APPROVED_WORKERS = frozenset({"claude-code", "gemini", "codex"})
-_APPROVED_THINKING_LEVELS = frozenset({"extended", "none"})
+# "extended" is the semantic alias for --effort max; direct effort values also accepted.
+_APPROVED_THINKING_LEVELS = frozenset({"extended", "none", "low", "medium", "high", "xhigh", "max"})
 _DEFAULT_TIMEOUT_S = 600
 _TIMEOUT_MIN = 1
 _TIMEOUT_MAX = 1800

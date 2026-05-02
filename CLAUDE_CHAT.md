@@ -62,13 +62,13 @@ Always check Linear for the current Todo list before every dispatch — do not w
 
 1. Read the Linear ticket description for the full spec.
 2. Pick a worker using `worker-roster.md` (in repo) as your routing table.
-3. **Select model and thinking level** for the worker based on task complexity and budget state:
+3. **Select model and effort level** for the worker based on task complexity and budget state:
    - Routine fix / single-file / doc update → default model (no override needed)
-   - Complex multi-file refactor, architecture implementation, anything requiring deep reasoning → `model: "claude-opus-4-7"`, `thinking_level: "extended"`
-   - Budget Watch state → prefer cheaper model; no extended thinking on non-critical tasks
+   - Complex multi-file refactor, architecture implementation, anything requiring deep reasoning → `model: "claude-opus-4-7"`, `thinking_level: "extended"` (maps to `--effort max` on the worker CLI)
+   - Budget Watch state → prefer cheaper model; no extended effort on non-critical tasks
    - Budget Limit state → cheapest capable model only
    - Cursor is exempt — manual dispatch, no model override possible
-   - _(Note: model/effort dispatch parameter wiring is tracked in PRO-265. Until shipped, include model guidance in the prompt text itself as a fallback.)_
+   - _(Extended/Adaptive Thinking in Claude Chat is about your own session in Claude.ai — it is NOT the same as the `thinking_level` dispatch param. The dispatch param controls the worker's `--effort` flag. Claude Chat does not set its own thinking mode; the operator does that in the Claude.ai UI.)_
 4. Write the dispatch prompt: ticket ID, requirements, done-when criteria, pre-flight steps.
 5. **Kill switch gate**: call `fs_get_file_info` on `data/system_halt`. If the file exists: do NOT dispatch. Leave the ticket in Todo. Send one Telegram ping: "🛑 Kill switch active — autonomous dispatch paused. Delete `data/system_halt` to resume." Stop here.
 6. **Budget gate**: call `fs_read_text_file` on `data/budget_state.json`. If the file is missing, assume `safe`. Apply the rules from `miru-context/budget-governance.md`:

@@ -149,19 +149,21 @@ budget governance uses "Cost bucket"; dispatch wiring uses "Dispatch mode."
 
 ---
 
-## Model and Thinking Level Selection (Claude Chat's responsibility)
+## Model and Effort Level Selection (Claude Chat's responsibility)
 
-Claude Chat selects model and thinking level at dispatch time. Workers run at default unless overridden.
+Claude Chat selects model and effort level at dispatch time. Workers run at default unless overridden.
 
-| Task complexity                               | Model override         | Thinking level |
-| --------------------------------------------- | ---------------------- | -------------- |
-| Routine fix, single-file edit, doc update     | None (default)         | None           |
-| Multi-file refactor, non-trivial backend work | None (default Sonnet)  | None           |
-| Complex architecture, deep reasoning required | `claude-opus-4-7`      | `extended`     |
-| Budget Watch state                            | Prefer Haiku or Codex  | None           |
-| Budget Limit state                            | Cheapest capable model | None           |
+| Task complexity                               | Model override         | thinking_level (→ --effort)   |
+| --------------------------------------------- | ---------------------- | ----------------------------- |
+| Routine fix, single-file edit, doc update     | None (default)         | None                          |
+| Multi-file refactor, non-trivial backend work | None (default Sonnet)  | None                          |
+| Complex architecture, deep reasoning required | `claude-opus-4-7`      | `extended` (→ `--effort max`) |
+| Budget Watch state                            | Prefer Haiku or Codex  | None                          |
+| Budget Limit state                            | Cheapest capable model | None                          |
 
-**How overrides are communicated (until PRO-265 ships):** Include model guidance in the dispatch prompt text — e.g. "Use extended thinking for this task." Once PRO-265 ships, pass `model` and `thinking_level` as explicit dispatch payload fields.
+**How overrides are applied (PRO-265 shipped):** Pass `model` and `thinking_level` as explicit fields in the `dispatch_worker` call. The dispatch listener maps `thinking_level: "extended"` to `--effort max` on the claude-code CLI; direct effort values (`low`, `medium`, `high`, `xhigh`, `max`) are also accepted.
+
+**Extended/Adaptive Thinking in Claude.ai is separate.** That is a setting in the operator's Claude.ai session — it controls Claude Chat's own reasoning. It is NOT wired to the dispatch system. The operator enables/disables it in the Claude.ai UI based on the task at hand. Claude Chat does not self-select its own thinking mode.
 
 **Cursor is exempt** — manual dispatch only; no model override possible.
 

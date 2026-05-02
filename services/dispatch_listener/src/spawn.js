@@ -179,13 +179,25 @@ function spawnWorker({
     has_oauth_token: !!childEnv.CLAUDE_CODE_OAUTH_TOKEN,
   });
 
-  // PRO-265: per-dispatch model and thinking-level flags (claude-code only).
+  // PRO-265: per-dispatch model and effort flags (claude-code only).
+  // thinking_level "extended" maps to --effort max (the Claude CLI effort scale is
+  // low/medium/high/xhigh/max; "extended" is the semantic alias used by Claude Chat).
   // For gemini and codex the override flags are not yet wired; values are
   // logged but ignored so callers don't get a silent no-op without a trace.
+  const EFFORT_MAP = {
+    extended: 'max',
+    low: 'low',
+    medium: 'medium',
+    high: 'high',
+    xhigh: 'xhigh',
+    max: 'max',
+  };
   const extraFlags = [];
   if (worker === 'claude-code') {
     if (model) extraFlags.push('--model', model);
-    if (thinkingLevel === 'extended') extraFlags.push('--extended-thinking');
+    if (thinkingLevel && EFFORT_MAP[thinkingLevel]) {
+      extraFlags.push('--effort', EFFORT_MAP[thinkingLevel]);
+    }
   }
 
   log.info('spawn_flags', {
