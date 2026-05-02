@@ -226,7 +226,7 @@ Claude Chat's dispatch loop for a ticket:
 
 ### claude-code (default)
 
-- **Auth:** MIRU_ROUTING_KEY → ANTHROPIC_API_KEY (Anthropic API, billed per token)
+- **Auth:** `CLAUDE_CODE_OAUTH_TOKEN` (OAuth, subscription — no API charge). `ANTHROPIC_API_KEY` is explicitly stripped from the child env in `spawn.js` to prevent accidental billing.
 - **Use for:** Complex multi-file work, architecture changes, anything requiring deep reasoning
 - **Permission flag:** `--dangerously-skip-permissions` (auto-approves all tool actions)
 

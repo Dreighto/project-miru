@@ -88,6 +88,30 @@ those rules in dispatch prompts. Point workers to their rule file and the Linear
 
 ---
 
+### Cursor dispatch — manual relay pattern
+
+Cursor is **not wired to W4**. It is a manual worker that requires the operator as a relay.
+Do NOT attempt to call `dispatch_worker` with `worker="cursor"` — it will fail.
+
+When a task routes to Cursor:
+
+1. File and fully spec the Linear ticket (scope, done-when, don't-touch list) as normal.
+2. Send one Telegram ping to the operator with this exact format:
+
+   > **[PRO-XXX] Cursor task ready**
+   > Paste in Cursor (miru-cursor worktree):
+   > `Read PRO-XXX in Linear and complete the task. Follow AGENTS.md and CLAUDE.md for all rules.`
+
+3. Leave the ticket in **Todo** — do not move it to In Progress. The operator does that when Cursor starts.
+4. Do not generate a full prompt wrapper. The Linear ticket IS the spec. The paste is only the handoff trigger.
+5. Cursor has Linear MCP access and will read the ticket itself.
+
+**Why no elaborate prompt:** Cursor reads Linear directly. A long prompt wrapper adds no information and creates a maintenance burden. If the ticket isn't detailed enough for Cursor to execute, fix the ticket — don't pad the prompt.
+
+**Completion:** The operator marks the ticket Done, or Cursor writes a completion marker and you read `cc_completion_log.jsonl` as normal.
+
+---
+
 ### After dispatch — worker return handling
 
 The dispatch listener classifies all clean worker exits as `INCONCLUSIVE` in its own receipt log — this is a listener-level label that means "exited clean, check the real outcome." **Do not use the listener receipt to determine task status.** Always read `data/cc_completion_log.jsonl` for the real result.

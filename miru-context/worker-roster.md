@@ -8,30 +8,41 @@ evaluating parallel execution options.
 
 ## AI Workers (CLI workers — dispatched via W4 on port 19100)
 
-| Worker        | Binary       | Auth                                                                              | Best for                                                                                             |
-| ------------- | ------------ | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `claude-code` | `claude.cmd` | OAuth (subscription, no charge) by default; `use_api_key: true` for complex tasks | Backend code, multi-file Python refactors, test writing, full task ownership                         |
-| `gemini`      | `gemini.cmd` | Gemini CLI stored auth                                                            | Second opinions, large-context reads (whole service in one pass), multimodal, alternative approaches |
-| `codex`       | `codex.cmd`  | Stored auth                                                                       | Cross-file bug hunting, contract verification, architecture audits, refactor planning                |
+| Worker        | Binary       | Auth                                                            | Best for                                                                                             |
+| ------------- | ------------ | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `claude-code` | `claude.cmd` | `CLAUDE_CODE_OAUTH_TOKEN` (OAuth, subscription — no API charge) | Backend code, multi-file Python refactors, test writing, full task ownership                         |
+| `gemini`      | `gemini.cmd` | Gemini CLI stored auth                                          | Second opinions, large-context reads (whole service in one pass), multimodal, alternative approaches |
+| `codex`       | `codex.cmd`  | Stored auth                                                     | Cross-file bug hunting, contract verification, architecture audits, refactor planning                |
 
-**Auth rule:** Routine dispatches default to OAuth (no API charge). Set `use_api_key: true`
-in the dispatch payload for recovery dispatches or tasks that need full Sonnet-level reasoning.
+**Auth rule:** All dispatches use `CLAUDE_CODE_OAUTH_TOKEN` (OAuth, subscription — no API charge). `ANTHROPIC_API_KEY` is stripped from the child env at spawn time. There is no `use_api_key` dispatch flag — OAuth is the only supported auth path.
 
 ---
 
-## IDE Workers (Cursor — headless CLI wiring in progress)
+## IDE Workers (Cursor — manual dispatch only)
 
 | Worker   | Access              | Best for                                                                                       |
 | -------- | ------------------- | ---------------------------------------------------------------------------------------------- |
 | `cursor` | Cursor Pro+ desktop | UI/UX execution — HTML templates, CSS, JS, component work, mobile-first layout, gesture wiring |
 
-**Dispatch note:** Cursor CLI (`cursor agent -p`) is confirmed available as a headless binary
-and is the target dispatch path. Wiring into W4 is tracked in PRO-253 (Backlog).
+**Dispatch pattern — permanent manual (not wired to W4):**
 
-Until PRO-253 ships: Claude Chat preps the ticket in Linear with full spec, then sends one
-Telegram ping to the operator: "Cursor task ready — [PRO-XXX title]. Open Cursor and assign
-when ready." Ticket stays in **Todo** (not In Progress) until Cursor starts. Operator marks
-Done in Linear when Cursor finishes.
+Cursor CLI has confirmed failure modes that disqualify it from autonomous W4 dispatch on
+Windows: concurrent spawn race condition (one process exits status 1 silently), `--print`
+hangs with no output, silent exit 0 with empty output, and Windows path resolution writing
+to AppData instead of the workspace. Assessed 2026-05-02 via production evidence.
+
+The permanent dispatch pattern is:
+
+1. Claude Chat files the Linear ticket with the full spec (scope, done-when, don't-touch list).
+2. Claude Chat sends one Telegram ping to the operator with the ticket ID and a ready-to-paste prompt:
+   `"[PRO-XXX] Cursor task ready — paste in Cursor: 'Read PRO-XXX in Linear and complete the task. Follow AGENTS.md and CLAUDE.md for all rules.'"`
+3. Ticket stays in **Todo** until operator confirms Cursor is running.
+4. Operator remote-opens Cursor on `miru-cursor` worktree and pastes the prompt.
+5. Cursor reads the Linear ticket via MCP for the full spec — no elaborate prompt needed.
+6. Operator marks the ticket Done in Linear when Cursor finishes (or Claude Chat reads the completion log if Cursor wrote a marker).
+
+The Linear ticket carries the spec. The paste is only the handoff trigger. Claude Chat does
+not need to generate a full prompt wrapper for Cursor — the ticket IS the prompt.
 
 Cursor owns `pm/templates/`, `pm/static/js/`, `pm/static/css/`.
 Python route changes go to `claude-code`, not Cursor.
@@ -67,19 +78,19 @@ only when the smaller one returns low confidence or flags something it cannot re
 
 ## Model Assignments by Task Type
 
-| Task                                  | Use this                               |
-| ------------------------------------- | -------------------------------------- |
-| Sentinel health check                 | `llama3.2:3b` (Ollama)                 |
-| Stall routing decision                | `llama3.2:3b` (Ollama)                 |
-| General task routing                  | `qwen2.5:7b` (Ollama)                  |
-| Code change review                    | `qwen2.5-coder:7b` (Ollama)            |
-| Deep code audit                       | `qwen2.5-coder:14b` (Ollama)           |
-| Complex backend execution             | `claude-code` with `use_api_key: true` |
-| Routine backend execution             | `claude-code` with OAuth (default)     |
-| UI/UX execution (templates, CSS, JS)  | `cursor` (manual)                      |
-| Cross-file bug / contract audit       | `codex` or `gemini`                    |
-| Second opinion / alternative approach | `gemini`                               |
-| Architecture decision                 | Claude Chat (Opus 4.7)                 |
+| Task                                  | Use this                     |
+| ------------------------------------- | ---------------------------- |
+| Sentinel health check                 | `llama3.2:3b` (Ollama)       |
+| Stall routing decision                | `llama3.2:3b` (Ollama)       |
+| General task routing                  | `qwen2.5:7b` (Ollama)        |
+| Code change review                    | `qwen2.5-coder:7b` (Ollama)  |
+| Deep code audit                       | `qwen2.5-coder:14b` (Ollama) |
+| Complex backend execution             | `claude-code` (OAuth)        |
+| Routine backend execution             | `claude-code` (OAuth)        |
+| UI/UX execution (templates, CSS, JS)  | `cursor` (manual)            |
+| Cross-file bug / contract audit       | `codex` or `gemini`          |
+| Second opinion / alternative approach | `gemini`                     |
+| Architecture decision                 | Claude Chat (Opus 4.7)       |
 
 ---
 
@@ -95,8 +106,8 @@ budget governance uses "Cost bucket"; dispatch wiring uses "Dispatch mode."
 | Dispatch mode                  | Headless CLI (via W4 / Dispatch Listener on port 19100)                     |
 | Can run headless               | Yes                                                                         |
 | Can be monitored via heartbeat | Yes — emits to `data/cc_heartbeat_log.jsonl`                                |
-| Model / effort tuneable        | Yes — OAuth (default) or `use_api_key: true` for Sonnet-level               |
-| Cost bucket                    | Medium (API-billed on `use_api_key: true`; free via OAuth)                  |
+| Model / effort tuneable        | OAuth only — no per-dispatch model override                                 |
+| Cost bucket                    | Free (OAuth subscription; no API billing)                                   |
 | Requires operator involvement  | For operator-column PRs, ESCALATE signals, or REPEATED_FAILURE              |
 | Known limitations              | Cannot touch HTML/CSS/JS templates, `.mcp.json` files, or `card_catalog.db` |
 
@@ -126,15 +137,15 @@ budget governance uses "Cost bucket"; dispatch wiring uses "Dispatch mode."
 
 ### cursor
 
-| Attribute                      | Value                                                                                                        |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| Dispatch mode                  | Headless CLI (`cursor agent -p`, beta) — W4 wiring pending (PRO-253); fallback: operator Telegram ping       |
-| Can run headless               | Yes (Cursor CLI beta) — W4 wiring not yet complete                                                           |
-| Can be monitored via heartbeat | No — Cursor CLI does not emit Miru heartbeat format                                                          |
-| Model / effort tuneable        | Via Cursor Pro+ settings                                                                                     |
-| Cost bucket                    | None (subscription; no per-task API cost)                                                                    |
-| Requires operator involvement  | Until PRO-253 ships: operator opens Cursor and assigns ticket. After: fully autonomous via W4.               |
-| Known limitations              | CSS specificity and layout debugging less reliable without visual feedback; use for structure/logic/JS first |
+| Attribute                      | Value                                                                                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Dispatch mode                  | Manual only — operator pastes ticket reference in Cursor IDE on `miru-cursor` worktree. Not wired to W4 (permanent, not deferred).         |
+| Can run headless               | CLI exists but has critical failure modes on Windows: concurrent race condition, `--print` hangs, silent exit 0. Not used for automation.  |
+| Can be monitored via heartbeat | No — Cursor does not emit Miru heartbeat format                                                                                            |
+| Model / effort tuneable        | Via Cursor Pro+ settings                                                                                                                   |
+| Cost bucket                    | None (subscription; no per-task API cost)                                                                                                  |
+| Requires operator involvement  | Always — operator relays the dispatch by opening Cursor and pasting the ticket ID prompt                                                   |
+| Known limitations              | CSS specificity and layout debugging less reliable without visual feedback; use for structure/logic/JS first. No autonomous dispatch path. |
 
 ---
 

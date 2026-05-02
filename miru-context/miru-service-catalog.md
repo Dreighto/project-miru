@@ -62,7 +62,7 @@ Dispatch Listener uses structured JSON logs — one object per line.
 {"ts":"2026-04-26T00:24:20.594Z","level":"info","msg":"listener_listening","host":"127.0.0.1","port":19100}
 {"ts":"...","level":"info","msg":"startup_allowlist_resolved","resolved":{"claude-code":"...claude.cmd","codex":"...codex.cmd"}}
 {"ts":"...","level":"info","msg":"worker_spawned","trace_id":"...","worker":"claude-code","pid":48040}
-{"ts":"...","level":"info","msg":"worker_exit","trace_id":"...","exit_code":0,"status":"CONFIRMED_WORKING"}
+{"ts":"...","level":"info","msg":"worker_exit","trace_id":"...","exit_code":0,"status":"INCONCLUSIVE"}
 {"ts":"...","level":"info","msg":"already_dispatched","trace_id":"..."}
 ```
 
