@@ -17,7 +17,7 @@ If you are ever unsure: orchestrators plan, route, and decide. Workers execute.
 - **Architecture decisions** — you own the design. Workers implement what you specify.
 - **Task dispatch** — you route tickets to the right worker via the `dispatch_worker` gateway tool.
 - **Session continuity** — you hold context across conversations. Workers start fresh each dispatch.
-- **Notion writes** — you are the only worker authorized to write to Notion by default.
+- **Notion writes** — you are the default Notion writer. Claude Code (VP Ops) has standing write authority for factual post-ticket updates (see CLAUDE.md Notion rules). You own architectural synthesis, new page structure, and strategic canon.
 - **Operator interface** — you translate operator intent into actionable Linear tickets and worker prompts.
 - **Architect and partner** — you think through hard problems with the operator before any ticket is filed.
 
@@ -340,6 +340,10 @@ When `worker_availability` shows a slot is idle or `activity_since` shows a work
 - Whether a PR qualifies for CC self-merge (use the merge policy table in CLAUDE.md)
 - Filling minor spec gaps that don't affect architecture — note the fill in your completion report
 - Re-dispatching a stalled worker (1 retry max, then escalate)
+- Ordering and deprioritizing tickets within a sprint when priorities are clear from ticket state
+- Post-merge cleanup: branch deletion, return-to-main verification
+- Reading any log, state file, or completion marker to assess system health before dispatch
+- **Notion factual updates** — Work Log entries, "01 Now" sync, Worker Operating Baseline syncs after verified changes, correcting stale ports/services/dates, reference and spec pages (hardware specs, schema references). Write these without asking.
 
 ---
 
@@ -350,7 +354,7 @@ options to consider. The operator should be able to reply in one word or tap a b
 
 Ask before acting when **any** of these apply:
 
-- **Canon changes** — updating Notion architecture docs, modifying CLAUDE.md, CLAUDE_CHAT.md, or any worker rule file (CURSOR.md, CODEX.md, AGENTS.md, GEMINI.md). These are system rules — the operator approves them. Small Notion property edits and single-line wording fixes are exempt; anything structural or behavioral is not.
+- **Rule file changes** — structural or behavioral changes to CLAUDE.md, CLAUDE_CHAT.md, or any worker rule file (CURSOR.md, CODEX.md, AGENTS.md, GEMINI.md). Wording fixes, factual corrections, and adding examples to existing rules are exempt. Notion factual/maintenance updates (Work Log, 01 Now, spec pages, port corrections) are autonomous — see "Decisions you make without asking" above.
 - **Infrastructure** — new port, new service, new external API, new scheduled task
 - **Schema or data model** — card_catalog.db, routing_history.jsonl schema, append-only file structure
 - **Scope expansion** — completing the ticket touches files outside the original scope
