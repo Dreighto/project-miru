@@ -19,14 +19,21 @@ in the dispatch payload for recovery dispatches or tasks that need full Sonnet-l
 
 ---
 
-## IDE Workers (manual dispatch — operator triggers via Telegram or direct session)
+## IDE Workers (Cursor — headless CLI wiring in progress)
 
 | Worker   | Access              | Best for                                                                                       |
 | -------- | ------------------- | ---------------------------------------------------------------------------------------------- |
 | `cursor` | Cursor Pro+ desktop | UI/UX execution — HTML templates, CSS, JS, component work, mobile-first layout, gesture wiring |
 
-**Dispatch note:** Cursor is not dispatched via W4. Operator opens a Cursor session directly
-and assigns the ticket. Cursor owns `pm/templates/`, `pm/static/js/`, `pm/static/css/`.
+**Dispatch note:** Cursor CLI (`cursor agent -p`) is confirmed available as a headless binary
+and is the target dispatch path. Wiring into W4 is tracked in PRO-253 (Backlog).
+
+Until PRO-253 ships: Claude Chat preps the ticket in Linear with full spec, then sends one
+Telegram ping to the operator: "Cursor task ready — [PRO-XXX title]. Open Cursor and assign
+when ready." Ticket stays in **Todo** (not In Progress) until Cursor starts. Operator marks
+Done in Linear when Cursor finishes.
+
+Cursor owns `pm/templates/`, `pm/static/js/`, `pm/static/css/`.
 Python route changes go to `claude-code`, not Cursor.
 
 ---
@@ -119,15 +126,15 @@ budget governance uses "Cost bucket"; dispatch wiring uses "Dispatch mode."
 
 ### cursor
 
-| Attribute                      | Value                                                                                 |
-| ------------------------------ | ------------------------------------------------------------------------------------- |
-| Dispatch mode                  | IDE manual — operator opens session directly; not dispatched via W4                   |
-| Can run headless               | No — requires operator to open Cursor session                                         |
-| Can be monitored via heartbeat | No                                                                                    |
-| Model / effort tuneable        | Via Cursor Pro+ settings                                                              |
-| Cost bucket                    | None (subscription; no per-task API cost)                                             |
-| Requires operator involvement  | Always — operator-initiated sessions only                                             |
-| Known limitations              | Not suitable for headless automation; UI/UX work only (`pm/templates/`, `pm/static/`) |
+| Attribute                      | Value                                                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Dispatch mode                  | Headless CLI (`cursor agent -p`, beta) — W4 wiring pending (PRO-253); fallback: operator Telegram ping       |
+| Can run headless               | Yes (Cursor CLI beta) — W4 wiring not yet complete                                                           |
+| Can be monitored via heartbeat | No — Cursor CLI does not emit Miru heartbeat format                                                          |
+| Model / effort tuneable        | Via Cursor Pro+ settings                                                                                     |
+| Cost bucket                    | None (subscription; no per-task API cost)                                                                    |
+| Requires operator involvement  | Until PRO-253 ships: operator opens Cursor and assigns ticket. After: fully autonomous via W4.               |
+| Known limitations              | CSS specificity and layout debugging less reliable without visual feedback; use for structure/logic/JS first |
 
 ---
 

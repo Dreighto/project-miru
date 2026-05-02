@@ -97,14 +97,19 @@ ticket management remain independent.
 
 **Contract:** Defined in this document.
 
-**Enforcement wiring:** Deferred. Claude Chat and Claude Code must each be updated to
-check for `data/system_halt` at dispatch time and stewardship time respectively.
-Until wired, this document describes intended behavior — the flag file has no
-mechanical effect.
+**Enforcement wiring:** Wired in rule files (2026-05-01).
+
+- `CLAUDE.md` — Kill Switch Pre-flight Gate section: Claude Code checks for `data/system_halt`
+  before starting any dispatched task. If present: emits `STATUS: ESCALATE: HUMAN-REQUIRED`
+  and stops immediately.
+- `CLAUDE_CHAT.md` — Dispatch protocol step 4 (Kill switch gate): Claude Chat checks for
+  `data/system_halt` via `fs_get_file_info` before calling `dispatch_worker`. If present:
+  leaves ticket in Todo and sends one Telegram ping to operator.
+
+The flag file now has mechanical effect — both workers honor it as a hard stop.
 
 **Telegram command wiring:** Deferred (PRO-249 covers /snooze and /unsnooze; kill
 switch Telegram command is a follow-on from that work).
 
-**No action during this sprint:** Do not create `data/system_halt` as part of this
-documentation sprint. The contract is defined here; the file should only exist when
-the operator intends to halt the system.
+**Do not create `data/system_halt` during normal operations.** The file should only
+exist when the operator intends to halt the system.

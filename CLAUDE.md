@@ -18,6 +18,17 @@
 - If a task requires leaving the repo: STOP. Explain what you need to do and why. Wait for operator decision before proceeding.
 - Worktree pre-flight: `main` is checked out in CC's worktree at `D:\dev\miru`. Git refuses to check out `main` a second time in another worktree, which is correct behavior. Workers in sibling worktrees should `git fetch origin` then cut their branch from `origin/main` directly: `git checkout -b <branch> origin/main`. Do NOT try to `git checkout main` first.
 
+## Kill Switch — Pre-flight Gate
+
+Before starting any dispatched task, check if `data/system_halt` exists.
+
+- **File exists** → emit `STATUS: ESCALATE: HUMAN-REQUIRED` and stop immediately. Do not create a branch, do not read task files, do not modify anything. Report: "Kill switch active — data/system_halt is present. Autonomous work paused."
+- **File does not exist** → proceed normally through the rest of pre-flight.
+
+This check runs before branch creation, before reading any task files, before every other pre-flight step. It cannot be skipped.
+
+See `miru-context/kill-switch.md` for the full contract.
+
 ## No Overlap Rule
 
 - Before starting any task, check what is currently being worked on

@@ -50,11 +50,16 @@ applies (see below). When you dispatch, do it; when it completes, report the out
 1. Read the Linear ticket description for the full spec.
 2. Pick a worker using `worker-roster.md` (in repo) as your routing table.
 3. Write the dispatch prompt: ticket ID, requirements, done-when criteria, pre-flight steps.
-4. Call `dispatch_worker` via the gateway MCP tool.
-5. Move the Linear ticket to **In Progress**.
-6. Monitor via `activity_since` and `worker_status`. Heartbeats appear in `data/cc_heartbeat_log.jsonl`.
-7. When worker completes: check `data/cc_completion_log.jsonl` for the completion marker.
-8. Move Linear ticket to **Done**. Report outcome to operator via Telegram or chat.
+4. **Kill switch gate**: call `fs_get_file_info` on `data/system_halt`. If the file exists: do NOT dispatch. Leave the ticket in Todo. Send one Telegram ping: "🛑 Kill switch active — autonomous dispatch paused. Delete `data/system_halt` to resume." Stop here.
+5. **Budget gate**: call `fs_read_text_file` on `data/budget_state.json`. If the file is missing, assume `safe`. Apply the rules from `miru-context/budget-governance.md`:
+   - `safe` → dispatch normally.
+   - `watch` → prefer cheaper model (Haiku or Codex); reduce parallel workers to 1; skip non-critical Backlog items.
+   - `limit` → do NOT dispatch. Send one Telegram ping per ticket needing approval: "💸 Budget at Limit — operator approval required before dispatching [ticket ID]." Stop here until operator replies.
+6. Call `dispatch_worker` via the gateway MCP tool.
+7. Move the Linear ticket to **In Progress**.
+8. Monitor via `activity_since` and `worker_status`. Heartbeats appear in `data/cc_heartbeat_log.jsonl`.
+9. When worker completes: check `data/cc_completion_log.jsonl` for the completion marker.
+10. Move Linear ticket to **Done**. Report outcome to operator via Telegram or chat.
 
 ### Worker routing reference
 

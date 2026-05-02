@@ -86,8 +86,13 @@ powerful model for every job.
 **state**: `"safe"` | `"watch"` | `"limit"`
 
 This file is NOT append-only. It is a presence/state flag — overwrite with the current
-state. Do not treat it like the audit JSONL files. Do not create it during this sprint —
-the contract is defined here; implementation is a separate task.
+state. Do not treat it like the audit JSONL files.
+
+**Implementation status (2026-05-01):** File created at `data/budget_state.json` with
+initial state `safe`. Claude Chat checks this file at step 5 of the dispatch protocol
+(budget gate) before every worker dispatch. To change budget state, overwrite the file
+or tell Claude Chat via Telegram — it will update the file and adjust dispatch behavior
+accordingly.
 
 ---
 
