@@ -77,84 +77,86 @@ agenda table with the handoff content in a notes-style field.
 
 ## Latest Handoff
 
-# Miru thread handoff — 2026-05-02 (CC session, ops tooling + watchdog sprint)
+# Miru thread handoff — 2026-05-02 (CC session, autonomy wiring sprint)
 
 ## What we were working on
 
-Operator-facing ops tooling sprint: redesigned the weekly Telegram digest to plain English,
-built the n8n loop watchdog, fixed budget display, cleaned up Linear, and updated all MD files.
-Session ended with operator requesting iPhone SSH access to run Claude CLI remotely.
+Wiring up the full autonomous loop: Claude Chat model/effort dispatch, PR review and merge,
+branch deletion, PR policy enforcement, and all supporting MD files for autonomy readiness.
 
 ## What got done
 
-- **PRO-258 (merged, #67)** — W2 routing_history null fields fixed; file-extension scoring
-  added so `.py` → claude-code, `.js/.html/.css` → cursor.
-- **PRO-251 ops digest redesign (merged, #68)** — `tools/ops_digest.ps1` and W7 jsCode
-  completely rewritten: emoji sections, plain-English step names, relative timestamps,
-  TEST-\* filtering, 15-min active worker window.
-- **Budget display fix (merged, #69)** — `Format-Budget` (ops_digest.ps1) and `budgetText`
-  (W7 jsCode) both now handle the legacy array format from `miru_limits_status.json`.
-  Stale budget timestamps refreshed from 2025 → 2026-05-02.
-- **PRO-230 n8n loop watchdog (merged, #70)** — `tools/n8n_loop_watchdog.py` +
-  `windows/register_watchdog_task.ps1`; standalone stdlib-only Python, 4-pass detection
-  (failing/unstable/silence/recurring), state-change-only Telegram alerts with 60-min cooldown.
-- **Linear cleanup** — PRO-78 and PRO-248 marked Done; PRO-230 closed via PR merge.
-- **PRO-261 filed** — stall detector fires on Done tickets with stale heartbeats; Normal priority, Backlog.
-- **DLQ analysed** — 108 entries, 65 from April 26 initial-setup noise (one-time). Not a crisis.
-  Root cause of recent entries: stall detector / PRO-261 (see above).
+- **PRO-265 (direct-to-main, de546ad)** — Per-dispatch model and thinking-level params wired
+  end-to-end: `dispatch_tools.py` → `index.js` → `spawn.js`. Claude-code workers get
+  `--model <id>` and `--extended-thinking` injected at spawn time when Claude Chat passes them.
+- **PRO-266 (direct-to-main, de546ad)** — `github_merge_pr` and `github_delete_branch` gateway
+  tools added. Claude Chat can now squash-merge CC-eligible PRs and delete branches directly
+  without operator relay. Protected-branch guard on delete (main/master/develop).
+- **CLAUDE.md** — mandatory pre-commit PR policy decision gate added. Workers must evaluate
+  direct-to-main vs CC-merge vs operator-merge before every commit.
+- **CLAUDE_CHAT.md** — canon change escalation added as first trigger; full PR review/merge loop
+  documented; dispatch protocol expanded with model/thinking selection (step 3) and PR loop
+  trigger (step 11). PRO-265 and PRO-266 referenced.
+- **miru-context/worker-roster.md** — model/thinking-level selection table added.
+- **miru-context/source-of-truth.md** — budget state row updated to reflect file is live.
+- **miru-context/operating-model.md** — canon change escalation trigger added.
+- **PROJECT_MIRU_INSTRUCTIONS.md** — full cleanup: startup reads expanded to 11 files,
+  inline PRO bug tickets removed, stale references removed, Copilot/Windsurf marked inactive.
 
 ## What's still open
 
-- **PRO-261** — stall detector: skip Done tickets before queuing DLQ. Normal priority, Backlog.
-- **PRO-259** — pending_callbacks stale awaiting entries (58 of 61 expired on Telegram side).
-  Low risk. Backlog. W2 watchdog should write expiry entries for >48h awaiting callbacks.
-- **PRO-154** — W1 504 retry-with-backoff. Still Todo, valid, no blocker.
-- **MiruN8nWatchdog task** — watchdog is merged but task registration (`register_watchdog_task.ps1`)
-  needs running once from an **elevated** PowerShell shell on the ROOM node.
-- **MiruOpsDigest task** — `windows/register_ops_digest_task.ps1` needs running from elevated shell
-  (weekly Friday 9am digest). Script already exists.
-- **`miru_limits_status.json` usage values** — timestamps refreshed but actual remaining_percent
-  values are approximate. Operator should verify at cursor.com/settings (Cursor Pro) and
-  platform.openai.com/usage (Codex/OpenAI).
-- **`services/dispatch_listener/src/allowlist.js`** — has an unstaged tracked change (M in git status).
-  Verify with `git diff services/dispatch_listener/src/allowlist.js` before next commit.
-- **`config/claude_chat.mcp.json`** — intentionally untracked. Do not commit.
+- **Dispatch listener restart** — spawn.js changes are live in code but the running listener
+  (port 19100) needs a restart to pick them up. Run `windows\restart_dispatch_listener.ps1`
+  or equivalent.
+- **MCP gateway restart** — github_merge_pr and github_delete_branch won't appear as tools
+  until the gateway (port 18766) is restarted.
+- **PRO-265 flag name** — `--extended-thinking` is the implemented flag for claude-code.
+  Verify this is the actual Claude CLI flag name before first live use; adjust in spawn.js if not.
+- **MiruN8nWatchdog task** — still needs `register_watchdog_task.ps1` from elevated shell.
+- **MiruOpsDigest task** — still needs `register_ops_digest_task.ps1` from elevated shell.
+- **PRO-261** — stall detector fires on Done tickets. Normal priority, Backlog.
+- **PRO-259** — pending_callbacks stale awaiting entries. Low risk, Backlog.
+- **PRO-154** — W1 504 retry-with-backoff. Todo, no blocker.
+- **`services/dispatch_listener/src/allowlist.js`** — has a tracked change (M in git status from previous session). Verify with `git diff` — confirm intentional or discard before next commit.
 
 ## Decisions made
 
-- Ops digest and W7 both show budget in "Safe — cursor 85% left · codex 60% left" format
-  (computed from array; `{state}` format supported for future migration).
-- n8n_loop_watchdog is stdlib-only Python (no pip deps) so it runs in any environment.
-- DLQ entries from April 26 are historical noise; not worth clearing. The real fix is PRO-261.
-- PRO-259 pending callbacks: expired entries are harmless (Telegram rejects them); structural
-  fix deferred to a future worker dispatch.
+- Model/thinking selection is Claude Chat's responsibility at dispatch time; workers run at
+  default unless override included in dispatch payload. PRO-265 is the wiring; fallback is
+  including model guidance in prompt text (already documented in CLAUDE_CHAT.md).
+- `--extended-thinking` is the flag used for claude-code; gemini/codex ignores the field for now.
+- `github_merge_pr` defaults to `squash` merge method, matching the CLAUDE.md policy.
+- `github_delete_branch` refuses to delete main/master/develop as a safety guard.
+- Canon changes (CLAUDE.md, CLAUDE_CHAT.md, worker rule files, structural Notion docs) always
+  require operator approval before executing — added as first escalation trigger.
 
 ## What the next thread should do first
 
-1. Confirm MiruN8nWatchdog task is registered — run `Get-ScheduledTask -TaskName MiruN8nWatchdog`
-   in PowerShell; if missing, run `register_watchdog_task.ps1` from elevated shell.
-2. Check `services/dispatch_listener/src/allowlist.js` diff — confirm change is intentional or discard.
-3. Dispatch PRO-154 (W1 504 retry-with-backoff) — next real code ticket in the queue.
+1. Restart dispatch listener (port 19100) and MCP gateway (port 18766) to pick up new code.
+2. Verify `--extended-thinking` is the correct Claude CLI flag — run `claude --help` or check docs.
+3. Check Linear queue and dispatch PRO-154 (W1 504 retry) — next real code ticket.
 
 ## What NOT to do
 
-- Do not commit `config/claude_chat.mcp.json` (sensitive local paths, intentionally untracked)
-- Do not commit `data/cc_completion_log.jsonl` directly — use `tools/emit_completion.py`
+- Do not commit `config/claude_chat.mcp.json` (sensitive, intentionally untracked)
 - Do not dispatch to Cursor via W4 (permanent manual-only)
-- Do not create `data/system_halt` unless operator intends to halt autonomous work
-- Do not clear `data/dispatch_dlq.jsonl` — it is append-only; historical entries are expected
+- Do not clear `data/dispatch_dlq.jsonl` (append-only; historical entries expected)
+- Do not self-merge operator-merge-column PRs (new files, schema, infrastructure)
 
 ## Loop health
 
-All PRs merged as of 2026-05-02. Local main pulled and clean (untracked files only).
-Listener on port 19100 ✓. Budget: Cursor ~85% left, Codex ~60% left (unverified).
+All changes committed direct-to-main (de546ad). Working tree clean except untracked files.
+Dispatch listener and MCP gateway need restarts to pick up new code.
+Budget: Cursor ~85% left, Codex ~60% left (unverified — check cursor.com/settings).
 
 ## Key files touched
 
-- `tools/ops_digest.ps1` — full rewrite (operator-friendly format)
-- `docker/n8n/workflows/w7-telegram-callback-handler.json` — jsCode rewritten (operator-friendly)
-- `data/miru_limits_status.json` — timestamps refreshed
-- `tools/n8n_loop_watchdog.py` (new)
-- `windows/register_watchdog_task.ps1` (new)
-- `miru-context/miru-service-catalog.md` — n8n loop watchdog section added
-- `data/cc_completion_log.jsonl` (completion markers appended)
+- `tools/miru_mcp_gateway/dispatch_tools.py` — model/thinking_level params added
+- `services/dispatch_listener/src/index.js` — model/thinking_level extraction + validation
+- `services/dispatch_listener/src/spawn.js` — extra flags injection for claude-code
+- `tools/miru_mcp_gateway/github_tools.py` — merge_pr + delete_branch tools added
+- `CLAUDE.md` — mandatory PR policy decision gate added
+- `CLAUDE_CHAT.md` — canon escalation, PR loop, model/thinking selection
+- `miru-context/worker-roster.md` — model assignment table
+- `PROJECT_MIRU_INSTRUCTIONS.md` — full cleanup
+- `data/cc_completion_log.jsonl` — PRO-265 and PRO-266 completion markers appended
