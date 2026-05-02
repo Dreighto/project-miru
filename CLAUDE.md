@@ -35,6 +35,21 @@ This check runs before branch creation, before reading any task files, before ev
 
 See `miru-context/kill-switch.md` for the full contract.
 
+## Worktree Cleanliness Gate — Pre-flight (step 2, immediately after kill switch)
+
+After the kill switch passes, run:
+
+```
+python tools/check_worktree_clean.py
+```
+
+- **Exit code 1** (prints `DIRTY: ...`) → emit `STATUS: ESCALATE: HUMAN-REQUIRED` and stop immediately. Do not create a branch. Report the dirty files listed in stderr.
+- **Exit code 0** (prints `CLEAN`) → proceed normally.
+
+The script checks for staged/unstaged changes to tracked files. Untracked files in `data/`, `logs/`, and `tests/_tmp/` are ignored (they're always present and gitignored). The script uses `os.getcwd()` so it must be run from the worktree root — i.e. `python tools/check_worktree_clean.py` from `D:\dev\miru-w1`, not `python D:\dev\miru\tools\check_worktree_clean.py`.
+
+**Why this matters:** If a previous dispatch violated the return-to-main rule and left uncommitted changes in a slot, the next worker dispatched to that slot would start in a dirty tree and risk staging the wrong files into a new PR. This gate catches the violation early.
+
 ## No Overlap Rule
 
 - Before starting any task, check what is currently being worked on

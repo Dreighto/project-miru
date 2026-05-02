@@ -40,8 +40,16 @@ TICKET: {ticket_id} — {ticket_title}
 WORKER: claude-code-1
 WORKTREE: cut a new branch from origin/main
 
-FIRST ACTION — emit session-start heartbeat before reading any files:
-    python tools/emit_heartbeat.py --worker-id claude-code-1 --ticket-id {ticket_id} --step pre_flight --branch main
+FIRST ACTIONS — run in order before reading any files:
+
+    1. Kill switch gate (stop immediately if active):
+       python tools/check_kill_switch.py || exit 1
+
+    2. Worktree cleanliness gate (stop if previous task left uncommitted changes):
+       python tools/check_worktree_clean.py || exit 1
+
+    3. Emit session-start heartbeat:
+       python tools/emit_heartbeat.py --worker-id claude-code-1 --ticket-id {ticket_id} --step pre_flight --branch main
 
 ---
 
