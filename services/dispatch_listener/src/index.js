@@ -157,6 +157,8 @@ app.post(
       worker,
       prompt_path: promptPath,
       use_api_key: useApiKey,
+      model,
+      thinking_level: thinkingLevel,
     } = payload || {};
     let timeoutSeconds = (payload && payload.timeout_seconds) || TIMEOUT_DEFAULT;
 
@@ -175,6 +177,15 @@ app.post(
     timeoutSeconds = Math.floor(timeoutSeconds);
     if (timeoutSeconds < TIMEOUT_MIN || timeoutSeconds > TIMEOUT_MAX) {
       return res.status(400).json({ error: 'bad_request', reason: 'timeout_out_of_range' });
+    }
+    if (model !== undefined && (typeof model !== 'string' || model.trim() === '')) {
+      return res.status(400).json({ error: 'bad_request', reason: 'invalid_model' });
+    }
+    if (
+      thinkingLevel !== undefined &&
+      (typeof thinkingLevel !== 'string' || thinkingLevel.trim() === '')
+    ) {
+      return res.status(400).json({ error: 'bad_request', reason: 'invalid_thinking_level' });
     }
 
     if (!isAllowed(worker)) {
@@ -267,6 +278,9 @@ app.post(
         promptText,
         timeoutSeconds,
         useApiKey: useApiKey === true,
+        model: typeof model === 'string' && model.trim() ? model.trim() : null,
+        thinkingLevel:
+          typeof thinkingLevel === 'string' && thinkingLevel.trim() ? thinkingLevel.trim() : null,
         cwd: slotPath,
         traceLogDir: TRACE_LOG_DIR,
         onDone: () => releaseSlot(slotPath),

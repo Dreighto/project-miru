@@ -29,6 +29,7 @@ import miru_readonly_filesystem_mcp as stdio_mcp  # noqa: E402
 from miru_mcp_gateway import redact as _redact  # noqa: E402
 
 _APPROVED_WORKERS = frozenset({"claude-code", "gemini", "codex"})
+_APPROVED_THINKING_LEVELS = frozenset({"extended", "none"})
 _DEFAULT_TIMEOUT_S = 600
 _TIMEOUT_MIN = 1
 _TIMEOUT_MAX = 1800
@@ -83,6 +84,8 @@ def dispatch_worker(
     prompt: str,
     ticket_id: str | None = None,
     timeout_seconds: int = _DEFAULT_TIMEOUT_S,
+    model: str | None = None,
+    thinking_level: str | None = None,
     ctx: Any = None,
 ) -> str:
     """Trigger an approved worker via the dispatch listener (PRO-235).
@@ -91,6 +94,8 @@ def dispatch_worker(
     ``prompt``: full prompt text delivered to the worker's stdin.
     ``ticket_id``: optional Linear ticket ID (e.g. PRO-235); used in trace_id.
     ``timeout_seconds``: 1-1800 (default 600).
+    ``model``: optional model override (e.g. 'claude-opus-4-7'); claude-code only.
+    ``thinking_level``: 'extended' or 'none'; claude-code only (PRO-265).
     Returns JSON: ok, trace_id, worker, ticket_id, http_status, listener_response.
     """
     cfg = _CFG
@@ -118,6 +123,22 @@ def dispatch_worker(
             f"dispatch_worker: timeout_seconds must be {_TIMEOUT_MIN}-{_TIMEOUT_MAX}", -32602
         )
 
+    if model is not None:
+        model = str(model).strip()
+        if not model:
+            raise stdio_mcp.McpError(
+                "dispatch_worker: model must be a non-empty string if provided", -32602
+            )
+
+    if thinking_level is not None:
+        thinking_level = str(thinking_level).strip().lower()
+        if thinking_level not in _APPROVED_THINKING_LEVELS:
+            approved = ", ".join(sorted(_APPROVED_THINKING_LEVELS))
+            raise stdio_mcp.McpError(
+                f"dispatch_worker: invalid thinking_level {thinking_level!r}. Approved: {approved}",
+                -32602,
+            )
+
     trace_id = _generate_trace_id(ticket_id)
 
     # Write prompt file — listener reads this synchronously before 202.
@@ -129,15 +150,18 @@ def dispatch_worker(
     # Repo-relative path the listener resolves from REPO_ROOT.
     prompt_path = f"data/n8n_inbox/{trace_id}.prompt.json"
 
-    body = json.dumps(
-        {
-            "trace_id": trace_id,
-            "worker": w,
-            "prompt_path": prompt_path,
-            "timeout_seconds": ts,
-        },
-        separators=(",", ":"),
-    ).encode("utf-8")
+    body_dict: dict[str, Any] = {
+        "trace_id": trace_id,
+        "worker": w,
+        "prompt_path": prompt_path,
+        "timeout_seconds": ts,
+    }
+    if model is not None:
+        body_dict["model"] = model
+    if thinking_level is not None:
+        body_dict["thinking_level"] = thinking_level
+
+    body = json.dumps(body_dict, separators=(",", ":")).encode("utf-8")
 
     sig = _compute_hmac(cfg.dispatch_hmac_secret, body)
 
@@ -169,6 +193,8 @@ def dispatch_worker(
             "worker": w,
             "ticket_id": ticket_id,
             "timeout_seconds": ts,
+            "model": model,
+            "thinking_level": thinking_level,
             "http_status": status_code,
             "listener_response": resp_data,
         },

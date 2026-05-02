@@ -97,6 +97,8 @@ function spawnWorker({
   promptText,
   timeoutSeconds,
   useApiKey = false,
+  model = null,
+  thinkingLevel = null,
   cwd,
   traceLogDir,
   onDone,
@@ -177,6 +179,24 @@ function spawnWorker({
     has_oauth_token: !!childEnv.CLAUDE_CODE_OAUTH_TOKEN,
   });
 
+  // PRO-265: per-dispatch model and thinking-level flags (claude-code only).
+  // For gemini and codex the override flags are not yet wired; values are
+  // logged but ignored so callers don't get a silent no-op without a trace.
+  const extraFlags = [];
+  if (worker === 'claude-code') {
+    if (model) extraFlags.push('--model', model);
+    if (thinkingLevel === 'extended') extraFlags.push('--extended-thinking');
+  }
+
+  log.info('spawn_flags', {
+    trace_id: traceId,
+    worker,
+    base_flags: workerSpec.flags,
+    extra_flags: extraFlags,
+    model_requested: model,
+    thinking_level_requested: thinkingLevel,
+  });
+
   let child;
   try {
     // detached:true was empirically incompatible with stdio file fds on this
@@ -185,7 +205,7 @@ function spawnWorker({
     // Dropping detached:true makes the worker a normal child of the listener:
     // listener crash will kill mid-flight workers (acceptable Phase 1 behavior
     // per the README, the orphan sweep already handles that case at startup).
-    child = spawn('cmd', ['/c', binary, ...workerSpec.flags], {
+    child = spawn('cmd', ['/c', binary, ...workerSpec.flags, ...extraFlags], {
       cwd,
       windowsHide: true,
       stdio: [promptFd, stdoutFd, stderrFd],
@@ -215,6 +235,8 @@ function spawnWorker({
     pid: child.pid,
     pid_defined: child.pid != null,
     timeout_seconds: timeoutSeconds,
+    model: model || null,
+    thinking_level: thinkingLevel || null,
   });
 
   if (child.pid == null) {

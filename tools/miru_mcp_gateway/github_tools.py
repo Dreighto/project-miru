@@ -788,6 +788,154 @@ def github_create_pr_comment(owner: str, repo: str, number: int, body: str) -> s
     return json.dumps(_redact.redact_dict(payload), indent=2)
 
 
+def _gh_put(path: str, json_body: dict) -> Any:
+    """PUT to api.github.com using the write token (used for PR merge)."""
+    if requests is None:
+        raise stdio_mcp.McpError(
+            "github: 'requests' library not installed; pip install requests", -32000
+        )
+    if not _WRITE_TOKEN:
+        raise stdio_mcp.McpError(
+            "github: GITHUB_TOKEN_WRITE not configured; cannot merge PRs", -32000
+        )
+    url = f"{_API_BASE}{path}"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Authorization": f"Bearer {_WRITE_TOKEN}",
+        "User-Agent": "miru-mcp-gateway/0.4",
+    }
+    try:
+        resp = requests.put(url, json=json_body, headers=headers, timeout=_HTTP_TIMEOUT_S)
+    except requests.exceptions.Timeout as exc:
+        raise stdio_mcp.McpError(
+            f"github: timeout after {_HTTP_TIMEOUT_S}s on PUT {path}", -32000
+        ) from exc
+    except requests.exceptions.RequestException as exc:
+        raise stdio_mcp.McpError(
+            f"github: transport error on PUT {path}: {_redact.redact(str(exc))}", -32000
+        ) from exc
+    if resp.status_code == 401:
+        raise stdio_mcp.McpError(
+            "github: 401 Unauthorized -- GITHUB_TOKEN_WRITE may be expired", -32000
+        )
+    if resp.status_code == 405:
+        raise stdio_mcp.McpError(
+            f"github: 405 on PUT {path} -- PR may not be mergeable (conflicts or status checks failing)",
+            -32000,
+        )
+    if resp.status_code == 409:
+        raise stdio_mcp.McpError(
+            f"github: 409 on PUT {path} -- merge conflict; resolve conflicts before merging",
+            -32000,
+        )
+    if not (200 <= resp.status_code < 300):
+        body_preview = _redact.redact(resp.text[:_BODY_SUMMARY_BYTES])
+        raise stdio_mcp.McpError(
+            f"github: HTTP {resp.status_code} on PUT {path}: {body_preview}", -32000
+        )
+    try:
+        return resp.json()
+    except ValueError:
+        return {}
+
+
+def _gh_delete(path: str) -> int:
+    """DELETE from api.github.com using the write token. Returns HTTP status code."""
+    if requests is None:
+        raise stdio_mcp.McpError(
+            "github: 'requests' library not installed; pip install requests", -32000
+        )
+    if not _WRITE_TOKEN:
+        raise stdio_mcp.McpError(
+            "github: GITHUB_TOKEN_WRITE not configured; cannot delete branches", -32000
+        )
+    url = f"{_API_BASE}{path}"
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Authorization": f"Bearer {_WRITE_TOKEN}",
+        "User-Agent": "miru-mcp-gateway/0.4",
+    }
+    try:
+        resp = requests.delete(url, headers=headers, timeout=_HTTP_TIMEOUT_S)
+    except requests.exceptions.Timeout as exc:
+        raise stdio_mcp.McpError(
+            f"github: timeout after {_HTTP_TIMEOUT_S}s on DELETE {path}", -32000
+        ) from exc
+    except requests.exceptions.RequestException as exc:
+        raise stdio_mcp.McpError(
+            f"github: transport error on DELETE {path}: {_redact.redact(str(exc))}", -32000
+        ) from exc
+    if resp.status_code == 401:
+        raise stdio_mcp.McpError(
+            "github: 401 Unauthorized -- GITHUB_TOKEN_WRITE may be expired", -32000
+        )
+    if resp.status_code == 404:
+        raise stdio_mcp.McpError(f"github: 404 Not Found: {path}", -32000)
+    if resp.status_code == 422:
+        body_preview = _redact.redact(resp.text[:_BODY_SUMMARY_BYTES])
+        raise stdio_mcp.McpError(
+            f"github: 422 Unprocessable on DELETE {path}: {body_preview}", -32000
+        )
+    if not (200 <= resp.status_code < 300):
+        body_preview = _redact.redact(resp.text[:_BODY_SUMMARY_BYTES])
+        raise stdio_mcp.McpError(
+            f"github: HTTP {resp.status_code} on DELETE {path}: {body_preview}", -32000
+        )
+    return resp.status_code
+
+
+def github_merge_pr(
+    owner: str,
+    repo: str,
+    number: int,
+    merge_method: str = "squash",
+    commit_title: str | None = None,
+) -> str:
+    """Merge a pull request (uses GITHUB_TOKEN_WRITE).
+
+    ``merge_method``: 'squash' (default), 'merge', or 'rebase'.
+    ``commit_title``: optional override for the merge commit title.
+    Returns JSON: {merged, sha, message}.
+    Only valid for PRs in the CC-merge column per CLAUDE.md merge policy.
+    """
+    _assert_repo_allowed(owner, repo)
+    valid_methods = {"squash", "merge", "rebase"}
+    if merge_method not in valid_methods:
+        raise stdio_mcp.McpError(
+            f"github: merge_method must be one of {sorted(valid_methods)}", -32602
+        )
+    payload: dict[str, Any] = {"merge_method": merge_method}
+    if commit_title:
+        payload["commit_title"] = commit_title.strip()
+    obj = _gh_put(f"/repos/{owner}/{repo}/pulls/{int(number)}/merge", payload)
+    out = {
+        "merged": bool(obj.get("merged", True)),
+        "sha": obj.get("sha", ""),
+        "message": obj.get("message", ""),
+    }
+    return json.dumps(_redact.redact_dict(out), indent=2)
+
+
+def github_delete_branch(owner: str, repo: str, branch: str) -> str:
+    """Delete a remote branch (uses GITHUB_TOKEN_WRITE).
+
+    Safety guard: refuses to delete 'main', 'master', or 'develop'.
+    Returns JSON: {deleted, branch}.
+    """
+    _assert_repo_allowed(owner, repo)
+    if not branch or not branch.strip():
+        raise stdio_mcp.McpError("github: branch must not be empty", -32602)
+    branch = branch.strip()
+    protected = {"main", "master", "develop"}
+    if branch.lower() in protected:
+        raise stdio_mcp.McpError(f"github: refusing to delete protected branch {branch!r}", -32000)
+    status = _gh_delete(f"/repos/{owner}/{repo}/git/refs/heads/{branch}")
+    out = {"deleted": status == 204, "branch": branch}
+    return json.dumps(_redact.redact_dict(out), indent=2)
+
+
 def github_create_issue(
     owner: str,
     repo: str,
@@ -857,6 +1005,8 @@ TOOL_FUNCTIONS = (
     github_get_pr_check_runs,
     github_create_pr_comment,
     github_create_issue,
+    github_merge_pr,
+    github_delete_branch,
 )
 
 

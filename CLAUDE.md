@@ -143,6 +143,26 @@ Small, obviously-correct changes that carry no meaningful risk of breakage may b
 - Infrastructure (gateway, MCPs, port assignments)
 - First implementation of something new (e.g. W3 build)
 
+**Mandatory pre-commit decision — workers must run this before every commit:**
+
+Before staging any files, evaluate which tier applies to this change. Do not default to opening a PR. Direct-to-main and CC-merge are valid and preferred when the change qualifies.
+
+```
+1. Does ANY file match the direct-to-main list above?
+   → Commit direct to main. No PR, no Bugbot wait.
+
+2. Do ALL files match the CC-merge list?
+   → Open PR, CC self-merges after CONFIRMED WORKING.
+
+3. Does ANY file match the operator-merge list?
+   → Open PR, ping operator via Claude Chat. Do not merge.
+
+4. Unsure?
+   → Treat as operator-merge (fail-closed). Open PR, ping operator.
+```
+
+Workers that skip this evaluation and default to opening a PR for direct-to-main changes are wasting operator attention. Workers that skip this and commit infrastructure changes direct to main are in violation.
+
 **Principle:** CC merges fixes. Operator merges changes. Fix = restore expected behavior of something that already exists. Change = add capability or alter the contract. When unsure, default to opening the PR for operator review (fail-closed). The cost of waiting for an operator review is minutes; the cost of a wrong self-merge is a revert plus context loss.
 
 **Hard requirements before CC self-merges:**
