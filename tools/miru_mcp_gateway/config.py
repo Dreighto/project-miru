@@ -266,6 +266,7 @@ def _default_docs_write_globs() -> tuple[str, ...]:
         "*.md",
         "docs/**/*.md",
         "docs/**/*.txt",
+        "miru-context/*.md",
         "miru-context/**/*.md",
         "tools/**/*.md",
         "services/**/*.md",
