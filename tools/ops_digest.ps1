@@ -1,4 +1,5 @@
 # ops_digest.ps1 — fetch /api/ops/report and post a formatted summary to Telegram.
+# Format: operator-friendly plain English with emoji scanning.
 # Usage: powershell -ExecutionPolicy Bypass -File tools\ops_digest.ps1
 
 Set-StrictMode -Version Latest
@@ -31,43 +32,142 @@ try {
     exit 1
 }
 
-# Format Telegram message (Markdown)
+# ── Helpers ────────────────────────────────────────────────────────────────────
+function Format-HumanTime {
+    param([string]$Iso)
+    if (-not $Iso) { return 'unknown' }
+    try {
+        $dt   = [datetime]::Parse($Iso, $null, [System.Globalization.DateTimeStyles]::RoundtripKind)
+        $now  = [datetime]::UtcNow
+        $diff = $now - $dt
+        if ($diff.TotalMinutes -lt 60) { return "$([int]$diff.TotalMinutes)m ago" }
+        if ($diff.TotalHours   -lt 24) { return "$([int]$diff.TotalHours)h ago" }
+        if ($diff.TotalDays    -lt 7)  { return "$([int]$diff.TotalDays)d ago" }
+        return $dt.ToString('MMM d')
+    } catch {
+        return $Iso
+    }
+}
+
+function Format-WorkerStep {
+    param([string]$Step)
+    $map = @{
+        pre_flight          = 'starting up'
+        opening_pr          = 'opening a PR'
+        awaiting_bugbot     = 'waiting for code review bot'
+        post_merge_cleanup  = 'cleaning up after merge'
+        running_pre_commit  = 'running checks'
+        writing_tests       = 'writing tests'
+    }
+    if ($map.ContainsKey($Step)) { return $map[$Step] }
+    return if ($Step) { $Step } else { '?' }
+}
+
+function Format-Budget {
+    param($Budget)
+    if (-not $Budget) { return 'No budget data' }
+    $state = try { [string]$Budget.state } catch { 'unknown' }
+    switch ($state) {
+        'safe'  { return 'Safe — no limits hit' }
+        'watch' { return 'Watch — approaching limit ⚠️' }
+        'limit' { return 'At limit — new work needs approval ❌' }
+        default { return "State: $state" }
+    }
+}
+
+# ── Build message ──────────────────────────────────────────────────────────────
+$ts    = Format-HumanTime -Iso ([string]$report.generated_at)
 $lines = [System.Collections.Generic.List[string]]::new()
-$lines.Add('*Miru Ops Digest*')
-$lines.Add("_Generated: $($report.generated_at)_")
+$lines.Add("🛠 *Miru Status* — $ts")
 $lines.Add('')
 
-$lines.Add("*DLQ*: $($report.dlq_count) entries")
-$lines.Add('')
-
-if ($report.budget) {
-    $budgetJson = $report.budget | ConvertTo-Json -Compress -Depth 3
-    $lines.Add('*Budget*')
-    $lines.Add("``$budgetJson``")
-    $lines.Add('')
-}
-
+# Filter out TEST-* tickets — operator view only shows real work
+$real = @()
 if ($report.last_completions -and $report.last_completions.Count -gt 0) {
-    $lines.Add('*Last completions*')
-    foreach ($c in $report.last_completions) {
-        $ticket  = if ($c.ticket_id) { $c.ticket_id } else { '?' }
-        $status  = if ($c.status)    { $c.status }    else { '?' }
-        $summary = if ($c.summary)   { $c.summary }   else { '' }
-        if ($summary.Length -gt 60) { $summary = $summary.Substring(0, 60) + '...' }
-        $lines.Add("• ``$ticket`` [$status] $summary")
+    $real = @($report.last_completions | Where-Object { ([string]$_.ticket_id) -notmatch '^TEST-' })
+}
+
+$shipped = @($real | Where-Object { ([string]$_.status) -eq 'CONFIRMED_WORKING' })
+$failed  = @($real | Where-Object { ([string]$_.status) -eq 'FAILED' })
+$partial = @($real | Where-Object { ([string]$_.status) -eq 'INCONCLUSIVE' })
+
+if ($shipped.Count -gt 0) {
+    $lines.Add('*What shipped*')
+    foreach ($c in $shipped | Select-Object -Last 5) {
+        $summary = if ($c.summary) { [string]$c.summary } else { '(no description)' }
+        if ($summary.Length -gt 120) { $summary = $summary.Substring(0, 120) + '...' }
+        $ticket = if ($c.ticket_id) { [string]$c.ticket_id } else { '?' }
+        $lines.Add("✅ *$ticket* — $summary")
     }
     $lines.Add('')
 }
 
-if ($report.last_heartbeats -and $report.last_heartbeats.Count -gt 0) {
-    $lines.Add('*Active workers*')
-    foreach ($h in $report.last_heartbeats) {
-        $wid    = if ($h.worker_id)  { $h.worker_id }  else { '?' }
-        $ticket = if ($h.ticket_id)  { $h.ticket_id }  else { '?' }
-        $step   = if ($h.step)       { $h.step }       else { '?' }
-        $ts     = if ($h.ts)         { $h.ts }         else { '?' }
-        $lines.Add("• $wid — $ticket @ $step ($ts)")
+if ($failed.Count -gt 0) {
+    $lines.Add('*What failed*')
+    foreach ($c in $failed | Select-Object -Last 3) {
+        $summary = if ($c.summary) { [string]$c.summary } else { '(no description)' }
+        if ($summary.Length -gt 120) { $summary = $summary.Substring(0, 120) + '...' }
+        $ticket = if ($c.ticket_id) { [string]$c.ticket_id } else { '?' }
+        $lines.Add("❌ *$ticket* — $summary")
     }
+    $lines.Add('')
+}
+
+if ($partial.Count -gt 0) {
+    $lines.Add('*Needs attention*')
+    foreach ($c in $partial | Select-Object -Last 3) {
+        $summary = if ($c.summary) { [string]$c.summary } else { '(no description)' }
+        if ($summary.Length -gt 120) { $summary = $summary.Substring(0, 120) + '...' }
+        $ticket = if ($c.ticket_id) { [string]$c.ticket_id } else { '?' }
+        $lines.Add("⚠️ *$ticket* — $summary")
+    }
+    $lines.Add('')
+}
+
+if ($shipped.Count -eq 0 -and $failed.Count -eq 0 -and $partial.Count -eq 0) {
+    $lines.Add('_No recent real activity_')
+    $lines.Add('')
+}
+
+# DLQ
+$dlqCount = if ($null -ne $report.dlq_count) { [int]$report.dlq_count } else { 0 }
+if ($dlqCount -gt 20) {
+    $lines.Add("*Failed dispatch queue:* $dlqCount attempts ⚠️ — this is high, worth reviewing")
+} elseif ($dlqCount -gt 0) {
+    $lines.Add("*Failed dispatch queue:* $dlqCount attempts")
+} else {
+    $lines.Add('*Failed dispatch queue:* Clear')
+}
+$lines.Add('')
+
+# Budget
+$budgetText = Format-Budget -Budget $report.budget
+$lines.Add("*Budget:* $budgetText")
+$lines.Add('')
+
+# Active workers — only show heartbeats within the last 15 minutes
+$activeWorkers = [System.Collections.Generic.List[object]]::new()
+if ($report.last_heartbeats -and $report.last_heartbeats.Count -gt 0) {
+    $cutoff = [datetime]::UtcNow.AddMinutes(-15)
+    foreach ($h in $report.last_heartbeats) {
+        try {
+            $hTs = [datetime]::Parse([string]$h.ts, $null, [System.Globalization.DateTimeStyles]::RoundtripKind)
+            if ($hTs -gt $cutoff) { $activeWorkers.Add($h) }
+        } catch { }
+    }
+}
+
+if ($activeWorkers.Count -gt 0) {
+    $lines.Add('*Active workers*')
+    foreach ($h in $activeWorkers) {
+        $wid    = if ($h.worker_id) { [string]$h.worker_id } else { '?' }
+        $ticket = if ($h.ticket_id) { [string]$h.ticket_id } else { '?' }
+        $step   = Format-WorkerStep -Step ([string]$h.step)
+        $age    = Format-HumanTime -Iso ([string]$h.ts)
+        $lines.Add("🔄 $wid — working on *$ticket* ($step, last seen $age)")
+    }
+} else {
+    $lines.Add('*Active workers:* None right now')
 }
 
 $text = $lines -join "`n"
