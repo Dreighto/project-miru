@@ -77,7 +77,67 @@ agenda table with the handoff content in a notes-style field.
 
 ## Latest Handoff
 
-# Miru thread handoff — 2026-05-02 (CC session, autonomy wiring sprint)
+# Miru thread handoff — 2026-05-02 (team excellence sprint)
+
+## What we were working on
+
+Team excellence foundation: writing the team charter, wiring it into the worker baseline, and filing the full phase 2 and 3 tickets for peer review and cross-worker handoffs.
+
+Also completed earlier in this session: PRO-265/266 end-to-end dispatch wiring (model + effort flags), PR merge/branch-delete tools in MCP gateway, brainstorm/architect mode codified in CLAUDE_CHAT.md and operator-profile.md.
+
+## What got done
+
+- **`miru-context/team-charter.md` (new, 704c626)** — team ethos doc: who we are, what excellence looks like, how to problem-solve before asking, how workers collaborate and hand off.
+- **`AGENTS.md` (704c626)** — every worker now reads team-charter.md on dispatch.
+- **PRO-269 filed** — "try harder" discipline before INCONCLUSIVE: check canon → search repo → try alternative → then ask with documented attempts. High priority.
+- **PRO-270 filed** — pre-PR peer review protocol: Claude Chat complexity check triggers Codex/Gemini review on complex PRs before merge. Normal priority.
+- **PRO-271 filed** — cross-worker handoff format: structured `handoff` field in completion markers so receiving workers (especially Cursor) can start without reconstructing context. Normal priority.
+- **PRO-265 flag corrected (d794eb3)** — `--extended-thinking` → `--effort` via EFFORT_MAP; `extended` maps to `max`. Verified against actual `claude --help` output.
+- **`CLAUDE_CHAT.md` + `operator-profile.md`** — brainstorm/architect mode fully documented. Trigger phrases, Perplexity research process, Gemini/ChatGPT second-opinion flow.
+
+## What's still open
+
+- **PRO-269** — Todo. CC dispatch work. Try harder discipline needs wiring into CLAUDE.md stall section and dispatch prompts.
+- **PRO-270** — Todo. Claude Chat work. Peer review trigger logic needs to go into CLAUDE_CHAT.md or coordination-contract.md.
+- **PRO-271** — Todo. CC work. Schema extension to cc_completion_log + emit_completion.py update.
+- **PRO-267** — Todo. Ops visibility panel on port 18765.
+- **PRO-268** — Todo. Plan mode dispatch wiring (--permission-mode plan + Claude Chat review loop).
+- **MiruN8nWatchdog task** — still needs `register_watchdog_task.ps1` from elevated shell.
+- **MiruOpsDigest task** — still needs `register_ops_digest_task.ps1` from elevated shell.
+- **`services/dispatch_listener/src/allowlist.js`** — M in git status. Verify intentional before next commit.
+
+## Decisions made
+
+- "Extended/Adaptive Thinking" in Claude.ai is the OPERATOR's session setting — signal from Claude Chat to operator to switch modes. It is NOT a worker dispatch param. Worker dispatch uses `--effort` levels.
+- "extended" thinking_level maps to `--effort max` at spawn time (EFFORT_MAP in spawn.js).
+- Team charter is read by ALL workers at every dispatch — ethos, not rules. Rules live in CLAUDE.md / AGENTS.md.
+- Peer review gate (PRO-270) is separate from and earlier than Bugbot gate.
+- Handoff format (PRO-271) extends completion marker schema — optional field, backward compatible.
+
+## What the next thread should do first
+
+1. Pick up PRO-269, 270, or 271 — all are ready to dispatch with no blockers.
+2. Check `allowlist.js` diff — confirm M is intentional or discard before next commit.
+3. Confirm both services (dispatch listener port 19100, MCP gateway port 18766) are running with latest code.
+
+## What NOT to do
+
+- Do not commit `config/claude_chat.mcp.json` (sensitive, intentionally untracked)
+- Do not dispatch to Cursor via W4 (permanent manual-only)
+- Do not self-merge operator-merge-column PRs
+
+## Loop health
+
+Working tree clean (charter + AGENTS.md committed, pushed). 6 commits ahead of remote — now pushed. Budget: unverified — check cursor.com/settings before heavy Cursor use.
+
+## Key files touched
+
+- `miru-context/team-charter.md` — new, team ethos baseline
+- `AGENTS.md` — charter read requirement added
+- `services/dispatch_listener/src/spawn.js` — effort flag fix (d794eb3)
+- `CLAUDE_CHAT.md` — brainstorm mode, extended thinking clarification
+- `miru-context/operator-profile.md` — modes + research/second-opinion sections
+- Linear: PRO-269, PRO-270, PRO-271 filed
 
 ## What we were working on
 
