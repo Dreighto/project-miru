@@ -72,6 +72,44 @@ to the operator.
 
 ---
 
+## gh CLI Auth Bootstrap
+
+`gh` CLI auth is required for CC to open PRs from its bash terminal. Without it, all automated PR
+creation fails with "gh-not-authenticated". This step must be performed on any fresh ROOM setup
+and after any GitHub PAT rotation.
+
+### Command
+
+```bash
+echo "$GITHUB_TOKEN_WRITE" | gh auth login --with-token
+```
+
+`GITHUB_TOKEN_WRITE` is the PAT stored in `D:\dev\miru\.env`. Do not echo the token value into
+logs or chat.
+
+### When this is needed
+
+- Fresh ROOM node setup (new machine or re-imaged OS)
+- After rotating the `GITHUB_TOKEN_WRITE` PAT in `.env`
+- After a `gh auth logout` or credential cache invalidation
+- If CC reports "gh-not-authenticated" during a PR creation step
+
+### How to verify
+
+```bash
+gh auth status
+```
+
+Expected output includes `Logged in to github.com` and the account name. If it shows
+`You are not logged in`, repeat the bootstrap command above.
+
+### History
+
+CC hit "gh-not-authenticated" on 2026-04-25 during PRO-76 and PRO-77, blocking automated PR
+creation both times. Fixed by operator running `gh auth login` manually (PRO-78).
+
+---
+
 ## Return-to-main — Hard Rule (all workers, locked 2026-04-30)
 
 Every task session ends on `main` with a clean working tree. This applies to every worker.
