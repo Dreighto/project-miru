@@ -163,21 +163,18 @@ function spawnWorker({
     throw err;
   }
 
-  // Auth: workers run via MIRU_ROUTING_KEY (budget-capped API key). OAuth
-  // tokens stored by the Claude desktop app are DPAPI-encrypted and only
-  // decryptable in the interactive session (Session 1), so they cannot be used
-  // by Session 0 scheduled tasks regardless of which user account runs them.
+  // Auth: workers use CLAUDE_CODE_OAUTH_TOKEN — a portable OAuth token generated
+  // via `claude setup-token` that is NOT DPAPI-encrypted, so it works in Session 0
+  // scheduled tasks. ANTHROPIC_API_KEY is always stripped to prevent accidental
+  // API billing. MIRU_ROUTING_KEY remains available for Claude Chat's own session.
   const childEnv = { ...process.env };
-  if (childEnv.MIRU_ROUTING_KEY) {
-    childEnv.ANTHROPIC_API_KEY = childEnv.MIRU_ROUTING_KEY;
-  } else {
-    delete childEnv.ANTHROPIC_API_KEY;
-  }
+  delete childEnv.ANTHROPIC_API_KEY;
 
   log.info('spawn_auth_debug', {
     trace_id: traceId,
     has_api_key: !!childEnv.ANTHROPIC_API_KEY,
     has_routing_key: !!childEnv.MIRU_ROUTING_KEY,
+    has_oauth_token: !!childEnv.CLAUDE_CODE_OAUTH_TOKEN,
   });
 
   let child;
