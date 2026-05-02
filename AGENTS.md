@@ -132,3 +132,53 @@ Every task session ends on `main` with a clean working tree. This applies to eve
 3. Confirm clean state, then sign off.
 
 **Why this is a hard rule:** A worker that ends on a feature branch leaves the repo in an ambiguous state. The next session — by the same worker or a different one — starts blind to the checked-out branch and may cut a new task branch from the wrong base, or accidentally stage work from a prior task into a new PR. This failure mode occurred in PRO-214 cleanup and required operator intervention.
+
+---
+
+## Try Harder Discipline — All Workers (locked PRO-269 2026-05-02)
+
+Before emitting `INCONCLUSIVE`, every worker must complete all four steps below. Asking for help
+before trying is not acceptable. Asking after trying — with documented attempts — is expected.
+
+### Step 1 — Check the canon
+
+Read CLAUDE.md, AGENTS.md, team-charter.md, and any miru-context/ files relevant to the problem.
+Read prior completion markers for the same area of the codebase (`data/cc_completion_log.jsonl`).
+The answer is often already there.
+
+### Step 2 — Search the repo
+
+Use grep, glob, and file reads to find how similar problems were solved before. Consistency with
+the existing codebase is almost always the right call. If another ticket touched the same file or
+function, read that diff.
+
+### Step 3 — Try at least one alternative approach
+
+If the first approach is blocked, reason through a second one and attempt it. A different angle,
+a simpler implementation, a fallback that satisfies the ticket's done-when criteria without the
+blocked path. Document both attempts in your INCONCLUSIVE report.
+
+### Step 4 — Then ask — with evidence
+
+If you are genuinely blocked after all of the above, emit `INCONCLUSIVE` with:
+
+- What you tried (specific, not vague — name the approach and what it hit)
+- Why each attempt failed or is insufficient
+- One specific question that, if answered, unblocks you
+
+**Required format:**
+
+> I tried [X] — it failed because [specific reason]. I tried [Y] — it failed because [specific reason].
+> Question: should I [A] or [B]?
+
+**Not acceptable:**
+
+> I'm not sure how to proceed. Can you clarify?
+
+"I don't know how to proceed" is not a question. A question has a specific, answerable option embedded in it.
+
+### Why this matters
+
+Every premature INCONCLUSIVE costs a full operator loop and breaks the autonomous flow. Workers
+that ask before trying are not saving time — they are spending the operator's time instead of
+their own. Try harder first. The team gets better when workers solve more problems themselves.
