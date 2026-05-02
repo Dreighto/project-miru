@@ -77,65 +77,77 @@ agenda table with the handoff content in a notes-style field.
 
 ## Latest Handoff
 
-# Miru thread handoff — 2026-05-01 (CC session, documentation sprint)
+# Miru thread handoff — 2026-05-02 (CC session, pre-handoff system testing)
 
 ## What we were working on
 
-Full autonomous team operating model documentation sprint. 10 new miru-context docs +
-3 existing file updates committed direct to main. This completes the knowledge architecture
-foundation before Claude Chat takes over.
+Canon cleanup + full pre-handoff system test of the autonomous dispatch pipeline. Every
+major component was exercised end-to-end before handing off primary orchestration to Claude Chat.
 
 ## What got done
 
-- **10 new miru-context docs** — canon-contract, coordination-contract, job-stewardship,
-  operating-model, operator-translation, source-of-truth, budget-governance, retry-backoff,
-  kill-switch, performance-scorecard. All committed to main (commit 932dbaf).
-- **worker-roster.md** — capability profiles added for claude-code, codex, gemini, cursor.
-- **CLAUDE_CHAT.md** — 4 new priority session-start reads added (operating-model, canon-contract,
-  job-stewardship, source-of-truth).
-- **Cross-references** — canon-and-drift.md, claude-operating-model.md, concurrency-policy.md,
-  CLAUDE.md all updated with pointers to new docs.
-- **docs/dispatch_contract.md + services/dispatch_listener/src/allowlist.js** — These were
-  modified at session start (pre-existing, not part of this sprint). Still uncommitted/unstaged.
-  Next thread should check if they belong to a ticket and handle accordingly.
+- **Canon cleanup** (commit a2e7a58) — Fixed 6 stale claims across 4 files:
+  - `worker-roster.md`: auth column, Cursor dispatch pattern, capability profiles
+  - `miru-service-catalog.md`: listener receipt label (INCONCLUSIVE, not CONFIRMED_WORKING)
+  - `docs/dispatch_contract.md`: auth description (OAuth, no API billing)
+  - `CLAUDE_CHAT.md`: Cursor manual relay dispatch pattern added
+- **tools/test_dispatch.js** — Node.js HMAC dispatch test tool (commit a2e7a58); fixed bash HMAC failures
+- **Worktree cleanliness gate** (commit b7ab5c8) — `tools/check_worktree_clean.py` created;
+  CLAUDE.md and dispatch_contract.md updated with ordered FIRST ACTIONS pre-flight block
+- **Dispatch system tests completed:**
+  - Slot lease + worker spawn: miru-w1 ✓
+  - Timeout enforcement: 5s timeout → FAILED + timed_out receipt + DLQ ✓
+  - miru-w2 real ticket dispatch: slot assignment correct, no cross-contamination ✓
+  - Parallel dispatch: two workers simultaneously, independent receipts ✓
+  - n8n W2 routing: executed, scored workers, wrote routing_history, sent triage Telegram ✓
+  - Dirty worktree gate: script exits 1 on dirty, exits 0 on clean ✓
+- **Bugs filed:**
+  - **PRO-258** (High): `routing_history.jsonl` null fields — W2 not writing diagnostic columns
+  - **PRO-259** (Normal): Stale "awaiting" entries in `pending_callbacks.jsonl`
 
 ## What's still open
 
-- **PRO-248** (Codex full system audit) — Backlog. Now has all context docs to work from.
-  Awaiting operator confirmation to dispatch.
-- **PRO-249** (n8n /snooze /unsnooze routing) — Backlog. Operator confirmation needed.
-- **PRO-250** (Notion + Linear canon cleanup) — Backlog. After all docs exist (done now).
-- **PRO-244** (Telegram inline action buttons) — Backlog. Not started.
-- **PRO-247** (Gemini CLI sentinel fallback) — Backlog. Not started.
+- **PRO-258** — W2 routing_history null fields. High priority, should be next dispatch.
+- **PRO-259** — Stale pending_callbacks. Normal priority.
+- **services/dispatch_listener/src/allowlist.js** — Has unstaged change (M). Likely from
+  the earlier testing session. Check if it's intentional before committing.
+- **n8n W4 leg** — W2→Telegram triage was verified; auto-dispatch path (W4 direct) not fully
+  re-exercised this session. Last confirmed working 2026-04-30. Low risk.
+- **Cold handoff test** — Fresh Claude Chat session with no briefing was deferred. Still pending.
 - **config/claude_chat.mcp.json** — Intentionally untracked. Do not commit.
 
 ## Decisions made
 
-- All 10 docs committed direct to main (docs-only sprint, no service files touched)
-- kill-switch.md defines the contract only — data/system_halt file NOT created yet
-- budget-governance.md defines the contract only — data/budget_state.json NOT created yet
-- Worker capability profiles added to worker-roster.md (not a separate file — routing and capability live together)
-- CLAUDE_CHAT.md session-start list gets 4 new entries, not all 10 new docs
+- Cursor CLI is **permanently manual-only** — no W4 wiring ever. All files updated to reflect this.
+- `CLAUDE_CODE_OAUTH_TOKEN` is the only auth path for spawned workers — `ANTHROPIC_API_KEY` stripped at spawn time.
+- Dirty worktree gate added as step 2 in pre-flight (kill switch → worktree clean → heartbeat).
+- Listener receipt `INCONCLUSIVE` for exit 0 is expected — completion log is authoritative, not the receipt.
 
 ## What the next thread should do first
 
-1. Ask operator: "Are you ready for me to dispatch PRO-248 (Codex audit) now that the context docs are complete?"
-2. Check docs/dispatch_contract.md and services/dispatch_listener/src/allowlist.js — these pre-existing modifications need a decision (which ticket they belong to, or whether to discard).
-3. Confirm git status is clean on main before any new work.
+1. Dispatch PRO-258 (W2 routing_history null fields) — High priority, claude-code.
+2. Check `services/dispatch_listener/src/allowlist.js` diff — `git diff services/dispatch_listener/src/allowlist.js` — confirm if change is intentional or discard.
+3. If ready: run the cold handoff test (fresh Claude Chat session, no briefing, read state-handoff-log.md and operate normally).
 
 ## What NOT to do
 
-- Do not create data/system_halt — that file only exists when operator intends to halt the system
-- Do not create data/budget_state.json — contract defined, implementation is a separate task
-- Do not commit config/claude_chat.mcp.json (sensitive local paths, intentionally untracked)
-- Do not start PRO-249 or PRO-250 without operator confirmation
+- Do not commit `config/claude_chat.mcp.json` (sensitive local paths, intentionally untracked)
+- Do not commit `data/cc_completion_log.jsonl` without running the emit_completion script
+- Do not dispatch to Cursor via W4 (permanent manual-only)
+- Do not create `data/system_halt` or `data/budget_state.json` unless operator intends to activate those systems
 
 ## Loop health
 
-Sentinel healthy. All_clear. No stalls. Pre-commit all green on this commit.
+All services healthy. miru-w1 and miru-w2 clean (git status verified). Pre-commit green on all
+commits. Listener running on port 19100 ✓.
 
 ## Key files touched
 
-- 10 new files in `miru-context/` (see commit 932dbaf)
-- `miru-context/worker-roster.md`, `CLAUDE_CHAT.md`, `CLAUDE.md`, and 3 other cross-ref updates
-- `data/cc_completion_log.jsonl` (completion marker appended)
+- `tools/check_worktree_clean.py` (new)
+- `tools/test_dispatch.js` (new)
+- `CLAUDE.md` — worktree cleanliness gate section added
+- `docs/dispatch_contract.md` — FIRST ACTIONS pre-flight block updated
+- `miru-context/worker-roster.md` — auth + Cursor pattern corrected
+- `miru-context/miru-service-catalog.md` — receipt label corrected
+- `CLAUDE_CHAT.md` — Cursor manual relay pattern added
+- `data/cc_completion_log.jsonl` (completion markers appended)
