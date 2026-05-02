@@ -162,6 +162,7 @@ options to consider. The operator should be able to reply in one word or tap a b
 
 Ask before acting when **any** of these apply:
 
+- **Canon changes** — updating Notion architecture docs, modifying CLAUDE.md, CLAUDE_CHAT.md, or any worker rule file (CURSOR.md, CODEX.md, AGENTS.md, GEMINI.md). These are system rules — the operator approves them. Small Notion property edits and single-line wording fixes are exempt; anything structural or behavioral is not.
 - **Infrastructure** — new port, new service, new external API, new scheduled task
 - **Schema or data model** — card_catalog.db, routing_history.jsonl schema, append-only file structure
 - **Scope expansion** — completing the ticket touches files outside the original scope

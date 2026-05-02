@@ -13,18 +13,18 @@ Last updated: 2026-05-01
 
 ## Authority Table
 
-| State / Truth type                                              | Source of Truth                     | Tiebreaker rule                                                                                             |
-| --------------------------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Task status (what is being worked on)                           | **Linear**                          | If memory or chat says different, update memory to match Linear                                             |
-| Execution trail (what was tried, commented, decided per-ticket) | **Linear**                          | Not promoted to Notion unless it passes the promotion test                                                  |
-| Durable system canon (architecture, patterns, hard-won lessons) | **Notion**                          | If Linear comment contradicts Notion, promote only after validation                                         |
-| Runtime service status                                          | **Health endpoints / Sentinel**     | Log output is supporting evidence; the health endpoint is the verdict                                       |
-| Raw logs                                                        | **Filesystem (logs/ via gateway)**  | Logs are evidence, not decisions — read them, don't promote them                                            |
-| Worker role and capability                                      | **worker-roster.md**                | If CLAUDE.md and worker-roster.md disagree, CLAUDE.md wins (it's higher in the repo doc hierarchy)          |
-| Budget state                                                    | **data/budget_state.json** (future) | Until implemented: operator's last stated budget direction                                                  |
-| Memory recall (decisions, agenda, routing history)              | **miru_memory.db**                  | If memory contradicts Notion, Notion wins — then update memory                                              |
-| Code truth (what the service actually does)                     | **repo main branch**                | A PR branch is a proposal; main is what's deployed                                                          |
-| Active task ownership                                           | **Linear (In Progress state)**      | If worktree_registry disagrees, Linear is the human-readable truth; worktree_registry is the technical lock |
+| State / Truth type                                              | Source of Truth                    | Tiebreaker rule                                                                                                  |
+| --------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Task status (what is being worked on)                           | **Linear**                         | If memory or chat says different, update memory to match Linear                                                  |
+| Execution trail (what was tried, commented, decided per-ticket) | **Linear**                         | Not promoted to Notion unless it passes the promotion test                                                       |
+| Durable system canon (architecture, patterns, hard-won lessons) | **Notion**                         | If Linear comment contradicts Notion, promote only after validation                                              |
+| Runtime service status                                          | **Health endpoints / Sentinel**    | Log output is supporting evidence; the health endpoint is the verdict                                            |
+| Raw logs                                                        | **Filesystem (logs/ via gateway)** | Logs are evidence, not decisions — read them, don't promote them                                                 |
+| Worker role and capability                                      | **worker-roster.md**               | If CLAUDE.md and worker-roster.md disagree, CLAUDE.md wins (it's higher in the repo doc hierarchy)               |
+| Budget state                                                    | **data/budget_state.json**         | File is active. If missing: assume `safe`. To change state, overwrite the file or tell Claude Chat via Telegram. |
+| Memory recall (decisions, agenda, routing history)              | **miru_memory.db**                 | If memory contradicts Notion, Notion wins — then update memory                                                   |
+| Code truth (what the service actually does)                     | **repo main branch**               | A PR branch is a proposal; main is what's deployed                                                               |
+| Active task ownership                                           | **Linear (In Progress state)**     | If worktree_registry disagrees, Linear is the human-readable truth; worktree_registry is the technical lock      |
 
 ---
 

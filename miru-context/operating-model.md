@@ -4,7 +4,7 @@ The full team model for Project Miru. How every role, system, and tool fits toge
 For Claude Chat's specific communication style and routing behavior, see
 claude-operating-model.md (which points here for the full team picture).
 
-Last updated: 2026-05-01
+Last updated: 2026-05-02
 
 ---
 
@@ -121,6 +121,7 @@ The operator is only notified (step 8a) when:
 - Same worker failed the same ticket twice (REPEATED_FAILURE)
 - Budget entered Watch or Limit state
 - A service is down and self-healing failed
+- A canon change is needed — any update to CLAUDE.md, CLAUDE_CHAT.md, worker rule files, or structural Notion architecture docs
 
 ---
 
