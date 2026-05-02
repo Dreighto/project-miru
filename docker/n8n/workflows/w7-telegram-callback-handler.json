@@ -4,7 +4,8 @@
     {
       "parameters": {
         "updates": [
-          "callback_query"
+          "callback_query",
+          "message"
         ],
         "additionalFields": {}
       },
@@ -1385,6 +1386,138 @@
           }
         }
       }
+    },
+    {
+      "id": "w7-type-branch",
+      "name": "w7-type-branch",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        300,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "tb1",
+              "leftValue": "={{ $json.callback_query }}",
+              "operator": {
+                "type": "object",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w7-report-if",
+      "name": "w7-report-if",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        400,
+        1100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "rif1",
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": "/report",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w7-report-fetch",
+      "name": "w7-report-fetch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        600,
+        1100
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://127.0.0.1:18765/api/ops/report",
+        "options": {}
+      }
+    },
+    {
+      "id": "w7-report-format",
+      "name": "w7-report-format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        1100
+      ],
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w7-report-format: format /api/ops/report JSON as Telegram Markdown\nconst r = $input.item.json;\nconst lines = [];\nlines.push('*Miru Ops Digest*');\nlines.push('_Generated: ' + (r.generated_at || '?') + '_');\nlines.push('');\nlines.push('*DLQ*: ' + (r.dlq_count != null ? String(r.dlq_count) : '?') + ' entries');\nlines.push('');\nif (r.last_completions && r.last_completions.length > 0) {\n  lines.push('*Last completions*');\n  r.last_completions.slice(-5).forEach(function(c) {\n    var ticket = c.ticket_id || '?';\n    var status = c.status || '?';\n    var summary = (c.summary || '').substring(0, 60);\n    lines.push('\\u2022 `' + ticket + '` [' + status + '] ' + summary);\n  });\n  lines.push('');\n}\nif (r.last_heartbeats && r.last_heartbeats.length > 0) {\n  lines.push('*Active workers*');\n  r.last_heartbeats.forEach(function(h) {\n    var wid = h.worker_id || '?';\n    var ticket = h.ticket_id || '?';\n    var step = h.step || '?';\n    lines.push('\\u2022 ' + wid + ' \\u2014 ' + ticket + ' @ ' + step);\n  });\n}\nreturn { json: { text: lines.join('\\n') } };\n"
+      }
+    },
+    {
+      "id": "w7-report-send",
+      "name": "w7-report-send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        1100
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: String($env.TELEGRAM_CHAT_ID), text: $json.text, parse_mode: \"Markdown\" }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w7-noop-ignored-msg",
+      "name": "w7-noop-ignored-msg",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        600,
+        1300
+      ],
+      "parameters": {}
     }
   ],
   "connections": {
@@ -1392,7 +1525,7 @@
       "main": [
         [
           {
-            "node": "w7002-ack-callback",
+            "node": "w7-type-branch",
             "type": "main",
             "index": 0
           }
@@ -1936,6 +2069,64 @@
         [
           {
             "node": "w7-stale-send-fresh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w7-type-branch": {
+      "main": [
+        [
+          {
+            "node": "w7002-ack-callback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w7-report-if",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w7-report-if": {
+      "main": [
+        [
+          {
+            "node": "w7-report-fetch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w7-noop-ignored-msg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w7-report-fetch": {
+      "main": [
+        [
+          {
+            "node": "w7-report-format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w7-report-format": {
+      "main": [
+        [
+          {
+            "node": "w7-report-send",
             "type": "main",
             "index": 0
           }

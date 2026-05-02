@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import argparse
 import atexit
 import copy
 import csv
-from contextlib import closing
-import argparse
-from datetime import date, datetime, timedelta, timezone
 import ctypes
 import ipaddress
 import json
@@ -18,13 +16,16 @@ import subprocess
 import sys
 import time
 import traceback
+import uuid
+from collections.abc import Callable
+from contextlib import closing, suppress
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from threading import Lock, Thread, Timer
-from typing import Any, Callable
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
-import uuid
 
 from flask import (
     Flask,
@@ -52,25 +53,37 @@ from miru_ai.core.ai_onepiece import (
     inspect_fallback_catalog_db,
     normalize_card_code,
 )
-from shared.env import (
-    build_pushover_status_message,
-    inspect_pushover_env,
-    load_project_env,
+from miru_ai.core.local_helper import (
+    draft_review_note,
+    explain_elevation,
+    helper_status,
+    set_helper_runtime_override,
+    suggest_correction_detail,
+    summarize_candidate_rationale,
 )
-from miru_ai.workers.learning_engine import (
-    load_learning_engine_status,
-    build_engine_from_args,
-    build_parser as build_learner_parser,
+from miru_ai.dev_training_review import (
+    build_training_review_queue_payload,
+    op01_throughput_stats,
+    persist_training_review_row,
+    verify_action_preflight,
 )
-from shared.pushover import send_pushover_notification
-from tools.miru_project_sync import (
-    MiruProjectDbSync,
-    connect_catalog_db,
-    ensure_catalog_sync_schema,
-    load_card_validation_audit,
-    list_validation_audit_insights,
-    run_publish_ready_insight_sync,
-    run_worktree_card_insight_sync,
+from miru_ai.dev_training_review import (
+    configure as configure_dev_training_review,
+)
+from miru_ai.evidence_collectors import (
+    collect_evidence_for_review,
+)
+from miru_ai.evidence_collectors import (
+    configure as configure_evidence_collectors,
+)
+from miru_ai.evidence_watchdog import (
+    configure as configure_evidence_watchdog,
+)
+from miru_ai.evidence_watchdog import (
+    init_evidence_schema,
+)
+from miru_ai.evidence_watchdog import (
+    watchdog_tick as evidence_watchdog_tick,
 )
 from miru_ai.governance.action_governance import (
     _log_action_history,
@@ -90,51 +103,50 @@ from miru_ai.governance.mcp_governance import (
     run_governed_research,
     sync_catalog_snapshot,
 )
-from tools.miru_source_adapters import NormalizedSourceRecord
-from tools.miru_learner_config import get_learner_mode, set_learner_mode, LEARNER_MODES
-from tools.miru_self_report import build_self_report
+from miru_ai.operator_price_context import (
+    build_operator_price_snapshot,
+    refresh_operator_price_from_tcgcsv,
+)
+from miru_ai.recurrence import (
+    build_candidate_queue_payload,
+    init_recurrence_schema,
+    seed_recurrence_from_history,
+)
+from miru_ai.recurrence import (
+    configure as configure_recurrence,
+)
 from miru_ai.workers.image_fetcher import fetch_all_missing
+from miru_ai.workers.learning_engine import (
+    build_engine_from_args,
+    load_learning_engine_status,
+)
+from miru_ai.workers.learning_engine import (
+    build_parser as build_learner_parser,
+)
+from shared.env import (
+    build_pushover_status_message,
+    inspect_pushover_env,
+    load_project_env,
+)
+from shared.pushover import send_pushover_notification
+from tools.miru_learner_config import LEARNER_MODES, get_learner_mode, set_learner_mode
 from tools.miru_operator_handoff_resolution import (
     clear_operator_handoff_resolution,
     compute_operator_handoff_need_fingerprint,
     is_operator_handoff_acknowledged_for_fingerprint,
     save_operator_handoff_resolution,
 )
-from miru_ai.dev_training_review import (
-    build_training_review_queue_payload,
-    configure as configure_dev_training_review,
-    op01_throughput_stats,
-    persist_training_review_row,
-    verify_action_preflight,
+from tools.miru_project_sync import (
+    MiruProjectDbSync,
+    connect_catalog_db,
+    ensure_catalog_sync_schema,
+    list_validation_audit_insights,
+    load_card_validation_audit,
+    run_publish_ready_insight_sync,
+    run_worktree_card_insight_sync,
 )
-from miru_ai.operator_price_context import (
-    build_operator_price_snapshot,
-    refresh_operator_price_from_tcgcsv,
-)
-from miru_ai.evidence_watchdog import (
-    configure as configure_evidence_watchdog,
-    init_evidence_schema,
-    watchdog_tick as evidence_watchdog_tick,
-)
-from miru_ai.recurrence import (
-    build_candidate_queue_payload,
-    configure as configure_recurrence,
-    init_recurrence_schema,
-    seed_recurrence_from_history,
-)
-from miru_ai.core.local_helper import (
-    draft_review_note,
-    explain_elevation,
-    helper_status,
-    set_helper_runtime_override,
-    suggest_correction_detail,
-    summarize_candidate_rationale,
-)
-from miru_ai.evidence_collectors import (
-    collect_evidence_for_review,
-    configure as configure_evidence_collectors,
-)
-
+from tools.miru_self_report import build_self_report
+from tools.miru_source_adapters import NormalizedSourceRecord
 
 TOOL_ROOT = Path(__file__).resolve().parent
 TEMPLATE_DIR = TOOL_ROOT / "templates"
@@ -149,9 +161,7 @@ LEARNING_QUEUE_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_queue.db"
 LEARNING_STATUS_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_log.db"
 LEARNING_DOSSIER_DB_PATH = PROJECT_ROOT / "data" / "miru_learning_dossiers.db"
 PRICES_PATH = PROJECT_ROOT / "data" / "prices.json"
-CHAPTER19_11_INSTALL_PLAN_CSV = (
-    PROJECT_ROOT / "data" / "overlays" / "chapter19_11_install_plan.csv"
-)
+CHAPTER19_11_INSTALL_PLAN_CSV = PROJECT_ROOT / "data" / "overlays" / "chapter19_11_install_plan.csv"
 CHAPTER19_11C_INSTALL_PANEL_MANIFEST = (
     PROJECT_ROOT / "data" / "overlays" / "chapter19_11c_install_panel_image_manifest.json"
 )
@@ -159,20 +169,14 @@ CHAPTER19_12_PRICE_HYDRATION_CSV = (
     PROJECT_ROOT / "data" / "overlays" / "chapter19_12_price_hydration.csv"
 )
 LIMITS_STATUS_PATH = PROJECT_ROOT / "data" / "miru_limits_status.json"
-PUSHOVER_LEARNING_SNAPSHOT_PATH = (
-    PROJECT_ROOT / "data" / "miru_pushover_learning_snapshot.json"
-)
+PUSHOVER_LEARNING_SNAPSHOT_PATH = PROJECT_ROOT / "data" / "miru_pushover_learning_snapshot.json"
 WORKTREE_LEARNER_PID_DIR = PROJECT_ROOT / "data" / "startup-logs"
 WORKTREE_LEARNER_PID_FILE = WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree.pid"
 MIRU_AI_DEV_PID_FILE = WORKTREE_LEARNER_PID_DIR / "miru_ai_worktree.pid"
 WORKER_LAST_RUN_PATH = PROJECT_ROOT / "data" / "miru_worker_last_run.json"
 GOVERNED_AUTOPILOT_DATA_DIR = PROJECT_ROOT / "data"
-WORKTREE_LEARNER_STDOUT_LOG = (
-    WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree_stdout.log"
-)
-WORKTREE_LEARNER_STDERR_LOG = (
-    WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree_stderr.log"
-)
+WORKTREE_LEARNER_STDOUT_LOG = WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree_stdout.log"
+WORKTREE_LEARNER_STDERR_LOG = WORKTREE_LEARNER_PID_DIR / "miru_learner_worktree_stderr.log"
 CSS_PATH = STATIC_DIR / "miru_ai.css"
 JS_PATH = STATIC_DIR / "miru_ai.js"
 TEMPLATE_PATH = TEMPLATE_DIR / "miru_ai.html"
@@ -574,9 +578,7 @@ INTELLIGENCE_STAGE_BLUEPRINT = (
             "Connect metagame shifts to market pressure",
             "Surface cards whose value is moving for gameplay reasons",
         ),
-        "still_learning": (
-            "Full verified multi-source card intelligence across the product",
-        ),
+        "still_learning": ("Full verified multi-source card intelligence across the product",),
         "next_stage_detail": "Miru will begin answering from broad, verified dossier-style knowledge gathered from trusted sources.",
     },
     {
@@ -591,9 +593,7 @@ INTELLIGENCE_STAGE_BLUEPRINT = (
             "Surface clearer evidence and confidence boundaries",
             "Support more reliable product experiences across card, deck, meta, and market workflows",
         ),
-        "still_learning": (
-            "Ongoing coverage expansion and answer quality improvements",
-        ),
+        "still_learning": ("Ongoing coverage expansion and answer quality improvements",),
         "next_stage_detail": "Miru will keep improving coverage, freshness, and answer quality across the full card intelligence stack.",
     },
 )
@@ -853,11 +853,7 @@ def get_ttl_cached_value(
     now = time.time()
     with _TTL_CACHE_LOCK:
         entry = _TTL_CACHE.get(key)
-        if (
-            entry
-            and entry.get("expires_at", 0.0) > now
-            and entry.get("signature") == signature
-        ):
+        if entry and entry.get("expires_at", 0.0) > now and entry.get("signature") == signature:
             return copy.deepcopy(entry["value"])
     value = builder()
     with _TTL_CACHE_LOCK:
@@ -991,10 +987,7 @@ def inspect_dossier_db(path: Path | None = None) -> dict[str, Any]:
             status["openable"] = True
 
             if "cards" in tables:
-                columns = {
-                    row[1]
-                    for row in conn.execute("PRAGMA table_info(cards)").fetchall()
-                }
+                columns = {row[1] for row in conn.execute("PRAGMA table_info(cards)").fetchall()}
                 status["dossiers_created"] = int(
                     conn.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
                 )
@@ -1046,10 +1039,7 @@ def inspect_dossier_db(path: Path | None = None) -> dict[str, Any]:
                         ).fetchone()[0]
                     )
             elif "dossiers" in tables:
-                columns = {
-                    row[1]
-                    for row in conn.execute("PRAGMA table_info(dossiers)").fetchall()
-                }
+                columns = {row[1] for row in conn.execute("PRAGMA table_info(dossiers)").fetchall()}
                 status["dossiers_created"] = int(
                     conn.execute("SELECT COUNT(*) FROM dossiers").fetchone()[0]
                 )
@@ -1071,14 +1061,10 @@ def inspect_dossier_db(path: Path | None = None) -> dict[str, Any]:
                 return status
 
             status["usable"] = (
-                status["dossiers_created"] > 0
-                or "cards" in tables
-                or "dossiers" in tables
+                status["dossiers_created"] > 0 or "cards" in tables or "dossiers" in tables
             )
             if not status["usable"] and not status["error"]:
-                status["error"] = (
-                    "Miru dossier database opened, but contains no dossier rows yet."
-                )
+                status["error"] = "Miru dossier database opened, but contains no dossier rows yet."
     except sqlite3.Error as exc:
         status["error"] = f"{exc.__class__.__name__}: {exc}"
 
@@ -1219,9 +1205,7 @@ def _build_training_status_uncached() -> dict[str, Any]:
         else int(dossier_status["dossiers_created"])
     )
     verified_dossiers = (
-        min(int(dossier_status["verified_dossiers"]), dossiers_created)
-        if dossiers_created
-        else 0
+        min(int(dossier_status["verified_dossiers"]), dossiers_created) if dossiers_created else 0
     )
     remaining_gaps = max(total_cards - verified_dossiers, 0)
 
@@ -1229,9 +1213,7 @@ def _build_training_status_uncached() -> dict[str, Any]:
     dossier_coverage_percent = safe_percent(dossiers_created, total_cards)
     verified_coverage_percent = safe_percent(verified_dossiers, total_cards)
     progress_percent = verified_coverage_percent
-    training_stage = determine_training_stage(
-        total_cards, dossiers_created, verified_dossiers
-    )
+    training_stage = determine_training_stage(total_cards, dossiers_created, verified_dossiers)
 
     ring_metrics = [
         {
@@ -1354,9 +1336,7 @@ def _build_training_status_uncached() -> dict[str, Any]:
         "remaining_summary": remaining_summary,
         "stats": stats_clear,
     }
-    training_status["intelligence_progress"] = build_intelligence_progress(
-        training_status
-    )
+    training_status["intelligence_progress"] = build_intelligence_progress(training_status)
     training_status["voyage"] = ensure_voyage_state(training_status)
     return training_status
 
@@ -1378,9 +1358,7 @@ def safe_voyage_asset_url(
     return url_for("static", filename="icons/miru-fruit.png")
 
 
-def voyage_shared_asset_url(
-    key: str, fallback_relative_path: str = "ui/ui_log_pose.png"
-) -> str:
+def voyage_shared_asset_url(key: str, fallback_relative_path: str = "ui/ui_log_pose.png") -> str:
     return safe_voyage_asset_url(VOYAGE_SHARED_ASSETS.get(key), fallback_relative_path)
 
 
@@ -1414,9 +1392,7 @@ def build_voyage_location(island: dict[str, str], status: str) -> dict[str, str]
         "status": status,
         "map_x": int(island.get("map_x", 0) or 0),
         "map_y": int(island.get("map_y", 0) or 0),
-        "sprite_url": safe_voyage_asset_url(
-            island.get("sprite"), "islands/island_east_blue.png"
-        ),
+        "sprite_url": safe_voyage_asset_url(island.get("sprite"), "islands/island_east_blue.png"),
     }
 
 
@@ -1425,9 +1401,7 @@ def build_voyage_boss(boss: dict[str, str], status: str) -> dict[str, str]:
         "name": boss.get("name", "Planned"),
         "island_key": boss.get("island_key", ""),
         "status": status,
-        "sprite_url": safe_voyage_asset_url(
-            boss.get("sprite"), "characters/barto_idle.png"
-        ),
+        "sprite_url": safe_voyage_asset_url(boss.get("sprite"), "characters/barto_idle.png"),
     }
 
 
@@ -1511,17 +1485,11 @@ def build_voyage_state(
         ),
         0,
     )
-    next_island_index = (
-        min(reverse_mountain_index + 1, island_total - 1) if island_total else 0
-    )
+    next_island_index = min(reverse_mountain_index + 1, island_total - 1) if island_total else 0
 
-    current_island = build_voyage_location(
-        VOYAGE_ISLANDS[reverse_mountain_index], "current"
-    )
+    current_island = build_voyage_location(VOYAGE_ISLANDS[reverse_mountain_index], "current")
     next_island = (
-        build_voyage_location(VOYAGE_ISLANDS[next_island_index], "next")
-        if island_total
-        else None
+        build_voyage_location(VOYAGE_ISLANDS[next_island_index], "next") if island_total else None
     )
     route_nodes = []
     for index, island in enumerate(VOYAGE_ISLANDS):
@@ -1566,7 +1534,9 @@ def build_voyage_state(
 
     if learning_phase["title"] == "Verifying Knowledge":
         can_do_now = "Check card facts against real sources"
-        can_do_now_detail = "Miru can compare queued card facts with source material and lock in trusted details."
+        can_do_now_detail = (
+            "Miru can compare queued card facts with source material and lock in trusted details."
+        )
     elif learning_phase["title"] == "Writing Dossiers":
         can_do_now = "Write structured card notes"
         can_do_now_detail = (
@@ -1574,7 +1544,9 @@ def build_voyage_state(
         )
     elif learning_phase["title"] == "Scanning Sources":
         can_do_now = "Collect source material for verification"
-        can_do_now_detail = "Miru can gather new source pages and queue them for the next verification pass."
+        can_do_now_detail = (
+            "Miru can gather new source pages and queue them for the next verification pass."
+        )
     elif learning_phase["title"] == "Processing Images":
         can_do_now = "Track and verify card images"
         can_do_now_detail = (
@@ -1582,7 +1554,9 @@ def build_voyage_state(
         )
     else:
         can_do_now = "Build dependable card knowledge"
-        can_do_now_detail = "Miru can work through source-backed card tasks and keep structured learning moving."
+        can_do_now_detail = (
+            "Miru can work through source-backed card tasks and keep structured learning moving."
+        )
 
     next_title = "Steadier trusted coverage"
     if queue_length > 0:
@@ -1590,13 +1564,9 @@ def build_voyage_state(
     elif running_count > 0:
         next_detail = "The next step is finishing the work already in flight and turning it into trusted coverage."
     else:
-        next_detail = (
-            "The next step is widening trusted coverage and keeping the queue healthy."
-        )
+        next_detail = "The next step is widening trusted coverage and keeping the queue healthy."
 
-    route_polyline = " ".join(
-        f"{node['map_x']},{node['map_y']}" for node in route_nodes
-    )
+    route_polyline = " ".join(f"{node['map_x']},{node['map_y']}" for node in route_nodes)
     ship_position = {
         "x": int(current_island.get("map_x", 0) or 0),
         "y": int(current_island.get("map_y", 0) or 0),
@@ -1643,11 +1613,7 @@ def ensure_voyage_state(
 ) -> dict[str, Any]:
     training_status = dict(training_status or {})
     base_voyage = build_voyage_state(training_status, learning_status=learning_status)
-    candidate = (
-        voyage_state
-        if isinstance(voyage_state, dict)
-        else training_status.get("voyage")
-    )
+    candidate = voyage_state if isinstance(voyage_state, dict) else training_status.get("voyage")
     if not isinstance(candidate, dict):
         return base_voyage
 
@@ -1742,8 +1708,7 @@ def compute_learner_state_and_freshness(
     if last_error or current_state == "error":
         heartbeat_freshness = (
             "stale"
-            if heartbeat_age is not None
-            and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
+            if heartbeat_age is not None and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
             else ("none" if heartbeat_age is None else "stale")
         )
         return {"learner_state": "Error", "heartbeat_freshness": heartbeat_freshness}
@@ -1762,8 +1727,7 @@ def compute_learner_state_and_freshness(
             "learner_state": "Starting",
             "heartbeat_freshness": (
                 "fresh"
-                if heartbeat_age is not None
-                and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
+                if heartbeat_age is not None and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
                 else "stale"
             ),
         }
@@ -1772,8 +1736,7 @@ def compute_learner_state_and_freshness(
             "learner_state": "Running",
             "heartbeat_freshness": (
                 "fresh"
-                if heartbeat_age is not None
-                and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
+                if heartbeat_age is not None and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
                 else "stale"
             ),
         }
@@ -1782,8 +1745,7 @@ def compute_learner_state_and_freshness(
             "learner_state": "Idle",
             "heartbeat_freshness": (
                 "fresh"
-                if heartbeat_age is not None
-                and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
+                if heartbeat_age is not None and heartbeat_age <= LEARNER_HEARTBEAT_STALE_SECONDS
                 else "stale"
             ),
         }
@@ -1907,27 +1869,15 @@ def build_learning_notification_snapshot(
         "source_error_count": int(learning_status.get("source_error_count") or 0),
         "image_success_count": int(learning_status.get("image_success_count") or 0),
         "image_error_count": int(learning_status.get("image_error_count") or 0),
-        "current_state": str(learning_status.get("current_state") or "")
-        .strip()
-        .lower(),
-        "current_task_type": str(learning_status.get("current_task_type") or "")
-        .strip()
-        .lower(),
-        "current_task_label": str(
-            learning_status.get("current_task_label") or ""
-        ).strip(),
-        "current_card_code": str(
-            learning_status.get("current_card_code") or ""
-        ).strip(),
-        "current_source_id": str(
-            learning_status.get("current_source_id") or ""
-        ).strip(),
+        "current_state": str(learning_status.get("current_state") or "").strip().lower(),
+        "current_task_type": str(learning_status.get("current_task_type") or "").strip().lower(),
+        "current_task_label": str(learning_status.get("current_task_label") or "").strip(),
+        "current_card_code": str(learning_status.get("current_card_code") or "").strip(),
+        "current_source_id": str(learning_status.get("current_source_id") or "").strip(),
         "last_completed_task": str(learning_status.get("last_completed_task") or "")
         .strip()
         .lower(),
-        "last_completed_card": str(
-            learning_status.get("last_completed_card") or ""
-        ).strip(),
+        "last_completed_card": str(learning_status.get("last_completed_card") or "").strip(),
         "last_error": str(learning_status.get("last_error") or "").strip(),
         "last_heartbeat": str(learning_status.get("last_heartbeat") or "").strip(),
     }
@@ -2005,36 +1955,22 @@ def build_learning_notification_payload(
 
     previous_verified = int(baseline.get("verified_dossiers") or 0) if baseline else 0
     previous_coverage = (
-        round(float(baseline.get("verified_coverage_percent") or 0.0), 1)
-        if baseline
-        else 0.0
+        round(float(baseline.get("verified_coverage_percent") or 0.0), 1) if baseline else 0.0
     )
-    verified_delta = (
-        (snapshot["verified_dossiers"] - previous_verified) if baseline else 0
-    )
+    verified_delta = (snapshot["verified_dossiers"] - previous_verified) if baseline else 0
     coverage_delta = (
-        round(snapshot["verified_coverage_percent"] - previous_coverage, 1)
-        if baseline
-        else 0.0
+        round(snapshot["verified_coverage_percent"] - previous_coverage, 1) if baseline else 0.0
     )
     processed_delta = (
-        (snapshot["processed_count"] - int(baseline.get("processed_count") or 0))
-        if baseline
-        else 0
+        (snapshot["processed_count"] - int(baseline.get("processed_count") or 0)) if baseline else 0
     )
     source_success_delta = (
-        (
-            snapshot["source_success_count"]
-            - int(baseline.get("source_success_count") or 0)
-        )
+        (snapshot["source_success_count"] - int(baseline.get("source_success_count") or 0))
         if baseline
         else 0
     )
     image_success_delta = (
-        (
-            snapshot["image_success_count"]
-            - int(baseline.get("image_success_count") or 0)
-        )
+        (snapshot["image_success_count"] - int(baseline.get("image_success_count") or 0))
         if baseline
         else 0
     )
@@ -2058,9 +1994,7 @@ def build_learning_notification_payload(
     if api_permission_required:
         title = "Miru: API permission required"
         first_sentence = "A source requires API or permission; Miru has not used it automatically. Check the Dev page."
-        coverage_sentence = (
-            f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
-        )
+        coverage_sentence = f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
     elif meaningful_gain:
         title = "Miru learning improved"
         if verified_delta > 0:
@@ -2074,36 +2008,26 @@ def build_learning_notification_payload(
     elif not baseline:
         title = "Miru learning snapshot"
         first_sentence = f"Miru currently has {format_compact_count(snapshot['verified_dossiers'])} verified card dossiers."
-        coverage_sentence = (
-            f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
-        )
+        coverage_sentence = f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
     elif snapshot.get("last_error") or engine_state == "stuck" or error_delta > 0:
         title = "Miru may be stuck"
-        first_sentence = (
-            "Miru retried work but did not add new verified learning this cycle."
-        )
+        first_sentence = "Miru retried work but did not add new verified learning this cycle."
         coverage_sentence = (
             f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
         )
     elif engine_state == "idle" and snapshot["queue_length"] <= 0:
         title = "Miru is idle"
         first_sentence = "Miru is online but idle. No queued learning work right now."
-        coverage_sentence = (
-            f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
-        )
+        coverage_sentence = f"Verified coverage is {snapshot['verified_coverage_percent']:.1f}%."
     elif engine_state == "searching":
         title = "Miru is searching"
-        first_sentence = (
-            "Miru scanned sources but has not added new verified learning yet."
-        )
+        first_sentence = "Miru scanned sources but has not added new verified learning yet."
         coverage_sentence = (
             f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
         )
     elif engine_state == "checking images":
         title = "Miru is checking images"
-        first_sentence = (
-            "Miru processed image work but has not added new verified learning yet."
-        )
+        first_sentence = "Miru processed image work but has not added new verified learning yet."
         coverage_sentence = (
             f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
         )
@@ -2120,25 +2044,19 @@ def build_learning_notification_payload(
         )
     else:
         title = "Miru learning steady"
-        first_sentence = (
-            "Miru has not added meaningful new verified learning this cycle."
-        )
+        first_sentence = "Miru has not added meaningful new verified learning this cycle."
         coverage_sentence = (
             f"Coverage is unchanged at {snapshot['verified_coverage_percent']:.1f}%."
         )
 
     engine_sentence = f"Engine is {engine_state}" + (
-        f" on {task_summary}."
-        if task_summary and engine_state not in {"idle", "stuck"}
-        else "."
+        f" on {task_summary}." if task_summary and engine_state not in {"idle", "stuck"} else "."
     )
     if engine_state == "stuck" and snapshot.get("last_error"):
         engine_sentence = f"Engine is stuck. {str(snapshot['last_error'])[:120]}."
 
     message = " ".join(
-        part
-        for part in (first_sentence, coverage_sentence, queue_summary, engine_sentence)
-        if part
+        part for part in (first_sentence, coverage_sentence, queue_summary, engine_sentence) if part
     )
     return {
         "title": title,
@@ -2286,34 +2204,21 @@ def note_miru_run_started(selected_mode: str, request_text: str) -> None:
         MIRU_ACTIVITY_STATE["active_runs"] += 1
         MIRU_ACTIVITY_STATE["last_started_at"] = current_timestamp()
         MIRU_ACTIVITY_STATE["last_mode"] = selected_mode
-        MIRU_ACTIVITY_STATE["last_request_text"] = summarize_activity_request(
-            request_text
-        )
+        MIRU_ACTIVITY_STATE["last_request_text"] = summarize_activity_request(request_text)
         MIRU_ACTIVITY_STATE["last_error"] = ""
 
 
-def note_miru_run_finished(
-    selected_mode: str, request_text: str, ok: bool, message: str
-) -> None:
+def note_miru_run_finished(selected_mode: str, request_text: str, ok: bool, message: str) -> None:
     with MIRU_ACTIVITY_LOCK:
-        MIRU_ACTIVITY_STATE["active_runs"] = max(
-            int(MIRU_ACTIVITY_STATE["active_runs"]) - 1, 0
-        )
+        MIRU_ACTIVITY_STATE["active_runs"] = max(int(MIRU_ACTIVITY_STATE["active_runs"]) - 1, 0)
         MIRU_ACTIVITY_STATE["last_finished_at"] = current_timestamp()
         MIRU_ACTIVITY_STATE["last_mode"] = selected_mode
-        MIRU_ACTIVITY_STATE["last_request_text"] = summarize_activity_request(
-            request_text
-        )
-        MIRU_ACTIVITY_STATE["last_error"] = (
-            "" if ok else summarize_activity_request(message)
-        )
+        MIRU_ACTIVITY_STATE["last_request_text"] = summarize_activity_request(request_text)
+        MIRU_ACTIVITY_STATE["last_error"] = "" if ok else summarize_activity_request(message)
 
 
 def build_activity_states(current_key: str) -> list[dict[str, Any]]:
-    return [
-        {**item, "active": item["key"] == current_key}
-        for item in DEV_ACTIVITY_BLUEPRINT
-    ]
+    return [{**item, "active": item["key"] == current_key} for item in DEV_ACTIVITY_BLUEPRINT]
 
 
 def build_miru_activity(training_status: dict[str, Any]) -> dict[str, Any]:
@@ -2339,10 +2244,7 @@ def build_miru_activity(training_status: dict[str, Any]) -> dict[str, Any]:
         ):
             current_key = "storm_warning"
             detail = str(snapshot["last_error"])
-        elif (
-            training_status["dossiers_created"] > 0
-            and training_status["remaining_gaps"] > 0
-        ):
+        elif training_status["dossiers_created"] > 0 and training_status["remaining_gaps"] > 0:
             current_key = "setting_sail"
             detail = training_status["remaining_summary"]
 
@@ -2424,7 +2326,7 @@ def sample_memory_usage() -> dict[str, float | int] | None:
     if os.name == "nt":
 
         class MEMORYSTATUSEX(ctypes.Structure):
-            _fields_ = [
+            _fields_ = [  # noqa: RUF012
                 ("dwLength", ctypes.c_ulong),
                 ("dwMemoryLoad", ctypes.c_ulong),
                 ("ullTotalPhys", ctypes.c_ulonglong),
@@ -2496,16 +2398,12 @@ def build_resource_metrics() -> list[dict[str, Any]]:
     cpu_percent = sample_cpu_usage()
     memory = sample_memory_usage()
     gpu = sample_gpu_usage()
-    disk_total, disk_used, disk_free = shutil.disk_usage(
-        str(PROJECT_ROOT.anchor or PROJECT_ROOT)
-    )
+    disk_total, disk_used, disk_free = shutil.disk_usage(str(PROJECT_ROOT.anchor or PROJECT_ROOT))
     return [
         {
             "key": "cpu",
             "label": "CPU",
-            "value": (
-                f"{cpu_percent:.1f}%" if cpu_percent is not None else "Unavailable"
-            ),
+            "value": (f"{cpu_percent:.1f}%" if cpu_percent is not None else "Unavailable"),
             "detail": (
                 "Current processor use."
                 if cpu_percent is not None
@@ -2632,9 +2530,7 @@ def build_companion_url(port: int, path: str = "/") -> str:
     return f"{request.scheme}://{host}:{port}{route_path}"
 
 
-def inspect_local_http_route(
-    url: str, *, timeout_seconds: float = 0.35
-) -> dict[str, Any]:
+def inspect_local_http_route(url: str, *, timeout_seconds: float = 0.35) -> dict[str, Any]:
     started = time.perf_counter()
     try:
         req = Request(url, headers={"User-Agent": "Miru-Runtime-Probe/1"})
@@ -2677,12 +2573,11 @@ def build_runtime_status_payload() -> dict[str, Any]:
     project_certainty = "confirmed"
     project_detail = str(fast_probe.get("detail") or "")
     project_status_value = "ok"
-    fast_ok = (
-        bool(fast_probe.get("reachable"))
-        and int(fast_probe.get("status_code") or 0) == 200
-    )
+    fast_ok = bool(fast_probe.get("reachable")) and int(fast_probe.get("status_code") or 0) == 200
     if fast_ok:
-        project_detail = f"Fast runtime probe returned HTTP 200 in {fast_probe.get('elapsed_ms', 0)}ms."
+        project_detail = (
+            f"Fast runtime probe returned HTTP 200 in {fast_probe.get('elapsed_ms', 0)}ms."
+        )
     else:
         confirm_probe = inspect_local_http_route(
             f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/", timeout_seconds=1.5
@@ -2705,9 +2600,7 @@ def build_runtime_status_payload() -> dict[str, Any]:
             project_status_value = "unhealthy"
             project_detail = str((confirm_probe or fast_probe).get("detail") or "")
     main_port = int(PROJECT_MIRU_PORT)
-    main_probe = inspect_local_http_route(
-        f"http://127.0.0.1:{main_port}/", timeout_seconds=0.45
-    )
+    main_probe = inspect_local_http_route(f"http://127.0.0.1:{main_port}/", timeout_seconds=0.45)
     main_code = int(main_probe.get("status_code") or 0)
     main_ok = bool(main_probe.get("reachable")) and main_code in (
         200,
@@ -2731,7 +2624,7 @@ def build_runtime_status_payload() -> dict[str, Any]:
         "project_fast_probe": fast_probe,
         "project_confirm_probe": confirm_probe or {},
         "main_site_probe": main_probe,
-        "checked_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "checked_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
     return payload
 
@@ -2795,9 +2688,7 @@ def build_issue_detection(
     for ev in learning_status.get("api_permission_events") or []:
         msg = ev.get("message") or ev.get("event_type") or "API/permission event"
         miru_issues.append(f"Learner: {msg}")
-    for warning in (learning_status.get("snapshot_inputs") or {}).get(
-        "required_warnings"
-    ) or []:
+    for warning in (learning_status.get("snapshot_inputs") or {}).get("required_warnings") or []:
         w = str(warning or "").strip()
         if w:
             miru_issues.append(w)
@@ -2806,11 +2697,7 @@ def build_issue_detection(
         recent_error = str(MIRU_ACTIVITY_STATE.get("last_error") or "")
         recent_finished = str(MIRU_ACTIVITY_STATE.get("last_finished_at") or "")
     error_age = seconds_since(recent_finished)
-    if (
-        recent_error
-        and error_age is not None
-        and error_age <= ACTIVITY_RECENT_WINDOW_SECONDS
-    ):
+    if recent_error and error_age is not None and error_age <= ACTIVITY_RECENT_WINDOW_SECONDS:
         miru_issues.append("Latest Ask run needs attention")
 
     project_issues = []
@@ -2949,25 +2836,19 @@ def build_learning_engine_metrics(
         {
             "key": "discovery_pending_review",
             "label": "Source review queue",
-            "value": format_count(
-                learning_status.get("discovery_pending_review_count", 0)
-            ),
+            "value": format_count(learning_status.get("discovery_pending_review_count", 0)),
             "detail": "Discovered source candidates still waiting for operator review.",
         },
         {
             "key": "approved_sources_loaded",
             "label": "Approved sources (config)",
-            "value": format_count(
-                learning_status.get("approved_sources_loaded_count", 0)
-            ),
+            "value": format_count(learning_status.get("approved_sources_loaded_count", 0)),
             "detail": "Sources loaded from worktree config/miru_approved_sources.json (allowlist).",
         },
         {
             "key": "approved_sources_config_errors",
             "label": "Config load errors",
-            "value": format_count(
-                len(learning_status.get("approved_sources_config_errors") or [])
-            ),
+            "value": format_count(len(learning_status.get("approved_sources_config_errors") or [])),
             "detail": "Invalid or skipped entries in approved-sources config (see status payload for messages).",
         },
         {
@@ -2985,9 +2866,7 @@ def build_learning_engine_metrics(
         {
             "key": "dossier_source_backed_count",
             "label": "Dossiers: source-backed",
-            "value": format_count(
-                learning_status.get("dossier_source_backed_count", 0)
-            ),
+            "value": format_count(learning_status.get("dossier_source_backed_count", 0)),
             "detail": "Learning dossiers with verification_state = source-backed (used for insight sync).",
         },
         {
@@ -3163,8 +3042,7 @@ def build_monitor_activity_item_from_log(row: sqlite3.Row) -> dict[str, Any] | N
         return {
             "kind": event_type,
             "title": "Blocked: source not registered",
-            "detail": message
-            or "Miru ignored a source that is not in the allowed registry.",
+            "detail": message or "Miru ignored a source that is not in the allowed registry.",
             "timestamp": created_at,
             "card_code": card_code,
             "tone": "warn",
@@ -3187,8 +3065,7 @@ def build_monitor_activity_item_from_log(row: sqlite3.Row) -> dict[str, Any] | N
         return {
             "kind": event_type,
             "title": "Publish blocked by mode",
-            "detail": message
-            or "Miru did not publish; mode is dry run or review required.",
+            "detail": message or "Miru did not publish; mode is dry run or review required.",
             "timestamp": created_at,
             "card_code": card_code,
             "tone": "neutral",
@@ -3313,8 +3190,7 @@ def load_publication_review_queue(
     for row in rows:
         code = str(row["card_code"] or "").strip().upper()
         preview_src = (
-            str(row["summary_text"] or "").strip()
-            or str(row["review_reason"] or "").strip()
+            str(row["summary_text"] or "").strip() or str(row["review_reason"] or "").strip()
         )
         preview = preview_src.replace("\n", " ").strip()
         if len(preview) > 220:
@@ -3340,9 +3216,7 @@ def load_publication_review_queue(
                 "guardrail_label": str(row["guardrail_label"] or "").strip(),
                 "confidence_score": conf,
                 "risk_level": str(row["risk_level"] or "").strip(),
-                "recommended_next_step": str(
-                    row["recommended_next_step"] or ""
-                ).strip(),
+                "recommended_next_step": str(row["recommended_next_step"] or "").strip(),
                 "summary_text": str(row["summary_text"] or "").strip(),
                 "updated_at": str(row["updated_at"] or "").strip(),
                 "created_at": str(row["created_at"] or "").strip(),
@@ -3453,7 +3327,7 @@ def update_publication_review_status(
     path = Path(project_db_path)
     if not path.is_file():
         return False
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     review_clause = (
         "AND lower(trim(coalesce(publish_status, ''))) = 'publish_requires_review'"
         if require_review_state
@@ -3518,7 +3392,7 @@ def approve_all_publication_review(
     path = Path(project_db_path)
     if not path.is_file():
         return 0
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
         with closing(sqlite3.connect(path)) as conn:
             cur = conn.execute(
@@ -3659,14 +3533,14 @@ def build_runtime_truth_source_descriptor(
             detail = f"Using the live main-runtime snapshot refreshed {age_label}."
     elif mode == "main_runtime_cached":
         label = "Cached main-runtime snapshot"
-        detail = (
-            "Using the last good main-runtime snapshot while live access catches up."
-        )
+        detail = "Using the last good main-runtime snapshot while live access catches up."
         if age_label:
             detail = f"Using the last good main-runtime snapshot from {age_label} while live access catches up."
     else:
         label = "Local fallback"
-        detail = "Using local worktree status data because the main runtime is not currently reachable."
+        detail = (
+            "Using local worktree status data because the main runtime is not currently reachable."
+        )
     return {
         "mode": mode,
         "label": label,
@@ -3698,9 +3572,7 @@ def fetch_truth_source_dev_status_result(
 
     cached_entry = load_cached_runtime_truth_snapshot(target)
     if cached_entry and not force_refresh:
-        cached_age = max(
-            time.time() - float(cached_entry.get("fetched_at") or 0.0), 0.0
-        )
+        cached_age = max(time.time() - float(cached_entry.get("fetched_at") or 0.0), 0.0)
         fresh_cache_window = 8.0 if summary_only and not include_heavy else 4.0
         if cached_age <= fresh_cache_window:
             source = build_runtime_truth_source_descriptor(
@@ -3725,9 +3597,7 @@ def fetch_truth_source_dev_status_result(
         timeout_plan = (2.0, 4.5)
     live_payload = None
     for timeout_seconds in timeout_plan:
-        live_payload = fetch_remote_runtime_dev_status(
-            target, timeout_seconds=timeout_seconds
-        )
+        live_payload = fetch_remote_runtime_dev_status(target, timeout_seconds=timeout_seconds)
         if live_payload:
             break
     if live_payload:
@@ -3792,9 +3662,7 @@ def _ensure_dev_bootstrap_display_payload(payload: dict[str, Any]) -> dict[str, 
 def build_dev_bootstrap_status() -> dict[str, Any]:
     remote_status_url = resolve_runtime_monitor_status_url()
     if remote_status_url:
-        target = (
-            f"{remote_status_url}{'&' if '?' in remote_status_url else '?'}view=summary"
-        )
+        target = f"{remote_status_url}{'&' if '?' in remote_status_url else '?'}view=summary"
         cached_entry = load_cached_runtime_truth_snapshot(target)
         if cached_entry:
             payload = dict(cached_entry.get("payload") or {})
@@ -3893,10 +3761,8 @@ def _clear_miru_ai_dev_pid_record_if_owned(pid: int) -> None:
         record_pid = pid
     if record_pid and record_pid != pid:
         return
-    try:
+    with suppress(OSError):
         MIRU_AI_DEV_PID_FILE.unlink()
-    except OSError:
-        pass
 
 
 def _register_miru_ai_dev_pid_lifecycle(port: int) -> None:
@@ -3916,7 +3782,7 @@ def _read_worktree_learner_pid() -> dict[str, Any] | None:
     try:
         raw = path.read_text(encoding="utf-8").strip()
         data = json.loads(raw)
-        if not isinstance(data, dict) or not isinstance(data.get("pid"), (int, float)):
+        if not isinstance(data, dict) or not isinstance(data.get("pid"), int | float):
             return None
         return {"pid": int(data["pid"]), "repo_root": str(data.get("repo_root") or "")}
     except (OSError, ValueError, TypeError):
@@ -3935,9 +3801,7 @@ def _is_worktree_learner_process_alive(pid: int) -> bool:
                 return False
             return proc.is_running() and proc.status() != psutil.STATUS_ZOMBIE
         except Exception as e:
-            if psutil is not None and isinstance(
-                e, (psutil.NoSuchProcess, psutil.AccessDenied)
-            ):
+            if psutil is not None and isinstance(e, psutil.NoSuchProcess | psutil.AccessDenied):
                 return False
             raise
     try:
@@ -3997,14 +3861,12 @@ def _list_worktree_learner_process_ids() -> list[int]:
         try:
             cmdline = proc.info.get("cmdline")
             # Pass as-is: list on Unix, sometimes list or str on Windows; avoid list(str) -> chars
-            if not _looks_like_worktree_learner_command(
-                cmdline if cmdline is not None else []
-            ):
+            if not _looks_like_worktree_learner_command(cmdline if cmdline is not None else []):
                 continue
             if proc.is_running() and proc.status() != psutil.STATUS_ZOMBIE:
                 process_ids.add(int(proc.pid))
         except Exception as e:
-            if isinstance(e, (psutil.NoSuchProcess, psutil.AccessDenied)):
+            if isinstance(e, psutil.NoSuchProcess | psutil.AccessDenied):
                 continue
             raise
     return sorted(process_ids)
@@ -4036,9 +3898,7 @@ def _start_worktree_learner_process() -> tuple[bool, str, int | None]:
         _write_worktree_learner_pid(adopted_pid)
         duplicate_count = len(running_pids)
         suffix = (
-            f" ({duplicate_count} matching process(es) detected)."
-            if duplicate_count > 1
-            else ""
+            f" ({duplicate_count} matching process(es) detected)." if duplicate_count > 1 else ""
         )
         return (
             True,
@@ -4077,8 +3937,8 @@ def _start_worktree_learner_process() -> tuple[bool, str, int | None]:
         kwargs["start_new_session"] = True
     WORKTREE_LEARNER_PID_DIR.mkdir(parents=True, exist_ok=True)
     try:
-        stderr_file = open(WORKTREE_LEARNER_STDERR_LOG, "a", encoding="utf-8")
-        stdout_file = open(WORKTREE_LEARNER_STDOUT_LOG, "a", encoding="utf-8")
+        stderr_file = open(WORKTREE_LEARNER_STDERR_LOG, "a", encoding="utf-8")  # noqa: SIM115
+        stdout_file = open(WORKTREE_LEARNER_STDOUT_LOG, "a", encoding="utf-8")  # noqa: SIM115
         stderr_file.write(
             f"\n[worktree] learner start requested at {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())} UTC\n"
         )
@@ -4094,28 +3954,22 @@ def _start_worktree_learner_process() -> tuple[bool, str, int | None]:
         if pid is None:
             for f in (stdout_file, stderr_file):
                 if f != subprocess.DEVNULL and hasattr(f, "close"):
-                    try:
+                    with suppress(Exception):
                         f.close()
-                    except Exception:
-                        pass
             return False, "Learner process failed to start (no PID).", None
         _write_worktree_learner_pid(pid)
         return True, "Worktree learner started.", pid
     except OSError as e:
         for f in (stdout_file, stderr_file):
             if f != subprocess.DEVNULL and hasattr(f, "close"):
-                try:
+                with suppress(Exception):
                     f.close()
-                except Exception:
-                    pass
         return False, f"Failed to start learner process: {e}", None
     except Exception as e:
         for f in (stdout_file, stderr_file):
             if f != subprocess.DEVNULL and hasattr(f, "close"):
-                try:
+                with suppress(Exception):
                     f.close()
-                except Exception:
-                    pass
         return False, f"Unexpected error starting learner: {e}", None
 
 
@@ -4125,12 +3979,9 @@ def _stop_worktree_learner_process() -> tuple[bool, str]:
     running_pids = _list_worktree_learner_process_ids()
     if record:
         record_pid = int(record["pid"])
-        if (
-            _is_worktree_learner_process_alive(record_pid)
-            and record_pid not in running_pids
-        ):
+        if _is_worktree_learner_process_alive(record_pid) and record_pid not in running_pids:
             running_pids.append(record_pid)
-    running_pids = sorted(set(int(pid) for pid in running_pids if int(pid) > 0))
+    running_pids = sorted({int(pid) for pid in running_pids if int(pid) > 0})
     if not running_pids:
         _clear_worktree_learner_pid()
         return (
@@ -4164,7 +4015,7 @@ def _stop_worktree_learner_process() -> tuple[bool, str]:
                 proc.wait(timeout=5)
             stopped_count += 1
         except Exception as e:
-            if isinstance(e, (psutil.NoSuchProcess, psutil.AccessDenied)):
+            if isinstance(e, psutil.NoSuchProcess | psutil.AccessDenied):
                 continue
             raise
 
@@ -4320,9 +4171,7 @@ def build_worktree_update_summary(
     review_queue_count = int(learning_status.get("review_queue_count") or 0)
     verified_dossiers = int(training_status.get("verified_dossiers") or 0)
     cards_recently_added = len(recently_validated)
-    awaiting_review = (
-        review_queue_count > 0 or len(rejected) > 0 or len(lowest_conf) > 0
-    )
+    awaiting_review = review_queue_count > 0 or len(rejected) > 0 or len(lowest_conf) > 0
     has_verified_updates = cards_recently_added > 0 or verified_dossiers > 0
 
     if awaiting_review and has_verified_updates:
@@ -4427,22 +4276,18 @@ def build_monitor_source(
         runtime_catalog_status = inspect_fallback_catalog_db(runtime_project_db)
         runtime_total_cards = int(
             runtime_catalog_status.get("cards")
-            or (remote_payload.get("training_progress") or {}).get(
-                "catalog_cards_total"
-            )
+            or (remote_payload.get("training_progress") or {}).get("catalog_cards_total")
             or training_status.get("total_cards")
             or 0
         )
         truth_mode = str(truth_source.get("mode") or "")
         return {
             "mode": (
-                "main_runtime"
-                if truth_mode == "main_runtime_live"
-                else "main_runtime_cached"
+                "main_runtime" if truth_mode == "main_runtime_live" else "main_runtime_cached"
             ),
             "label": str(truth_source.get("label") or "Live main runtime"),
             "detail": (
-                f"{str(truth_source.get('detail') or 'Using main-runtime truth.')}"
+                f"{truth_source.get('detail') or 'Using main-runtime truth.'!s}"
                 f" Runtime data paths are available for richer monitoring."
             ),
             "status_url": remote_status_url,
@@ -4459,30 +4304,24 @@ def build_monitor_source(
                 dossier_db_path=runtime_dossier_db,
                 total_cards=runtime_total_cards,
             ),
-            "validation_audit": list_validation_audit_insights(
-                project_db_path=runtime_project_db
-            ),
+            "validation_audit": list_validation_audit_insights(project_db_path=runtime_project_db),
         }
 
     fallback_remote = dict(local_source)
     truth_mode = str(truth_source.get("mode") or "")
     fallback_remote["mode"] = (
-        "main_runtime_api"
-        if truth_mode == "main_runtime_live"
-        else "main_runtime_api_cached"
+        "main_runtime_api" if truth_mode == "main_runtime_live" else "main_runtime_api_cached"
     )
     fallback_remote["label"] = str(truth_source.get("label") or "Live main runtime")
     fallback_remote["detail"] = (
-        f"{str(truth_source.get('detail') or 'Using main-runtime truth.')} "
+        f"{truth_source.get('detail') or 'Using main-runtime truth.'!s} "
         "Direct runtime DB paths were unavailable, so validation and sync activity uses the runtime API snapshot."
     )
     fallback_remote["status_url"] = remote_status_url
     fallback_remote["queue_db_path"] = queue_db_raw
     fallback_remote["status_db_path"] = status_db_raw
     fallback_remote["dossier_db_path"] = dossier_db_raw
-    fallback_remote["project_db_path"] = (
-        str(runtime_project_db) if runtime_project_db else ""
-    )
+    fallback_remote["project_db_path"] = str(runtime_project_db) if runtime_project_db else ""
     fallback_remote["fetched_at"] = truth_source.get("fetched_at")
     fallback_remote["age_label"] = str(truth_source.get("age_label") or "")
     fallback_remote["catalog_total"] = int(
@@ -4491,9 +4330,7 @@ def build_monitor_source(
         or 0
     )
     fallback_remote["learning_status"] = remote_learning or dict(learning_status or {})
-    fallback_remote["validation_audit"] = dict(
-        remote_payload.get("validation_audit") or {}
-    )
+    fallback_remote["validation_audit"] = dict(remote_payload.get("validation_audit") or {})
     return fallback_remote
 
 
@@ -4503,9 +4340,7 @@ def build_monitor_payload(
 ) -> dict[str, Any]:
     learning_status = dict(monitor_source.get("learning_status") or {})
     validation_audit = dict(monitor_source.get("validation_audit") or {})
-    activity = build_learning_engine_activity(
-        learning_status, build_miru_activity(training_status)
-    )
+    activity = build_learning_engine_activity(learning_status, build_miru_activity(training_status))
     project_db_path_raw = str(monitor_source.get("project_db_path") or "").strip()
     status_db_path_raw = str(monitor_source.get("status_db_path") or "").strip()
     project_db_path = Path(project_db_path_raw) if project_db_path_raw else None
@@ -4528,15 +4363,11 @@ def build_monitor_payload(
     running_count = int(learning_status.get("running_count") or 0)
     failed_count = int(learning_status.get("failed_count") or 0)
     cards_per_hour = int(learning_status.get("cards_learned_per_hour") or 0)
-    validation_success_rate = float(
-        learning_status.get("validation_success_rate") or 0.0
-    )
+    validation_success_rate = float(learning_status.get("validation_success_rate") or 0.0)
     catalog_total = int(
         monitor_source.get("catalog_total") or training_status.get("total_cards") or 0
     )
-    recent_validation_writes = int(
-        validation_counts["recent_validation_writes_count"] or 0
-    )
+    recent_validation_writes = int(validation_counts["recent_validation_writes_count"] or 0)
     recent_synced_cards = int(engine_events["recent_synced_cards_count"] or 0)
     recent_failure_count = int(engine_events["recent_failure_count"] or 0)
     source_mode = str(monitor_source.get("mode") or "worktree_runtime")
@@ -4565,9 +4396,7 @@ def build_monitor_payload(
     state_label = str(activity.get("title") or "Idle")
     state_tone = "neutral"
     if heartbeat_stale and (
-        running_count > 0
-        or queue_length > 0
-        or current_state in {"processing", "running"}
+        running_count > 0 or queue_length > 0 or current_state in {"processing", "running"}
     ):
         state_label = "Stuck"
         state_tone = "warn"
@@ -4576,29 +4405,27 @@ def build_monitor_payload(
     elif str(activity.get("key") or "") in {"setting_sail", "gathering_crew"}:
         state_tone = "good"
 
-    if (
-        recent_failure_count >= 3
-        and recent_validation_writes <= 0
-        and recent_synced_cards <= 0
-    ):
+    if recent_failure_count >= 3 and recent_validation_writes <= 0 and recent_synced_cards <= 0:
         progress_label = "Churning"
         progress_tone = "warn"
         meaningful_progress = False
-        progress_summary = "Miru is active, but the recent loop looks more like churn than new verified gains."
+        progress_summary = (
+            "Miru is active, but the recent loop looks more like churn than new verified gains."
+        )
         progress_detail = f"{format_count(recent_failure_count)} recent failures and no fresh validation or sync writes in the last 30 minutes."
     elif recent_validation_writes > 0 and recent_synced_cards > 0:
         progress_label = "Improving"
         progress_tone = "good"
         meaningful_progress = True
-        progress_summary = (
-            "Miru is adding verified knowledge and Project Miru is receiving it."
-        )
+        progress_summary = "Miru is adding verified knowledge and Project Miru is receiving it."
         progress_detail = f"{format_count(recent_validation_writes)} validation write(s) and {format_count(recent_synced_cards)} sync(s) landed in the last hour."
     elif recent_validation_writes > 0:
         progress_label = "Improving"
         progress_tone = "neutral"
         meaningful_progress = True
-        progress_summary = "Miru is adding verified knowledge, but Project Miru sync looks quiet right now."
+        progress_summary = (
+            "Miru is adding verified knowledge, but Project Miru sync looks quiet right now."
+        )
         progress_detail = f"{format_count(recent_validation_writes)} validation write(s) landed in the last hour while recent sync count stayed at {format_count(recent_synced_cards)}."
     elif cards_per_hour > 0 or queue_length > 0 or running_count > 0:
         progress_label = "Working"
@@ -4610,12 +4437,8 @@ def build_monitor_payload(
         progress_label = "Idle"
         progress_tone = "neutral"
         meaningful_progress = False
-        progress_summary = (
-            "Miru is not showing meaningful new verified progress right now."
-        )
-        progress_detail = (
-            "Queue is clear and no recent validation or sync writes are visible."
-        )
+        progress_summary = "Miru is not showing meaningful new verified progress right now."
+        progress_detail = "Queue is clear and no recent validation or sync writes are visible."
 
     warnings: list[dict[str, Any]] = []
     if heartbeat_stale:
@@ -4673,7 +4496,7 @@ def build_monitor_payload(
             "title": "Validation written",
             "detail": (
                 f"{str(item.get('card_code') or '').upper()} · "
-                f"{str(item.get('card_name') or 'Unknown card')} saved to miru_validations."
+                f"{item.get('card_name') or 'Unknown card'!s} saved to miru_validations."
             ),
             "timestamp": str(item.get("verified_at") or ""),
             "card_code": str(item.get("card_code") or "").upper(),
@@ -4747,9 +4570,7 @@ def build_monitor_payload(
         "state": {
             "label": state_label,
             "tone": state_tone,
-            "description": str(
-                activity.get("description") or "Miru is online and waiting."
-            ),
+            "description": str(activity.get("description") or "Miru is online and waiting."),
             "task_label": task_label or "No active task",
             "task_type_label": task_type_label,
             "queue_status": (
@@ -4935,9 +4756,7 @@ def build_image_coverage_by_set(
                 images_tracked = int(row["images_tracked"] or 0)
                 images_verified = int(row["images_verified"] or 0)
                 images_missing = max(total_cards - images_tracked, 0)
-                coverage_percent = (
-                    (images_tracked / total_cards * 100.0) if total_cards else 0.0
-                )
+                coverage_percent = (images_tracked / total_cards * 100.0) if total_cards else 0.0
                 if images_tracked == 0:
                     milestone_stage = 0
                     milestone_label = "not_started"
@@ -4980,9 +4799,7 @@ def load_limits_status() -> list[dict[str, Any]]:
         return []
     if not isinstance(data, list):
         return []
-    return [
-        entry for entry in data if isinstance(entry, dict) and entry.get("provider")
-    ]
+    return [entry for entry in data if isinstance(entry, dict) and entry.get("provider")]
 
 
 def _format_timestamp_readable(ts: str | None) -> str:
@@ -5053,7 +4870,7 @@ def _enrich_learning_engine_display(learning_engine: dict[str, Any]) -> dict[str
 
 def load_governed_autopilot_rollup() -> dict[str, Any]:
     """Load today's governed autopilot rollup from worktree data/. Returns empty dict if missing."""
-    date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    date_key = datetime.now(UTC).strftime("%Y-%m-%d")
     path = GOVERNED_AUTOPILOT_DATA_DIR / f"governed_autopilot_rollup_{date_key}.json"
     if not path.is_file():
         return {}
@@ -5104,9 +4921,7 @@ def _build_governed_recent_activity(rollup: dict[str, Any]) -> list[dict[str, st
     n_review = len(open_items)
     parts = [f"{runs} run{'s' if runs != 1 else ''} today"]
     if total_auto > 0:
-        parts.append(
-            f"{total_auto} safe update{'s' if total_auto != 1 else ''} applied"
-        )
+        parts.append(f"{total_auto} safe update{'s' if total_auto != 1 else ''} applied")
     if total_skipped > 0:
         parts.append(f"{total_skipped} skipped (no change)")
     if n_review > 0:
@@ -5120,14 +4935,10 @@ def _build_governed_recent_activity(rollup: dict[str, Any]) -> list[dict[str, st
     report_cards = _load_last_governed_report_cards(rollup)
     if report_cards["auto_applied"]:
         codes = ", ".join(report_cards["auto_applied"][:8])
-        activities.append(
-            {"message": f"Safely updated: {codes}.", "label": "Safe update"}
-        )
+        activities.append({"message": f"Safely updated: {codes}.", "label": "Safe update"})
     if report_cards["skipped"]:
         codes = ", ".join(report_cards["skipped"][:8])
-        activities.append(
-            {"message": f"Checked (no change): {codes}.", "label": "Checked"}
-        )
+        activities.append({"message": f"Checked (no change): {codes}.", "label": "Checked"})
     for item in open_items[:4]:
         ident = str(item.get("item_identifier") or "").strip()
         state = str(item.get("proposed_state") or "").strip()
@@ -5135,9 +4946,7 @@ def _build_governed_recent_activity(rollup: dict[str, Any]) -> list[dict[str, st
         if ident:
             activities.append(
                 {
-                    "message": (
-                        f"{ident} ({state}): {title}" if state else f"{ident}: {title}"
-                    ),
+                    "message": (f"{ident} ({state}): {title}" if state else f"{ident}: {title}"),
                     "label": "Needs review",
                 }
             )
@@ -5179,12 +4988,12 @@ def _parse_worker_timestamp_age(ts: str) -> tuple[float | None, str]:
     if not ts or not isinstance(ts, str):
         return None, ""
     try:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        now = datetime.now(timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
+        now = datetime.now(UTC)
         age = (now - dt).total_seconds()
         formatted = dt.strftime("%Y-%m-%d %H:%M:%S")
         return age, formatted
@@ -5229,9 +5038,7 @@ def build_pushover_runtime_state(
     state["env_exists"] = bool(PROJECT_ENV_LOAD.get("exists"))
     state["env_parser"] = PROJECT_ENV_LOAD.get("parser")
     state["loaded_keys"] = list(PROJECT_ENV_LOAD.get("loaded_keys") or [])
-    state["skipped_existing_keys"] = list(
-        PROJECT_ENV_LOAD.get("skipped_existing_keys") or []
-    )
+    state["skipped_existing_keys"] = list(PROJECT_ENV_LOAD.get("skipped_existing_keys") or [])
     state["server_script_path"] = str(Path(__file__).resolve())
     state["project_root"] = str(PROJECT_ROOT)
     state["test_endpoint"] = build_route_url("/api/dev/test-pushover")
@@ -5284,21 +5091,15 @@ def build_dev_intelligence_status(
     if not bool(learning_status.get("status_db_exists")) and heartbeat_age is None:
         worker_label = "Offline"
         worker_tone = "warn"
-        worker_detail = (
-            "No worker heartbeat or status store is visible from this server."
-        )
+        worker_detail = "No worker heartbeat or status store is visible from this server."
     elif heartbeat_age is not None and heartbeat_age > 600:
         worker_label = "Offline"
         worker_tone = "warn"
-        worker_detail = (
-            f"Last worker heartbeat was {format_relative_age(heartbeat_age)}."
-        )
+        worker_detail = f"Last worker heartbeat was {format_relative_age(heartbeat_age)}."
     elif (
         heartbeat_age is not None
         and heartbeat_age > 180
-        and (
-            queue_waiting > 0 or queue_running > 0 or current_state in active_state_keys
-        )
+        and (queue_waiting > 0 or queue_running > 0 or current_state in active_state_keys)
     ):
         worker_label = "Stalled"
         worker_tone = "warn"
@@ -5306,15 +5107,11 @@ def build_dev_intelligence_status(
     elif queue_waiting > 0 or queue_running > 0 or current_state in active_state_keys:
         worker_label = "Running"
         worker_tone = "good"
-        worker_detail = (
-            "The learning worker is actively processing or holding queued work."
-        )
+        worker_detail = "The learning worker is actively processing or holding queued work."
     else:
         worker_label = "Idle"
         worker_tone = "neutral"
-        worker_detail = (
-            "The worker is online, but no learning tasks are waiting right now."
-        )
+        worker_detail = "The worker is online, but no learning tasks are waiting right now."
 
     verified_coverage = float(training_status.get("verified_coverage_percent") or 0.0)
     dossier_coverage = float(training_status.get("dossier_coverage_percent") or 0.0)
@@ -5346,9 +5143,7 @@ def build_dev_intelligence_status(
         if timestamp:
             last_signal_timestamp = timestamp
             age = seconds_since(timestamp)
-            last_signal_label = (
-                format_relative_age(age) if age is not None else timestamp
-            )
+            last_signal_label = format_relative_age(age) if age is not None else timestamp
             last_signal_detail = f"{label}. {detail}"
             break
 
@@ -5362,9 +5157,7 @@ def build_dev_intelligence_status(
     elif not pushover_configured:
         pushover_label = "Quiet because unavailable/error"
         pushover_tone = "warn"
-        pushover_detail = (
-            "Pushover is enabled, but credentials are incomplete or unavailable."
-        )
+        pushover_detail = "Pushover is enabled, but credentials are incomplete or unavailable."
     elif bool(preview.get("meaningful_gain")):
         pushover_label = "Sending normally"
         pushover_tone = "good"
@@ -5375,8 +5168,7 @@ def build_dev_intelligence_status(
         pushover_label = "Quiet because idle"
         pushover_tone = "neutral"
         pushover_detail = str(
-            preview.get("message")
-            or "Miru is online, but there is no queued learning work."
+            preview.get("message") or "Miru is online, but there is no queued learning work."
         )
     elif worker_label in {"Offline", "Stalled"}:
         pushover_label = "Quiet because unavailable/error"
@@ -5402,13 +5194,8 @@ def build_dev_intelligence_status(
     else:
         status_sentence = "Miru looks offline from this Dev server."
 
-    if (
-        worker_label == "Running"
-        and pushover_label == "Quiet because threshold not reached"
-    ):
-        status_sentence = (
-            "Miru is running, but no new notification threshold has been reached yet."
-        )
+    if worker_label == "Running" and pushover_label == "Quiet because threshold not reached":
+        status_sentence = "Miru is running, but no new notification threshold has been reached yet."
 
     stage_rows = [
         {
@@ -5434,9 +5221,7 @@ def build_dev_intelligence_status(
         {
             "label": "Image intelligence",
             "status": (
-                "Building"
-                if images_tracked > 0 or images_verified > 0
-                else "Not built yet"
+                "Building" if images_tracked > 0 or images_verified > 0 else "Not built yet"
             ),
             "tone": "neutral",
             "detail": (
@@ -5543,14 +5328,14 @@ def humanize_operator_truth_source(monitor_source: dict[str, Any]) -> dict[str, 
             detail = f"Using the live main-runtime snapshot refreshed {age_label}."
     elif mode in {"main_runtime_cached", "main_runtime_api_cached"}:
         label = "Cached main-runtime snapshot"
-        detail = (
-            "Using the last good main-runtime snapshot while live access catches up."
-        )
+        detail = "Using the last good main-runtime snapshot while live access catches up."
         if age_label:
             detail = f"Using the last good main-runtime snapshot from {age_label} while live access catches up."
     else:
         label = "Local fallback"
-        detail = "Using local worktree status data because the main runtime is not currently reachable."
+        detail = (
+            "Using local worktree status data because the main runtime is not currently reachable."
+        )
     detail = str(monitor_source.get("detail") or detail)
     return {"label": label, "detail": detail}
 
@@ -5574,21 +5359,17 @@ def build_operator_recent_activity(
                 "detail": last_completed_task,
                 "timestamp": last_heartbeat,
                 "tone": (
-                    "good"
-                    if last_completed_task != "No completed task recorded"
-                    else "neutral"
+                    "good" if last_completed_task != "No completed task recorded" else "neutral"
                 ),
             }
         )
 
-    latest_validation = next(
-        iter(list(validation_audit.get("recently_validated") or [])), None
-    )
+    latest_validation = next(iter(list(validation_audit.get("recently_validated") or [])), None)
     if latest_validation:
         items.append(
             {
                 "title": "Latest validation signal",
-                "detail": f"{str(latest_validation.get('card_code') or '').upper()} · {str(latest_validation.get('card_name') or 'Unknown card')}",
+                "detail": f"{str(latest_validation.get('card_code') or '').upper()} · {latest_validation.get('card_name') or 'Unknown card'!s}",
                 "timestamp": str(latest_validation.get("verified_at") or "").strip(),
                 "tone": "good",
             }
@@ -5707,9 +5488,7 @@ def load_cached_validation_audit() -> dict[str, Any]:
         "validation_audit",
         ttl_seconds=20.0,
         signature=signature,
-        builder=lambda: list_validation_audit_insights(
-            project_db_path=FALLBACK_CATALOG_DB_PATH
-        ),
+        builder=lambda: list_validation_audit_insights(project_db_path=FALLBACK_CATALOG_DB_PATH),
     )
 
 
@@ -5756,9 +5535,7 @@ def load_cached_monitor_source(
         "monitor_source",
         ttl_seconds=10.0,
         signature=signature,
-        builder=lambda: build_monitor_source(
-            training_status, learning_status, validation_audit
-        ),
+        builder=lambda: build_monitor_source(training_status, learning_status, validation_audit),
     )
 
 
@@ -5772,9 +5549,8 @@ def build_deferred_monitor_payload(
     coverage_percent = safe_percent(verified_dossiers, total_cards)
     state_label = str(activity.get("title") or "Loading live monitor")
     state_description = str(activity.get("description") or "Miru telemetry is loading.")
-    state_detail = str(
-        activity.get("detail")
-        or "Detailed runtime data will appear after the first refresh."
+    state_detail = str(  # noqa: F841
+        activity.get("detail") or "Detailed runtime data will appear after the first refresh."
     )
     queue_waiting = int(learning_status.get("queue_length") or 0)
     queue_running = int(learning_status.get("running_count") or 0)
@@ -5792,9 +5568,7 @@ def build_deferred_monitor_payload(
             "label": state_label,
             "tone": str(activity.get("tone") or "neutral"),
             "description": state_description,
-            "task_label": str(
-                learning_status.get("current_task_label") or "Loading active task"
-            ),
+            "task_label": str(learning_status.get("current_task_label") or "Loading active task"),
             "task_type_label": humanize_snake_label(
                 str(learning_status.get("current_task_type") or "")
             )
@@ -5825,9 +5599,7 @@ def build_monitor_panel_payload(
         total_cards=int(training_status.get("total_cards") or 0),
     )
     validation_audit = load_cached_validation_audit()
-    monitor_source = load_cached_monitor_source(
-        training_status, learning_status, validation_audit
-    )
+    monitor_source = load_cached_monitor_source(training_status, learning_status, validation_audit)
     return {
         "updated_at": current_timestamp(),
         "monitor": build_monitor_payload(training_status, monitor_source),
@@ -5897,9 +5669,7 @@ def _build_control_recent_issues(payload: dict[str, Any]) -> dict[str, Any]:
         items.append(
             {
                 "title": "Miru AI warning",
-                "detail": str(
-                    miru_issue.get("detail") or "Miru AI reported a degraded state."
-                ),
+                "detail": str(miru_issue.get("detail") or "Miru AI reported a degraded state."),
                 "tone": "warn",
                 "source": "Issue detection from /api/dev-status.",
             }
@@ -5911,8 +5681,7 @@ def _build_control_recent_issues(payload: dict[str, Any]) -> dict[str, Any]:
             {
                 "title": "Project Miru warning",
                 "detail": str(
-                    project_issue.get("detail")
-                    or "Project Miru is not answering normally."
+                    project_issue.get("detail") or "Project Miru is not answering normally."
                 ),
                 "tone": "warn",
                 "source": "Project Miru reachability check from /api/dev-status.",
@@ -5921,14 +5690,10 @@ def _build_control_recent_issues(payload: dict[str, Any]) -> dict[str, Any]:
 
     worker_status = learning_engine.get("worker_status") or {}
     worker_label = str(
-        worker_status.get("label")
-        or (intelligence.get("worker") or {}).get("label")
-        or ""
+        worker_status.get("label") or (intelligence.get("worker") or {}).get("label") or ""
     ).strip()
     worker_detail = str(
-        worker_status.get("detail")
-        or (intelligence.get("worker") or {}).get("detail")
-        or ""
+        worker_status.get("detail") or (intelligence.get("worker") or {}).get("detail") or ""
     ).strip()
     if worker_label and worker_label.lower() in {"stale", "offline", "stalled"}:
         items.append(
@@ -5944,9 +5709,7 @@ def _build_control_recent_issues(payload: dict[str, Any]) -> dict[str, Any]:
     open_review_items = governed.get("open_review_items") or []
     if int(governed.get("newly_surfaced_review") or 0) > 0 or open_review_items:
         first_item = open_review_items[0] if open_review_items else {}
-        review_title = str(
-            first_item.get("simple_title") or "Governed review item needs attention"
-        )
+        review_title = str(first_item.get("simple_title") or "Governed review item needs attention")
         review_detail = str(
             first_item.get("simple_reason")
             or "Governed autopilot surfaced an item for operator review."
@@ -5962,15 +5725,12 @@ def _build_control_recent_issues(payload: dict[str, Any]) -> dict[str, Any]:
 
     worker_action = str(worker_last_run.get("action") or "").strip().lower()
     worker_blocker = str(
-        worker_last_run.get("blocker")
-        or worker_last_run.get("no_new_work_reason")
-        or ""
+        worker_last_run.get("blocker") or worker_last_run.get("no_new_work_reason") or ""
     ).strip()
     if worker_action in {"overlap_blocked", "blocked", "error"} and worker_blocker:
         items.append(
             {
-                "title": humanize_snake_label(worker_action)
-                or "Scheduled worker blocked",
+                "title": humanize_snake_label(worker_action) or "Scheduled worker blocked",
                 "detail": worker_blocker,
                 "tone": "warn",
                 "source": "Scheduled worker last-run record.",
@@ -5981,9 +5741,7 @@ def _build_control_recent_issues(payload: dict[str, Any]) -> dict[str, Any]:
         return {
             "status": (
                 "FAILED"
-                if any(
-                    item["title"].lower().startswith("project miru") for item in items
-                )
+                if any(item["title"].lower().startswith("project miru") for item in items)
                 else "INCONCLUSIVE"
             ),
             "tone": "warn",
@@ -6029,9 +5787,7 @@ def _build_control_recent_activity(payload: dict[str, Any]) -> list[dict[str, An
         elif worker_last_run.get("no_new_work_reason"):
             detail_parts.append(str(worker_last_run["no_new_work_reason"]))
         if worker_last_run.get("insight_count_after") is not None:
-            detail_parts.append(
-                f"{int(worker_last_run['insight_count_after'])} insights after run"
-            )
+            detail_parts.append(f"{int(worker_last_run['insight_count_after'])} insights after run")
         items.append(
             {
                 "title": worker_action,
@@ -6050,9 +5806,7 @@ def _build_control_recent_activity(payload: dict[str, Any]) -> list[dict[str, An
                 "detail": str(entry.get("message") or ""),
                 "timestamp": "",
                 "tone": (
-                    "warn"
-                    if "review" in str(entry.get("label") or "").lower()
-                    else "neutral"
+                    "warn" if "review" in str(entry.get("label") or "").lower() else "neutral"
                 ),
                 "source": "Governed autopilot rollup",
             }
@@ -6157,12 +5911,10 @@ def _build_judgment_item(
     return {
         "key": key,
         "title": title.strip() or "Miru judgment",
-        "summary": summary.strip()
-        or "Miru surfaced a state that needs interpretation.",
+        "summary": summary.strip() or "Miru surfaced a state that needs interpretation.",
         "detail": detail.strip() or summary.strip(),
         "category": category_normalized,
-        "category_label": humanize_snake_label(category_normalized)
-        or category_normalized.title(),
+        "category_label": humanize_snake_label(category_normalized) or category_normalized.title(),
         "issue_type": issue_type_normalized,
         "issue_type_label": humanize_snake_label(issue_type_normalized)
         or issue_type_normalized.title(),
@@ -6187,11 +5939,7 @@ def _build_control_judgment(
     items: list[dict[str, Any]] = []
 
     project_health = next(
-        (
-            item
-            for item in system_health
-            if str(item.get("key") or "") == "project_miru"
-        ),
+        (item for item in system_health if str(item.get("key") or "") == "project_miru"),
         {},
     )
     miru_health = next(
@@ -6204,9 +5952,7 @@ def _build_control_judgment(
     open_review_items = governed.get("open_review_items") or []
     if open_review_items:
         first_item = open_review_items[0] if open_review_items else {}
-        review_title = str(
-            first_item.get("simple_title") or "Governed review item needs attention"
-        )
+        review_title = str(first_item.get("simple_title") or "Governed review item needs attention")
         review_summary = str(
             first_item.get("simple_reason")
             or "Governed autopilot surfaced an item for human review."
@@ -6249,8 +5995,7 @@ def _build_control_judgment(
                 category="failure",
                 issue_type="runtime",
                 source=str(
-                    project_health.get("source")
-                    or "Observed via Project Miru runtime health."
+                    project_health.get("source") or "Observed via Project Miru runtime health."
                 ),
                 action_class="investigate",
                 rationale="If the user-facing site is not healthy, retries or follow-on checks can mislead you until the runtime path is understood.",
@@ -6265,15 +6010,11 @@ def _build_control_judgment(
             _build_judgment_item(
                 key="dev_runtime",
                 title="Miru Dev surface needs attention",
-                summary=str(
-                    miru_health.get("detail") or "The Dev runtime is not healthy."
-                ),
+                summary=str(miru_health.get("detail") or "The Dev runtime is not healthy."),
                 detail="The control surface itself is degraded, so every downstream signal is less trustworthy until the runtime path is understood.",
                 category="failure",
                 issue_type="environment",
-                source=str(
-                    miru_health.get("source") or "Observed from Dev runtime status."
-                ),
+                source=str(miru_health.get("source") or "Observed from Dev runtime status."),
                 action_class="investigate",
                 rationale="The Dev surface is the authority for these signals, so runtime instability here should be investigated before acting on the page.",
                 confidence="high",
@@ -6284,19 +6025,15 @@ def _build_control_judgment(
 
     worker_status = learning_engine.get("worker_status") or {}
     worker_label = str(worker_status.get("label") or "").strip().lower()
-    worker_detail = str(
-        worker_health.get("detail") or worker_status.get("detail") or ""
-    ).strip()
+    worker_detail = str(worker_health.get("detail") or worker_status.get("detail") or "").strip()
     if worker_label in {"stale", "offline", "stalled"}:
         items.append(
             _build_judgment_item(
                 key="worker_heartbeat",
                 title="Worker heartbeat needs investigation",
-                summary=worker_detail
-                or "The learner heartbeat looks stale or offline.",
+                summary=worker_detail or "The learner heartbeat looks stale or offline.",
                 detail=str(
-                    worker_health.get("source")
-                    or "Derived from the learning engine heartbeat."
+                    worker_health.get("source") or "Derived from the learning engine heartbeat."
                 ),
                 category="warning",
                 issue_type="worker",
@@ -6311,9 +6048,7 @@ def _build_control_judgment(
 
     worker_action = str(worker_last_run.get("action") or "").strip().lower()
     worker_blocker = str(
-        worker_last_run.get("blocker")
-        or worker_last_run.get("no_new_work_reason")
-        or ""
+        worker_last_run.get("blocker") or worker_last_run.get("no_new_work_reason") or ""
     ).strip()
     if worker_action in {"overlap_blocked", "blocked", "error"} and worker_blocker:
         issue_type = (
@@ -6349,8 +6084,7 @@ def _build_control_judgment(
                 key="truth_source",
                 title="Using local worktree truth source",
                 summary=str(
-                    truth_source.get("detail")
-                    or "Miru is using local worktree data for this view."
+                    truth_source.get("detail") or "Miru is using local worktree data for this view."
                 ),
                 detail="The page is grounded in local worktree signals rather than a remote truth source.",
                 category="info",
@@ -6387,26 +6121,30 @@ def _build_control_judgment(
     primary_type = str(primary.get("issue_type") or "").strip().lower()
 
     if primary_category == "needs_review":
-        what_i_think = "Miru looks operational, but a governed item is waiting for a human decision."
-    elif primary_type == "worker":
         what_i_think = (
-            "Miru is up, but the learning worker signal looks stale or blocked."
+            "Miru looks operational, but a governed item is waiting for a human decision."
         )
+    elif primary_type == "worker":
+        what_i_think = "Miru is up, but the learning worker signal looks stale or blocked."
     elif primary_type == "runtime":
         what_i_think = "One of the observed runtime paths needs attention before Miru should trust follow-on actions."
     elif primary_type == "source_freshness":
-        what_i_think = "Miru is up, but one of the supporting source inputs looks incomplete or stale."
+        what_i_think = (
+            "Miru is up, but one of the supporting source inputs looks incomplete or stale."
+        )
     else:
-        what_i_think = "Miru is interpreting the current worktree signals without surfacing a hard failure."
+        what_i_think = (
+            "Miru is interpreting the current worktree signals without surfacing a hard failure."
+        )
 
     what_matters = str(
-        primary.get("summary")
-        or recent_issues.get("summary")
-        or "No dominant concern surfaced."
+        primary.get("summary") or recent_issues.get("summary") or "No dominant concern surfaced."
     )
     action_label = str(recommendation.get("label") or "Observe only")
     if str(recommendation.get("guardrail_label") or "") == "Review required":
-        what_next = f"{action_label}. Human review should happen before any related retry or apply step."
+        what_next = (
+            f"{action_label}. Human review should happen before any related retry or apply step."
+        )
     else:
         what_next = f"{action_label}. {recommendation.get('rationale') or 'Use the current judgment to choose the next safe step.'}"
 
@@ -6420,17 +6158,14 @@ def _build_control_judgment(
         "what_i_recommend_next": what_next,
         "guardrail_label": str(recommendation.get("guardrail_label") or "Read-only"),
         "retry_guidance": str(
-            recommendation.get("retry_guidance")
-            or "Observe the current state before retrying."
+            recommendation.get("retry_guidance") or "Observe the current state before retrying."
         ),
         "primary": primary,
         "items": ranked_items[:4],
         "secondary": ranked_items[1:4],
         "source": "Rules-based interpretation of runtime health, worker freshness, governed review state, scheduled worker signals, and truth-source context.",
         "activity_hint": (
-            str((recent_activity[0] or {}).get("title") or "")
-            if recent_activity
-            else ""
+            str((recent_activity[0] or {}).get("title") or "") if recent_activity else ""
         ),
     }
 
@@ -6452,11 +6187,9 @@ def build_dev_control_layer(
     miru_running = str(miru_surface.get("status") or "").strip().lower() == "running"
     miru_issue_warn = str((issues.get("miru_ai") or {}).get("tone") or "") == "warn"
     project_reachable = bool(project.get("reachable"))
-    project_status_code = int(project.get("status_code") or 0)
+    project_status_code = int(project.get("status_code") or 0)  # noqa: F841
     project_runtime_ok = str(runtime_status.get("18080") or "").strip().lower() == "ok"
-    project_probe_state = (
-        str(runtime_status.get("project_probe_state") or "").strip().lower()
-    )
+    project_probe_state = str(runtime_status.get("project_probe_state") or "").strip().lower()
     project_probe_certainty = (
         str(runtime_status.get("project_probe_certainty") or "").strip().lower()
     )
@@ -6466,13 +6199,9 @@ def build_dev_control_layer(
     worker_status = learning_engine.get("worker_status") or {}
     worker_state = str(worker_status.get("status") or "").strip().lower()
     worker_detail = str(
-        worker_status.get("detail")
-        or (intelligence.get("worker") or {}).get("detail")
-        or ""
+        worker_status.get("detail") or (intelligence.get("worker") or {}).get("detail") or ""
     ).strip()
-    worker_has_heartbeat = bool(
-        str(learning_engine.get("last_heartbeat") or "").strip()
-    )
+    worker_has_heartbeat = bool(str(learning_engine.get("last_heartbeat") or "").strip())
     worker_store_visible = bool(learning_engine.get("status_db_exists"))
 
     system_health = [
@@ -6480,8 +6209,7 @@ def build_dev_control_layer(
             key="miru_ai",
             label="18765 Dev surface",
             detail=str(
-                (issues.get("miru_ai") or {}).get("detail")
-                or "Miru AI Dev status is available."
+                (issues.get("miru_ai") or {}).get("detail") or "Miru AI Dev status is available."
             ),
             source="Observed from the local /api/dev-status worktree payload.",
             confirmed=miru_running and not miru_issue_warn,
@@ -6538,17 +6266,14 @@ def build_dev_control_layer(
     )
     status_sources = {
         "health": (
-            f"Health cards reuse /api/dev-status and the same cached local runtime probe used by /api/runtime/status."
+            "Health cards reuse /api/dev-status and the same cached local runtime probe used by /api/runtime/status."
             + (f" Last checked {runtime_checked_at}." if runtime_checked_at else "")
         ),
-        "judgment": judgment.get("source")
-        or "Rules-based interpretation of current Dev signals.",
+        "judgment": judgment.get("source") or "Rules-based interpretation of current Dev signals.",
         "recent_issues": recent_issues.get("source")
         or "Issue detection and runtime freshness signals.",
         "recent_activity": "Recent activity reuses the learning engine event log, governed autopilot rollup, and scheduled worker run record.",
-        "truth": str(
-            truth_source.get("detail") or "Using the current Dev runtime snapshot."
-        ),
+        "truth": str(truth_source.get("detail") or "Using the current Dev runtime snapshot."),
     }
     summary = (
         f"18765: {system_health[0]['status']}. "
@@ -6578,19 +6303,13 @@ def build_dev_control_layer(
         "runtime_reliability": {
             "project_miru": {
                 "healthy": project_runtime_ok,
-                "uncertain": project_runtime_ok
-                and project_probe_certainty != "confirmed",
+                "uncertain": project_runtime_ok and project_probe_certainty != "confirmed",
                 "state": project_probe_state
-                or (
-                    "confirmed_healthy" if project_runtime_ok else "confirmed_unhealthy"
-                ),
-                "certainty": project_probe_certainty
-                or ("confirmed" if project_runtime_ok else "confirmed"),
+                or ("confirmed_healthy" if project_runtime_ok else "confirmed_unhealthy"),
+                "certainty": project_probe_certainty or "confirmed",
                 "detail": str(runtime_status.get("project_detail") or ""),
                 "fast_probe": dict(runtime_status.get("project_fast_probe") or {}),
-                "confirm_probe": dict(
-                    runtime_status.get("project_confirm_probe") or {}
-                ),
+                "confirm_probe": dict(runtime_status.get("project_confirm_probe") or {}),
             }
         },
         "recent_issues": recent_issues,
@@ -6606,9 +6325,7 @@ def ensure_control_layer_payload(
     force_runtime_probe: bool = False,
 ) -> dict[str, Any]:
     out = dict(payload or {})
-    out["control_layer"] = build_dev_control_layer(
-        out, force_runtime_probe=force_runtime_probe
-    )
+    out["control_layer"] = build_dev_control_layer(out, force_runtime_probe=force_runtime_probe)
     try:
         out["action_governance"] = build_action_governance_snapshot(
             dev_payload=out,
@@ -6701,9 +6418,7 @@ def build_operator_handoff_payload(payload: dict[str, Any]) -> dict[str, Any]:
     """
     dev_env = payload.get("dev_environment") or {}
     env_label = str(dev_env.get("environment") or "local").strip() or "local"
-    runtime_target = (
-        str(dev_env.get("runtime_target") or "worktree").strip() or "worktree"
-    )
+    runtime_target = str(dev_env.get("runtime_target") or "worktree").strip() or "worktree"
     target_environment = f"{env_label} · {runtime_target}"
 
     boundaries = (
@@ -6717,9 +6432,7 @@ def build_operator_handoff_payload(payload: dict[str, Any]) -> dict[str, Any]:
     intel = osr.get("intelligence_surface") or {}
     met = osr.get("metrics") or {}
     issues = payload.get("issues") or {}
-    miru_issue_tone = (
-        str((issues.get("miru_ai") or {}).get("tone") or "good").strip().lower()
-    )
+    miru_issue_tone = str((issues.get("miru_ai") or {}).get("tone") or "good").strip().lower()
 
     if osr.get("error"):
         err = str(osr.get("error"))
@@ -6967,9 +6680,7 @@ def build_dev_status(
         training_status,
         learning_status=learning_status,
     )
-    activity = build_learning_engine_activity(
-        learning_status, build_miru_activity(training_status)
-    )
+    activity = build_learning_engine_activity(learning_status, build_miru_activity(training_status))
     pushover_state = build_pushover_runtime_state(
         training_status=training_status,
         learning_status=learning_status,
@@ -6978,7 +6689,7 @@ def build_dev_status(
         "miru_ai": build_route_url("/"),
         "project_miru": build_companion_url(PROJECT_MIRU_DEV_PORT, "/"),
     }
-    training_progress = training_status.get("training_progress")
+    training_progress = training_status.get("training_progress")  # noqa: F841
     if lightweight:
         _rt_probe = build_runtime_status_payload()
         _pm_ok = str(_rt_probe.get("18080") or "").strip().lower() == "ok"
@@ -7003,21 +6714,17 @@ def build_dev_status(
             "rejected_evidence": [],
         }
         image_coverage_by_set = []
-        monitor = build_deferred_monitor_payload(
-            training_status, learning_status, activity
-        )
+        monitor = build_deferred_monitor_payload(training_status, learning_status, activity)
         resource_metrics = []
     else:
         project_status = get_ttl_cached_value(
             "project_miru_route_status",
             ttl_seconds=5.0,
             signature=PROJECT_MIRU_DEV_PORT,
-            builder=lambda: inspect_local_http_route(
-                f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/"
-            ),
+            builder=lambda: inspect_local_http_route(f"http://127.0.0.1:{PROJECT_MIRU_DEV_PORT}/"),
         )
         limits_status = load_limits_status()
-        limits_by_provider = {
+        limits_by_provider = {  # noqa: F841
             e["provider"]: e for e in limits_status if e.get("provider")
         }
         if include_heavy_sections:
@@ -7036,9 +6743,7 @@ def build_dev_status(
                 "rejected_evidence": [],
             }
             image_coverage_by_set = []
-            monitor = build_deferred_monitor_payload(
-                training_status, learning_status, activity
-            )
+            monitor = build_deferred_monitor_payload(training_status, learning_status, activity)
             resource_metrics = []
     _updated = current_timestamp()
     payload = {
@@ -7053,9 +6758,7 @@ def build_dev_status(
         "validation_audit_url_base": build_route_url("/api/dev/card-validation"),
         "image_coverage_by_set": image_coverage_by_set,
         "resource_metrics": resource_metrics,
-        "issues": build_issue_detection(
-            training_status, project_status, learning_status
-        ),
+        "issues": build_issue_detection(training_status, project_status, learning_status),
         "catalog_status": training_status["catalog_status"],
         "dossier_status": training_status["dossier_status"],
         "pushover": pushover_state,
@@ -7098,9 +6801,7 @@ def build_dev_status(
         "publication_review_count": count_publication_review_rows(
             project_db_path=FALLBACK_CATALOG_DB_PATH
         ),
-        "dev_environment": (
-            dev_environment_descriptor := build_dev_environment_descriptor()
-        ),
+        "dev_environment": (dev_environment_descriptor := build_dev_environment_descriptor()),
         "worktree_update_summary": build_worktree_update_summary(
             training_status,
             learning_status,
@@ -7234,11 +6935,7 @@ def collect_runtime_dependencies() -> list[dict[str, Any]]:
                 f"Openable: {'yes' if catalog_status['openable'] else 'no'}. "
                 f"Cards indexed: {catalog_status['cards']}. "
                 f"Variants indexed: {catalog_status['variants']}."
-                + (
-                    f" Issue: {catalog_status['error']}"
-                    if catalog_status["error"]
-                    else ""
-                )
+                + (f" Issue: {catalog_status['error']}" if catalog_status["error"] else "")
             ),
             "openable": catalog_status["openable"],
             "usable": catalog_status["usable"],
@@ -7390,22 +7087,16 @@ def build_status_snapshot() -> list[dict[str, str]]:
                 "label": dependency["label"],
                 "value": (
                     "Ready"
-                    if dependency["label"] != "Fallback catalog database"
-                    and dependency["exists"]
+                    if dependency["label"] != "Fallback catalog database" and dependency["exists"]
                     else (
                         "Ready"
                         if catalog_status["usable"]
-                        else (
-                            "Present but unavailable"
-                            if catalog_status["exists"]
-                            else "Missing"
-                        )
+                        else ("Present but unavailable" if catalog_status["exists"] else "Missing")
                     )
                 ),
                 "tone": (
                     "good"
-                    if dependency["label"] != "Fallback catalog database"
-                    and dependency["exists"]
+                    if dependency["label"] != "Fallback catalog database" and dependency["exists"]
                     else ("good" if catalog_status["usable"] else "warn")
                 ),
                 "detail": detail,
@@ -7556,12 +7247,8 @@ def _build_card_page_insight(data: dict[str, Any]) -> dict[str, str] | None:
     if not roles and not leaders:
         return None
     # One sentence from stored usage: core/flex per leader (dedupe by leader)
-    core_leaders = sorted(
-        {r["leader_code"] for r in roles if r.get("role_label") == "core"}
-    )
-    flex_leaders = sorted(
-        {r["leader_code"] for r in roles if r.get("role_label") == "flex"}
-    )
+    core_leaders = sorted({r["leader_code"] for r in roles if r.get("role_label") == "core"})
+    flex_leaders = sorted({r["leader_code"] for r in roles if r.get("role_label") == "flex"})
     if core_leaders:
         if len(core_leaders) == 1:
             text = f"I see this card in the core shell for {core_leaders[0]}."
@@ -7714,8 +7401,11 @@ def _load_chapter19_12_price_hydration() -> dict[str, dict[str, str]]:
     if not path.is_file():
         return {}
     price_fields = (
-        "market_price", "mid_price", "low_price",
-        "subtype", "prices_updated_at",
+        "market_price",
+        "mid_price",
+        "low_price",
+        "subtype",
+        "prices_updated_at",
     )
     out: dict[str, dict[str, str]] = {}
     try:
@@ -7739,8 +7429,8 @@ def load_op01_conflict_review_panel() -> dict[str, Any]:
     Pure read-only: queries image_assets and market_products for side-by-side
     comparison of Miru asset vs TCGPlayer product image.
     """
-    CONFLICT_PIDS = (708, 788, 1157, 1158)
-    REFERENCE_PID = 707
+    CONFLICT_PIDS = (708, 788, 1157, 1158)  # noqa: N806
+    REFERENCE_PID = 707  # noqa: N806
 
     out: dict[str, Any] = {
         "rows": [],
@@ -7756,7 +7446,7 @@ def load_op01_conflict_review_panel() -> dict[str, Any]:
         con = sqlite3.connect(uri, uri=True)
         con.row_factory = sqlite3.Row
 
-        all_pids = list(CONFLICT_PIDS) + [REFERENCE_PID]
+        all_pids = [*CONFLICT_PIDS, REFERENCE_PID]
         placeholders = ",".join("?" * len(all_pids))
 
         # Fetch printing details with image_assets and candidate market_products
@@ -7817,12 +7507,14 @@ def load_op01_conflict_review_panel() -> dict[str, Any]:
             # Build candidate list
             candidate_list = []
             for c in cands:
-                candidate_list.append({
-                    "market_product_id": c["market_product_id"],
-                    "product_name": c["product_name"],
-                    "tcg_image_url": c["tcg_image_url"] or "",
-                    "is_installed": c["market_product_id"] == installed_mp_id,
-                })
+                candidate_list.append(
+                    {
+                        "market_product_id": c["market_product_id"],
+                        "product_name": c["product_name"],
+                        "tcg_image_url": c["tcg_image_url"] or "",
+                        "is_installed": c["market_product_id"] == installed_mp_id,
+                    }
+                )
 
             miru_path = pr["miru_image_path"] or ""
             row = {
@@ -7873,7 +7565,8 @@ def load_lane2_candidate_review_panel() -> dict[str, Any]:
 
         with open(csv_path, encoding="utf-8") as fh:
             csv_rows = [
-                r for r in _csv.DictReader(fh)
+                r
+                for r in _csv.DictReader(fh)
                 if r.get("sub_classification") in ("CLEAR", "MULTI_MATCH", "ALREADY_OWNED")
             ]
 
@@ -7882,6 +7575,7 @@ def load_lane2_candidate_review_panel() -> dict[str, Any]:
 
         # Group by printing_id
         from collections import OrderedDict
+
         grouped: dict[int, list[dict]] = OrderedDict()
         for r in csv_rows:
             pid = int(r["printing_id"])
@@ -7931,13 +7625,15 @@ def load_lane2_candidate_review_panel() -> dict[str, Any]:
                 tcg_url = (tcg_row["image_url"] or "") if tcg_row else ""
                 existing_owner = cr.get("existing_preferred_pid", "")
 
-                candidate_list.append({
-                    "market_product_id": mpid,
-                    "product_name": cr.get("product_name", ""),
-                    "tcg_image_url": tcg_url,
-                    "existing_owner_pid": int(existing_owner) if existing_owner else None,
-                    "sub_classification": cr["sub_classification"],
-                })
+                candidate_list.append(
+                    {
+                        "market_product_id": mpid,
+                        "product_name": cr.get("product_name", ""),
+                        "tcg_image_url": tcg_url,
+                        "existing_owner_pid": int(existing_owner) if existing_owner else None,
+                        "sub_classification": cr["sub_classification"],
+                    }
+                )
 
             row = {
                 "printing_id": pid,
@@ -8013,16 +7709,17 @@ def load_chapter19_11_install_plan_panel() -> dict[str, Any]:
                     row["install_panel_image"] = None
                 rows.append(row)
 
-            rows.sort(
-                key=lambda r: ((r.get("canonical_code") or ""), (r.get("printing_id") or ""))
-            )
+            rows.sort(key=lambda r: ((r.get("canonical_code") or ""), (r.get("printing_id") or "")))
 
             # Hydrate price data from Chapter 19.12 artifact
             price_map = _load_chapter19_12_price_hydration()
             if price_map:
                 _empty_price: dict[str, str] = {
-                    "market_price": "", "mid_price": "", "low_price": "",
-                    "subtype": "", "prices_updated_at": "",
+                    "market_price": "",
+                    "mid_price": "",
+                    "low_price": "",
+                    "subtype": "",
+                    "prices_updated_at": "",
                 }
                 for row in rows:
                     pid = row.get("printing_id") or ""
@@ -8064,9 +7761,7 @@ def render_page(page_key: str, current_endpoint: str):
             ready_install_panel = {}
             op01_conflict_panel = {}
             lane2_candidate_panel = {}
-        runtime_restart_token = (
-            os.environ.get("MIRU_RUNTIME_RESTART_TOKEN") or ""
-        ).strip()
+        runtime_restart_token = (os.environ.get("MIRU_RUNTIME_RESTART_TOKEN") or "").strip()
     elif page_key == "status":
         status_snapshot = build_status_snapshot()
         runtime_dependencies = collect_runtime_dependencies()
@@ -8180,7 +7875,7 @@ def _ruling_effective_date_prefix(val: Any) -> str | None:
 
 
 def _utc_today() -> date:
-    return datetime.now(timezone.utc).date()
+    return datetime.now(UTC).date()
 
 
 def _lookup_ruling_citation_from_card_rulings_catalog(
@@ -8263,9 +7958,7 @@ def lookup_legality_sensitive_ruling_citation(
                     "SELECT 1 FROM sqlite_master WHERE type='table' AND name='official_rule_notices'"
                 ).fetchone()
             ):
-                return _lookup_ruling_citation_from_card_rulings_catalog(
-                    catalog_db_path, code
-                )
+                return _lookup_ruling_citation_from_card_rulings_catalog(catalog_db_path, code)
 
             rows = list(
                 conn.execute(
@@ -8281,9 +7974,7 @@ def lookup_legality_sensitive_ruling_citation(
                 ).fetchall()
             )
             if not rows:
-                return _lookup_ruling_citation_from_card_rulings_catalog(
-                    catalog_db_path, code
-                )
+                return _lookup_ruling_citation_from_card_rulings_catalog(catalog_db_path, code)
 
             for r in rows:
                 st = str(r["legality_state"] or "").strip().lower()
@@ -8339,15 +8030,11 @@ def lookup_legality_sensitive_ruling_citation(
                         break
 
             if ban_row is None:
-                return _lookup_ruling_citation_from_card_rulings_catalog(
-                    catalog_db_path, code
-                )
+                return _lookup_ruling_citation_from_card_rulings_catalog(catalog_db_path, code)
 
             notice_id = str(ban_row["notice_id"] or "").strip()
             if not notice_id:
-                return _lookup_ruling_citation_from_card_rulings_catalog(
-                    catalog_db_path, code
-                )
+                return _lookup_ruling_citation_from_card_rulings_catalog(catalog_db_path, code)
 
             notice = conn.execute(
                 """
@@ -8629,7 +8316,7 @@ def run_image_review_reclassify(payload: dict[str, Any]) -> tuple[dict[str, Any]
     is_alt = 1 if treatment in ("alt_art", "tournament_promo") else 0
     is_sp = 1 if treatment == "sp" else 0
     is_tr = 1 if treatment == "tr" else 0
-    now_ts = datetime.now(timezone.utc).isoformat()
+    now_ts = datetime.now(UTC).isoformat()
 
     if not FALLBACK_CATALOG_DB_PATH.is_file():
         return {"error": "card_catalog.db not found."}, 503
@@ -8639,10 +8326,8 @@ def run_image_review_reclassify(payload: dict[str, Any]) -> tuple[dict[str, Any]
     def rollback_move() -> None:
         nonlocal moved
         if moved and dest_path.is_file() and not src_path.is_file():
-            try:
+            with suppress(OSError):
                 shutil.move(str(dest_path), str(src_path))
-            except OSError:
-                pass
             moved = False
 
     try:
@@ -8794,9 +8479,7 @@ def run_image_review_reclassify(payload: dict[str, Any]) -> tuple[dict[str, Any]
 
 
 STAGE_ACTIONS = frozenset({"confirm", "misroute", "reclassify", "delete"})
-STAGE_TREATMENTS = frozenset(
-    {"base", "parallel", "sp", "tr", "alt_art", "ir", "mr", "gmr"}
-)
+STAGE_TREATMENTS = frozenset({"base", "parallel", "sp", "tr", "alt_art", "ir", "mr", "gmr"})
 
 
 def _set_folder_from_canonical(canonical_code: str) -> str:
@@ -8835,9 +8518,7 @@ def _safe_under_assets(p: Path) -> bool:
         return False
 
 
-def _staging_filename_and_variant_key(
-    code: str, treatment: str, dest_dir: Path
-) -> tuple[str, str]:
+def _staging_filename_and_variant_key(code: str, treatment: str, dest_dir: Path) -> tuple[str, str]:
     t = treatment.lower().strip()
     if t == "base":
         return f"{code}_base.png", "base"
@@ -8932,7 +8613,7 @@ def _apply_commit_catalog_update(
     release_set_name: str,
     treatment: str,
 ) -> None:
-    now_ts = datetime.now(timezone.utc).isoformat()
+    now_ts = datetime.now(UTC).isoformat()
     ia, isp, itr, iir, imr, igmr = _treatment_to_flags(treatment)
     is_base_val = 1 if treatment.lower().strip() == "base" else 0
     crow = conn.execute(
@@ -9090,7 +8771,7 @@ def image_review_add_stage(body: dict[str, Any]) -> tuple[dict[str, Any], int]:
             return {"error": "destination already exists"}, 409
 
     decision_id = str(uuid.uuid4())
-    ts = datetime.now(timezone.utc).isoformat()
+    ts = datetime.now(UTC).isoformat()
     if action == "delete":
         rec: dict[str, Any] = {
             "decision_id": decision_id,
@@ -9111,8 +8792,7 @@ def image_review_add_stage(body: dict[str, Any]) -> tuple[dict[str, Any], int]:
             "canonical_code": canon,
             "action": action,
             "destination_path": str(dest.resolve()) if dest else None,
-            "variant_treatment": vt_s
-            or ("parallel" if action == "confirm" else None),
+            "variant_treatment": vt_s or ("parallel" if action == "confirm" else None),
             "distribution_product_key": dkey_s,
             "release_set_name": rname_s,
         }
@@ -9319,6 +8999,7 @@ def create_app() -> Flask:
         rejects/holds a card that already has completed evidence.
         """
         import sqlite3 as _sql
+
         db = PROJECT_ROOT / "data" / "miru_dev_training_reviews.db"
         if not db.is_file():
             return False
@@ -9416,9 +9097,7 @@ def create_app() -> Flask:
         timer.daemon = True
         _image_fetch_schedule["timer"] = timer
         timer.start()
-        app.logger.info(
-            "Scheduled nightly Miru image fetch in %s seconds.", delay_seconds
-        )
+        app.logger.info("Scheduled nightly Miru image fetch in %s seconds.", delay_seconds)
 
     def _nightly_image_fetch_tick() -> None:
         _start_fetch_missing_images_job(trigger="nightly_0300")
@@ -9429,7 +9108,7 @@ def create_app() -> Flask:
     # _schedule_next_nightly_image_fetch()
 
     # ── Evidence watchdog (5-min recurring timer) ────────────────────────
-    _EVIDENCE_WATCHDOG_INTERVAL = 300  # seconds
+    _EVIDENCE_WATCHDOG_INTERVAL = 300  # noqa: N806  # seconds
 
     def _evidence_watchdog_loop() -> None:
         try:
@@ -9564,9 +9243,7 @@ def create_app() -> Flask:
         )
         if ok:
             return redirect(f"/dev?rejected={quote(code, safe='')}")
-        if dismiss_image_variant_sp_operator_review(
-            code, project_db_path=FALLBACK_CATALOG_DB_PATH
-        ):
+        if dismiss_image_variant_sp_operator_review(code, project_db_path=FALLBACK_CATALOG_DB_PATH):
             return redirect(f"/dev?rejected={quote(code, safe='')}")
         return redirect("/dev")
 
@@ -9646,9 +9323,9 @@ def create_app() -> Flask:
             pass
         return jsonify(payload)
 
-    _TAILSCALE_NET = ipaddress.ip_network("100.0.0.0/8")  # Tailscale IPv4
-    _TAILSCALE_NET6 = ipaddress.ip_network("fd7a:115c:a1e0::/48")  # Tailscale IPv6 ULA
-    _RUNTIME_RESTART_TOKEN = (
+    _TAILSCALE_NET = ipaddress.ip_network("100.0.0.0/8")  # noqa: N806  # Tailscale IPv4
+    _TAILSCALE_NET6 = ipaddress.ip_network("fd7a:115c:a1e0::/48")  # noqa: N806  # Tailscale IPv6 ULA
+    _RUNTIME_RESTART_TOKEN = (  # noqa: N806
         os.environ.get("MIRU_RUNTIME_RESTART_TOKEN") or ""
     ).strip()
 
@@ -9660,10 +9337,7 @@ def create_app() -> Flask:
             remote = forwarded.split(",")[0].strip()
         else:
             real = (request.headers.get("X-Real-IP") or "").strip()
-            if real:
-                remote = real
-            else:
-                remote = (request.environ.get("REMOTE_ADDR") or "").strip()
+            remote = real or (request.environ.get("REMOTE_ADDR") or "").strip()
         return remote
 
     def _runtime_restart_token_matches() -> bool:
@@ -9689,9 +9363,7 @@ def create_app() -> Flask:
                 return True
             if getattr(addr, "version", 0) == 6 and addr in _TAILSCALE_NET6:
                 return True
-            if addr.is_private:
-                return True
-            return False
+            return bool(addr.is_private)
         except Exception:
             return False
 
@@ -9948,18 +9620,14 @@ def create_app() -> Flask:
             "all",
             "full",
         }
-        payload = build_dev_status(
-            lightweight=summary_only, include_heavy_sections=include_heavy
-        )
+        payload = build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy)
         if summary_only:
             payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
         if summary_only and surface == "cockpit":
             payload = _strip_dev_cockpit_dev_status_payload(payload)
         return jsonify(trim_dev_status_payload(payload))
 
-    @app.route(
-        "/api/dev/operator-handoff/resolve", methods=["POST"], strict_slashes=False
-    )
+    @app.route("/api/dev/operator-handoff/resolve", methods=["POST"], strict_slashes=False)
     def dev_operator_handoff_resolve():
         """Persist operator acknowledgement for the current handoff need signature (data/miru_operator_handoff_resolution.json)."""
         if not _is_runtime_control_allowed():
@@ -10008,9 +9676,7 @@ def create_app() -> Flask:
             )
         clear_operator_handoff_resolution()
         payload = build_dev_status(lightweight=True, include_heavy_sections=False)
-        return jsonify(
-            {"ok": True, "operator_handoff": build_operator_handoff_payload(payload)}
-        )
+        return jsonify({"ok": True, "operator_handoff": build_operator_handoff_payload(payload)})
 
     @app.get("/api/dev/lane2-review")
     def dev_lane2_review():
@@ -10052,14 +9718,11 @@ def create_app() -> Flask:
             elif not has_local:
                 review_status = "NOT_READY_FOR_REVIEW"
                 review_context = (
-                    "No local image asset — Bandai CDN shows base art, "
-                    "not treatment variant"
+                    "No local image asset — Bandai CDN shows base art, " "not treatment variant"
                 )
             else:
                 review_status = "NOT_READY_FOR_REVIEW"
-                review_context = (
-                    "Local asset present but no candidate has a TCG image URL"
-                )
+                review_context = "Local asset present but no candidate has a TCG image URL"
 
             row_out = {
                 "printing_id": r["printing_id"],
@@ -10080,18 +9743,20 @@ def create_app() -> Flask:
             else:
                 not_ready_rows.append(row_out)
 
-        return jsonify({
-            "ready": ready_rows,
-            "not_ready": not_ready_rows,
-            "already_owned": already_owned_rows,
-            "summary": {
-                "ready_count": len(ready_rows),
-                "not_ready_count": len(not_ready_rows),
-                "already_owned_count": len(already_owned_rows),
-                "clear": panel.get("clear_count", 0),
-                "multi_match": panel.get("multi_count", 0),
-            },
-        })
+        return jsonify(
+            {
+                "ready": ready_rows,
+                "not_ready": not_ready_rows,
+                "already_owned": already_owned_rows,
+                "summary": {
+                    "ready_count": len(ready_rows),
+                    "not_ready_count": len(not_ready_rows),
+                    "already_owned_count": len(already_owned_rows),
+                    "clear": panel.get("clear_count", 0),
+                    "multi_match": panel.get("multi_count", 0),
+                },
+            }
+        )
 
     @app.get("/api/dev/action-governance")
     def dev_action_governance():
@@ -10223,8 +9888,7 @@ def create_app() -> Flask:
                 card_code=str(payload.get("card_code") or "").strip().upper(),
                 set_code=str(payload.get("set_code") or "").strip().upper(),
                 max_results=max_results,
-                lead_type=str(payload.get("lead_type") or "review_lead").strip()
-                or "review_lead",
+                lead_type=str(payload.get("lead_type") or "review_lead").strip() or "review_lead",
             )
         except McpInvocationError as exc:
             return (
@@ -10411,9 +10075,7 @@ def create_app() -> Flask:
             "all",
             "full",
         }
-        payload = build_dev_status(
-            lightweight=summary_only, include_heavy_sections=include_heavy
-        )
+        payload = build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy)
         if summary_only:
             payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
         return jsonify(trim_dev_status_payload(payload))
@@ -10426,9 +10088,7 @@ def create_app() -> Flask:
             "all",
             "full",
         }
-        payload = build_dev_status(
-            lightweight=summary_only, include_heavy_sections=include_heavy
-        )
+        payload = build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy)
         if summary_only:
             payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
         return jsonify(trim_dev_status_payload(payload))
@@ -10456,9 +10116,13 @@ def create_app() -> Flask:
         set_code = request.args.get("set_code", "OP01").strip().upper()
         limit = int(request.args.get("limit", "28"))
         offset = int(request.args.get("offset", "0"))
-        return jsonify(build_training_review_queue_payload(
-            set_code_filter=set_code, limit=limit, offset=offset,
-        ))
+        return jsonify(
+            build_training_review_queue_payload(
+                set_code_filter=set_code,
+                limit=limit,
+                offset=offset,
+            )
+        )
 
     @app.post("/api/dev/training-review/submit")
     def dev_training_review_submit():
@@ -10504,11 +10168,7 @@ def create_app() -> Flask:
         # Accept optional structured correction detail array from enriched
         # review payloads.  Falls back to empty list for coarse submissions.
         raw_correction = payload.get("correctionDetail")
-        correction_detail = (
-            raw_correction
-            if isinstance(raw_correction, list)
-            else []
-        )
+        correction_detail = raw_correction if isinstance(raw_correction, list) else []
         record = {
             "card_code": card_code,
             "printing_id": printing_id,
@@ -10583,9 +10243,7 @@ def create_app() -> Flask:
             set_helper_runtime_override(v)
         else:
             return (
-                jsonify(
-                    {"error": 'Send {"enabled": true|false} or {"reset": true}.'}
-                ),
+                jsonify({"error": 'Send {"enabled": true|false} or {"reset": true}.'}),
                 400,
             )
         return jsonify(helper_status())
@@ -10662,19 +10320,23 @@ def create_app() -> Flask:
         if task == "explain_elevation":
             return jsonify(explain_elevation(params))
         if task == "draft_note":
-            return jsonify(draft_review_note(
-                issue_type=str(params.get("issue_type") or ""),
-                because=str(params.get("because") or ""),
-                card_code=str(params.get("card_code") or ""),
-                variant_key=str(params.get("variant_key") or ""),
-            ))
+            return jsonify(
+                draft_review_note(
+                    issue_type=str(params.get("issue_type") or ""),
+                    because=str(params.get("because") or ""),
+                    card_code=str(params.get("card_code") or ""),
+                    variant_key=str(params.get("variant_key") or ""),
+                )
+            )
         if task == "suggest_correction":
-            return jsonify(suggest_correction_detail(
-                issue_type=str(params.get("issue_type") or ""),
-                card_code=str(params.get("card_code") or ""),
-                variant_key=str(params.get("variant_key") or ""),
-                because=str(params.get("because") or ""),
-            ))
+            return jsonify(
+                suggest_correction_detail(
+                    issue_type=str(params.get("issue_type") or ""),
+                    card_code=str(params.get("card_code") or ""),
+                    variant_key=str(params.get("variant_key") or ""),
+                    because=str(params.get("because") or ""),
+                )
+            )
         return jsonify({"ok": False, "error": f"Unknown task: {task}"}), 400
 
     @app.get("/img/<path:relpath>")
@@ -10730,7 +10392,7 @@ def create_app() -> Flask:
             return jsonify({"error": "id is required."}), 400
         if action not in ("confirm", "misroute", "delete"):
             return jsonify({"error": "action must be confirm, misroute, or delete."}), 400
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with _IMAGE_REVIEW_DECISIONS_LOCK:
             data = _load_image_review_decisions_unlocked(IMAGE_REVIEW_DECISIONS_PATH)
             if action == "delete":
@@ -10764,7 +10426,7 @@ def create_app() -> Flask:
         item_id = str(payload.get("id") or "").strip()
         if not item_id:
             return jsonify({"error": "id is required."}), 400
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with _IMAGE_REVIEW_DECISIONS_LOCK:
             data = _load_image_review_decisions_unlocked(IMAGE_REVIEW_DECISIONS_PATH)
             ent = data.get(item_id)
@@ -10823,7 +10485,7 @@ def create_app() -> Flask:
                 continue
             seen.add(i)
             ids_unique.append(i)
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         count = 0
         with _IMAGE_REVIEW_DECISIONS_LOCK:
             data = _load_image_review_decisions_unlocked(IMAGE_REVIEW_DECISIONS_PATH)
@@ -11002,9 +10664,9 @@ def create_app() -> Flask:
         try:
             from tools.miru_official_rules import (
                 DEFAULT_RULES_DB_PATH,
+                format_source_citation,
                 get_best_official_ruling_match,
                 search_official_rulings,
-                format_source_citation,
             )
         except ImportError:
             return (
@@ -11038,9 +10700,7 @@ def create_app() -> Flask:
 
         def with_citation(r: dict[str, Any]) -> dict[str, Any]:
             out = {
-                k: v
-                for k, v in r.items()
-                if isinstance(v, (type(None), str, int, float, bool))
+                k: v for k, v in r.items() if isinstance(v, type(None) | str | int | float | bool)
             }
             out["citation"] = format_source_citation(r)
             return out
@@ -11091,42 +10751,127 @@ def create_app() -> Flask:
         """Badge/state/evidence metadata for operator legend modal."""
         if not _image_review_port_ok():
             return jsonify({"error": "Only available on port 18765."}), 403
-        return jsonify({
-            "badges": [
-                {"key": "false_parallel", "label": "False Parallel", "description": "Variant code issue — possible duplicate or mismatched parallel print.", "color": "#f87171"},
-                {"key": "name_mismatch", "label": "Name Mismatch", "description": "Card name differs across sources or prior reviews.", "color": "#fb923c"},
-                {"key": "stat_mismatch", "label": "Stat Mismatch", "description": "Stats or attributes conflict between evidence sources.", "color": "#fbbf24"},
-                {"key": "missing_art", "label": "Missing Art", "description": "No verified local artwork found for this card.", "color": "#a78bfa"},
-                {"key": "unverified", "label": "Unverified", "description": "Card exists in catalog but has no supporting evidence.", "color": "#94a3b8"},
-                {"key": "new_card", "label": "New Card", "description": "First appearance in review queue — no prior operator decisions.", "color": "#38bdf8"},
-            ],
-            "states": [
-                {"key": "live", "label": "Live", "description": "Card is active in catalog with no local image staged."},
-                {"key": "staged", "label": "Staged", "description": "Card has a verified local image ready for use."},
-            ],
-            "evidenceSources": [
-                {"key": "BANDAI_CDN_CHECK", "label": "Bandai CDN", "weight": 0.25, "canContradict": True},
-                {"key": "INTERNAL_ASSET_CHECK", "label": "Internal Asset", "weight": 0.25, "canContradict": False},
-                {"key": "PM_PARITY_CHECK", "label": "PM Parity", "weight": 0.20, "canContradict": False},
-                {"key": "JUSTTCG_CONSTRAINED", "label": "JustTCG", "weight": 0.15, "canContradict": True},
-                {"key": "OPTCGAPI_CROSS_CHECK", "label": "OPTCG API", "weight": 0.08, "canContradict": False},
-                {"key": "OPERATOR_URL", "label": "Operator URL", "weight": 0.15, "canContradict": False},
-                {"key": "PERPLEXITY", "label": "Perplexity", "weight": 0.05, "canContradict": False},
-                {"key": "YOUTUBE", "label": "YouTube", "weight": 0.03, "canContradict": False},
-            ],
-            "verdicts": [
-                {"key": "looks_correct", "label": "Looks Correct", "description": "Card data appears accurate across all checked fields."},
-                {"key": "needs_review", "label": "Needs Review", "description": "One or more issues identified — correction detail required."},
-                {"key": "not_sure", "label": "Not Sure", "description": "Insufficient evidence to make a confident determination."},
-            ],
-        })
+        return jsonify(
+            {
+                "badges": [
+                    {
+                        "key": "false_parallel",
+                        "label": "False Parallel",
+                        "description": "Variant code issue — possible duplicate or mismatched parallel print.",
+                        "color": "#f87171",
+                    },
+                    {
+                        "key": "name_mismatch",
+                        "label": "Name Mismatch",
+                        "description": "Card name differs across sources or prior reviews.",
+                        "color": "#fb923c",
+                    },
+                    {
+                        "key": "stat_mismatch",
+                        "label": "Stat Mismatch",
+                        "description": "Stats or attributes conflict between evidence sources.",
+                        "color": "#fbbf24",
+                    },
+                    {
+                        "key": "missing_art",
+                        "label": "Missing Art",
+                        "description": "No verified local artwork found for this card.",
+                        "color": "#a78bfa",
+                    },
+                    {
+                        "key": "unverified",
+                        "label": "Unverified",
+                        "description": "Card exists in catalog but has no supporting evidence.",
+                        "color": "#94a3b8",
+                    },
+                    {
+                        "key": "new_card",
+                        "label": "New Card",
+                        "description": "First appearance in review queue — no prior operator decisions.",
+                        "color": "#38bdf8",
+                    },
+                ],
+                "states": [
+                    {
+                        "key": "live",
+                        "label": "Live",
+                        "description": "Card is active in catalog with no local image staged.",
+                    },
+                    {
+                        "key": "staged",
+                        "label": "Staged",
+                        "description": "Card has a verified local image ready for use.",
+                    },
+                ],
+                "evidenceSources": [
+                    {
+                        "key": "BANDAI_CDN_CHECK",
+                        "label": "Bandai CDN",
+                        "weight": 0.25,
+                        "canContradict": True,
+                    },
+                    {
+                        "key": "INTERNAL_ASSET_CHECK",
+                        "label": "Internal Asset",
+                        "weight": 0.25,
+                        "canContradict": False,
+                    },
+                    {
+                        "key": "PM_PARITY_CHECK",
+                        "label": "PM Parity",
+                        "weight": 0.20,
+                        "canContradict": False,
+                    },
+                    {
+                        "key": "JUSTTCG_CONSTRAINED",
+                        "label": "JustTCG",
+                        "weight": 0.15,
+                        "canContradict": True,
+                    },
+                    {
+                        "key": "OPTCGAPI_CROSS_CHECK",
+                        "label": "OPTCG API",
+                        "weight": 0.08,
+                        "canContradict": False,
+                    },
+                    {
+                        "key": "OPERATOR_URL",
+                        "label": "Operator URL",
+                        "weight": 0.15,
+                        "canContradict": False,
+                    },
+                    {
+                        "key": "PERPLEXITY",
+                        "label": "Perplexity",
+                        "weight": 0.05,
+                        "canContradict": False,
+                    },
+                    {"key": "YOUTUBE", "label": "YouTube", "weight": 0.03, "canContradict": False},
+                ],
+                "verdicts": [
+                    {
+                        "key": "looks_correct",
+                        "label": "Looks Correct",
+                        "description": "Card data appears accurate across all checked fields.",
+                    },
+                    {
+                        "key": "needs_review",
+                        "label": "Needs Review",
+                        "description": "One or more issues identified — correction detail required.",
+                    },
+                    {
+                        "key": "not_sure",
+                        "label": "Not Sure",
+                        "description": "Insufficient evidence to make a confident determination.",
+                    },
+                ],
+            }
+        )
 
     def _proxy_dev_action_to_main(path: str) -> tuple[bool, dict[str, Any]]:
         """POST to main runtime and return (ok, body). Used when this server is worktree (e.g. 18765)."""
         base = (
-            (resolve_runtime_monitor_status_url() or "")
-            .replace("/api/dev-status", "")
-            .rstrip("/")
+            (resolve_runtime_monitor_status_url() or "").replace("/api/dev-status", "").rstrip("/")
         )
         if not base:
             return False, {"ok": False, "error": "Main runtime URL not configured."}
@@ -11141,18 +10886,14 @@ def create_app() -> Flask:
             with closing(urlopen(req, timeout=10)) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
                 return True, (
-                    body
-                    if isinstance(body, dict)
-                    else {"ok": True, "message": str(body)}
+                    body if isinstance(body, dict) else {"ok": True, "message": str(body)}
                 )
         except HTTPError as e:
             try:
                 body = json.loads(e.read().decode("utf-8")) if e.fp else {}
             except Exception:
                 body = {}
-            return False, (
-                body if isinstance(body, dict) else {"ok": False, "error": str(e)}
-            )
+            return False, (body if isinstance(body, dict) else {"ok": False, "error": str(e)})
         except (URLError, OSError, ValueError) as e:
             return False, {"ok": False, "error": str(e)}
 
@@ -11305,26 +11046,15 @@ def create_app() -> Flask:
                             {
                                 "at": time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()),
                                 "synced_cards": int(
-                                    (report.get("sync_result") or {}).get(
-                                        "synced_cards"
-                                    )
-                                    or 0
+                                    (report.get("sync_result") or {}).get("synced_cards") or 0
                                 ),
                                 "inserted_insights": int(
-                                    (report.get("sync_result") or {}).get(
-                                        "inserted_insights"
-                                    )
-                                    or 0
+                                    (report.get("sync_result") or {}).get("inserted_insights") or 0
                                 ),
                                 "replaced_insights": int(
-                                    (report.get("sync_result") or {}).get(
-                                        "replaced_insights"
-                                    )
-                                    or 0
+                                    (report.get("sync_result") or {}).get("replaced_insights") or 0
                                 ),
-                                "insight_count_after": int(
-                                    report.get("insight_count_after") or 0
-                                ),
+                                "insight_count_after": int(report.get("insight_count_after") or 0),
                                 "dossier_status": report.get("dossier_status") or {},
                                 "trigger": "after_stop",
                             }
@@ -11380,16 +11110,12 @@ def create_app() -> Flask:
                             (report.get("sync_result") or {}).get("synced_cards") or 0
                         ),
                         "inserted_insights": int(
-                            (report.get("sync_result") or {}).get("inserted_insights")
-                            or 0
+                            (report.get("sync_result") or {}).get("inserted_insights") or 0
                         ),
                         "replaced_insights": int(
-                            (report.get("sync_result") or {}).get("replaced_insights")
-                            or 0
+                            (report.get("sync_result") or {}).get("replaced_insights") or 0
                         ),
-                        "insight_count_after": int(
-                            report.get("insight_count_after") or 0
-                        ),
+                        "insight_count_after": int(report.get("insight_count_after") or 0),
                         "dossier_status": report.get("dossier_status") or {},
                         "trigger": "manual",
                     }
@@ -11511,14 +11237,10 @@ def create_app() -> Flask:
                     return jsonify(json.load(resp))
             except (HTTPError, URLError, OSError, ValueError):
                 return (
-                    jsonify(
-                        {"activity": [], "error": "Could not fetch from main runtime"}
-                    ),
+                    jsonify({"activity": [], "error": "Could not fetch from main runtime"}),
                     502,
                 )
-        events = load_monitor_engine_events(
-            status_db_path=LEARNING_STATUS_DB_PATH, limit=limit
-        )
+        events = load_monitor_engine_events(status_db_path=LEARNING_STATUS_DB_PATH, limit=limit)
         return jsonify({"activity": events["recent_activity"]})
 
     @app.get("/api/dev/pending-approvals")
@@ -11605,9 +11327,7 @@ def create_app() -> Flask:
                         "guardrail_label": str(row["guardrail_label"] or "").strip(),
                         "confidence_score": conf,
                         "risk_level": str(row["risk_level"] or "").strip(),
-                        "recommended_next_step": str(
-                            row["recommended_next_step"] or ""
-                        ).strip(),
+                        "recommended_next_step": str(row["recommended_next_step"] or "").strip(),
                         "summary_text": str(row["summary_text"] or "").strip(),
                         "updated_at": str(row["updated_at"] or "").strip(),
                         "created_at": str(row["created_at"] or "").strip(),
@@ -11615,8 +11335,7 @@ def create_app() -> Flask:
                         "set_code": str(row["set_code"] or "").strip(),
                         "set_name": str(row["set_name"] or "").strip(),
                         "id": code,
-                        "insight_type": str(row["guardrail_label"] or "").strip()
-                        or "—",
+                        "insight_type": str(row["guardrail_label"] or "").strip() or "—",
                         "confidence": conf,
                         "insight_preview": preview or "—",
                     }
@@ -11747,7 +11466,9 @@ def create_app() -> Flask:
             ORDER BY ci.publish_updated_at DESC NULLS LAST
         """
         try:
-            with closing(sqlite3.connect(f"file:{catalog_path.resolve().as_posix()}?mode=ro", uri=True)) as conn:
+            with closing(
+                sqlite3.connect(f"file:{catalog_path.resolve().as_posix()}?mode=ro", uri=True)
+            ) as conn:
                 conn.row_factory = sqlite3.Row
                 rows = conn.execute(sql).fetchall()
         except sqlite3.Error as exc:
@@ -11784,12 +11505,8 @@ def create_app() -> Flask:
                     "confidence": conf,
                     "insight_text": insight_text,
                     "published_at": str(row["publish_updated_at"] or "").strip(),
-                    "thumb_path": _catalog_image_rel_to_images_cards_url(
-                        row["cv_thumb_path"]
-                    ),
-                    "image_path": _catalog_image_rel_to_images_cards_url(
-                        row["cv_set_image_path"]
-                    ),
+                    "thumb_path": _catalog_image_rel_to_images_cards_url(row["cv_thumb_path"]),
+                    "image_path": _catalog_image_rel_to_images_cards_url(row["cv_set_image_path"]),
                 }
             )
         return jsonify({"ok": True, "count": len(items), "items": items})
@@ -11819,7 +11536,7 @@ def create_app() -> Flask:
         if not scope:
             scope = "Port 18765"
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         task_id = uuid.uuid4().hex
         item: dict[str, Any] = {
             "task_id": task_id,
@@ -11855,7 +11572,7 @@ def create_app() -> Flask:
                 if row_id == str(task_id):
                     if status:
                         row["status"] = status
-                    row["updated_at"] = datetime.now(timezone.utc).isoformat()
+                    row["updated_at"] = datetime.now(UTC).isoformat()
                     updated = row
                     break
             if updated is None:
@@ -11934,9 +11651,7 @@ def create_app() -> Flask:
         """Set publish_status to publish_ready for one card (catalog only). Localhost only."""
         if not is_local_request():
             return (
-                jsonify(
-                    {"ok": False, "error": "Approve is only allowed from localhost."}
-                ),
+                jsonify({"ok": False, "error": "Approve is only allowed from localhost."}),
                 403,
             )
         payload = request.get_json(silent=True) or {}
@@ -11959,18 +11674,14 @@ def create_app() -> Flask:
                 ),
                 404,
             )
-        return jsonify(
-            {"ok": True, "card_code": card_code, "publish_status": "publish_ready"}
-        )
+        return jsonify({"ok": True, "card_code": card_code, "publish_status": "publish_ready"})
 
     @app.post("/api/dev/publish-review/reject")
     def dev_publish_review_reject():
         """Set publish_status to publish_deferred for one card (catalog only). Localhost only."""
         if not is_local_request():
             return (
-                jsonify(
-                    {"ok": False, "error": "Reject is only allowed from localhost."}
-                ),
+                jsonify({"ok": False, "error": "Reject is only allowed from localhost."}),
                 403,
             )
         payload = request.get_json(silent=True) or {}
@@ -11993,9 +11704,7 @@ def create_app() -> Flask:
                 ),
                 404,
             )
-        return jsonify(
-            {"ok": True, "card_code": card_code, "publish_status": "publish_deferred"}
-        )
+        return jsonify({"ok": True, "card_code": card_code, "publish_status": "publish_deferred"})
 
     @app.post("/api/dev/publish-review/approve-all")
     def dev_publish_review_approve_all():
@@ -12018,9 +11727,7 @@ def create_app() -> Flask:
         """Approve one item: sync to project and remove from review queue. Localhost only."""
         if not is_local_request():
             return (
-                jsonify(
-                    {"ok": False, "error": "Approve is only allowed from localhost."}
-                ),
+                jsonify({"ok": False, "error": "Approve is only allowed from localhost."}),
                 403,
             )
         payload = request.get_json(silent=True) or {}
@@ -12029,9 +11736,7 @@ def create_app() -> Flask:
         source_id = str(payload.get("source_id") or "").strip().lower()
         if not card_code or not source_id:
             return (
-                jsonify(
-                    {"ok": False, "error": "card_code and source_id are required."}
-                ),
+                jsonify({"ok": False, "error": "card_code and source_id are required."}),
                 400,
             )
         dossier_path = Path(LEARNING_DOSSIER_DB_PATH)
@@ -12082,9 +11787,7 @@ def create_app() -> Flask:
         else:
             text = str(traits_raw or "")
             traits = (
-                [p.strip() for p in text.replace("/", " ").split() if p.strip()]
-                if text
-                else []
+                [p.strip() for p in text.replace("/", " ").split() if p.strip()] if text else []
             )
         try:
             record = NormalizedSourceRecord(
@@ -12110,9 +11813,7 @@ def create_app() -> Flask:
             )
         except (TypeError, ValueError) as e:
             return jsonify({"ok": False, "error": f"Could not build record: {e}"}), 502
-        sync = MiruProjectDbSync(
-            project_db_path=FALLBACK_CATALOG_DB_PATH, sync_immediate=True
-        )
+        sync = MiruProjectDbSync(project_db_path=FALLBACK_CATALOG_DB_PATH, sync_immediate=True)
         try:
             sync.queue_validated_record(record, task_type="verify_official_fields")
         except Exception as e:
@@ -12121,9 +11822,7 @@ def create_app() -> Flask:
         if status_path.is_file() and item_id is not None:
             try:
                 with closing(sqlite3.connect(status_path)) as conn:
-                    conn.execute(
-                        "DELETE FROM learner_review_queue WHERE id = ?", (int(item_id),)
-                    )
+                    conn.execute("DELETE FROM learner_review_queue WHERE id = ?", (int(item_id),))
                     conn.commit()
             except sqlite3.Error:
                 pass
@@ -12141,9 +11840,7 @@ def create_app() -> Flask:
         """Remove one item from the review queue (reject). Localhost only."""
         if not is_local_request():
             return (
-                jsonify(
-                    {"ok": False, "error": "Reject is only allowed from localhost."}
-                ),
+                jsonify({"ok": False, "error": "Reject is only allowed from localhost."}),
                 403,
             )
         payload = request.get_json(silent=True) or {}
@@ -12155,9 +11852,7 @@ def create_app() -> Flask:
             return jsonify({"ok": False, "error": "Status DB not found."}), 502
         try:
             with closing(sqlite3.connect(status_path)) as conn:
-                conn.execute(
-                    "DELETE FROM learner_review_queue WHERE id = ?", (int(item_id),)
-                )
+                conn.execute("DELETE FROM learner_review_queue WHERE id = ?", (int(item_id),))
                 conn.commit()
         except sqlite3.Error as e:
             return jsonify({"ok": False, "error": str(e)}), 502
@@ -12169,7 +11864,7 @@ def create_app() -> Flask:
             }
         )
 
-    WORKTREE_REVIEW_SNAPSHOT_PATH = (
+    WORKTREE_REVIEW_SNAPSHOT_PATH = (  # noqa: N806
         PROJECT_ROOT / "data" / "snapshots" / "community_cardlist.json"
     )
 
@@ -12245,9 +11940,7 @@ def create_app() -> Flask:
         """Restart the learner: stop then start. On worktree with real control: stop managed process then start it. Proxies to main if configured."""
         if not is_local_request():
             return (
-                jsonify(
-                    {"ok": False, "error": "Restart is only allowed from localhost."}
-                ),
+                jsonify({"ok": False, "error": "Restart is only allowed from localhost."}),
                 403,
             )
         remote_url = resolve_runtime_monitor_status_url()
@@ -12340,9 +12033,7 @@ def create_app() -> Flask:
             )
         if port == 18765:
             _kill_processes_bound_to_port(port)
-            code, out, err = _run_worktree_script(
-                "start_miru_ai_dev.ps1", ["-Force"], wait=False
-            )
+            code, out, err = _run_worktree_script("start_miru_ai_dev.ps1", ["-Force"], wait=False)
         else:
             result = subprocess.run(
                 ["nssm", "restart", "MiruDashboard"],
@@ -12405,9 +12096,7 @@ def create_app() -> Flask:
                 jsonify({"ok": False, "error": f"Failed to read self-report: {exc}"}),
                 500,
             )
-        return jsonify(
-            {"ok": True, "path": "data/miru_self_report.json", "report": payload}
-        )
+        return jsonify({"ok": True, "path": "data/miru_self_report.json", "report": payload})
 
     @app.get("/api/dev/validation_insights")
     def legacy_validation_insights():
@@ -12505,9 +12194,7 @@ def create_app() -> Flask:
                 "ok": True,
                 "enabled": bool(pushover_status.get("enabled")),
                 "configured": bool(pushover_status.get("configured")),
-                "missing_required_keys": list(
-                    pushover_status.get("missing_required_keys") or []
-                ),
+                "missing_required_keys": list(pushover_status.get("missing_required_keys") or []),
                 "endpoint": "dry-run",
                 "status_code": 200,
                 "error": "",
@@ -12552,12 +12239,8 @@ def create_app() -> Flask:
     @app.get("/api/dev/card-validation/<card_code>")
     def dev_card_validation(card_code: str):
         normalized = normalize_card_code(card_code)
-        canonical_code = (
-            (normalized["canonical_code"] or card_code or "").strip().upper()
-        )
-        audit = load_card_validation_audit(
-            canonical_code, project_db_path=FALLBACK_CATALOG_DB_PATH
-        )
+        canonical_code = (normalized["canonical_code"] or card_code or "").strip().upper()
+        audit = load_card_validation_audit(canonical_code, project_db_path=FALLBACK_CATALOG_DB_PATH)
         if audit is None:
             return (
                 jsonify(
@@ -12578,6 +12261,64 @@ def create_app() -> Flask:
     def run_request():
         abort(404)
 
+    @app.get("/api/ops/report")
+    def ops_report():
+        """Ops summary: budget state, DLQ count, last 10 completions, last 5 heartbeats."""
+
+        def _read_jsonl_tail(path: Path, n: int) -> list[dict]:
+            try:
+                lines = path.read_text(encoding="utf-8").splitlines()
+                tail = [ln for ln in lines if ln.strip()][-n:]
+                result = []
+                for ln in tail:
+                    with suppress(Exception):
+                        result.append(json.loads(ln))
+                return result
+            except Exception:
+                return []
+
+        def _count_jsonl_lines(path: Path) -> int:
+            try:
+                lines = path.read_text(encoding="utf-8").splitlines()
+                return sum(1 for ln in lines if ln.strip())
+            except Exception:
+                return 0
+
+        budget = None
+        with suppress(Exception):
+            budget = json.loads(LIMITS_STATUS_PATH.read_text(encoding="utf-8"))
+
+        dlq_path = PROJECT_ROOT / "data" / "dispatch_dlq.jsonl"
+        dlq_count = _count_jsonl_lines(dlq_path)
+
+        completions_path = PROJECT_ROOT / "data" / "cc_completion_log.jsonl"
+        last_completions = _read_jsonl_tail(completions_path, 10)
+
+        heartbeat_path = PROJECT_ROOT / "data" / "cc_heartbeat_log.jsonl"
+        all_heartbeats = _read_jsonl_tail(heartbeat_path, 500)
+        latest_by_worker: dict[str, dict] = {}
+        for hb in all_heartbeats:
+            wid = hb.get("worker_id", "unknown")
+            if wid not in latest_by_worker or hb.get("ts", "") > latest_by_worker[wid].get(
+                "ts", ""
+            ):
+                latest_by_worker[wid] = hb
+        last_heartbeats = sorted(
+            latest_by_worker.values(),
+            key=lambda x: x.get("ts", ""),
+            reverse=True,
+        )[:5]
+
+        return jsonify(
+            {
+                "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "budget": budget,
+                "dlq_count": dlq_count,
+                "last_completions": last_completions,
+                "last_heartbeats": last_heartbeats,
+            }
+        )
+
     return app
 
 
@@ -12585,12 +12326,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Lightweight Flask sidecar for running miru_ai/core/ai.py from a phone or browser."
     )
-    parser.add_argument(
-        "--host", default="0.0.0.0", help="Host to bind the Flask app to."
-    )
-    parser.add_argument(
-        "--port", type=int, default=18765, help="Port to bind the Flask app to."
-    )
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind the Flask app to.")
+    parser.add_argument("--port", type=int, default=18765, help="Port to bind the Flask app to.")
     parser.add_argument(
         "--debug",
         action="store_true",
