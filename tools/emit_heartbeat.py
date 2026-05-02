@@ -1,9 +1,12 @@
 """
 emit_heartbeat.py — append a heartbeat row to data/cc_heartbeat_log.jsonl.
 
-Usage (from repo root):
+Works from any git worktree (miru-w1, miru-w2, etc.) — always writes to the
+main repo's data/ directory, not the worktree-local one.
+
+Usage:
     python tools/emit_heartbeat.py \
-        --worker-id claude-code-1 \
+        --worker-id miru-w1 \
         --ticket-id PRO-XXX \
         --step running_pre_commit \
         [--branch dreighto/pro-xxx-...] \
@@ -18,14 +21,33 @@ Schema: PRO-180 (locked 2026-04-28, PROVISIONAL).
 import argparse
 import json
 import os
+import subprocess
 import sys
 from datetime import UTC, datetime
 
-HEARTBEAT_LOG = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "data",
-    "cc_heartbeat_log.jsonl",
-)
+
+def _repo_root() -> str:
+    """Return the main repo root, works from any linked worktree."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            cwd=script_dir,
+            timeout=5,
+        )
+        if result.returncode == 0:
+            # resolve relative to the subprocess cwd, not Python's cwd
+            common_dir = os.path.normpath(os.path.join(script_dir, result.stdout.strip()))
+            return os.path.dirname(common_dir)
+    except Exception:
+        pass
+    # fallback: two levels up from this file (works from main worktree)
+    return os.path.dirname(script_dir)
+
+
+HEARTBEAT_LOG = os.path.join(_repo_root(), "data", "cc_heartbeat_log.jsonl")
 
 
 def emit(

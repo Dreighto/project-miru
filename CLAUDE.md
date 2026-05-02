@@ -491,13 +491,36 @@ For `INCONCLUSIVE` or `FAILED` outcomes: write the row too, with status set acco
 - Sub-task milestones inside a multi-phase ticket. Wait for the phase to land.
 - Diagnostic-only or read-only work that produces no commit, no merge, no deploy. (CC can still chat-report, just no marker needed.)
 
+### How to write — use the script, not a raw file open
+
+Always write the marker via `tools/emit_completion.py`. This script resolves the
+correct path regardless of which worktree the worker is running in (miru-w1, miru-w2, etc.):
+
+```bash
+python tools/emit_completion.py <<'EOF'
+{"timestamp":"...","ticket_id":"PRO-XXX", ...}
+EOF
+```
+
+Or from Python:
+
+```python
+import json, subprocess
+marker = {"timestamp": "...", "ticket_id": "PRO-XXX", ...}
+subprocess.run(["python", "tools/emit_completion.py"],
+               input=json.dumps(marker), text=True, check=True)
+```
+
+**Never open `data/cc_completion_log.jsonl` directly with a relative path** — from a worktree
+that resolves to the wrong directory and the orchestrator will never see the entry.
+
 ### Rules
 
 - Append only. Never read-modify-write the file. Never sort it. Never deduplicate it.
 - One JSON object per line. No trailing commas, no array wrapping.
 - ISO 8601 UTC timestamps with `Z` suffix.
 - If a field is genuinely unknown or not applicable, use `null` (not empty string, not omitted).
-- Use `JSON.stringify` (or PowerShell's `ConvertTo-Json -Compress`) to ensure valid JSON. Do not hand-format.
+- `tools/emit_completion.py` handles serialisation — pass a dict from Python or a JSON string from shell.
 
 ### Verification by Claude Chat
 
