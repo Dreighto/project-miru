@@ -5,7 +5,8 @@
     "best_for": [
       "careful implementation",
       "architecture-sensitive",
-      "multi-step exec"
+      "multi-step exec",
+      "python file"
     ],
     "hard_no_go": [
       "pure UI iteration",

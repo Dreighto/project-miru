@@ -5,7 +5,10 @@
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "minutes", "minutesInterval": 3 }
+            {
+              "field": "minutes",
+              "minutesInterval": 3
+            }
           ]
         }
       },
@@ -13,7 +16,10 @@
       "name": "w2001-schedule-trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [200, 240]
+      "position": [
+        200,
+        240
+      ]
     },
     {
       "parameters": {
@@ -24,7 +30,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -36,9 +45,15 @@
       "name": "w2001a-linear-poll",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 240],
+      "position": [
+        400,
+        240
+      ],
       "credentials": {
-        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -53,7 +68,10 @@
       "name": "w2001b-split-issues",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
-      "position": [600, 240]
+      "position": [
+        600,
+        240
+      ]
     },
     {
       "parameters": {
@@ -66,17 +84,40 @@
       "name": "w2002-manual-webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
-      "position": [200, 420],
+      "position": [
+        200,
+        420
+      ],
       "webhookId": "w2-route-webhook"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            { "id": "a1", "name": "issue_id", "value": "={{ $json.id }}", "type": "string" },
-            { "id": "a2", "name": "issue_identifier", "value": "={{ $json.identifier }}", "type": "string" },
-            { "id": "a3", "name": "intake_source", "value": "poll", "type": "string" },
-            { "id": "a4", "name": "trace_id_predecessor", "value": "", "type": "string" }
+            {
+              "id": "a1",
+              "name": "issue_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "issue_identifier",
+              "value": "={{ $json.identifier }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "intake_source",
+              "value": "poll",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "trace_id_predecessor",
+              "value": "",
+              "type": "string"
+            }
           ]
         },
         "includeOtherFields": false,
@@ -86,16 +127,39 @@
       "name": "w2003-normalize-poll",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [800, 240]
+      "position": [
+        800,
+        240
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            { "id": "b1", "name": "issue_id", "value": "={{ $json.body.issue_id }}", "type": "string" },
-            { "id": "b2", "name": "issue_identifier", "value": "={{ $json.body.issue_identifier || '' }}", "type": "string" },
-            { "id": "b3", "name": "intake_source", "value": "webhook", "type": "string" },
-            { "id": "b4", "name": "trace_id_predecessor", "value": "={{ $json.body.trace_id_predecessor || '' }}", "type": "string" }
+            {
+              "id": "b1",
+              "name": "issue_id",
+              "value": "={{ $json.body.issue_id }}",
+              "type": "string"
+            },
+            {
+              "id": "b2",
+              "name": "issue_identifier",
+              "value": "={{ $json.body.issue_identifier || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "b3",
+              "name": "intake_source",
+              "value": "webhook",
+              "type": "string"
+            },
+            {
+              "id": "b4",
+              "name": "trace_id_predecessor",
+              "value": "={{ $json.body.trace_id_predecessor || '' }}",
+              "type": "string"
+            }
           ]
         },
         "includeOtherFields": false,
@@ -105,7 +169,10 @@
       "name": "w2004-normalize-webhook",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [800, 420]
+      "position": [
+        800,
+        420
+      ]
     },
     {
       "parameters": {
@@ -117,18 +184,29 @@
       "name": "w2003a-dedupe-guard",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1000, 330]
+      "position": [
+        1000,
+        330
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "d1",
               "leftValue": "={{ $json.should_proceed }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -139,7 +217,10 @@
       "name": "w2003b-dedupe-if",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1100, 330]
+      "position": [
+        1100,
+        330
+      ]
     },
     {
       "parameters": {
@@ -151,7 +232,10 @@
       "name": "w2003c-dedupe-skip-log",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1100, 480]
+      "position": [
+        1100,
+        480
+      ]
     },
     {
       "parameters": {
@@ -162,7 +246,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -174,9 +261,15 @@
       "name": "w2005-linear-fetch",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 330],
+      "position": [
+        1200,
+        330
+      ],
       "credentials": {
-        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -193,19 +286,30 @@
       "name": "w2006-extract-signals",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1400, 330],
+      "position": [
+        1400,
+        330
+      ],
       "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "r1",
               "leftValue": "={{ $json.extracted_signals.research_signal }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -216,19 +320,25 @@
       "name": "w2006a-research-branch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1600, 330]
+      "position": [
+        1600,
+        330
+      ]
     },
     {
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w2007-score-workers\n// Rule-based scoring per canon best-for / hard-no-go matrix. Loads rules from\n// /miru-data/config/w2_routing_rules.json at execution time. Lowercase\n// substring match of canon strings against concatenated issue text + signals.\n// Canon widening: CANON_ALIASES expands each canon phrase to tight aliases so\n// real operator prose recognises the same intent. Keep aliases long — prefer a\n// compound phrase over a bare English word to avoid false positives.\n// Phase 1 placeholder — calibrate at 200 decisions via Brier + ECE (PRO-43).\nconst fs = require('fs');\nconst CONFIG_PATH = '/miru-data/config/w2_routing_rules.json';\nconst TIE_EPSILON = 0.01;\nconst PRIORITY = { 'claude-code': 0, 'codex': 1, 'cursor': 2, 'gemini': 3 };\nconst WORKERS = ['claude-code', 'codex', 'cursor', 'gemini'];\n\nconst CANON_ALIASES = {\n  'rapid ui iteration': ['ui iteration', 'ui tweak', 'iterate ui', 'mockup', 'prototype ui'],\n  'html/css/svelte':    ['html/css', 'html mockup', 'css mockup', 'tailwind', 'svelte component', '.svelte', '.html', '.css'],\n  'live phone testing': ['phone test', 'mobile preview', 'pwa preview', 'device test'],\n  'careful implementation':  ['careful implementation', 'surgical edit', 'careful refactor'],\n  'architecture-sensitive':  ['architecture-sensitive', 'cross-service', 'multi-module', 'architectural change', 'architectural refactor'],\n  'multi-step exec':         ['multi-step', 'pipeline change', 'orchestration change'],\n  'technical repo work':     ['repo cleanup', 'repo chore', 'toolchain', 'build config', 'ci config'],\n  'analysis-heavy coding':   ['analysis-heavy', 'heavy analysis', 'static analysis', 'complex logic'],\n  'multi-file implement':    ['multi-file', 'across files', 'several files', 'multi-file refactor'],\n  'audit':             ['repo audit', 'code audit', 'logging audit', 'pattern audit', 'inventory of', 'survey of'],\n  'schema reads':      ['schema read', 'db schema read', 'inspect schema', 'data model inspect'],\n  'alternate framing': ['alternate framing', 'reframe', 'different angle'],\n  'repo scan':         ['repo scan', 'scan repo', 'codebase scan', 'grep across'],\n  'second-opinion':    ['second opinion', 'second-opinion', 'sanity check', 'double-check'],\n  'pure ui iteration':      ['pure ui iteration', 'ui-only change'],\n  'read-only audits':       ['read-only audit', 'no-write review', 'dry run audit'],\n  'interactive ui builds':  ['interactive ui build'],\n  'direct db execution':    ['direct db write', 'write to card_catalog', 'drop table', 'sqlite3 '],\n  'backend architecture':   ['backend architecture refactor', 'service rearchitect'],\n  'risky refactors':        ['risky refactor', 'hot path refactor'],\n  'editing code or templates': ['edit code file', 'edit template file']\n};\n\nlet rules;\ntry {\n  rules = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));\n} catch (e) {\n  throw new Error('Failed to load ' + CONFIG_PATH + ': ' + e.message);\n}\n\nconst data = $input.item.json;\nconst signals = data.extracted_signals || {};\nconst haystack = [\n  signals.task_type || '',\n  ...((signals.surface_keywords) || []),\n  ...((signals.touches_paths) || []),\n  data.issue_title || '',\n  data.issue_description || ''\n].join(' ').toLowerCase();\n\nfunction phraseHits(phrase) {\n  const canon = phrase.toLowerCase();\n  if (haystack.indexOf(canon) >= 0) return true;\n  const aliases = CANON_ALIASES[canon] || [];\n  return aliases.some(a => haystack.indexOf(a) >= 0);\n}\n\nconst scored = WORKERS.map(worker => {\n  const cfg = rules[worker] || { best_for: [], hard_no_go: [] };\n  const bestForHits = (cfg.best_for || []).filter(phraseHits);\n  const noGoHits = (cfg.hard_no_go || []).filter(phraseHits);\n  let score = 0.5;\n  if (noGoHits.length > 0) {\n    score = 0.0;\n  } else {\n    const capped = Math.min(4, bestForHits.length);\n    score = 0.5 + 0.15 * capped;\n  }\n  score = Math.max(0.0, Math.min(1.0, score));\n  const reasoning = noGoHits.length > 0\n    ? ('hard no-go: ' + noGoHits.slice(0, 2).join(', '))\n    : (bestForHits.length > 0\n        ? ('best-for: ' + bestForHits.slice(0, 3).join(', '))\n        : 'baseline \\u2014 no matches, no no-go');\n  return { worker, score: Math.round(score * 1000) / 1000, reasoning: reasoning.slice(0, 80) };\n});\n\nscored.sort((a, b) => {\n  if (Math.abs(a.score - b.score) < TIE_EPSILON) {\n    return PRIORITY[a.worker] - PRIORITY[b.worker];\n  }\n  return b.score - a.score;\n});\n\nconst top = scored[0];\nconst second = scored[1];\nconst gap = top.score - second.score;\nconst margin = top.score - 0.5;\n\nlet confidence;\nif (top.score < 0.55) {\n  confidence = 0.0;\n} else {\n  const base = Math.min(1.0, 0.3 * (gap / 0.5) + 0.7 * (margin / 0.5) + 0.5);\n  confidence = (margin < 0.15) ? Math.min(0.50, base) : base;\n}\nconfidence = Math.round(confidence * 1000) / 1000;\n\nreturn {\n  json: {\n    ...data,\n    ranked_candidates: scored,\n    chosen_worker: top.worker,\n    confidence,\n    scoring_meta: {\n      gap: Math.round(gap * 1000) / 1000,\n      margin: Math.round(margin * 1000) / 1000,\n      top_score: top.score,\n      second_score: second.score\n    }\n  }\n};"
+        "jsCode": "// w2007-score-workers\n// Rule-based scoring per canon best-for / hard-no-go matrix. Loads rules from\n// /miru-data/config/w2_routing_rules.json at execution time. Lowercase\n// substring match of canon strings against concatenated issue text + signals.\n// Canon widening: CANON_ALIASES expands each canon phrase to tight aliases so\n// real operator prose recognises the same intent. Keep aliases long — prefer a\n// compound phrase over a bare English word to avoid false positives.\n// Phase 1 placeholder — calibrate at 200 decisions via Brier + ECE (PRO-43).\nconst fs = require('fs');\nconst CONFIG_PATH = '/miru-data/config/w2_routing_rules.json';\nconst TIE_EPSILON = 0.01;\nconst PRIORITY = { 'claude-code': 0, 'codex': 1, 'cursor': 2, 'gemini': 3 };\nconst WORKERS = ['claude-code', 'codex', 'cursor', 'gemini'];\n\nconst CANON_ALIASES = {\n  'rapid ui iteration': ['ui iteration', 'ui tweak', 'iterate ui', 'mockup', 'prototype ui'],\n  'html/css/svelte':    ['html/css', 'html mockup', 'css mockup', 'tailwind', 'svelte component', '.svelte', '.html', '.css', '.js'],\n  'live phone testing': ['phone test', 'mobile preview', 'pwa preview', 'device test'],\n  'careful implementation':  ['careful implementation', 'surgical edit', 'careful refactor'],\n  'architecture-sensitive':  ['architecture-sensitive', 'cross-service', 'multi-module', 'architectural change', 'architectural refactor'],\n  'multi-step exec':         ['multi-step', 'pipeline change', 'orchestration change'],\n  'technical repo work':     ['repo cleanup', 'repo chore', 'toolchain', 'build config', 'ci config'],\n  'analysis-heavy coding':   ['analysis-heavy', 'heavy analysis', 'static analysis', 'complex logic'],\n  'multi-file implement':    ['multi-file', 'across files', 'several files', 'multi-file refactor'],\n  'audit':             ['repo audit', 'code audit', 'logging audit', 'pattern audit', 'inventory of', 'survey of'],\n  'schema reads':      ['schema read', 'db schema read', 'inspect schema', 'data model inspect'],\n  'alternate framing': ['alternate framing', 'reframe', 'different angle'],\n  'repo scan':         ['repo scan', 'scan repo', 'codebase scan', 'grep across'],\n  'second-opinion':    ['second opinion', 'second-opinion', 'sanity check', 'double-check'],\n  'pure ui iteration':      ['pure ui iteration', 'ui-only change'],\n  'read-only audits':       ['read-only audit', 'no-write review', 'dry run audit'],\n  'interactive ui builds':  ['interactive ui build'],\n  'direct db execution':    ['direct db write', 'write to card_catalog', 'drop table', 'sqlite3 '],\n  'backend architecture':   ['backend architecture refactor', 'service rearchitect'],\n  'risky refactors':        ['risky refactor', 'hot path refactor'],\n  'editing code or templates': ['edit code file', 'edit template file'],\n  'python file':            ['.py', 'miru_ai/', 'dispatcher/', 'shared/', 'tools/', 'tests/']\n};\n\nlet rules;\ntry {\n  rules = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));\n} catch (e) {\n  throw new Error('Failed to load ' + CONFIG_PATH + ': ' + e.message);\n}\n\nconst data = $input.item.json;\nconst signals = data.extracted_signals || {};\nconst haystack = [\n  signals.task_type || '',\n  ...((signals.surface_keywords) || []),\n  ...((signals.touches_paths) || []),\n  data.issue_title || '',\n  data.issue_description || ''\n].join(' ').toLowerCase();\n\nfunction phraseHits(phrase) {\n  const canon = phrase.toLowerCase();\n  if (haystack.indexOf(canon) >= 0) return true;\n  const aliases = CANON_ALIASES[canon] || [];\n  return aliases.some(a => haystack.indexOf(a) >= 0);\n}\n\nconst scored = WORKERS.map(worker => {\n  const cfg = rules[worker] || { best_for: [], hard_no_go: [] };\n  const bestForHits = (cfg.best_for || []).filter(phraseHits);\n  const noGoHits = (cfg.hard_no_go || []).filter(phraseHits);\n  let score = 0.5;\n  if (noGoHits.length > 0) {\n    score = 0.0;\n  } else {\n    const capped = Math.min(4, bestForHits.length);\n    score = 0.5 + 0.15 * capped;\n  }\n  score = Math.max(0.0, Math.min(1.0, score));\n  const reasoning = noGoHits.length > 0\n    ? ('hard no-go: ' + noGoHits.slice(0, 2).join(', '))\n    : (bestForHits.length > 0\n        ? ('best-for: ' + bestForHits.slice(0, 3).join(', '))\n        : 'baseline \\u2014 no matches, no no-go');\n  return { worker, score: Math.round(score * 1000) / 1000, reasoning: reasoning.slice(0, 80) };\n});\n\nscored.sort((a, b) => {\n  if (Math.abs(a.score - b.score) < TIE_EPSILON) {\n    return PRIORITY[a.worker] - PRIORITY[b.worker];\n  }\n  return b.score - a.score;\n});\n\nconst top = scored[0];\nconst second = scored[1];\nconst gap = top.score - second.score;\nconst margin = top.score - 0.5;\n\nlet confidence;\nif (top.score < 0.55) {\n  confidence = 0.0;\n} else {\n  const base = Math.min(1.0, 0.3 * (gap / 0.5) + 0.7 * (margin / 0.5) + 0.5);\n  confidence = (margin < 0.15) ? Math.min(0.50, base) : base;\n}\nconfidence = Math.round(confidence * 1000) / 1000;\n\nreturn {\n  json: {\n    ...data,\n    ranked_candidates: scored,\n    chosen_worker: top.worker,\n    confidence,\n    scoring_meta: {\n      gap: Math.round(gap * 1000) / 1000,\n      margin: Math.round(margin * 1000) / 1000,\n      top_score: top.score,\n      second_score: second.score\n    }\n  }\n};"
       },
       "id": "w2007-score-workers",
       "name": "w2007-score-workers",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1800, 330],
+      "position": [
+        1800,
+        330
+      ],
       "onError": "continueErrorOutput"
     },
     {
@@ -241,19 +351,29 @@
       "name": "w2008-classify-risk",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 330],
+      "position": [
+        2000,
+        330
+      ],
       "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "c1",
               "leftValue": "={{ $json.confidence }}",
               "rightValue": 0.75,
-              "operator": { "type": "number", "operation": "lt" }
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
             }
           ],
           "combinator": "and"
@@ -264,7 +384,10 @@
       "name": "w2009-confidence-branch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [2200, 330]
+      "position": [
+        2200,
+        330
+      ]
     },
     {
       "parameters": {
@@ -276,7 +399,10 @@
       "name": "w2010-append-history-intent",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2400, 260]
+      "position": [
+        2400,
+        260
+      ]
     },
     {
       "parameters": {
@@ -287,7 +413,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -299,9 +428,15 @@
       "name": "w2011-linear-apply-and-comment",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2600, 260],
+      "position": [
+        2600,
+        260
+      ],
       "credentials": {
-        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -318,7 +453,10 @@
       "name": "w2012-append-history-dispatched",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2800, 260]
+      "position": [
+        2800,
+        260
+      ]
     },
     {
       "parameters": {
@@ -330,7 +468,10 @@
       "name": "w2012a-mint-callback-token",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2900, 260]
+      "position": [
+        2900,
+        260
+      ]
     },
     {
       "parameters": {
@@ -339,7 +480,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -351,7 +495,10 @@
       "name": "w2013-telegram-proposal",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3100, 260],
+      "position": [
+        3100,
+        260
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 5000
@@ -366,7 +513,10 @@
       "name": "w2014-append-history-triage",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2400, 460]
+      "position": [
+        2400,
+        460
+      ]
     },
     {
       "parameters": {
@@ -377,7 +527,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -389,9 +542,15 @@
       "name": "w2015-triage-apply",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2600, 460],
+      "position": [
+        2600,
+        460
+      ],
       "credentials": {
-        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -404,15 +563,23 @@
         "operation": "sendMessage",
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
         "text": "=<b>W2 → triage on {{ $('w2014-append-history-triage').item.json.issue_identifier_html || $('w2014-append-history-triage').item.json.issue_id }}</b>\n\nRouter confidence low (conf {{ $('w2014-append-history-triage').item.json.conf_str }}) on {{ $('w2014-append-history-triage').item.json.issue_identifier_html }} — manual routing required.\n\nTitle: {{ $('w2014-append-history-triage').item.json.issue_title_html }}\nRisk: {{ $('w2014-append-history-triage').item.json.risk_html }}\n<a href=\"https://linear.app/project-miru/issue/{{ $('w2014-append-history-triage').item.json.issue_identifier_html }}\">Open in Linear</a>\n\ntrace_id: {{ $('w2014-append-history-triage').item.json.trace_id_html }}",
-        "additionalFields": { "parse_mode": "HTML" }
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
       },
       "id": "w2016-triage-pushover",
       "name": "w2016-triage-telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [2800, 460],
+      "position": [
+        2800,
+        460
+      ],
       "credentials": {
-        "telegramApi": { "id": "5tWWGl8jkCOHqJQg", "name": "telegram-n8n" }
+        "telegramApi": {
+          "id": "5tWWGl8jkCOHqJQg",
+          "name": "telegram-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -428,7 +595,10 @@
       "name": "w2017-append-history-research",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2400, 100]
+      "position": [
+        2400,
+        100
+      ]
     },
     {
       "parameters": {
@@ -439,7 +609,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -451,9 +624,15 @@
       "name": "w2018-research-handoff",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2600, 100],
+      "position": [
+        2600,
+        100
+      ],
       "credentials": {
-        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -470,7 +649,10 @@
       "name": "w2998a-apply-failed-code",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2800, 100]
+      "position": [
+        2800,
+        100
+      ]
     },
     {
       "parameters": {
@@ -478,15 +660,23 @@
         "operation": "sendMessage",
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
         "text": "=*W2 → apply-failed on {{ $json.issue_identifier || $json.issue_id }}*\n\nLabel+comment apply FAILED for {{ $json.issue_identifier }} after 3 retries.\n\nDecision was computed: {{ $json._workerDisplay }} (conf {{ $json.confidence.toFixed(2) }}, risk {{ $json.risk }}).\n\nApply manually in Linear:\n - Add `{{ $json.chosen_worker }}` + `pending-approval` labels\n - OR re-trigger via POST /webhook/w2-route with issue_id {{ $json.issue_id }}\n[Open in Linear](https://linear.app/project-miru/issue/{{ $json.issue_identifier }})\n\nError: {{ $json.apply_failed_error }}\n\ntrace_id: {{ $json.trace_id }}",
-        "additionalFields": { "parse_mode": "Markdown" }
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
       },
       "id": "w2998b-apply-failed-pushover",
       "name": "w2998b-apply-failed-telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [3000, 100],
+      "position": [
+        3000,
+        100
+      ],
       "credentials": {
-        "telegramApi": { "id": "5tWWGl8jkCOHqJQg", "name": "telegram-n8n" }
+        "telegramApi": {
+          "id": "5tWWGl8jkCOHqJQg",
+          "name": "telegram-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -502,7 +692,10 @@
       "name": "w2999a-router-failure-code",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2400, 640]
+      "position": [
+        2400,
+        640
+      ]
     },
     {
       "parameters": {
@@ -513,7 +706,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -525,9 +721,15 @@
       "name": "w2999b-router-failure-triage-apply",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2600, 640],
+      "position": [
+        2600,
+        640
+      ],
       "credentials": {
-        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -538,16 +740,24 @@
         "resource": "message",
         "operation": "sendMessage",
         "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
-        "text": "=*W2 \u2192 halted on {{ $('w2999a-router-failure-code').item.json.issue_identifier || $('w2999a-router-failure-code').item.json.issue_id || 'unknown' }}*\nRouter failure during decision phase on {{ $('w2999a-router-failure-code').item.json.issue_identifier || 'unknown' }} \u2014 manual routing required.\n\nError: {{ $('w2999a-router-failure-code').item.json.halt_error }}\n\ntrace_id: {{ $('w2999a-router-failure-code').item.json.trace_id }}",
-        "additionalFields": { "parse_mode": "Markdown" }
+        "text": "=*W2 → halted on {{ $('w2999a-router-failure-code').item.json.issue_identifier || $('w2999a-router-failure-code').item.json.issue_id || 'unknown' }}*\nRouter failure during decision phase on {{ $('w2999a-router-failure-code').item.json.issue_identifier || 'unknown' }} — manual routing required.\n\nError: {{ $('w2999a-router-failure-code').item.json.halt_error }}\n\ntrace_id: {{ $('w2999a-router-failure-code').item.json.trace_id }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
       },
       "id": "w2999c-router-failure-pushover",
       "name": "w2999c-router-failure-telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [2800, 640],
+      "position": [
+        2800,
+        640
+      ],
       "credentials": {
-        "telegramApi": { "id": "5tWWGl8jkCOHqJQg", "name": "telegram-n8n" }
+        "telegramApi": {
+          "id": "5tWWGl8jkCOHqJQg",
+          "name": "telegram-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -562,7 +772,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -574,9 +787,15 @@
       "name": "w2001c-linear-poll-labeled",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [400, 700],
+      "position": [
+        400,
+        700
+      ],
       "credentials": {
-        "linearApi": { "id": "{{LINEAR_CRED_ID}}", "name": "linear-n8n" }
+        "linearApi": {
+          "id": "{{LINEAR_CRED_ID}}",
+          "name": "linear-n8n"
+        }
       },
       "retryOnFail": true,
       "maxTries": 3,
@@ -592,19 +811,57 @@
       "name": "w2001d-split-labeled-issues",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
-      "position": [600, 700]
+      "position": [
+        600,
+        700
+      ]
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            { "id": "lp1", "name": "issue_id", "value": "={{ $json.id }}", "type": "string" },
-            { "id": "lp2", "name": "issue_identifier", "value": "={{ $json.identifier }}", "type": "string" },
-            { "id": "lp3", "name": "issue_title", "value": "={{ $json.title }}", "type": "string" },
-            { "id": "lp4", "name": "issue_url", "value": "={{ $json.url }}", "type": "string" },
-            { "id": "lp5", "name": "issue_description", "value": "={{ $json.description }}", "type": "string" },
-            { "id": "lp6", "name": "labels", "value": "={{ $json.labels }}", "type": "object" },
-            { "id": "lp7", "name": "intake_source", "value": "poll-labeled", "type": "string" }
+            {
+              "id": "lp1",
+              "name": "issue_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "lp2",
+              "name": "issue_identifier",
+              "value": "={{ $json.identifier }}",
+              "type": "string"
+            },
+            {
+              "id": "lp3",
+              "name": "issue_title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "lp4",
+              "name": "issue_url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "lp5",
+              "name": "issue_description",
+              "value": "={{ $json.description }}",
+              "type": "string"
+            },
+            {
+              "id": "lp6",
+              "name": "labels",
+              "value": "={{ $json.labels }}",
+              "type": "object"
+            },
+            {
+              "id": "lp7",
+              "name": "intake_source",
+              "value": "poll-labeled",
+              "type": "string"
+            }
           ]
         },
         "includeOtherFields": false,
@@ -614,30 +871,44 @@
       "name": "w2003e-normalize-labeled",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [800, 700]
+      "position": [
+        800,
+        700
+      ]
     },
     {
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w2003f-detect-manual-dispatch (PRO-150, PRO-208)\n// Decide whether this worker-labeled ticket should trigger a Dispatch-stage emission.\n// Catches both 'triaged-then-labeled' (PRO-150 reproduction) and 'pre-labeled-on-creation'\n// (PRO-148 shape) cases, while skipping tickets that are already in W2's normal flow.\n//\n// 24h recency window added (PRO-208/PRO-207): all three dedupe checks now skip rows older\n// than 24h, matching the `since` window in w2001c-linear-poll-labeled. Without this window,\n// any ticket ever dispatched was permanently blacklisted from re-emission via labeled-poll.\n//\n// should_emit_dispatch =\n//   has_worker_label\n//   && !has_dispatch_row     (no dispatch in pending_callbacks within 24h)\n//   && !has_intent_row       (no intent in pending_callbacks within 24h)\n//   && !has_decided_outcome  (no decided outcome in routing_history within 24h)\nconst fs = require('fs');\nconst crypto = require('crypto');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\nconst HISTORY = '/miru-data/routing_history.jsonl';\nconst WORKER_LABELS = new Set(['claude-code', 'cursor', 'codex', 'gemini']);\nconst DECIDED_OUTCOMES = new Set(['callback-decided', 'picker-decided', 'dispatched', 'success', 'fail']);\nconst RECENCY_WINDOW_MS = 24 * 60 * 60 * 1000;  // 24h — matches w2001c's `since` window (PRO-208/PRO-207)\nconst cutoff = Date.now() - RECENCY_WINDOW_MS;\n\nconst data = $input.item.json;\nconst issueId = data.issue_id;\n\nlet workerLabel = null;\nconst labelNodes = (data.labels && data.labels.nodes) || [];\nfor (const l of labelNodes) {\n  if (WORKER_LABELS.has(l.name)) { workerLabel = l.name; break; }\n}\nif (!workerLabel) {\n  return { json: { ...data, should_emit_dispatch: false, _detect_skip_reason: 'no worker label found' } };\n}\n\nlet hasDispatchRow = false;\nlet hasIntentRow = false;\ntry {\n  if (fs.existsSync(PENDING)) {\n    const lines = fs.readFileSync(PENDING, 'utf8').split('\\n').filter(Boolean);\n    for (const line of lines) {\n      let r; try { r = JSON.parse(line); } catch (e) { continue; }\n      if (r.issue_id !== issueId) continue;\n      // 24h recency window (PRO-208): intent rows use intent_written_at; dispatch rows use created_at.\n      const rowTs = r.created_at ? new Date(r.created_at).getTime()\n                  : r.intent_written_at ? new Date(r.intent_written_at).getTime() : NaN;\n      if (isNaN(rowTs) || rowTs < cutoff) continue;\n      // Bugbot finding 1 (HIGH, PR #30): a kind=dispatch row with send_message_ok=false\n      // means Telegram sendMessage failed and no Dispatch button was actually delivered.\n      // Treat such rows as retryable — only block re-emission when the message succeeded.\n      if (r.kind === 'dispatch' && r.send_message_ok !== false) hasDispatchRow = true;\n      if (r.kind === 'intent') hasIntentRow = true;\n    }\n  }\n} catch (e) {\n  // fail-closed: treat as already-handled to avoid double-emission risk\n  return { json: { ...data, should_emit_dispatch: false, _detect_error: 'pending_callbacks read error: ' + e.message } };\n}\n\nlet hasDecidedOutcome = false;\nlet triagedFirst = false;\nlet priorTriageTraceId = null;\ntry {\n  if (fs.existsSync(HISTORY)) {\n    const lines = fs.readFileSync(HISTORY, 'utf8').split('\\n').filter(Boolean);\n    for (const line of lines) {\n      let r; try { r = JSON.parse(line); } catch (e) { continue; }\n      if (r.task_id !== issueId) continue;\n      // Triage metadata is correlation, not dedupe \u2014 capture regardless of age (PRO-211)\n      if (r.outcome === 'triage') {\n        triagedFirst = true;\n        if (!priorTriageTraceId && r.trace_id) priorTriageTraceId = r.trace_id;\n      }\n      // 24h recency window applies only to dedupe check (PRO-208\/PRO-211)\n      const rowTs = r.timestamp ? new Date(r.timestamp).getTime() : NaN;\n      if (isNaN(rowTs) || rowTs < cutoff) continue;\n      if (DECIDED_OUTCOMES.has(r.outcome)) hasDecidedOutcome = true;\n    }\n  }\n} catch (e) {\n  return { json: { ...data, should_emit_dispatch: false, _detect_error: 'routing_history read error: ' + e.message } };\n}\n\nconst shouldEmit = !hasDispatchRow && !hasIntentRow && !hasDecidedOutcome;\nconst trace_id = priorTriageTraceId || crypto.randomUUID();\n\nreturn { json: {\n  ...data,\n  trace_id,\n  worker_label: workerLabel,\n  has_dispatch_row: hasDispatchRow,\n  has_intent_row: hasIntentRow,\n  has_decided_outcome: hasDecidedOutcome,\n  triaged_first: triagedFirst,\n  should_emit_dispatch: shouldEmit\n}};"
+        "jsCode": "// w2003f-detect-manual-dispatch (PRO-150, PRO-208)\n// Decide whether this worker-labeled ticket should trigger a Dispatch-stage emission.\n// Catches both 'triaged-then-labeled' (PRO-150 reproduction) and 'pre-labeled-on-creation'\n// (PRO-148 shape) cases, while skipping tickets that are already in W2's normal flow.\n//\n// 24h recency window added (PRO-208/PRO-207): all three dedupe checks now skip rows older\n// than 24h, matching the `since` window in w2001c-linear-poll-labeled. Without this window,\n// any ticket ever dispatched was permanently blacklisted from re-emission via labeled-poll.\n//\n// should_emit_dispatch =\n//   has_worker_label\n//   && !has_dispatch_row     (no dispatch in pending_callbacks within 24h)\n//   && !has_intent_row       (no intent in pending_callbacks within 24h)\n//   && !has_decided_outcome  (no decided outcome in routing_history within 24h)\nconst fs = require('fs');\nconst crypto = require('crypto');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\nconst HISTORY = '/miru-data/routing_history.jsonl';\nconst WORKER_LABELS = new Set(['claude-code', 'cursor', 'codex', 'gemini']);\nconst DECIDED_OUTCOMES = new Set(['callback-decided', 'picker-decided', 'dispatched', 'success', 'fail']);\nconst RECENCY_WINDOW_MS = 24 * 60 * 60 * 1000;  // 24h — matches w2001c's `since` window (PRO-208/PRO-207)\nconst cutoff = Date.now() - RECENCY_WINDOW_MS;\n\nconst data = $input.item.json;\nconst issueId = data.issue_id;\n\nlet workerLabel = null;\nconst labelNodes = (data.labels && data.labels.nodes) || [];\nfor (const l of labelNodes) {\n  if (WORKER_LABELS.has(l.name)) { workerLabel = l.name; break; }\n}\nif (!workerLabel) {\n  return { json: { ...data, should_emit_dispatch: false, _detect_skip_reason: 'no worker label found' } };\n}\n\nlet hasDispatchRow = false;\nlet hasIntentRow = false;\ntry {\n  if (fs.existsSync(PENDING)) {\n    const lines = fs.readFileSync(PENDING, 'utf8').split('\\n').filter(Boolean);\n    for (const line of lines) {\n      let r; try { r = JSON.parse(line); } catch (e) { continue; }\n      if (r.issue_id !== issueId) continue;\n      // 24h recency window (PRO-208): intent rows use intent_written_at; dispatch rows use created_at.\n      const rowTs = r.created_at ? new Date(r.created_at).getTime()\n                  : r.intent_written_at ? new Date(r.intent_written_at).getTime() : NaN;\n      if (isNaN(rowTs) || rowTs < cutoff) continue;\n      // Bugbot finding 1 (HIGH, PR #30): a kind=dispatch row with send_message_ok=false\n      // means Telegram sendMessage failed and no Dispatch button was actually delivered.\n      // Treat such rows as retryable — only block re-emission when the message succeeded.\n      if (r.kind === 'dispatch' && r.send_message_ok !== false) hasDispatchRow = true;\n      if (r.kind === 'intent') hasIntentRow = true;\n    }\n  }\n} catch (e) {\n  // fail-closed: treat as already-handled to avoid double-emission risk\n  return { json: { ...data, should_emit_dispatch: false, _detect_error: 'pending_callbacks read error: ' + e.message } };\n}\n\nlet hasDecidedOutcome = false;\nlet triagedFirst = false;\nlet priorTriageTraceId = null;\ntry {\n  if (fs.existsSync(HISTORY)) {\n    const lines = fs.readFileSync(HISTORY, 'utf8').split('\\n').filter(Boolean);\n    for (const line of lines) {\n      let r; try { r = JSON.parse(line); } catch (e) { continue; }\n      if (r.task_id !== issueId) continue;\n      // Triage metadata is correlation, not dedupe — capture regardless of age (PRO-211)\n      if (r.outcome === 'triage') {\n        triagedFirst = true;\n        if (!priorTriageTraceId && r.trace_id) priorTriageTraceId = r.trace_id;\n      }\n      // 24h recency window applies only to dedupe check (PRO-208/PRO-211)\n      const rowTs = r.timestamp ? new Date(r.timestamp).getTime() : NaN;\n      if (isNaN(rowTs) || rowTs < cutoff) continue;\n      if (DECIDED_OUTCOMES.has(r.outcome)) hasDecidedOutcome = true;\n    }\n  }\n} catch (e) {\n  return { json: { ...data, should_emit_dispatch: false, _detect_error: 'routing_history read error: ' + e.message } };\n}\n\nconst shouldEmit = !hasDispatchRow && !hasIntentRow && !hasDecidedOutcome;\nconst trace_id = priorTriageTraceId || crypto.randomUUID();\n\nreturn { json: {\n  ...data,\n  trace_id,\n  worker_label: workerLabel,\n  has_dispatch_row: hasDispatchRow,\n  has_intent_row: hasIntentRow,\n  has_decided_outcome: hasDecidedOutcome,\n  triaged_first: triagedFirst,\n  should_emit_dispatch: shouldEmit\n}};"
       },
       "id": "w2003f-detect-manual-dispatch",
       "name": "w2003f-detect-manual-dispatch",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1000, 700]
+      "position": [
+        1000,
+        700
+      ]
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "emd1",
               "leftValue": "={{ $json.should_emit_dispatch }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -648,7 +919,10 @@
       "name": "w2003g-emit-dispatch-branch",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [1200, 700]
+      "position": [
+        1200,
+        700
+      ]
     },
     {
       "parameters": {
@@ -660,7 +934,10 @@
       "name": "w2-emit-mint-dispatch",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1400, 700]
+      "position": [
+        1400,
+        700
+      ]
     },
     {
       "parameters": {
@@ -669,7 +946,10 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
@@ -681,7 +961,10 @@
       "name": "w2-emit-send-message",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1600, 700],
+      "position": [
+        1600,
+        700
+      ],
       "continueOnFail": true
     },
     {
@@ -694,141 +977,434 @@
       "name": "w2-emit-store-and-history",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1800, 700]
+      "position": [
+        1800,
+        700
+      ]
     }
   ],
   "connections": {
     "w2001-schedule-trigger": {
-      "main": [[
-        {"node": "w2001a-linear-poll", "type": "main", "index": 0},
-        {"node": "w2001c-linear-poll-labeled", "type": "main", "index": 0}
-      ]]
+      "main": [
+        [
+          {
+            "node": "w2001a-linear-poll",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "w2001c-linear-poll-labeled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2001c-linear-poll-labeled": {
-      "main": [[{"node": "w2001d-split-labeled-issues", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2001d-split-labeled-issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2001d-split-labeled-issues": {
-      "main": [[{"node": "w2003e-normalize-labeled", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2003e-normalize-labeled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2003e-normalize-labeled": {
-      "main": [[{"node": "w2003f-detect-manual-dispatch", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2003f-detect-manual-dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2003f-detect-manual-dispatch": {
-      "main": [[{"node": "w2003g-emit-dispatch-branch", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2003g-emit-dispatch-branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2003g-emit-dispatch-branch": {
       "main": [
-        [{"node": "w2-emit-mint-dispatch", "type": "main", "index": 0}],
+        [
+          {
+            "node": "w2-emit-mint-dispatch",
+            "type": "main",
+            "index": 0
+          }
+        ],
         []
       ]
     },
     "w2-emit-mint-dispatch": {
-      "main": [[{"node": "w2-emit-send-message", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2-emit-send-message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2-emit-send-message": {
-      "main": [[{"node": "w2-emit-store-and-history", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2-emit-store-and-history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2001a-linear-poll": {
-      "main": [[{"node": "w2001b-split-issues", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2001b-split-issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2001b-split-issues": {
-      "main": [[{"node": "w2003-normalize-poll", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2003-normalize-poll",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2002-manual-webhook": {
-      "main": [[{"node": "w2004-normalize-webhook", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2004-normalize-webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2003-normalize-poll": {
-      "main": [[{"node": "w2003a-dedupe-guard", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2003a-dedupe-guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2004-normalize-webhook": {
-      "main": [[{"node": "w2003a-dedupe-guard", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2003a-dedupe-guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2003a-dedupe-guard": {
-      "main": [[{"node": "w2003b-dedupe-if", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2003b-dedupe-if",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2003b-dedupe-if": {
       "main": [
-        [{"node": "w2005-linear-fetch", "type": "main", "index": 0}],
-        [{"node": "w2003c-dedupe-skip-log", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w2005-linear-fetch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w2003c-dedupe-skip-log",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w2005-linear-fetch": {
       "main": [
-        [{"node": "w2006-extract-signals", "type": "main", "index": 0}],
-        [{"node": "w2999a-router-failure-code", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w2006-extract-signals",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w2999a-router-failure-code",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w2006-extract-signals": {
       "main": [
-        [{"node": "w2006a-research-branch", "type": "main", "index": 0}],
-        [{"node": "w2999a-router-failure-code", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w2006a-research-branch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w2999a-router-failure-code",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w2006a-research-branch": {
       "main": [
-        [{"node": "w2017-append-history-research", "type": "main", "index": 0}],
-        [{"node": "w2007-score-workers", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w2017-append-history-research",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w2007-score-workers",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w2007-score-workers": {
       "main": [
-        [{"node": "w2008-classify-risk", "type": "main", "index": 0}],
-        [{"node": "w2999a-router-failure-code", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w2008-classify-risk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w2999a-router-failure-code",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w2008-classify-risk": {
       "main": [
-        [{"node": "w2009-confidence-branch", "type": "main", "index": 0}],
-        [{"node": "w2999a-router-failure-code", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w2009-confidence-branch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w2999a-router-failure-code",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w2009-confidence-branch": {
       "main": [
-        [{"node": "w2014-append-history-triage", "type": "main", "index": 0}],
-        [{"node": "w2010-append-history-intent", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w2014-append-history-triage",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w2010-append-history-intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w2010-append-history-intent": {
-      "main": [[{"node": "w2011-linear-apply-and-comment", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2011-linear-apply-and-comment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2011-linear-apply-and-comment": {
       "main": [
-        [{"node": "w2012-append-history-dispatched", "type": "main", "index": 0}],
-        [{"node": "w2998a-apply-failed-code", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w2012-append-history-dispatched",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w2998a-apply-failed-code",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w2012-append-history-dispatched": {
-      "main": [[{"node": "w2012a-mint-callback-token", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2012a-mint-callback-token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2012a-mint-callback-token": {
-      "main": [[{"node": "w2013-telegram-proposal", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2013-telegram-proposal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2014-append-history-triage": {
-      "main": [[{"node": "w2015-triage-apply", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2015-triage-apply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2015-triage-apply": {
       "main": [
-        [{"node": "w2016-triage-telegram", "type": "main", "index": 0}],
-        [{"node": "w2999a-router-failure-code", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w2016-triage-telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w2999a-router-failure-code",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w2017-append-history-research": {
-      "main": [[{"node": "w2018-research-handoff", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2018-research-handoff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2018-research-handoff": {
       "main": [
         [],
-        [{"node": "w2999a-router-failure-code", "type": "main", "index": 0}]
+        [
+          {
+            "node": "w2999a-router-failure-code",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "w2998a-apply-failed-code": {
-      "main": [[{"node": "w2998b-apply-failed-telegram", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2998b-apply-failed-telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2999a-router-failure-code": {
-      "main": [[{"node": "w2999b-router-failure-triage-apply", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2999b-router-failure-triage-apply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "w2999b-router-failure-triage-apply": {
-      "main": [[{"node": "w2999c-router-failure-telegram", "type": "main", "index": 0}]]
+      "main": [
+        [
+          {
+            "node": "w2999c-router-failure-telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
