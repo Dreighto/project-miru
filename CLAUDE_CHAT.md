@@ -45,6 +45,19 @@ Do not run commands, edit files, or dispatch workers until you have read the cur
 You make routing and execution decisions without asking the operator unless an escalation trigger
 applies (see below). When you dispatch, do it; when it completes, report the outcome.
 
+### Picking the next ticket
+
+When the queue is open and no worker is active on a ticket, pick the next one using this order:
+
+1. **Priority field**: Urgent → High → Medium → No Priority. Never skip a higher-priority ticket for a lower one.
+2. **Tiebreaker**: lower ticket number first (older = filed longer ago = waited longer).
+3. **Skip if**: ticket is blocked-on an open ticket; completing it requires an operator decision not yet received; it has file overlap with an actively running worker.
+4. **If all Todo tickets are blocked**: send one Telegram ping listing the blockers and what decision unblocks each. Do not ping again until state changes.
+
+Always check Linear for the current Todo list before every dispatch — do not work from memory.
+
+---
+
 ### Dispatch protocol
 
 1. Read the Linear ticket description for the full spec.
@@ -72,6 +85,37 @@ applies (see below). When you dispatch, do it; when it completes, report the out
 
 Workers have their own rule files (CURSOR.md, GEMINI.md, CODEX.md) — do not duplicate
 those rules in dispatch prompts. Point workers to their rule file and the Linear ticket.
+
+---
+
+### After dispatch — worker return handling
+
+The dispatch listener classifies all clean worker exits as `INCONCLUSIVE` in its own receipt log — this is a listener-level label that means "exited clean, check the real outcome." **Do not use the listener receipt to determine task status.** Always read `data/cc_completion_log.jsonl` for the real result.
+
+When `worker_availability` shows a slot is idle or `activity_since` shows a worker exit:
+
+1. Call `fs_read_text_file` on `data/cc_completion_log.jsonl`. Find the entry matching the `ticket_id`.
+2. Act on the `status` field:
+
+**CONFIRMED_WORKING:**
+
+- Move Linear ticket to Done.
+- If `pr_number` is set: check CLAUDE.md merge policy. Self-merge if CC-eligible; ping operator if operator-merge required.
+- If `follow_up_tickets_filed` is non-empty: verify those tickets exist in Linear; create any missing.
+- If `deploy_actions` lists a service restart: perform it or ping operator if elevation required.
+
+**INCONCLUSIVE:**
+
+- Read the worker stdout log at `logs/dispatch_listener_traces/<trace_id>.stdout.log` for the specific question or blocker.
+- If answerable from the Linear ticket description → answer via `linear_add_comment` and re-dispatch. 1 re-dispatch maximum.
+- If it requires operator input → send one Telegram ping with the exact question. Leave ticket In Progress. Do not re-dispatch until operator replies.
+
+**FAILED or no completion entry found:**
+
+- Re-dispatch the same worker once. Note the retry in a Linear comment.
+- If it fails a second time → emit `STATUS: ESCALATE: REPEATED_FAILURE`. Move ticket to Todo. Send one Telegram ping.
+
+**No completion marker after 30 minutes:** treat as stall — read `data/cc_heartbeat_log.jsonl`, apply the stall taxonomy from CLAUDE.md.
 
 ---
 
@@ -121,6 +165,25 @@ Ask before acting when **any** of these apply:
 | `gateway_audit_tail`            | Tailing the gateway audit log for recent activity        |
 
 Use `sequential-thinking` MCP before complex multi-step decisions — think first.
+
+---
+
+## Session end — mandatory handoff
+
+Before ending any session, update `miru-context/state-handoff-log.md` using `docs_patch_file`. This rule has the same standing as the completion marker rule in CLAUDE.md — it is not optional.
+
+Write or update the latest entry with:
+
+- **Timestamp** — ISO 8601 UTC
+- **Active workers** — ticket ID, slot (miru-w1..w6 or miru-cursor), last known step
+- **Recently completed** — last 2–3 tickets, their outcome, PR state (open / merged / pending)
+- **Pending operator actions** — PRs waiting for merge, decisions waiting for a reply
+- **Next priorities** — top 3 Todo tickets in dispatch order (apply the priority protocol above)
+- **Session decisions** — any non-obvious routing calls, spec fills, or architectural choices made this session
+
+If the session ends abruptly (context limit, connection drop): write what you have. A partial handoff is better than none.
+
+The next Claude Chat session reads this file at step 2 of session start. If it is stale or missing, that session starts blind and will either stall or duplicate work.
 
 ---
 
