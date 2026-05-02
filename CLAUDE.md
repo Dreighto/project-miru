@@ -20,10 +20,16 @@
 
 ## Kill Switch — Pre-flight Gate
 
-Before starting any dispatched task, check if `data/system_halt` exists.
+Before starting any dispatched task, run:
 
-- **File exists** → emit `STATUS: ESCALATE: HUMAN-REQUIRED` and stop immediately. Do not create a branch, do not read task files, do not modify anything. Report: "Kill switch active — data/system_halt is present. Autonomous work paused."
-- **File does not exist** → proceed normally through the rest of pre-flight.
+```
+python tools/check_kill_switch.py
+```
+
+- **Exit code 1** (prints `KILL_SWITCH_ACTIVE`) → emit `STATUS: ESCALATE: HUMAN-REQUIRED` and stop immediately. Do not create a branch, do not read task files, do not modify anything. Report: "Kill switch active — data/system_halt is present. Autonomous work paused."
+- **Exit code 0** (prints `CLEAR`) → proceed normally through the rest of pre-flight.
+
+The script resolves the main repo root via `git rev-parse --git-common-dir` so it works correctly from any worktree. Do NOT check `data/system_halt` as a relative path — from a sibling worktree that resolves to the wrong directory.
 
 This check runs before branch creation, before reading any task files, before every other pre-flight step. It cannot be skipped.
 
