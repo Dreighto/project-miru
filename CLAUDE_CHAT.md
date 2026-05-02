@@ -164,6 +164,14 @@ Call in parallel:
 - **CC-merge column** (single-file edits, bug fixes, doc updates, etc.) → continue to step 3.
 - **Direct-to-main** (completion log entries, typo fixes, etc.) → already committed; no PR to review.
 
+**Step 2.5 — Peer review gate**
+
+Check if the PR meets any complexity trigger (see "Peer review gate — protocol" section below).
+
+- **No trigger:** proceed to Step 3.
+- **Trigger fires:** run the peer review protocol before evaluating Bugbot. Findings from the
+  reviewer feed into Step 3 alongside Bugbot. Do not merge until the review is resolved.
+
 **Step 3 — Evaluate findings**
 
 | State                                        | Action                                                                |
@@ -173,16 +181,81 @@ Call in parallel:
 | Bugbot override-condition finding            | Surface to operator via Telegram before merging                       |
 | CI failing (not pre-existing)                | Dispatch Claude Code to fix; loop back to step 1                      |
 | CI failing (confirmed pre-existing flake)    | Note in PR comment; proceed to merge                                  |
+| Peer review Medium finding                   | Dispatch Claude Code for one remediation pass; loop back to step 1    |
+| Peer review High finding                     | Surface to operator via Telegram before merging                       |
 
 **Step 4 — Merge**
 
-_(Note: `merge_pr` gateway tool is tracked in PRO-266. Until shipped, ping the operator to merge and confirm.)_
-
-Once wired: call `merge_pr` with `merge_method: "squash"` and `delete_branch: true`.
+Call `github_merge_pr` with `merge_method: "squash"`. Then call `github_delete_branch` to
+remove the feature branch. Both tools are live in the gateway (shipped PRO-266).
 
 **Step 5 — Post-merge cleanup**
 
 The worker that opened the PR is responsible for local branch cleanup (checkout main, pull, delete branch). Claude Chat owns Linear closeout (move to Done).
+
+---
+
+### Peer review gate — protocol (PRO-270, locked 2026-05-02)
+
+This gate runs at Step 2.5 of the PR loop. It is separate from and earlier than Bugbot.
+
+**Complexity triggers — review fires if ANY of these are true:**
+
+- PR touches 3 or more files
+- PR introduces a new module, class, or service entry point
+- PR changes a contract (completion log schema, heartbeat schema, dispatch payload shape, routing_history schema)
+- PR modifies a file adjacent to a `Don't touch` list in another active ticket
+- Your confidence in the change is Medium or below after reading the diff
+
+Routine single-file fixes, typo corrections, append-only log entries, and doc-only changes do NOT trigger peer review.
+
+**Reviewer assignment:**
+
+| PR type                            | Reviewer              | How                                                |
+| ---------------------------------- | --------------------- | -------------------------------------------------- |
+| Python backend, orchestrator tools | Codex                 | `dispatch_worker` with `worker: "codex"`           |
+| Diff > 200 lines                   | Gemini                | Operator relay — prepare brief, send Telegram ping |
+| Cross-service or infra-touching    | Codex + Gemini (both) | Dispatch Codex; prepare Gemini brief for operator  |
+
+**Codex review dispatch:**
+
+Dispatch Codex with:
+
+- The PR diff (from `github_get_pr_diff`)
+- The Linear ticket description as context
+- Task: "Review this PR for correctness, contract adherence, and side effects. Categorize each finding as Low / Medium / High. Return findings as a Linear comment on [ticket ID]."
+
+**Gemini / ChatGPT review (operator relay):**
+
+Send one Telegram ping with a paste-ready brief in this format:
+
+> **PR review needed before merge — [PRO-XXX]**
+> Paste to Gemini:
+>
+> Context: [one sentence on what the PR does and why]
+> Files changed: [list]
+> Key question: [what you want the reviewer to focus on]
+> Full diff: [paste diff here, or link to PR]
+>
+> Ask Gemini: "Review this for correctness and side effects. Flag anything Low / Medium / High."
+
+After the operator brings back the response, synthesize it and route the same as Codex findings.
+
+**Finding disposition:**
+
+| Severity     | Action                                                                                                   |
+| ------------ | -------------------------------------------------------------------------------------------------------- |
+| Clean or Low | Approve merge. Note in Linear ticket comment.                                                            |
+| Medium       | Dispatch Claude Code for one remediation pass. Re-check after push. Maximum one iteration — do not loop. |
+| High         | Surface to operator via Telegram before merging. Do not auto-fix. Operator decides.                      |
+
+**Override — do not auto-fix even Low/Medium if:**
+
+- The fix contradicts the Linear ticket spec
+- The fix requires touching a file on the Don't touch list
+- The finding appears to be a misread of the code
+
+In these cases: surface the finding with your rationale.
 
 ---
 
