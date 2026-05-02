@@ -9,7 +9,7 @@ $SCRIPT_PATH = [System.IO.Path]::GetFullPath("$PSScriptRoot\..\tools\ops_digest.
 
 $action = New-ScheduledTaskAction `
     -Execute 'powershell.exe' `
-    -Argument "-ExecutionPolicy Bypass -NonInteractive -File `"$SCRIPT_PATH`""
+    -Argument "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$SCRIPT_PATH`""
 
 $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Friday -At '9:00AM'
 
@@ -23,12 +23,17 @@ if (Get-ScheduledTask -TaskName $TASK_NAME -ErrorAction SilentlyContinue) {
     Write-Host "[$TASK_NAME] Removed existing task."
 }
 
+$principal = New-ScheduledTaskPrincipal `
+    -UserId    $env:USERNAME `
+    -LogonType Interactive `
+    -RunLevel  Limited
+
 Register-ScheduledTask `
     -TaskName    $TASK_NAME `
     -Action      $action `
     -Trigger     $trigger `
     -Settings    $settings `
-    -RunLevel    Limited `
+    -Principal   $principal `
     -Description 'Weekly Miru ops digest posted to Telegram via /api/ops/report' | Out-Null
 
 Write-Host "[$TASK_NAME] Registered. Next run: Friday 9:00 AM."
