@@ -308,10 +308,13 @@ When `worker_availability` shows a slot is idle or `activity_since` shows a work
 
 **CONFIRMED_WORKING:**
 
-- Move Linear ticket to Done.
+- Call `vp_ops_verify_ticket(ticket_id)` — VP Ops verification pass.
+  - `VERIFIED` → proceed normally.
+  - `FLAGGED` → review the flags before closing. Minor discrepancies (files list mismatch): note in Linear comment and proceed. Substantive issues (no git commits found, PR not merged): dispatch CC to investigate before closing the ticket.
 - If `pr_number` is set: check CLAUDE.md merge policy. Self-merge if CC-eligible; ping operator if operator-merge required.
 - If `follow_up_tickets_filed` is non-empty: verify those tickets exist in Linear; create any missing.
 - If `deploy_actions` lists a service restart: perform it or ping operator if elevation required.
+- Move Linear ticket to Done.
 
 **INCONCLUSIVE:**
 

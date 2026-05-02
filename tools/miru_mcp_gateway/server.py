@@ -60,6 +60,7 @@ from miru_mcp_gateway import (
     restart_tools,
     system_tools,
     telegram_tools,
+    vp_ops_tools,
     worker_tools,
 )
 from miru_mcp_gateway import config as gw_config
@@ -88,6 +89,7 @@ CATEGORIES: tuple[tuple[str, Any], ...] = (
     ("linear_write", linear_write_tools),
     ("telegram", telegram_tools),
     ("dispatch", dispatch_tools),
+    ("vp_ops", vp_ops_tools),
 )
 
 

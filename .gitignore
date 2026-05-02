@@ -2,6 +2,7 @@
 .env.*
 !.env.example
 config/claude_chat.mcp.json
+data/vp_ops_supervision.jsonl
 
 # Local secrets, editor config, and virtualenvs
 .venv/

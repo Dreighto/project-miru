@@ -215,6 +215,7 @@ Five files in `data/` are strictly append-only. Never edit, never truncate, neve
 - `data/pending_callbacks.jsonl` — Telegram callback ledger (gitignored)
 - `data/dispatch_dlq.jsonl` — dispatch dead-letter queue (gitignored)
 - `data/cc_heartbeat_log.jsonl` — worker heartbeat / liveness signal (gitignored)
+- `data/vp_ops_supervision.jsonl` — VP Ops verification records (gitignored)
 
 Pre-commit hooks `trailing-whitespace` and `end-of-file-fixer` exclude `^data/.*\.jsonl$` so they cannot rewrite these files structurally (locked 2026-04-28 per PRO-159). If you find yourself wanting to weaken that exclude or add a hook that read-modify-writes any of the five: STOP, escalate to operator. The append-only invariant is enforced by `tests/test_jsonl_append_only_invariant.py` — that test failing means the contract is breaking.
 
