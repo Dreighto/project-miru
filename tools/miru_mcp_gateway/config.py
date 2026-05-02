@@ -279,6 +279,7 @@ def _default_docs_write_globs() -> tuple[str, ...]:
         ".cursor/rules/*.md",
         ".claude/**/*.md",
         "data/config/*",
+        "miru-context/*.md",
     )
 
 
