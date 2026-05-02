@@ -149,6 +149,24 @@ budget governance uses "Cost bucket"; dispatch wiring uses "Dispatch mode."
 
 ---
 
+## Model and Thinking Level Selection (Claude Chat's responsibility)
+
+Claude Chat selects model and thinking level at dispatch time. Workers run at default unless overridden.
+
+| Task complexity                               | Model override         | Thinking level |
+| --------------------------------------------- | ---------------------- | -------------- |
+| Routine fix, single-file edit, doc update     | None (default)         | None           |
+| Multi-file refactor, non-trivial backend work | None (default Sonnet)  | None           |
+| Complex architecture, deep reasoning required | `claude-opus-4-7`      | `extended`     |
+| Budget Watch state                            | Prefer Haiku or Codex  | None           |
+| Budget Limit state                            | Cheapest capable model | None           |
+
+**How overrides are communicated (until PRO-265 ships):** Include model guidance in the dispatch prompt text — e.g. "Use extended thinking for this task." Once PRO-265 ships, pass `model` and `thinking_level` as explicit dispatch payload fields.
+
+**Cursor is exempt** — manual dispatch only; no model override possible.
+
+---
+
 ## Load-on-demand trigger
 
 Read this file when:
@@ -157,3 +175,4 @@ Read this file when:
 - Evaluating whether to run workers in parallel
 - Deciding which Ollama model to call for an automated task
 - Checking a worker's cost bucket or dispatch mode for budget-aware routing
+- Selecting model and thinking level for a dispatch

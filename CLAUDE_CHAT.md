@@ -62,17 +62,65 @@ Always check Linear for the current Todo list before every dispatch — do not w
 
 1. Read the Linear ticket description for the full spec.
 2. Pick a worker using `worker-roster.md` (in repo) as your routing table.
-3. Write the dispatch prompt: ticket ID, requirements, done-when criteria, pre-flight steps.
-4. **Kill switch gate**: call `fs_get_file_info` on `data/system_halt`. If the file exists: do NOT dispatch. Leave the ticket in Todo. Send one Telegram ping: "🛑 Kill switch active — autonomous dispatch paused. Delete `data/system_halt` to resume." Stop here.
-5. **Budget gate**: call `fs_read_text_file` on `data/budget_state.json`. If the file is missing, assume `safe`. Apply the rules from `miru-context/budget-governance.md`:
+3. **Select model and thinking level** for the worker based on task complexity and budget state:
+   - Routine fix / single-file / doc update → default model (no override needed)
+   - Complex multi-file refactor, architecture implementation, anything requiring deep reasoning → `model: "claude-opus-4-7"`, `thinking_level: "extended"`
+   - Budget Watch state → prefer cheaper model; no extended thinking on non-critical tasks
+   - Budget Limit state → cheapest capable model only
+   - Cursor is exempt — manual dispatch, no model override possible
+   - _(Note: model/effort dispatch parameter wiring is tracked in PRO-265. Until shipped, include model guidance in the prompt text itself as a fallback.)_
+4. Write the dispatch prompt: ticket ID, requirements, done-when criteria, pre-flight steps.
+5. **Kill switch gate**: call `fs_get_file_info` on `data/system_halt`. If the file exists: do NOT dispatch. Leave the ticket in Todo. Send one Telegram ping: "🛑 Kill switch active — autonomous dispatch paused. Delete `data/system_halt` to resume." Stop here.
+6. **Budget gate**: call `fs_read_text_file` on `data/budget_state.json`. If the file is missing, assume `safe`. Apply the rules from `miru-context/budget-governance.md`:
    - `safe` → dispatch normally.
    - `watch` → prefer cheaper model (Haiku or Codex); reduce parallel workers to 1; skip non-critical Backlog items.
    - `limit` → do NOT dispatch. Send one Telegram ping per ticket needing approval: "💸 Budget at Limit — operator approval required before dispatching [ticket ID]." Stop here until operator replies.
-6. Call `dispatch_worker` via the gateway MCP tool.
-7. Move the Linear ticket to **In Progress**.
-8. Monitor via `activity_since` and `worker_status`. Heartbeats appear in `data/cc_heartbeat_log.jsonl`.
-9. When worker completes: check `data/cc_completion_log.jsonl` for the completion marker.
-10. Move Linear ticket to **Done**. Report outcome to operator via Telegram or chat.
+7. Call `dispatch_worker` via the gateway MCP tool.
+8. Move the Linear ticket to **In Progress**.
+9. Monitor via `activity_since` and `worker_status`. Heartbeats appear in `data/cc_heartbeat_log.jsonl`.
+10. When worker completes: check `data/cc_completion_log.jsonl` for the completion marker.
+11. If the completion marker has a `pr_number`: run the **PR review and merge loop** below before closing the ticket.
+12. Move Linear ticket to **Done**. Report outcome to operator via Telegram or chat.
+
+### PR review and merge loop
+
+When a completion marker has a `pr_number`, run this loop before closing the Linear ticket.
+
+**Step 1 — Read the PR**
+
+Call in parallel:
+
+- `github_get_pr_diff` — what changed
+- `github_get_pr_check_runs` — CI status + Bugbot findings
+- `github_get_pr_review_comments` — any reviewer comments
+
+**Step 2 — Check merge policy (CLAUDE.md)**
+
+- **Operator-merge column** (new files, schema changes, infrastructure, etc.) → send one Telegram ping using the operator-translation format. Stop here until operator merges.
+- **CC-merge column** (single-file edits, bug fixes, doc updates, etc.) → continue to step 3.
+- **Direct-to-main** (completion log entries, typo fixes, etc.) → already committed; no PR to review.
+
+**Step 3 — Evaluate findings**
+
+| State                                        | Action                                                                |
+| -------------------------------------------- | --------------------------------------------------------------------- |
+| CI green + Bugbot clean (or Low/Medium only) | Proceed to merge                                                      |
+| Bugbot High finding                          | Dispatch Claude Code to fix; push to same branch; loop back to step 1 |
+| Bugbot override-condition finding            | Surface to operator via Telegram before merging                       |
+| CI failing (not pre-existing)                | Dispatch Claude Code to fix; loop back to step 1                      |
+| CI failing (confirmed pre-existing flake)    | Note in PR comment; proceed to merge                                  |
+
+**Step 4 — Merge**
+
+_(Note: `merge_pr` gateway tool is tracked in PRO-266. Until shipped, ping the operator to merge and confirm.)_
+
+Once wired: call `merge_pr` with `merge_method: "squash"` and `delete_branch: true`.
+
+**Step 5 — Post-merge cleanup**
+
+The worker that opened the PR is responsible for local branch cleanup (checkout main, pull, delete branch). Claude Chat owns Linear closeout (move to Done).
+
+---
 
 ### Worker routing reference
 
