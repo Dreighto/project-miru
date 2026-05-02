@@ -163,16 +163,12 @@ function spawnWorker({
     throw err;
   }
 
-  // Auth selection: if the caller sets useApiKey=true, map MIRU_ROUTING_KEY to
-  // ANTHROPIC_API_KEY so the worker bills via API (complex/recovery tasks).
-  // Otherwise strip ANTHROPIC_API_KEY so claude.cmd falls back to stored OAuth
-  // credentials — no API charge for routine tasks.
+  // Auth: always strip ANTHROPIC_API_KEY from child env so spawned workers use
+  // stored OAuth credentials only. API billing for workers is disabled — the
+  // routing key remains available to Claude Chat's own session but is never
+  // propagated to child processes.
   const childEnv = { ...process.env };
-  if (useApiKey && childEnv.MIRU_ROUTING_KEY) {
-    childEnv.ANTHROPIC_API_KEY = childEnv.MIRU_ROUTING_KEY;
-  } else {
-    delete childEnv.ANTHROPIC_API_KEY;
-  }
+  delete childEnv.ANTHROPIC_API_KEY;
 
   log.info('spawn_auth_debug', {
     trace_id: traceId,
