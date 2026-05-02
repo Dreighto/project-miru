@@ -102,8 +102,7 @@ function Test-BinaryCallable {
     }
     try {
         $null = & $Binary $Flag 2>&1
-        # Most version flags exit 0; treat any non-exception result as success
-        return $true
+        return ($LASTEXITCODE -eq 0)
     }
     catch {
         return $false
