@@ -15,13 +15,25 @@ Read all of these at thread start before doing anything else:
 - `miru-context/miru-vocab.md` — operator language guide; shorthand phrases, direction phrases, project-specific terms
 - `miru-context/canon-and-drift.md` — source-of-truth hierarchy, drift detection patterns, state preservation rules
 - `miru-context/state-handoff-log.md` — previous thread context. If a handoff was written, start from it.
+- `miru-context/operating-model.md` — full team model and autonomous loop; every role and how they fit together
+- `miru-context/canon-contract.md` — how knowledge flows into Notion; promotion rules, deduplication, retroactive authority
+- `miru-context/job-stewardship.md` — what "done" means; Claude Code's verification checklist; stall response protocol
+- `miru-context/source-of-truth.md` — which system wins when two systems disagree; conflict resolution rules
 
 ## Load-on-demand files (miru-context/)
 
 Read these only when the situation calls for them — not at routine thread start:
 
+- `worker-roster.md` — read when routing a task to a worker, choosing an Ollama model, or checking cost bucket
 - `concurrency-policy.md` — read when 2+ workers are active or you're evaluating parallel execution
-- `worker-roster.md` — read when routing a task to a worker or choosing an Ollama model
+- `budget-governance.md` — read when budget state is Watch or Limit, or when model selection matters
+- `kill-switch.md` — read if dispatch is blocked or you suspect `data/system_halt` is present
+- `retry-backoff.md` — read before retrying a failed task; covers retry limits and side-effect risk
+- `operator-translation.md` — read when drafting an escalation message or operator approval request
+- `coordination-contract.md` — read when two workers are active on related tickets
+- `miru-protected-constraints.md` — read before any infrastructure or architectural change
+- `worker-decision-layer.md` — read when a worker is blocked on an ambiguity and you need to classify it
+- `performance-scorecard.md` — read when reviewing worker outcomes over multiple jobs
 
 Speak to me like a buddy. In plain English. I won't accept technical jargon unless I ask for more information or want you to elaborate on something.
 
@@ -46,12 +58,15 @@ Speak to me like a buddy. In plain English. I won't accept technical jargon unle
 - 8765 — NEVER TOUCH
 - 11434 — Ollama, external dependency (not a Miru service, used by Miru AI)
 
-## Restart scripts (only these two active)
+## Restart scripts (active)
 
-- windows\restart_pm.ps1
-- windows\restart_miru_ai.ps1
-- windows\restart_dispatcher.ps1 (decommissioned with dispatcher, PRO-234)
-  No alternates. No nssm restart. No elevation required.
+- `windows\restart_pm.ps1` — PM Dashboard (port 18080)
+- `windows\restart_miru_ai.ps1` — Miru AI (port 18765)
+- `windows\restart_mcp_gateway.ps1` — MCP Gateway (port 18766)
+- `windows\restart_dispatch_listener.ps1` — Dispatch Listener (port 19100)
+
+No alternates. No nssm restart. No elevation required for restarts.
+`windows\restart_dispatcher.ps1` — DECOMMISSIONED (PRO-234, 2026-04-30). Do not use.
 
 ## Source-of-truth check (run at thread start)
 
@@ -141,7 +156,7 @@ If the write would be redundant with what's already stored, skip it and say so b
 - stack_state: last-write-wins. This is current operational truth.
 - routing_decisions, worker_perf, peer_review: append-only.
 
-## n8n loop — current state (live, with known bugs)
+## n8n loop — current state
 
 Miru has an active n8n routing loop that takes execution work from "operator describes a task" through "worker actually does it" without operator drafting copy-paste prompts every time.
 
@@ -154,14 +169,7 @@ Miru has an active n8n routing loop that takes execution work from "operator des
 5. **CC Completion Ping (PRO-99)** — when CC writes a marker to data/cc_completion_log.jsonl, sends a Telegram notification.
 6. **Hygiene gate (PRO-107)** — every PR runs through pre-commit hooks + GitHub Actions CI.
 
-**Known bugs in the loop (read WORKFLOW_MAP.md Known Issues for full detail):**
-
-- PRO-153 — W2 GraphQL filter-miss in labeled-poll branch (deferred). Tickets that already have a worker label fall into a black hole.
-- PRO-157 — W7 doesn't write the worker label on approval; W4 dispatch aborts with `worker label "X" not in issue labels [...]`. Every unlabeled-poll ticket fails dispatch on first approval. Urgent.
-- PRO-159 — cc_completion_log.jsonl append-only invariant violated during PRO-156 import. Guard fired correctly. Urgent.
-- PRO-160 — CC Completion Ping watcher not idempotent; refires historical markers when the JSONL is modified. High.
-- PRO-126 — earlier W7 mutation_body_obj bug, possibly shares lineage with PRO-157.
-- Backlog → Todo state filter — W2's GraphQL query only sees Todo+ tickets. Tickets filed in Backlog are invisible until moved to Todo.
+**Known issues:** Check Linear (Project Miru team) for open Bug tickets. Do not track bugs or open issues in this file — that belongs in Linear.
 
 ### Default for execution work in this project: file a Linear ticket, let the loop carry it
 
@@ -195,7 +203,8 @@ Because the loop only matures by getting real traffic on real work:
 | ChatGPT          | Second Opinion (chat app)   | Structuring, simplifying, orchestration help                                     | Source of truth                |
 
 **Active daily workers:** Claude Code, Cursor, Codex. Gemini CLI occasionally.
-**Standby:** Copilot (when signed in), Windsurf (overflow), Gemini 3 Pro / Perplexity / ChatGPT (peer review as needed).
+**Peer review (chat apps, not dispatched):** Gemini 3 Pro, Perplexity, ChatGPT.
+**Not in active use:** Copilot, Windsurf — do not route work to them unless the operator explicitly enables them.
 
 ## Fast pick (decision shortcut)
 
@@ -238,12 +247,13 @@ Because the loop only matures by getting real traffic on real work:
 
 The following files are guarded for append-only invariant. Any write that rewrites, truncates, deduplicates, or atomic-renames over them will trigger the guard:
 
-- data/cc_completion_log.jsonl
-- data/routing_history.jsonl
-- data/pending_callbacks.jsonl
-- data/dispatch_dlq.jsonl
+- `data/cc_completion_log.jsonl` — worker completion markers
+- `data/routing_history.jsonl` — W2 routing decisions
+- `data/pending_callbacks.jsonl` — Telegram callback ledger
+- `data/dispatch_dlq.jsonl` — dispatch dead-letter queue
+- `data/cc_heartbeat_log.jsonl` — worker heartbeat / liveness signal
 
-Treat them as strictly append-only via fs.appendFileSync.
+Treat them as strictly append-only. Workers write via `tools/emit_completion.py` and `tools/emit_heartbeat.py` — never open these files directly with a relative path from a worktree.
 
 ## Notion editing rules for this project
 
@@ -325,7 +335,7 @@ Claude Chat operates as the operator's partner, not just an advisor. Access expa
 - ✅ Full Notion write — Claude Chat owns ALL Notion writes (no more Claude Code split)
 - ✅ Perplexity MCP for autonomous research
 - ✅ n8n execution data without Telegram approval gate
-- ✅ Service restarts: PM (18080), Miru AI (18765), Dispatcher (19000), dispatch listener (19100), MCP gateway (18766)
+- ✅ Service restarts: PM (18080), Miru AI (18765), dispatch listener (19100), MCP gateway (18766)
 - ✅ GitHub PR comments
 - ✅ W2 manual webhook trigger
 - ✅ Routing history direct file read
