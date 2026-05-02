@@ -46,8 +46,6 @@ Read these only when the situation calls for them — not at routine thread star
 - `worker-decision-layer.md` — read when a worker is blocked on an ambiguity and you need to classify it
 - `performance-scorecard.md` — read when reviewing worker outcomes over multiple jobs
 
-Speak to me like a buddy. In plain English. I won't accept technical jargon unless I ask for more information or want you to elaborate on something.
-
 ## Canonical environment
 
 - Machine: ROOM (GMKtec NucBox K12)
@@ -268,58 +266,26 @@ Treat them as strictly append-only. Workers write via `tools/emit_completion.py`
 
 ## Notion editing rules for this project
 
-- Small surgical edits via update_content. Don't rewrite pages wholesale.
-- Preserve existing page structure and voice unless the change requires restructuring.
-- When applying a suggestion from a peer reviewer, record on the page: Source: Gemini 3 Pro (or Perplexity / ChatGPT) + one-line rationale.
-- Don't create new Notion pages without checking existing ones first. If I flag a "just update what's there" request and you create a new page instead, that's a violation — flag it so we can fix it together.
+For the full discipline (deduplication, promotion test, retroactive authority, lifecycle states), see `miru-context/canon-contract.md`. Miru-specific add-on:
+
+- When applying a suggestion from a peer reviewer, record on the page: `Source: Gemini 3 Pro` (or Perplexity / ChatGPT) + one-line rationale.
 
 ## Repo doc editing (Claude Chat, audit-logged)
 
-Claude Chat may write to repo documentation files via Miru filesystem MCP (docs_append_file, docs_patch_file). Every write is audit-logged via the gateway. Rules:
-
-- Append/patch only. No code files.
-- Surgical edits, not wholesale rewrites.
-- If a patch fails on whitespace mismatch, retry with a more distinctive substring — don't bypass.
-- N8N_SKILL.md and CLAUDE.md, CURSOR.md, etc. are still operator-owned (Stage 3 territory).
+Stage 2 grants Claude Chat append/patch access to `.md` files via Miru filesystem MCP (audit-logged). Append/patch only, surgical edits, no code files. Worker rule files (CLAUDE.md, CURSOR.md, AGENTS.md, etc.) remain operator-owned — Stage 3 territory.
 
 ## Peer Architecture Review (for big decisions)
 
-When a decision is page-level, multi-surface, or "there's probably a better way," I may take files to Gemini 3 Pro or Perplexity. Peer generates a proposal. I bring it back to you. You respond honestly — agree, disagree, counter-propose. Loop until convergence. Then you generate the execution prompt for the right worker, OR (more often now) you file a Linear ticket and let the loop route it. Don't rubber-stamp peer proposals.
+Triggered by operator phrases or when a decision is page-level / multi-surface. CLAUDE_CHAT.md "Brainstorm / Research mode" owns the full protocol — when to enter, how to draft a paste-ready brief, how to synthesize the response. Don't rubber-stamp peer proposals.
 
-## Thread-close hygiene (run before every thread switch)
+## Thread-close hygiene
 
-When the operator signals a thread switch — or when you suggest one — run this checklist before
-writing the handoff. Do not skip steps. Do not ask permission for each one; just do them.
+Trigger phrases ("wrap this thread," "switch threads," "new thread," etc.) are in `miru-context/miru-vocab.md`. CLAUDE_CHAT.md "Session end — mandatory handoff" owns the handoff write contract. The Miru-specific checklist before writing the handoff:
 
-1. **Sync Project Memory** — write any decisions, routing outcomes, or worker results from this
-   thread that have not been logged yet. Use the write triggers in the Memory layer section above.
-   If nothing is unlogged, note that and move on.
-
-2. **Check Notion for drift** — spot-check the "01 Now" page and any canon pages touched this
-   thread. If a surface is stale (what's there doesn't match what shipped), apply a surgical patch.
-   Flag anything that needs a bigger update but don't block the handoff on it.
-
-3. **Write the handoff to `miru-context/state-handoff-log.md`** — use the template in that file.
-   Overwrite the previous handoff content (only the latest one matters). Keep it short — one phone
-   screen. The next thread reads this file at startup and starts from it.
-
-4. **Confirm Linear is current** — any ticket that completed this thread should be in Done.
-   Any new item filed should be in Todo or Backlog as appropriate.
-
-Do not hand the operator a chat message as the handoff. Write it to the file. The next session
-reads the file automatically — no copy-paste required.
-
-## Wrap-up trigger
-
-When I signal "wrap this thread," "switch threads," "new thread," or similar:
-
-1. Run the thread-close hygiene checklist above.
-2. Confirm: "Thread closed. Handoff written to state-handoff-log.md. Next thread starts clean."
-
-Handoffs should be SHORT — operating posture, what shipped, what's filed, what the next thread
-should do first. The next thread has tools; it can look up the rest.
-
-Every prompt or proposal or response to another AI chat app must be generated in code text format. No exceptions.
+1. **Sync Project Memory** for any decisions, routing outcomes, or worker results from this thread that haven't been logged yet (per Memory layer write triggers above).
+2. **Spot-check Notion** — 01 Now and any canon pages touched this thread. Apply surgical patches for stale spots; flag larger drift as follow-up tickets, don't block the handoff on them.
+3. **Confirm Linear is current** — completed tickets in Done, new items in Todo or Backlog as appropriate.
+4. **Write the handoff** to `miru-context/state-handoff-log.md` (overwrite previous content; one-phone-screen short).
 
 ## Claude Chat access progression (locked 2026-04-24, advanced 2026-04-27)
 
