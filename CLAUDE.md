@@ -59,8 +59,14 @@ The script checks for staged/unstaged changes to tracked files. Untracked files 
 ## Notion — Read/Write Rules
 
 - ALL workers may READ Notion to understand the current job, active tasks, and system state
-- Claude Chat is the default Notion writer
-- Other workers (including Claude Code) may write to Notion only when the operator explicitly authorizes a specific task — the authorization is per-task, not standing
+- Claude Chat is the default Notion writer for architectural decisions, new page structure, consultant packet content, and cross-session synthesis
+- **Claude Code (VP Ops) has standing write authority** for the following Notion tasks — no per-task operator authorization required:
+  - Post-ticket canon updates after verifying completed work (factual corrections, tool lists, port/service status)
+  - Worker Operating Baseline syncs when CLAUDE.md or AGENTS.md changes
+  - Work Log anchor entries after a sprint
+  - Reference/spec pages (e.g. ROOM hardware spec, schema references)
+  - Any Notion update where CC already holds the full context from a just-verified ticket
+- All other workers may write to Notion only when the operator explicitly authorizes a specific task
 - Use Notion reads to avoid overlapping with in-progress work
 
 ## Adopted Lessons — Hard Rules
@@ -346,8 +352,8 @@ tap a button. If you need more than one decision, send one message per decision.
 
 ### Role
 
-- **Claude Chat:** Lead Architect. Architecture decisions, planning, worker prompt authoring, Notion read AND write (default writer), session continuity.
-- **Claude Code:** Primary Python execution worker. Complex multi-file Python refactoring, test writing, verification scripts. Handles large or surgical edits to Claude Chat's normally-owned surfaces (Notion canon pages, CLAUDE.md, worker prompts) when the operator explicitly authorizes it for a given task — e.g. when Claude Chat is unavailable or the edit volume is impractical in chat.
+- **Claude Chat:** Lead Architect. Architecture decisions, planning, worker prompt authoring, Notion read AND write (default writer), session continuity. Owns consultant packet content (Perplexity, ChatGPT, Gemini), new Notion page structure, and cross-session synthesis entries.
+- **Claude Code (VP Ops):** Execution steward and supervisory layer. Primary Python execution worker — complex multi-file refactoring, test writing, verification scripts. Owns system stability, worker verification (vp_ops_verify_ticket), and post-ticket canon maintenance. Has standing Notion write authority for factual/maintenance updates (see Notion Read/Write Rules above). Handles surgical edits to Claude Chat's surfaces when operator authorizes or when edit volume is impractical in chat.
 
 ### File ownership
 
