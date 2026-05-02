@@ -29,10 +29,11 @@ if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
     Write-Host "Removed existing task: $taskName"
 }
 
-# Wrap in cmd /c so the Task Scheduler can find python on PATH
+$logFile = Join-Path $logDir "n8n_loop_watchdog_sched.log"
+
 $action = New-ScheduledTaskAction `
-    -Execute  "cmd.exe" `
-    -Argument "/c `"$python `"$script`" >> `"$logDir\n8n_loop_watchdog_sched.log`" 2>&1`""
+    -Execute  "powershell.exe" `
+    -Argument "-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -Command `"& $python '$script' *>> '$logFile'`""
 
 # Trigger: every 15 minutes, starting at midnight, indefinitely
 $trigger = New-ScheduledTaskTrigger -RepetitionInterval (New-TimeSpan -Minutes 15) -Once -At "00:00"
@@ -46,7 +47,7 @@ $settings = New-ScheduledTaskSettingsSet `
 $principal = New-ScheduledTaskPrincipal `
     -UserId    $env:USERNAME `
     -LogonType Interactive `
-    -RunLevel  Highest
+    -RunLevel  Limited
 
 Register-ScheduledTask `
     -TaskName   $taskName `
