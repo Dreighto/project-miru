@@ -163,12 +163,16 @@ function spawnWorker({
     throw err;
   }
 
-  // Auth: always strip ANTHROPIC_API_KEY from child env so spawned workers use
-  // stored OAuth credentials only. API billing for workers is disabled — the
-  // routing key remains available to Claude Chat's own session but is never
-  // propagated to child processes.
+  // Auth: workers run via MIRU_ROUTING_KEY (budget-capped API key). OAuth
+  // tokens stored by the Claude desktop app are DPAPI-encrypted and only
+  // decryptable in the interactive session (Session 1), so they cannot be used
+  // by Session 0 scheduled tasks regardless of which user account runs them.
   const childEnv = { ...process.env };
-  delete childEnv.ANTHROPIC_API_KEY;
+  if (childEnv.MIRU_ROUTING_KEY) {
+    childEnv.ANTHROPIC_API_KEY = childEnv.MIRU_ROUTING_KEY;
+  } else {
+    delete childEnv.ANTHROPIC_API_KEY;
+  }
 
   log.info('spawn_auth_debug', {
     trace_id: traceId,
