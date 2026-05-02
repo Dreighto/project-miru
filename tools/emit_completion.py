@@ -21,9 +21,21 @@ Usage: pipe a single JSON object to stdin.
       "deploy_actions": [],
       "test_evidence": "...",
       "follow_up_tickets_filed": [],
-      "notes": ""
+      "notes": "",
+      "handoff": null
     }
     EOF
+
+Include a handoff object when another worker must continue the work:
+
+    "handoff": {
+      "next_worker": "cursor",
+      "ticket_id": "PRO-YYY",
+      "context": "Plain English paragraph for the receiving worker.",
+      "entry_points": ["pm/templates/foo.html:42"],
+      "watch_out_for": ["specific gotcha the next worker needs to know"],
+      "blocked_on": null
+    }
 
 Schema defined in CLAUDE.md — Completion Contract section.
 The file is append-only. Never truncate, sort, or deduplicate it.

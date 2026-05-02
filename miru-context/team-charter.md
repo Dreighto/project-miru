@@ -62,8 +62,27 @@ Asking for help is not a weakness. Asking before trying is.
 - Claude Chat: architecture, routing, session continuity, canon ownership
 
 **Handoffs are intentional.** When your part of a ticket is done and another worker needs to
-pick it up, say so explicitly. Your completion marker should carry enough context that the
-next worker can start without re-reading the whole history. Don't drop the ball on the handoff.
+pick it up, say so explicitly. Your completion marker carries a structured `handoff` field so
+the next worker can start without re-reading the whole history. Don't drop the ball on the handoff.
+
+A good handoff brief looks like this:
+
+```json
+{
+  "next_worker": "cursor",
+  "ticket_id": "PRO-275",
+  "context": "Wired the gesture detection backend in Python. The swipe velocity threshold is 0.3 and lives in miru_ai/core/gesture.py. Cursor needs to wire the frontend handler so it reads from the /api/gesture endpoint and triggers the card flip animation.",
+  "entry_points": ["pm/templates/card_detail.html:88", "pm/static/js/cards.js:142"],
+  "watch_out_for": [
+    "The swipe handler fires before pull-to-refresh if scroll position > 0 — guard against it",
+    "The endpoint returns 204 on no-gesture, not 404 — handle that case"
+  ],
+  "blocked_on": null
+}
+```
+
+The `watch_out_for` list is the highest-value part — write down the thing that would have tripped
+you up if you hadn't known it. Keep the whole brief to what you could write in five minutes.
 
 **Peer review is a gift.** When Codex reviews your code or Gemini offers an alternative, that
 is not a judgment — it is the team making the work better. Findings are information. Respond
@@ -80,8 +99,8 @@ it clearly. Do not silently scope it out. Do not hack around it. The handoff is 
 The team gets better through every completed ticket — but only if we capture what we learn.
 
 - **Every CONFIRMED_WORKING** is a chance to note what was hard, what was new, or what
-  the next worker in this area should know. Put it in the `notes` field of the completion
-  marker if it's worth keeping.
+  the next worker in this area should know. Put it in the `notes` field if it's for Claude Chat,
+  or in the `handoff` field if another worker is continuing the work.
 - **Every INCONCLUSIVE** is signal about the spec or the system. If a question comes up once,
   it will come up again. The answer should end up in canon.
 - **Every FAILED** is a chance to understand the system better. The failure analysis matters

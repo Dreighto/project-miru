@@ -519,6 +519,13 @@ This is how Claude Chat verifies completion without the operator manually relayi
 - `test_evidence` (string) — one-line summary of how the work was verified ("15/15 fixtures pass", "7-step self-test on live Telegram").
 - `follow_up_tickets_filed` (array of strings) — Linear ticket IDs filed during this work for out-of-scope items.
 - `notes` (string) — anything Claude Chat needs to know that doesn't fit above. Empty string if none.
+- `handoff` (object or null) — structured brief for the next worker when a continuation is expected. Null if no handoff needed. Schema:
+  - `next_worker` (string) — which worker picks this up (e.g. "cursor", "codex", "claude-code").
+  - `ticket_id` (string) — the Linear ticket the next worker is working against.
+  - `context` (string) — plain English paragraph: what was built, what contract it establishes, what the next worker needs to know to start.
+  - `entry_points` (array of strings) — file:line references that are the best starting points (e.g. `"pm/templates/card_detail.html:42"`).
+  - `watch_out_for` (array of strings) — specific gotchas, edge cases, or constraints the next worker should know before touching anything.
+  - `blocked_on` (string or null) — null, or a ticket ID if the next worker can't start until it resolves.
 
 ### When to write
 
