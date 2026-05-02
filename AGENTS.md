@@ -3,6 +3,10 @@
 This file is the shared worker baseline for Project Miru. Workers read this on every dispatch.
 Worker-specific rule files (CLAUDE.md, GEMINI.md, CURSOR.md, etc.) layer on top of this baseline.
 
+**Read `miru-context/team-charter.md` on every dispatch.** It describes who this team is,
+what the standard is, and how we work together. The rules in this file tell you what to do.
+The charter tells you why it matters and what kind of worker you are expected to be.
+
 ---
 
 ## Bugbot Findings Handling Contract (CC only, locked PRO-212 2026-04-29)
