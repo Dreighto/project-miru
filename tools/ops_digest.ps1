@@ -66,13 +66,28 @@ function Format-WorkerStep {
 function Format-Budget {
     param($Budget)
     if (-not $Budget) { return 'No budget data' }
-    $state = try { [string]$Budget.state } catch { 'unknown' }
-    switch ($state) {
-        'safe'  { return 'Safe — no limits hit' }
-        'watch' { return 'Watch — approaching limit ⚠️' }
-        'limit' { return 'At limit — new work needs approval ❌' }
-        default { return "State: $state" }
+
+    # Handle {state: ...} format (future)
+    $stateVal = try { [string]$Budget.state } catch { $null }
+    if ($stateVal -and $stateVal -ne '') {
+        switch ($stateVal) {
+            'safe'  { return 'Safe — no limits hit' }
+            'watch' { return 'Watch — approaching limit ⚠️' }
+            'limit' { return 'At limit — new work needs approval ❌' }
+        }
     }
+
+    # Handle legacy array-of-providers format
+    $providers = @()
+    if ($Budget -is [array]) { $providers = $Budget }
+    if ($providers.Count -eq 0) { return 'No budget data' }
+
+    $pcts = @($providers | Where-Object { $null -ne $_.remaining_percent } | ForEach-Object { [double]$_.remaining_percent })
+    $minPct = if ($pcts.Count -gt 0) { ($pcts | Measure-Object -Minimum).Minimum } else { 100 }
+    $detail = ($providers | ForEach-Object { "$($_.provider) $($_.remaining_percent)% left" }) -join ' · '
+    if ($minPct -ge 50) { return "Safe — $detail" }
+    if ($minPct -ge 20) { return "Watch ⚠️ — $detail" }
+    return "At limit ❌ — $detail"
 }
 
 # ── Build message ──────────────────────────────────────────────────────────────
