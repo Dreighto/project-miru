@@ -3,7 +3,7 @@
 Ground-truth reference for every service in the Miru stack. Extracted directly from source
 files and live logs. Workers read this before writing any code that touches a service.
 
-Last updated: 2026-05-01
+Last updated: 2026-05-02
 
 ---
 
@@ -339,6 +339,80 @@ docker restart n8n
 ```
 
 or via the n8n MCP tool: `service_restart` with service="n8n".
+
+---
+
+---
+
+## 6. n8n Loop Watchdog — `tools/n8n_loop_watchdog.py`
+
+**What it does:** Polls the n8n REST API every 15 minutes and detects three failure modes:
+
+- **Pass A (failing/unstable):** last 3 of last 5 executions all error/crashed → "failing"; >50% fail rate → "unstable"
+- **Pass B (silence):** periodic-class workflows only; `now - last_execution > expected_interval × silence_threshold_multiplier` → "silent"
+- **Pass C (recurring):** same error fingerprint ≥3 times in 24h → `recurring_pattern` flag
+
+Sends Telegram alerts **only on state transitions** (healthy → failing, recovering, etc.) with a 60-minute cooldown to prevent spam. Pings Healthchecks.io as a liveness signal so the watchdog itself can be monitored.
+
+**This is a tool, not a service** — it has no persistent process and no port. It runs on a Windows Task Scheduler trigger.
+
+**Not affected by kill switch** — health monitoring must always run regardless of `data/system_halt`.
+
+### Scheduled task
+
+```
+Task name:  MiruN8nWatchdog
+Schedule:   Every 15 minutes
+Run as:     SYSTEM
+```
+
+**Register (elevated shell, once):**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File windows\register_watchdog_task.ps1
+```
+
+**Manual trigger:**
+
+```powershell
+schtasks /Run /TN 'MiruN8nWatchdog'
+```
+
+**Check last run:**
+
+```powershell
+Get-ScheduledTask -TaskName MiruN8nWatchdog | Get-ScheduledTaskInfo
+```
+
+### Config and state
+
+| Path                                           | Purpose                                            |
+| ---------------------------------------------- | -------------------------------------------------- |
+| `data/config/watchdog_registry.json`           | Workflow definitions — class, interval, thresholds |
+| `data/miru_memory.db` (table `watchdog_state`) | Per-workflow state persistence                     |
+| `logs/n8n_loop_watchdog.log`                   | Structured log (TSV format)                        |
+| `logs/n8n_loop_watchdog_sched.log`             | stdout/stderr captured by Task Scheduler           |
+
+### Environment variables required
+
+- `TELEGRAM_BOT_TOKEN` — from `.env`
+- `TELEGRAM_CHAT_ID` — from `.env`
+- `N8N_API_KEY` — from `.env` (header: `X-N8N-API-KEY`)
+- `MIRU_N8N_BASE_URL` — from `.env` (default: `http://localhost:15678`)
+- `HEALTHCHECKS_IO_URL` — from `.env` (optional liveness ping)
+
+### Normal alert format
+
+Alerts are Telegram messages only on state changes:
+
+```
+⚠️ n8n watchdog: W2 Router is FAILING
+Last 3 of 5 runs failed. First error: Cannot read properties of undefined
+```
+
+```
+✅ n8n watchdog: W2 Router RECOVERED
+```
 
 ---
 
