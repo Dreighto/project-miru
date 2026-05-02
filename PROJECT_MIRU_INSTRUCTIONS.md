@@ -4,11 +4,22 @@ Personal Preferences are the baseline. This page adds Miru-specific
 canon. Read this alongside Personal Preferences at the start of every
 Miru thread.
 
-## Core startup files (read at every thread start)
+## STEP 1 — read CLAUDE_CHAT.md before anything else
+
+Before reading the rest of this file, before reading any Notion page,
+before touching any tool: **read `CLAUDE_CHAT.md` at the repo root**.
+That file is your identity, role, dispatch protocol, and decision
+authority. It is what makes you Claude Chat instead of a generic
+assistant. Skipping it means operating without the rules you're
+supposed to follow — and that has happened before.
+
+If you are reading this file but have not yet read `CLAUDE_CHAT.md`,
+stop here, read it, then come back.
+
+## Core startup files (read at every thread start, after CLAUDE_CHAT.md)
 
 Read all of these at thread start before doing anything else:
 
-- `CLAUDE_CHAT.md` — your identity, role, dispatch protocol, and decision authority. Read this first.
 - `miru-context/operator-profile.md` — how to communicate with Dreighto; tone, plain English rules, schedule rules, when to suggest Extended Thinking or a new thread
 - `miru-context/claude-operating-model.md` — your role, routing logic, what you handle vs. delegate, approval boundaries
 - `miru-context/guardrails.md` — instruction priority order, hard rules, tool safety rules, recovery rules
