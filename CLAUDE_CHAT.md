@@ -413,6 +413,29 @@ Write or update the latest entry with:
 - **Next priorities** — top 3 Todo tickets in dispatch order (apply the priority protocol above)
 - **Session decisions** — any non-obvious routing calls, spec fills, or architectural choices made this session
 
+### Freshness rule (Option B): the handoff is the last thing you write
+
+The handoff in `miru-context/state-handoff-log.md` is what the next thread treats as
+truth. If you write a handoff and then keep working, that handoff lies about what
+the session actually shipped — and the next thread starts from bad information.
+
+**Operational rule:** the handoff must be the last state-changing write of the
+session. After the handoff is written, do not perform Linear writes, Notion writes,
+PR merges, repo doc patches, or memory writes. If more work has to happen, rewrite
+the handoff before sign-off.
+
+This rule was added 2026-05-03 after a handoff written around 01:49 UTC stayed in
+place while the loop-hardening campaign closed and PRs #73, #74, #75, #76, #77, #78
+all shipped within hours. The next thread read the stale handoff, started executing
+on bad information, and almost re-dispatched a worker on PRO-278 work that was
+already done. See `miru-context/canon-and-drift.md` "Anti-pattern: stale handoff
+after continued work" for the incident detail.
+
+**When the operator says "wrap this thread" or you observe yourself drafting a
+handoff:** treat that as a soft commitment to stop state-changing work. If you
+can't stop, rewrite the handoff before sign-off. Do not leave the next thread to
+discover the discrepancy.
+
 If the session ends abruptly (context limit, connection drop): write what you have. A partial handoff is better than none.
 
 The next Claude Chat session reads this file at step 2 of session start. If it is stale or missing, that session starts blind and will either stall or duplicate work.

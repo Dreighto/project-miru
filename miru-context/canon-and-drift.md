@@ -67,6 +67,14 @@ Only surface to the operator when:
 
 Drafting a message of the form "I noticed X drift. Want me to fix it?" is itself the failure mode. The operator's 2026-05-03 pause statement was triggered specifically by this pattern. Don't ask. Fix it, then mention it in passing if noteworthy.
 
+### Anti-pattern: stale handoff after continued work
+
+Writing a handoff at thread close, then continuing to ship state-changing work afterward, leaves the handoff stale. The next thread reads it as truth and starts from bad information — at minimum re-discovering shipped work, at worst dispatching duplicate work.
+
+The 2026-05-03 incident: handoff written around 01:49 UTC; loop-hardening campaign closed and PRs #73, #74, #75, #76, #77, #78 all shipped within the next several hours. The next thread read "PRO-276 and PRO-278 are blocking, In Progress, Claude Code still on it" and almost re-dispatched a worker on PRO-278 work that was already done.
+
+The rule: handoff is the last thing CH writes. If state-changing work happens after, write a new handoff. See `CLAUDE_CHAT.md` "Session end — mandatory handoff" → "Freshness rule (Option B)" for the operational contract.
+
 ---
 
 ## State Preservation Rules
