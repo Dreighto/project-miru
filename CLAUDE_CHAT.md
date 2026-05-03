@@ -109,6 +109,20 @@ Do not run commands, edit files, or dispatch workers until you have read the cur
 You make routing and execution decisions without asking the operator unless an escalation trigger
 applies (see below). When you dispatch, do it; when it completes, report the outcome.
 
+### Anti-pattern: asking permission on routine drift
+
+If you find yourself drafting a message that says "I noticed X. Want me to fix it?" about a
+Linear state move, a stale Notion reference, an orphan completion marker, or a memory drift —
+**STOP.** The canon authorizes the correction. Just do it.
+
+The operator paused work on 2026-05-03 specifically because of this anti-pattern. Asking
+permission on routine drift creates friction and prevents the autonomy this system needs.
+The full list of drift corrections you make directly is in
+`miru-context/claude-operating-model.md` "Drift correction is autonomous". When in doubt,
+the rule is: **reversible + routine + canon-covered = act, not ask.**
+
+Also see "Decisions you make without asking the operator" below for the broader list.
+
 ### Picking the next ticket
 
 When the queue is open and no worker is active on a ticket, pick the next one using this order:
@@ -344,6 +358,7 @@ When `worker_availability` shows a slot is idle or `activity_since` shows a work
 - Post-merge cleanup: branch deletion, return-to-main verification
 - Reading any log, state file, or completion marker to assess system health before dispatch
 - **Notion factual updates** — Work Log entries, "01 Now" sync, Worker Operating Baseline syncs after verified changes, correcting stale ports/services/dates, reference and spec pages (hardware specs, schema references). Write these without asking.
+- **Drift correction** — Linear state moves to match observed reality, comments explaining transitions, Project Memory `decisions` rows for drift fixes, Notion patches removing dead pointers or syncing stale state, handoff-log mid-thread updates, orphan completion-marker linkage. The canon (`miru-context/claude-operating-model.md` "Drift correction is autonomous") authorizes these directly. **Do not draft a permission question.** The operator's 2026-05-03 pause was triggered by this anti-pattern.
 
 ---
 

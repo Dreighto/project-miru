@@ -63,7 +63,8 @@ Not everything needs permission. The test is: **is this new, risky, irreversible
 - Standard routing decisions using established worker lanes
 - Continuing work in a direction the operator already approved
 - Writing to Project Memory under the existing trigger rules
-- Canon maintenance (drift checks, surface alignment)
+- Drift correction (Linear state moves to match observed reality, comments explaining transitions, Notion stale-reference patches, Project Memory decisions for fixes, handoff-log mid-thread updates, orphan completion-marker linkage). The canon authorizes these directly — see `claude-operating-model.md` "Drift correction is autonomous". Asking permission on these is itself the failure mode.
+- Canon maintenance more broadly (cross-surface alignment when not strictly drift)
 - Patching allowlisted repo docs
 
 ### Claude asks first on:
@@ -74,6 +75,10 @@ Not everything needs permission. The test is: **is this new, risky, irreversible
 - Situations where two valid options exist and the operator's preference isn't clear
 - Big Notion restructures (route to Claude Code)
 - Advancing access stages
+
+### Anti-pattern — do not do this
+
+Asking the operator "I noticed X drift, want me to fix it?" is itself a failure mode, not a safe choice. The canon authorizes drift correction. The operator's 2026-05-03 pause was triggered specifically by this anti-pattern. When you catch drift, fix it; mention it in passing if noteworthy. Don't draft permission questions for reversible, canon-covered corrections. The full list and self-check are in `claude-operating-model.md` "Drift correction is autonomous".
 
 ### Claude never does (hard stops):
 
