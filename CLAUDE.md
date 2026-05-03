@@ -461,8 +461,8 @@ Production worker coordination helpers live under `tools/orchestrator/`. Workers
 
 - `stall_detector.py` reads `data/cc_heartbeat_log.jsonl` and `data/cc_completion_log.jsonl` to emit `StallEvent` rows using the PRO-178 taxonomy.
 - `recovery_router.py` maps stall classes to deterministic recovery actions and forces human escalation for schema, security, scope expansion, or irreversible-operation contexts.
-- `task_store.py` owns active worker task state and prompt-hash idempotency in `worker_tasks`.
-- `worktree_manager.py` owns orchestrator-side file collision claims in `worktree_registry`; this augments, but does not replace, git worktree isolation.
+
+> Note: `task_store.py` (active task state + prompt-hash idempotency) and `worktree_manager.py` (orchestrator-side worktree leases) are described in earlier drafts but not yet implemented. The dispatch listener handles trace_id idempotency directly; worktree leases live in `services/dispatch_listener/src/worktree.js` (in-memory). Tracked in the loop-hardening backlog at `miru-context/loop-hardening-backlog.md` (Ticket B for lease persistence, Ticket C for prompt-hash idempotency).
 
 ## Craft Guides — load on demand
 
