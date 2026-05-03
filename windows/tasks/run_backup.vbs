@@ -1,1 +1,11 @@
-CreateObject("WScript.Shell").Run "powershell.exe -WindowStyle Hidden -NoLogo -NoProfile -ExecutionPolicy Bypass -File """ & CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript.ScriptFullName) & "\backup_miru_data.ps1""", 0, False
+Dim fso, scriptDir, scriptPath, wmi, startup, proc, pid
+Set fso = CreateObject("Scripting.FileSystemObject")
+scriptDir = fso.GetParentFolderName(WScript.ScriptFullName)
+scriptPath = scriptDir & "\backup_miru_data.ps1"
+
+Set wmi = GetObject("winmgmts:{impersonationLevel=impersonate}!\\.\root\cimv2")
+Set startup = wmi.Get("Win32_ProcessStartup").SpawnInstance_
+startup.CreateFlags = 134217728
+
+Set proc = wmi.Get("Win32_Process")
+proc.Create "powershell.exe -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File """ & scriptPath & """", Null, startup, pid
