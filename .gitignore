@@ -61,6 +61,9 @@ data/dispatch_dlq.jsonl
 # Worker heartbeat liveness log (append-only; orchestrator stall detection — PRO-180)
 data/cc_heartbeat_log.jsonl
 
+# Daily Linear↔completion-marker drift scan log (append-only; ticket B7)
+data/drift_scanner_log.jsonl
+
 # n8n W4 inbox runtime artifacts (prompts + receipts; .gitkeep is tracked)
 data/n8n_inbox/*.json
 data/n8n_inbox/*.result.json
