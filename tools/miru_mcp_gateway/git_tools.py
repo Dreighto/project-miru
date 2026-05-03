@@ -403,7 +403,117 @@ def git_commit_and_push(paths: list[str], message: str, branch: str, ctx: Any = 
         raise stdio_mcp.McpError(f"git_write: {exc!r}", -32000) from exc
 
 
-TOOL_FUNCTIONS = (git_commit_and_push,)
+def _parse_porcelain_counts(porcelain_output: str) -> tuple[int, int, int]:
+    """Parse `git status --porcelain=v1` output into (staged, unstaged, untracked).
+
+    Format: each line is `XY filename` where X is the staged-area status and
+    Y is the working-tree status. Untracked files use the special prefix `??`.
+    A file with both staged and unstaged changes (e.g. `MM`) counts in both.
+    """
+    staged = unstaged = untracked = 0
+    for line in porcelain_output.splitlines():
+        if not line:
+            continue
+        if line.startswith("??"):
+            untracked += 1
+            continue
+        if len(line) < 2:
+            continue
+        x, y = line[0], line[1]
+        if x not in (" ", "?"):
+            staged += 1
+        if y not in (" ", "?"):
+            unstaged += 1
+    return staged, unstaged, untracked
+
+
+def _ahead_behind_origin(branch: str) -> tuple[int | None, int | None]:
+    """Return (ahead_of_origin, behind_origin) for the given branch, or
+    (None, None) if origin/<branch> isn't reachable (no upstream / no fetch yet).
+
+    Counts are based on the local refs only — does NOT call `git fetch`. The
+    caller can decide whether to fetch first; this tool is read-only with
+    respect to the network and history.
+    """
+    upstream = f"origin/{branch}"
+    check = _run_git(["rev-parse", "--verify", upstream])
+    if check.returncode != 0:
+        return None, None
+    proc = _run_git(["rev-list", "--left-right", "--count", f"HEAD...{upstream}"])
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return None, None
+    parts = proc.stdout.strip().split()
+    if len(parts) != 2:
+        return None, None
+    try:
+        return int(parts[0]), int(parts[1])
+    except ValueError:
+        return None, None
+
+
+def git_local_status(ctx: Any = None) -> str:
+    """Return the local working tree state at the gateway's configured fs_root.
+
+    Closes PRO-287: Claude Chat needs visibility into the local tree (current
+    branch, dirty count, ahead/behind origin) to verify that pulls happened,
+    branches are clean before dispatch, and post-merge cleanup landed.
+    Without this, the gateway only exposed remote state (`github_get_repo_status`)
+    and per-worker-slot snapshots (`worker_status`) — nothing for the main
+    repo's local tree.
+
+    Read-only. Does NOT call `git fetch` (that would change ref state — pair
+    with `git_pull_main` if a fresh fetch is wanted). Does NOT modify the
+    working tree.
+
+    Returns JSON with:
+        branch              str   — current branch name
+        head_sha            str   — local HEAD commit SHA
+        staged_count        int   — files with staged-area changes
+        unstaged_count      int   — tracked files with unstaged changes
+        untracked_count     int   — untracked files (excluding gitignored)
+        ahead_of_origin     int|null — commits local has that origin doesn't, or null if no upstream
+        behind_origin       int|null — commits origin has that local doesn't, or null if no upstream
+        clean               bool  — true iff staged + unstaged + untracked == 0
+    """
+    branch_proc = _run_git(["rev-parse", "--abbrev-ref", "HEAD"])
+    if branch_proc.returncode != 0:
+        raise stdio_mcp.McpError(
+            f"git_local_status: could not read current branch: {branch_proc.combined}",
+            -32000,
+        )
+    branch = branch_proc.stdout.strip()
+
+    head_proc = _run_git(["rev-parse", "HEAD"])
+    if head_proc.returncode != 0:
+        raise stdio_mcp.McpError(
+            f"git_local_status: could not read HEAD: {head_proc.combined}",
+            -32000,
+        )
+    head_sha = head_proc.stdout.strip()
+
+    status = _run_git(["status", "--porcelain=v1"])
+    if status.returncode != 0:
+        raise stdio_mcp.McpError(f"git_local_status: status failed: {status.combined}", -32000)
+    staged, unstaged, untracked = _parse_porcelain_counts(status.stdout)
+
+    ahead, behind = _ahead_behind_origin(branch)
+
+    return _json_response(
+        {
+            "ok": True,
+            "branch": branch,
+            "head_sha": head_sha,
+            "staged_count": staged,
+            "unstaged_count": unstaged,
+            "untracked_count": untracked,
+            "ahead_of_origin": ahead,
+            "behind_origin": behind,
+            "clean": staged + unstaged + untracked == 0,
+        }
+    )
+
+
+TOOL_FUNCTIONS = (git_commit_and_push, git_local_status)
 
 
 def register(mcp, cfg) -> int:
