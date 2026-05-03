@@ -513,7 +513,172 @@ def git_local_status(ctx: Any = None) -> str:
     )
 
 
-TOOL_FUNCTIONS = (git_commit_and_push, git_local_status)
+def _audit_git_pull(
+    *,
+    tool: str,
+    caller: str,
+    before_sha: str | None,
+    after_sha: str | None,
+    fetched: bool,
+    result: str,
+    error: str | None,
+) -> None:
+    writes_log, _, _ = gw_audit.default_audit_paths(_cfg().fs_root)
+    row = {
+        "ts": gw_audit._utc_iso(),
+        "tool": tool,
+        "category": "git_pull",
+        "caller": caller,
+        "before_sha": before_sha,
+        "after_sha": after_sha,
+        "fetched": fetched,
+        "result": result,
+        "error": error,
+    }
+    gw_audit.append_jsonl_chained(writes_log, _redact.redact_dict(row))
+
+
+def git_pull_main(ctx: Any = None) -> str:
+    """Fetch origin and fast-forward main to bring local working tree in sync.
+
+    Closes PRO-284 (the post-merge pull gap): when Claude Chat self-merges a
+    PR via ``github_merge_pr``, the merged commit lands on ``origin/main`` but
+    the local working tree at the gateway's repo root has no automatic pull.
+    Services restarted after the merge re-load the same pre-merge code.
+
+    Read-only with respect to history. Equivalent to running, in the gateway's
+    configured ``fs_root``::
+
+        git fetch origin main
+        git pull --ff-only origin main
+
+    Refuses if:
+        * the working tree has any staged or unstaged tracked changes (commit
+          or stash first; this tool does not stash on the operator's behalf);
+        * the current branch is not ``main`` (the tool only operates on main);
+        * fast-forward fails (history has diverged — the operator must resolve
+          before pulling).
+
+    Returns JSON with ``ok``, ``branch``, ``before_sha``, ``after_sha``,
+    ``commits_pulled`` (bool), ``fetched``, and the redacted command output
+    tails.
+    """
+    caller = _caller(ctx)
+    before_sha: str | None = None
+    after_sha: str | None = None
+    fetched: bool = False
+    audited = False
+
+    try:
+        # Pre-flight 1: working tree must be clean. We refuse on any tracked
+        # changes — the operator handles dirty trees explicitly.
+        status = _run_git(["status", "--porcelain=v1"])
+        if status.returncode != 0:
+            raise stdio_mcp.McpError(f"git_pull_main: status failed: {status.combined}", -32000)
+        dirty_lines = [line for line in status.stdout.splitlines() if line.strip()]
+        if dirty_lines:
+            preview = "\n".join(dirty_lines[:10])
+            raise stdio_mcp.McpError(
+                "git_pull_main: working tree is dirty; commit or stash first.\n" + preview,
+                -32000,
+            )
+
+        # Pre-flight 2: current branch must be main.
+        branch_proc = _run_git(["rev-parse", "--abbrev-ref", "HEAD"])
+        if branch_proc.returncode != 0:
+            raise stdio_mcp.McpError(
+                f"git_pull_main: could not read current branch: {branch_proc.combined}",
+                -32000,
+            )
+        current_branch = branch_proc.stdout.strip()
+        if current_branch != "main":
+            raise stdio_mcp.McpError(
+                f"git_pull_main: current branch is {current_branch!r}, not 'main'. "
+                f"This tool only operates on main; switch branches first.",
+                -32000,
+            )
+
+        # Capture before SHA so the response shows what changed.
+        before = _run_git(["rev-parse", "HEAD"])
+        if before.returncode != 0:
+            raise stdio_mcp.McpError(
+                f"git_pull_main: could not read HEAD: {before.combined}", -32000
+            )
+        before_sha = before.stdout.strip()
+
+        # Fetch, then ff-only pull. Both can fail benignly (network, etc.) —
+        # we surface their output so the caller can diagnose.
+        fetch = _run_git(["fetch", "origin", "main"])
+        if fetch.returncode != 0:
+            raise stdio_mcp.McpError(f"git_pull_main: fetch failed: {fetch.combined}", -32000)
+        fetched = True
+
+        pull = _run_git(["pull", "--ff-only", "origin", "main"])
+        if pull.returncode != 0:
+            raise stdio_mcp.McpError(
+                "git_pull_main: pull --ff-only failed (likely diverged history; "
+                "operator must resolve before this tool can succeed):\n" + pull.combined,
+                -32000,
+            )
+
+        after = _run_git(["rev-parse", "HEAD"])
+        if after.returncode != 0:
+            raise stdio_mcp.McpError(
+                f"git_pull_main: could not read HEAD post-pull: {after.combined}",
+                -32000,
+            )
+        after_sha = after.stdout.strip()
+        commits_pulled = before_sha != after_sha
+
+        _audit_git_pull(
+            tool="git_pull_main",
+            caller=caller,
+            before_sha=before_sha,
+            after_sha=after_sha,
+            fetched=fetched,
+            result="success",
+            error=None,
+        )
+        audited = True
+
+        return _json_response(
+            {
+                "ok": True,
+                "branch": "main",
+                "fetched": fetched,
+                "commits_pulled": commits_pulled,
+                "before_sha": before_sha,
+                "after_sha": after_sha,
+                "fetch_output": fetch.combined,
+                "pull_output": pull.combined,
+            }
+        )
+    except stdio_mcp.McpError as exc:
+        if not audited:
+            _audit_git_pull(
+                tool="git_pull_main",
+                caller=caller,
+                before_sha=before_sha,
+                after_sha=after_sha,
+                fetched=fetched,
+                result="failure",
+                error=str(exc),
+            )
+        raise
+    except Exception as exc:
+        _audit_git_pull(
+            tool="git_pull_main",
+            caller=caller,
+            before_sha=before_sha,
+            after_sha=after_sha,
+            fetched=fetched,
+            result="failure",
+            error=repr(exc),
+        )
+        raise stdio_mcp.McpError(f"git_pull_main: {exc!r}", -32000) from exc
+
+
+TOOL_FUNCTIONS = (git_commit_and_push, git_local_status, git_pull_main)
 
 
 def register(mcp, cfg) -> int:
