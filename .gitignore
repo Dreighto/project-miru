@@ -66,6 +66,10 @@ data/n8n_inbox/*.json
 data/n8n_inbox/*.result.json
 !data/n8n_inbox/.gitkeep
 
+# Worktree lease state (PR for ticket B4 — persistent leases survive listener restart)
+data/worktree_leases.json
+data/worktree_leases.json.tmp
+
 # Build artifacts: pipeline log JSONs (regenerated per run; previously bleeding into commits)
 data/**/*_log.json
 
