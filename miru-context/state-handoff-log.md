@@ -77,146 +77,75 @@ agenda table with the handoff content in a notes-style field.
 
 ## Latest Handoff
 
-# Miru thread handoff — 2026-05-02 (team excellence sprint)
+# Miru thread handoff — 2026-05-03 (Claude Chat paused, autonomy gaps filed)
 
 ## What we were working on
 
-Team excellence foundation: writing the team charter, wiring it into the worker baseline, and filing the full phase 2 and 3 tickets for peer review and cross-worker handoffs.
+Picking off the loop blockers from the prior 05-02 voice handoff (PRO-276, PRO-278) before resuming PM deck builder work. Mid-thread the work surfaced multiple autonomy failures in Claude Chat — both tooling gaps and behavioral failures (asking permission on work canon explicitly authorizes). Operator paused working with Claude Chat over those gaps. Will continue with Claude Code until they're addressed.
 
-Also completed earlier in this session: PRO-265/266 end-to-end dispatch wiring (model + effort flags), PR merge/branch-delete tools in MCP gateway, brainstorm/architect mode codified in CLAUDE_CHAT.md and operator-profile.md.
+## What got done this thread
 
-## What got done
-
-- **`miru-context/team-charter.md` (new, 704c626)** — team ethos doc: who we are, what excellence looks like, how to problem-solve before asking, how workers collaborate and hand off.
-- **`AGENTS.md` (704c626)** — every worker now reads team-charter.md on dispatch.
-- **PRO-269 filed** — "try harder" discipline before INCONCLUSIVE: check canon → search repo → try alternative → then ask with documented attempts. High priority.
-- **PRO-270 filed** — pre-PR peer review protocol: Claude Chat complexity check triggers Codex/Gemini review on complex PRs before merge. Normal priority.
-- **PRO-271 filed** — cross-worker handoff format: structured `handoff` field in completion markers so receiving workers (especially Cursor) can start without reconstructing context. Normal priority.
-- **PRO-265 flag corrected (d794eb3)** — `--extended-thinking` → `--effort` via EFFORT_MAP; `extended` maps to `max`. Verified against actual `claude --help` output.
-- **`CLAUDE_CHAT.md` + `operator-profile.md`** — brainstorm/architect mode fully documented. Trigger phrases, Perplexity research process, Gemini/ChatGPT second-opinion flow.
+- **PRO-276** moved In Progress → In Review with comment linking PR #74 / commit `c7e5b8e`. End-to-end Telegram tap still pending; that's the verification gate.
+- **PRO-278** closed: PR #73 self-merged → commit `72b2fb3`, branch deleted, Linear → Done. **But the local working tree at D:\dev\miru never pulled the merge** so the running gateway is still pre-merge code. Operator did the bootstrap restart but it re-loaded the same old code from disk.
+- **6 new tickets filed** capturing today's gaps (see "What's still open" below).
+- **Project Memory** — 4 decisions rows added (drift correction, PRO-278 closeout, autonomy gap pause, this handoff).
 
 ## What's still open
 
-- **PRO-269** — Todo. CC dispatch work. Try harder discipline needs wiring into CLAUDE.md stall section and dispatch prompts.
-- **PRO-270** — Todo. Claude Chat work. Peer review trigger logic needs to go into CLAUDE_CHAT.md or coordination-contract.md.
-- **PRO-271** — Todo. CC work. Schema extension to cc_completion_log + emit_completion.py update.
-- **PRO-267** — Todo. Ops visibility panel on port 18765.
-- **PRO-268** — Todo. Plan mode dispatch wiring (--permission-mode plan + Claude Chat review loop).
-- **MiruN8nWatchdog task** — still needs `register_watchdog_task.ps1` from elevated shell.
-- **MiruOpsDigest task** — still needs `register_ops_digest_task.ps1` from elevated shell.
-- **`services/dispatch_listener/src/allowlist.js`** — M in git status. Verify intentional before next commit.
+**Autonomy gap tickets filed today (Backlog, awaiting operator review):**
 
-## Decisions made
+- **PRO-284 (Urgent)** — Self-merged PR doesn't pull to local working tree; services run pre-merge code after merge.
+- **PRO-285 (High)** — Workers write completion markers with ticket_id=null, orphaning the Linear ticket.
+- **PRO-286 (High)** — Handoff goes stale within a session; no rule for "rewrite if more work happens after."
+- **PRO-287 (Medium)** — Claude Chat can't read local working tree state; no git_status equivalent.
+- **PRO-288 (Medium)** — Drift scanner doesn't backfill on first deploy; pre-existing drift hides forever.
+- **PRO-289 (Urgent)** — Behavioral: Claude Chat asks permission on drift correction work canon authorizes autonomously.
 
-- "Extended/Adaptive Thinking" in Claude.ai is the OPERATOR's session setting — signal from Claude Chat to operator to switch modes. It is NOT a worker dispatch param. Worker dispatch uses `--effort` levels.
-- "extended" thinking_level maps to `--effort max` at spawn time (EFFORT_MAP in spawn.js).
-- Team charter is read by ALL workers at every dispatch — ethos, not rules. Rules live in CLAUDE.md / AGENTS.md.
-- Peer review gate (PRO-270) is separate from and earlier than Bugbot gate.
-- Handoff format (PRO-271) extends completion marker schema — optional field, backward compatible.
+**Pre-existing items still open from prior handoff:**
 
-## What the next thread should do first
+- **PRO-276 (In Review, Urgent)** — fix shipped to GitHub, but local D:\dev\miru hasn't pulled, AND no Telegram smoke test has happened. Two blockers, not one.
+- **PRO-275 (Todo, Medium)** — append 2026-05-02 sprint anchor to Notion Work Log. Not investigated this thread.
+- **W1 504 retry import** — PR #71 merged. n8n manual import status not verified.
+- **PRO-7 (deck builder rebuild)** — paused. Seven-phase sequence still stands.
+- **Worker profiles** all show `last_confirmed_at IS NULL`.
+- **MCP gateway bootstrap** — operator did a restart, but D:\dev\miru never pulled, so the gateway is still pre-merge. PRO-284 is the structural fix; in the meantime, a `git pull` on D:\dev\miru followed by another gateway restart would unblock.
 
-1. Pick up PRO-269, 270, or 271 — all are ready to dispatch with no blockers.
-2. Check `allowlist.js` diff — confirm M is intentional or discard before next commit.
-3. Confirm both services (dispatch listener port 19100, MCP gateway port 18766) are running with latest code.
+## Decisions made this thread
 
-## What NOT to do
-
-- Do not commit `config/claude_chat.mcp.json` (sensitive, intentionally untracked)
-- Do not dispatch to Cursor via W4 (permanent manual-only)
-- Do not self-merge operator-merge-column PRs
-
-## Loop health
-
-Working tree clean (charter + AGENTS.md committed, pushed). 6 commits ahead of remote — now pushed. Budget: unverified — check cursor.com/settings before heavy Cursor use.
-
-## Key files touched
-
-- `miru-context/team-charter.md` — new, team ethos baseline
-- `AGENTS.md` — charter read requirement added
-- `services/dispatch_listener/src/spawn.js` — effort flag fix (d794eb3)
-- `CLAUDE_CHAT.md` — brainstorm mode, extended thinking clarification
-- `miru-context/operator-profile.md` — modes + research/second-opinion sections
-- Linear: PRO-269, PRO-270, PRO-271 filed
-
-## What we were working on
-
-Wiring up the full autonomous loop: Claude Chat model/effort dispatch, PR review and merge,
-branch deletion, PR policy enforcement, and all supporting MD files for autonomy readiness.
-
-## What got done
-
-- **PRO-265 (direct-to-main, de546ad)** — Per-dispatch model and thinking-level params wired
-  end-to-end: `dispatch_tools.py` → `index.js` → `spawn.js`. Claude-code workers get
-  `--model <id>` and `--extended-thinking` injected at spawn time when Claude Chat passes them.
-- **PRO-266 (direct-to-main, de546ad)** — `github_merge_pr` and `github_delete_branch` gateway
-  tools added. Claude Chat can now squash-merge CC-eligible PRs and delete branches directly
-  without operator relay. Protected-branch guard on delete (main/master/develop).
-- **CLAUDE.md** — mandatory pre-commit PR policy decision gate added. Workers must evaluate
-  direct-to-main vs CC-merge vs operator-merge before every commit.
-- **CLAUDE_CHAT.md** — canon change escalation added as first trigger; full PR review/merge loop
-  documented; dispatch protocol expanded with model/thinking selection (step 3) and PR loop
-  trigger (step 11). PRO-265 and PRO-266 referenced.
-- **miru-context/worker-roster.md** — model/thinking-level selection table added.
-- **miru-context/source-of-truth.md** — budget state row updated to reflect file is live.
-- **miru-context/operating-model.md** — canon change escalation trigger added.
-- **PROJECT_MIRU_INSTRUCTIONS.md** — full cleanup: startup reads expanded to 11 files,
-  inline PRO bug tickets removed, stale references removed, Copilot/Windsurf marked inactive.
-
-## What's still open
-
-- **Dispatch listener restart** — spawn.js changes are live in code but the running listener
-  (port 19100) needs a restart to pick them up. Run `windows\restart_dispatch_listener.ps1`
-  or equivalent.
-- **MCP gateway restart** — github_merge_pr and github_delete_branch won't appear as tools
-  until the gateway (port 18766) is restarted.
-- **PRO-265 flag name** — `--extended-thinking` is the implemented flag for claude-code.
-  Verify this is the actual Claude CLI flag name before first live use; adjust in spawn.js if not.
-- **MiruN8nWatchdog task** — still needs `register_watchdog_task.ps1` from elevated shell.
-- **MiruOpsDigest task** — still needs `register_ops_digest_task.ps1` from elevated shell.
-- **PRO-261** — stall detector fires on Done tickets. Normal priority, Backlog.
-- **PRO-259** — pending_callbacks stale awaiting entries. Low risk, Backlog.
-- **PRO-154** — W1 504 retry-with-backoff. Todo, no blocker.
-- **`services/dispatch_listener/src/allowlist.js`** — has a tracked change (M in git status from previous session). Verify with `git diff` — confirm intentional or discard before next commit.
-
-## Decisions made
-
-- Model/thinking selection is Claude Chat's responsibility at dispatch time; workers run at
-  default unless override included in dispatch payload. PRO-265 is the wiring; fallback is
-  including model guidance in prompt text (already documented in CLAUDE_CHAT.md).
-- `--extended-thinking` is the flag used for claude-code; gemini/codex ignores the field for now.
-- `github_merge_pr` defaults to `squash` merge method, matching the CLAUDE.md policy.
-- `github_delete_branch` refuses to delete main/master/develop as a safety guard.
-- Canon changes (CLAUDE.md, CLAUDE_CHAT.md, worker rule files, structural Notion docs) always
-  require operator approval before executing — added as first escalation trigger.
+- **Operator paused working with Claude Chat** over autonomy gaps. Will use Claude Code in the meantime. Pause lifts when PRO-284 / PRO-289 ship at minimum.
+- **Drift correction is autonomous** (re-affirmed) — Claude Chat had been asking permission on routine drift work; that's the behavior PRO-289 addresses.
+- **PRO-276 closing rule** — do not move to Done without an end-to-end Telegram tap.
 
 ## What the next thread should do first
 
-1. Restart dispatch listener (port 19100) and MCP gateway (port 18766) to pick up new code.
-2. Verify `--extended-thinking` is the correct Claude CLI flag — run `claude --help` or check docs.
-3. Check Linear queue and dispatch PRO-154 (W1 504 retry) — next real code ticket.
+**If next thread is Claude Chat resuming after the pause:**
+
+1. Read PRO-284 / PRO-285 / PRO-286 / PRO-287 / PRO-288 / PRO-289 first. These are the conditions for resuming.
+2. Confirm with operator which ones have shipped before doing any other work.
+
+**If next thread is Claude Code or another worker:**
+
+1. PRO-284 is the highest-leverage ticket — fixes the post-merge pull gap that broke today.
+2. PRO-289 needs canon edits to `claude-operating-model.md`, `guardrails.md`, `CLAUDE_CHAT.md` — Claude Chat's surface, but operator-approved edits via Claude Code are valid.
+3. Operator: pulling D:\dev\miru to main + restarting the gateway would unblock the in-flight PRO-278 verification, but that's optional — the structural fix is PRO-284.
 
 ## What NOT to do
 
-- Do not commit `config/claude_chat.mcp.json` (sensitive, intentionally untracked)
-- Do not dispatch to Cursor via W4 (permanent manual-only)
-- Do not clear `data/dispatch_dlq.jsonl` (append-only; historical entries expected)
-- Do not self-merge operator-merge-column PRs (new files, schema, infrastructure)
+- Do not resume Claude Chat dispatching or autonomous work until operator lifts the pause.
+- Do not move PRO-276 to Done without a real operator tap going through W7.
+- Do not assume PRO-278's merge is "live" — D:\dev\miru hasn't pulled.
+- Do not append a corrective completion marker for PR #74 — Claude Chat does not write `cc_completion_log.jsonl` (hard rule).
+- Do not start partnership conversation with projectraftel.dev. PM ships first.
+- Do not file deck-builder rebuild tickets without reading PM 02 first.
 
 ## Loop health
 
-All changes committed direct-to-main (de546ad). Working tree clean except untracked files.
-Dispatch listener and MCP gateway need restarts to pick up new code.
-Budget: Cursor ~85% left, Codex ~60% left (unverified — check cursor.com/settings).
+Loop hardening campaign closed 2026-05-03 ~01:00 UTC. PRO-276 fix on GitHub but unverified end-to-end. PRO-278 fix on GitHub but not on disk. Six autonomy gaps filed as tickets. Claude Chat paused at operator's call.
 
-## Key files touched
+## Key files / surfaces touched
 
-- `tools/miru_mcp_gateway/dispatch_tools.py` — model/thinking_level params added
-- `services/dispatch_listener/src/index.js` — model/thinking_level extraction + validation
-- `services/dispatch_listener/src/spawn.js` — extra flags injection for claude-code
-- `tools/miru_mcp_gateway/github_tools.py` — merge_pr + delete_branch tools added
-- `CLAUDE.md` — mandatory PR policy decision gate added
-- `CLAUDE_CHAT.md` — canon escalation, PR loop, model/thinking selection
-- `miru-context/worker-roster.md` — model assignment table
-- `PROJECT_MIRU_INSTRUCTIONS.md` — full cleanup
-- `data/cc_completion_log.jsonl` — PRO-265 and PRO-266 completion markers appended
+- **Linear:** PRO-276 (state + comment), PRO-278 (state + 3 comments + description rewrite + → Done), PRO-284 / PRO-285 / PRO-286 / PRO-287 / PRO-288 / PRO-289 (filed Backlog, Urgent/High/Medium).
+- **GitHub:** PR #73 merged → commit `72b2fb3` on origin/main; branch deleted.
+- **Project Memory:** 4 decisions rows added.
+- **Repo (read-only):** restart_tools.py, restart_mcp_gateway.ps1, completion log tail, recent activity, W7 executions, PR #73 diff.
+- **Handoff:** rewritten three times this thread (drift correction, PRO-278 closeout, this final state).
