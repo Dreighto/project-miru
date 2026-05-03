@@ -21,7 +21,7 @@ function tryReadReceipt(inboxDir, traceId) {
   }
 }
 
-function writePlaceholderReceipt({ inboxDir, traceId, worker, startedAt }) {
+function writePlaceholderReceipt({ inboxDir, traceId, worker, startedAt, promptHash }) {
   const target = receiptPath(inboxDir, traceId);
   const placeholder = {
     schema_version: SCHEMA_VERSION,
@@ -34,6 +34,11 @@ function writePlaceholderReceipt({ inboxDir, traceId, worker, startedAt }) {
     stderr_tail: '',
     started_at: startedAt,
     completed_at: null,
+    // Optional. Set when the listener has computed sha256(prompt).slice(0,16)
+    // so a future dispatch with a different trace_id but the same prompt
+    // content can be deduped via findInFlightByPromptHash. Null is fine for
+    // older receipts that predate the prompt-hash idempotency feature.
+    prompt_hash: promptHash || null,
   };
 
   const fd = fs.openSync(target, 'wx');
@@ -42,6 +47,41 @@ function writePlaceholderReceipt({ inboxDir, traceId, worker, startedAt }) {
   } finally {
     fs.closeSync(fd);
   }
+}
+
+// Ticket B3 — prompt-hash idempotency.
+// Scan the inbox for any in-flight (status='spawned') receipt whose prompt_hash
+// matches and whose started_at is within `windowSeconds` of now. Returns the
+// matching trace_id, or null if no match.
+//
+// Used by index.js after the trace_id idempotency check to catch the case
+// where recovery_router (or a buggy caller) re-dispatches the same prompt
+// with a fresh trace_id while the original is still running.
+function findInFlightByPromptHash(inboxDir, promptHash, windowSeconds = 600) {
+  if (!promptHash) return null;
+  let entries;
+  try {
+    entries = fs.readdirSync(inboxDir);
+  } catch (_e) {
+    return null;
+  }
+  const cutoff = Date.now() - windowSeconds * 1000;
+  for (const name of entries) {
+    if (!name.endsWith('.result.json')) continue;
+    let parsed;
+    try {
+      parsed = JSON.parse(fs.readFileSync(path.join(inboxDir, name), 'utf8'));
+    } catch (_e) {
+      continue;
+    }
+    if (!parsed || parsed.status !== 'spawned') continue;
+    if (parsed.prompt_hash !== promptHash) continue;
+    const startedAtMs = Date.parse(parsed.started_at || '');
+    if (!Number.isFinite(startedAtMs)) continue;
+    if (startedAtMs < cutoff) continue;
+    return parsed.trace_id || null;
+  }
+  return null;
 }
 
 function writeTerminalReceipt({
@@ -86,4 +126,5 @@ module.exports = {
   tryReadReceipt,
   writePlaceholderReceipt,
   writeTerminalReceipt,
+  findInFlightByPromptHash,
 };
