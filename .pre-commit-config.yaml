@@ -15,10 +15,12 @@ repos:
       # the CC Completion Ping watcher (PRO-159). cc_completion_log.jsonl is
       # the only currently-tracked file in this set, but excluding the whole
       # data/*.jsonl glob future-proofs the rule.
+      # archive/ holds preserved snapshots and reference HTML/CSS captured at
+      # a point in time. Reformatting them defeats their purpose.
       - id: trailing-whitespace
-        exclude: ^data/.*\.jsonl$
+        exclude: ^(data/.*\.jsonl$|archive/)
       - id: end-of-file-fixer
-        exclude: ^data/.*\.jsonl$
+        exclude: ^(data/.*\.jsonl$|archive/)
       - id: check-merge-conflict
       - id: check-added-large-files
       - id: check-yaml
@@ -38,7 +40,8 @@ repos:
     hooks:
       - id: prettier
         types_or: [javascript, css, html, markdown]
-        exclude: ^docker/n8n/workflows/
+        # archive/ snapshots stay in original form (see end-of-file-fixer note).
+        exclude: ^(docker/n8n/workflows/|archive/)
 
   - repo: https://github.com/pre-commit/mirrors-eslint
     rev: v9.16.0
