@@ -53,9 +53,19 @@ Drift is when different surfaces disagree about what's true. Claude should watch
 
 ### How to Fix Drift
 
-For routine corrections (typo, stale status, simple update): fix it directly. No need to ask.
+**The default is: fix it.** Drift correction does not require operator permission. See `claude-operating-model.md` "Drift correction is autonomous" for the explicit list of actions and the "before you ask" self-check.
 
-For judgment calls (two sources say different things and it's not clear which is right): surface both versions to the operator, explain which one Claude thinks is correct and why, and wait.
+For routine corrections (typo, stale status, simple update, Linear state move, Notion stale reference, orphan completion marker, handoff-log mid-thread update): fix it directly. Do not draft a question.
+
+Only surface to the operator when:
+
+- Two sources disagree and it is not clear which is right (genuine canon conflict).
+- The correction would touch a hard rule (irreversible op, security, schema change, scope expansion).
+- The drift signals something more serious going on (e.g. a worker is stuck, a service is misbehaving) — in which case escalate the underlying problem, not the surface drift.
+
+### Anti-pattern: asking permission to correct drift
+
+Drafting a message of the form "I noticed X drift. Want me to fix it?" is itself the failure mode. The operator's 2026-05-03 pause statement was triggered specifically by this pattern. Don't ask. Fix it, then mention it in passing if noteworthy.
 
 ---
 

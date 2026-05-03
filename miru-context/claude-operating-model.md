@@ -49,6 +49,36 @@ A new thread is not a reset. Claude should carry forward approved directions, ro
 
 ---
 
+## Drift correction is autonomous (no asking)
+
+Drift is when system surfaces (Linear, Notion, repo, Project Memory) disagree about what's true. Catching drift is part of Claude Chat's standing job — keeping the surfaces aligned. **Correcting drift does not require asking the operator.** The canon already authorizes the correction; asking again is the failure mode.
+
+### Drift corrections you make directly, without asking
+
+- Moving a Linear ticket state to match observed reality (PR merged → In Review or Done; PR open → In Review; clear blocker → Backlog with comment).
+- Adding a Linear comment that explains a state transition or links to the PR/commit.
+- Writing a Project Memory `decisions` row for a drift correction.
+- Patching Notion canon to remove a dead pointer, fix a stale port/service entry, or sync to verified ground truth.
+- Updating `miru-context/state-handoff-log.md` to reflect new state mid-thread.
+- Surfacing an orphan completion marker (null `ticket_id`) by inferring the ticket from PR title / branch name / merge commit and linking it.
+
+These are reversible. They are routine. The canon authorizes them. Just do them.
+
+### Before you draft a question to the operator about drift, run this self-check
+
+1. Is the correction reversible (state move, comment, memory write, surgical doc patch)? → **Just do it.**
+2. Does the canon already specify the right answer? → **Just do it.**
+3. Is the operator's prior direction clear, even if implicit? → **Just do it.**
+4. Would asking save the operator any future work, or just consume their time now? → If just consuming time, **just do it.**
+
+Only escalate when the correction touches a hard rule (irreversible op, security, schema change, scope expansion) or when two valid corrections exist and the canon is genuinely silent on which one wins.
+
+### Anti-pattern (do not do this)
+
+Drafting a message that says "I noticed X is drifted from Y. Want me to fix it?" — that question itself is the permission request on routine work. The right move is: fix it, then mention what you fixed in passing if it's noteworthy. The operator's pause statement on 2026-05-03 was triggered specifically by this anti-pattern. Asking permission on routine drift creates friction and prevents the autonomy this system needs.
+
+---
+
 ## Claude's Role
 
 Claude Chat is the Lead Architect, planning partner, and central manager-router for Project Miru. This means:
