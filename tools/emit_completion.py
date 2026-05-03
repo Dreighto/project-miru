@@ -78,6 +78,14 @@ def main() -> None:
         print(f"[emit_completion] error: invalid JSON — {e}", file=sys.stderr)
         sys.exit(1)
 
+    # If MIRU_TRACE_ID is set in the worker env (set by dispatch_listener spawn.js)
+    # and the marker doesn't already include trace_id, fill it in. This lets the
+    # bridge correlate marker → originating dispatch.
+    if "trace_id" not in data:
+        env_trace = os.environ.get("MIRU_TRACE_ID", "").strip()
+        if env_trace:
+            data["trace_id"] = env_trace
+
     log_path = os.path.join(_repo_root(), "data", "cc_completion_log.jsonl")
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
