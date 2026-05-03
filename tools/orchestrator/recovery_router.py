@@ -123,7 +123,7 @@ def _send_telegram(token: str, chat_id: str, msg: str) -> None:
 # ── DLQ append ───────────────────────────────────────────────────────────────
 
 
-def _append_dlq(stall, reason: str) -> None:
+def _append_dlq(stall, reason: str, recovery_trace_id: str | None = None) -> None:
     row = {
         "ts": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "worker_id": stall.worker_id,
@@ -133,6 +133,11 @@ def _append_dlq(stall, reason: str) -> None:
         "last_heartbeat_ts": stall.last_heartbeat_ts,
         "stall_age_seconds": int(stall.stall_age_seconds),
         "reason": reason,
+        # Lineage: the original dispatch that stalled, plus (when present) the
+        # recovery dispatch that also failed. Lets the DLQ watcher tell humans
+        # whether this is a first-attempt failure or an exhausted retry chain.
+        "parent_trace_id": getattr(stall, "trace_id", None),
+        "recovery_trace_id": recovery_trace_id,
     }
     line = json.dumps(row, separators=(",", ":"))
     try:

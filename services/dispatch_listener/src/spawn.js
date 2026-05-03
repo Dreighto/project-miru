@@ -172,6 +172,11 @@ function spawnWorker({
   const childEnv = { ...process.env };
   delete childEnv.ANTHROPIC_API_KEY;
 
+  // Expose trace_id to the worker so emit_heartbeat / emit_completion can
+  // include it in their JSONL rows. Without this, log correlation across
+  // dispatch → worker → marker → bridge is impossible.
+  childEnv.MIRU_TRACE_ID = traceId;
+
   log.info('spawn_auth_debug', {
     trace_id: traceId,
     has_api_key: !!childEnv.ANTHROPIC_API_KEY,

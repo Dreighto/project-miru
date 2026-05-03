@@ -70,6 +70,9 @@ def emit(
         "stall_signal": stall_signal,
         "outputs": outputs or [],
     }
+    env_trace = os.environ.get("MIRU_TRACE_ID", "").strip()
+    if env_trace:
+        row["trace_id"] = env_trace
     line = json.dumps(row, separators=(",", ":"))
     os.makedirs(os.path.dirname(HEARTBEAT_LOG), exist_ok=True)
     with open(HEARTBEAT_LOG, "a", encoding="utf-8") as fh:

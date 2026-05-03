@@ -30,6 +30,10 @@ class StallEvent:
     last_heartbeat_ts: str
     stall_age_seconds: float
     stall_signal: str | None = None
+    # Originating dispatch trace_id, pulled from the heartbeat row when present.
+    # Lets recovery_router emit parent_trace_id so retries trace back to the
+    # original dispatch instead of looking like fresh, untracked work.
+    trace_id: str | None = None
 
 
 def _read_last_jsonl(path: Path, n: int) -> list[dict]:
@@ -105,6 +109,7 @@ def detect_stalls() -> list[StallEvent]:
                 last_heartbeat_ts=ts_str,
                 stall_age_seconds=age_s,
                 stall_signal=str(row.get("stall_signal", "")).strip() or None,
+                trace_id=str(row.get("trace_id", "")).strip() or None,
             )
         )
 
