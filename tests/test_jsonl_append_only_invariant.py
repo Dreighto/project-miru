@@ -27,14 +27,18 @@ PRECOMMIT_CONFIG = REPO_ROOT / ".pre-commit-config.yaml"
 # is intentionally NOT in this list.
 WHOLE_FILE_REWRITE_HOOKS = ("trailing-whitespace", "end-of-file-fixer")
 
-# The four append-only files. cc_completion_log.jsonl is currently the only
-# tracked one (the others are gitignored), but the exclude pattern applies
-# to all of them so future tracking inherits the protection.
+# The append-only files. cc_completion_log.jsonl is currently the only tracked
+# one (the others are gitignored), but the exclude pattern applies to all of
+# them so future tracking inherits the protection.
 APPEND_ONLY_FILES = (
     "data/cc_completion_log.jsonl",
     "data/routing_history.jsonl",
     "data/pending_callbacks.jsonl",
     "data/dispatch_dlq.jsonl",
+    "data/cc_heartbeat_log.jsonl",
+    "data/vp_ops_supervision.jsonl",
+    # Ticket B7 — daily Linear↔completion-marker drift scan results.
+    "data/drift_scanner_log.jsonl",
 )
 
 
