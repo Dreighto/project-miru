@@ -14,6 +14,9 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
 
+try { Add-Type -Name MiruHide -Namespace W32 -MemberDefinition '[DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow(); [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int n);' -ErrorAction SilentlyContinue } catch {}
+try { [W32.MiruHide]::ShowWindow([W32.MiruHide]::GetConsoleWindow(), 0) | Out-Null } catch {}
+
 # Paths: tasks\ -> windows\ -> repo root
 $repoRoot   = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $windowsDir = Split-Path -Parent $PSScriptRoot
