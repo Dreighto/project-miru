@@ -12,6 +12,9 @@ const ERROR_CLASSES = new Set([
   'bad_request',
   'listener_restarted',
   'no_worktree_available',
+  // Ticket B3 — prompt-hash idempotency. A second dispatch arrived with a
+  // different trace_id but the same prompt content as an in-flight receipt.
+  'duplicate_prompt',
 ]);
 
 function writeDlqEntry({ traceId, worker, promptPath, exitCode, stderrTail, errorClass }) {

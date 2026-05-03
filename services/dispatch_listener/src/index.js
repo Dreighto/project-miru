@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const express = require('express');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
@@ -10,7 +11,12 @@ require('dotenv').config({ path: path.join(REPO_ROOT, '.env') });
 const log = require('./log');
 const { verifyHmac } = require('./hmac');
 const { isAllowed, ALLOWLIST, MISSING_BINARIES, MISSING_DEBUG } = require('./allowlist');
-const { tryReadReceipt, writePlaceholderReceipt, writeTerminalReceipt } = require('./receipt');
+const {
+  tryReadReceipt,
+  writePlaceholderReceipt,
+  writeTerminalReceipt,
+  findInFlightByPromptHash,
+} = require('./receipt');
 const { writeDlqEntry } = require('./dlq');
 const { spawnWorker } = require('./spawn');
 const { leaseSlot, releaseSlot, getLeaseByTraceId } = require('./worktree');
@@ -27,6 +33,12 @@ const TIMEOUT_MAX = 1800;
 const TIMEOUT_DEFAULT = 600;
 const MAX_BODY_BYTES = 65536;
 const TRACE_ID_RE = /^[a-zA-Z0-9_-]{6,128}$/;
+
+// Ticket B3 — prompt-hash idempotency window. Receipts older than this are
+// ignored when checking for duplicate prompts (matches the typical worker
+// runtime; longer would falsely block legitimate re-runs of the same prompt
+// later, shorter would miss recovery_router's re-dispatch case).
+const PROMPT_HASH_WINDOW_SECONDS = 600;
 
 if (!SECRET) {
   log.fatal('startup_missing_secret', { msg: 'W4_LISTENER_HMAC_SECRET not in process env' });
@@ -257,9 +269,51 @@ app.post(
       return res.status(400).json({ error: 'bad_request', reason: 'prompt_unreadable' });
     }
 
+    // Ticket B3 — prompt-hash idempotency. trace_id idempotency (above) only
+    // catches re-POSTs of the same trace_id. Recovery_router mints a fresh
+    // `recovery-X-Y-Z` trace_id when re-dispatching a stalled worker, which
+    // would slip through that check and run the same prompt twice. Hash the
+    // prompt body and reject if any in-flight receipt has the same hash.
+    const promptHash = crypto.createHash('sha256').update(promptText).digest('hex').slice(0, 16);
+    const inFlightTrace = findInFlightByPromptHash(
+      INBOX_DIR,
+      promptHash,
+      PROMPT_HASH_WINDOW_SECONDS
+    );
+    if (inFlightTrace) {
+      releaseSlot(slotPath);
+      log.warn('duplicate_prompt_in_flight', {
+        trace_id: traceId,
+        existing_trace_id: inFlightTrace,
+        prompt_hash: promptHash,
+      });
+      try {
+        writeDlqEntry({
+          traceId,
+          worker,
+          promptPath,
+          exitCode: null,
+          stderrTail: `duplicate_prompt_in_flight: existing_trace_id=${inFlightTrace} hash=${promptHash}`,
+          errorClass: 'duplicate_prompt',
+        });
+      } catch (err) {
+        log.error('dlq_write_failed', { error: err.message });
+      }
+      return res.status(409).json({
+        error: 'duplicate_prompt_in_flight',
+        existing_trace_id: inFlightTrace,
+      });
+    }
+
     const startedAt = new Date().toISOString();
     try {
-      writePlaceholderReceipt({ inboxDir: INBOX_DIR, traceId, worker, startedAt });
+      writePlaceholderReceipt({
+        inboxDir: INBOX_DIR,
+        traceId,
+        worker,
+        startedAt,
+        promptHash,
+      });
     } catch (err) {
       releaseSlot(slotPath);
       if (err.code === 'EEXIST') {
