@@ -40,6 +40,11 @@ _APPROVED_RESTARTS: dict[str, dict[str, Any]] = {
         "mode": "scheduled_task",
         "task_name": "MiruDispatchListener",
     },
+    "mcp_gateway": {
+        "label": "MCP Gateway (port 18766)",
+        "mode": "script",
+        "script": str(_REPO_ROOT / "windows" / "restart_mcp_gateway.ps1"),
+    },
 }
 
 
@@ -66,7 +71,7 @@ def _run_ps(args: list[str]) -> tuple[int, str, str]:
 def service_restart(service: str, ctx: Any = None) -> str:
     """Restart an approved Miru service.
 
-    ``service`` must be one of: pm, miru_ai, dispatch_listener.
+    ``service`` must be one of: pm, miru_ai, dispatch_listener, mcp_gateway.
     Returns JSON with ok, service, label, returncode, stdout_tail, stderr_tail.
     """
     svc = (service or "").strip().lower()
