@@ -1,5 +1,13 @@
 # Claude Chat + Claude Code — Project Miru
 
+## Copy-paste content for manual routing — Hard Rule
+
+Any content the operator will copy-paste to another thread or LLM — Claude Chat (CH), ChatGPT (GPT), Gemini (GMI), Perplexity (PXY), Cursor, or any manual-routing target — **MUST be wrapped in a fenced code block.** This includes thread handoffs, peer-LLM briefing blocks, paste-ready research questions, worker dispatch prompts, and any structured content intended for manual transfer between agents.
+
+**Why:** the operator runs a manual multi-LLM routing workflow as a core part of how the system is built. Code blocks survive the trip — no rich-text artifacts, no auto-link rewrites (`CLAUDE.md` → `[CLAUDE.md](http://CLAUDE.md)`), no markdown nesting eating structure. If unsure whether content is for paste, default to code block. Set 2026-05-03 by operator. Applies to ALL workers (CC, CH, Codex, Cursor, Gemini), not just Claude Chat.
+
+Full rule and rationale: `miru-context/operator-profile.md` "Copy-paste content — Hard Rule".
+
 ## Ports — Permanent Reference
 
 - 18080 = Project Miru UI — ACTIVE

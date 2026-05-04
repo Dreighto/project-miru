@@ -50,6 +50,24 @@ queues, schedules) will land better than abstract technical descriptions.
 
 ---
 
+## Copy-paste content — Hard Rule
+
+Any content the operator will copy-paste to another thread or LLM — Claude Chat (CH), ChatGPT (GPT), Gemini (GMI), Perplexity (PXY), Cursor, or any other manual-routing target — **MUST be wrapped in a fenced code block.** Includes:
+
+- Thread handoffs (state-handoff-log.md content for the next session to read)
+- Briefing blocks for peer LLMs
+- Paste-ready research questions
+- Worker dispatch prompts
+- Any structured content intended for manual transfer between agents
+
+**Why:** Dreighto runs a manual multi-LLM routing workflow as a core part of how Project Miru is built. Code blocks make copy-paste reliable — no rich-text artifacts, no auto-link rewrites of `*.md` filenames into `(http://*.md)` URLs, no markdown renderers eating the structure.
+
+**Applies to all workers, not just Claude Chat.** Claude Code generates handoffs, peer-review briefs, and consultation packets that the operator routes manually too. Set 2026-05-03 after operator explicit instruction: "give me the handoff in code text format for an easy copy paste — that should be a hard rule for you and CH for ANYTHING regarding me to copy and paste over to another thread or another LLM."
+
+If unsure whether content is for paste, default to code block. Worse to render markdown when paste was intended than vice versa.
+
+---
+
 ## Translation Guide — Say This Instead
 
 | If you were going to say this | Say this instead                                                                        |

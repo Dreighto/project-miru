@@ -77,75 +77,76 @@ agenda table with the handoff content in a notes-style field.
 
 ## Latest Handoff
 
-# Miru thread handoff — 2026-05-03 (Claude Chat paused, autonomy gaps filed)
+# Miru thread handoff — 2026-05-03 (PM session, Claude Code closeout after Phase 1 ship)
 
 ## What we were working on
 
-Picking off the loop blockers from the prior 05-02 voice handoff (PRO-276, PRO-278) before resuming PM deck builder work. Mid-thread the work surfaced multiple autonomy failures in Claude Chat — both tooling gaps and behavioral failures (asking permission on work canon explicitly authorizes). Operator paused working with Claude Chat over those gaps. Will continue with Claude Code until they're addressed.
+Two tracks in one CC session: (1) closed all six autonomy-gap tickets from the morning's CH-paused thread (PRO-284..289); (2) shipped Phase 1 of the four-phase Autonomy Overhaul (PRO-290 — A2A bus with claim ownership). All seven shipped, all merged, all VP Ops verified.
 
-## What got done this thread
+## What got done
 
-- **PRO-276** moved In Progress → In Review with comment linking PR #74 / commit `c7e5b8e`. End-to-end Telegram tap still pending; that's the verification gate.
-- **PRO-278** closed: PR #73 self-merged → commit `72b2fb3`, branch deleted, Linear → Done. **But the local working tree at D:\dev\miru never pulled the merge** so the running gateway is still pre-merge code. Operator did the bootstrap restart but it re-loaded the same old code from disk.
-- **6 new tickets filed** capturing today's gaps (see "What's still open" below).
-- **Project Memory** — 4 decisions rows added (drift correction, PRO-278 closeout, autonomy gap pause, this handoff).
+- **PRO-289 (Urgent, behavioral)** — Drift correction is autonomous. Canon strengthened across `claude-operating-model.md`, `guardrails.md`, `CLAUDE_CHAT.md`, `canon-and-drift.md`. PR #79 → `7e779ef`.
+- **PRO-286 (High, structural)** — Handoff freshness rule (Option B). PR #80 → `c0d75a5`. Project Memory `agenda` row seeded.
+- **PRO-285 (High, structural)** — `tools/emit_completion.py` auto-fills `ticket_id` from `MIRU_TRACE_ID`; drift scanner now surfaces orphan markers as third drift category. 25 tests. PR #81 → `b65b09a`.
+- **PRO-288 (Medium, doc)** — Manual-backfill expectation documented in dsw003 jsCode + agenda. PR #84 → `83fc848`.
+- **PRO-287 (Medium, tooling)** — `git_local_status` read-only gateway tool. 14 tests. Operator-merged PR #83 → `c1a68f4`.
+- **PRO-284 (Urgent, structural)** — `git_pull_main` gateway tool (Option A). 6 tests. Operator-merged PR #82 → `3768e97`.
+- **PRO-290 — Phase 1 A2A Bus.** New `agent_messages` table in `miru_memory.db`, `tools/agent_bus.py` client, 24-test regression suite. WAL + busy_timeout=5000 enforced. PR #85 → `2a0901e`. VP Ops verified, zero flags.
+- **Notion canon synced.** 01 Now updated with Autonomy Overhaul Phase 1 status. Work Log gained `2026-05-03 (PM)` anchor (distinct from morning's loop-hardening anchor).
+- **New canon rule:** "Copy-paste content for manual routing — Hard Rule." Any content the operator will paste to CH/GPT/GMI/PXY/Cursor MUST be in a fenced code block. Added to `CLAUDE.md` + `miru-context/operator-profile.md`.
 
 ## What's still open
 
-**Autonomy gap tickets filed today (Backlog, awaiting operator review):**
+**Autonomy Overhaul Phases 2–4 — LOCKED until explicitly approved:**
 
-- **PRO-284 (Urgent)** — Self-merged PR doesn't pull to local working tree; services run pre-merge code after merge.
-- **PRO-285 (High)** — Workers write completion markers with ticket_id=null, orphaning the Linear ticket.
-- **PRO-286 (High)** — Handoff goes stale within a session; no rule for "rewrite if more work happens after."
-- **PRO-287 (Medium)** — Claude Chat can't read local working tree state; no git_status equivalent.
-- **PRO-288 (Medium)** — Drift scanner doesn't backfill on first deploy; pre-existing drift hides forever.
-- **PRO-289 (Urgent)** — Behavioral: Claude Chat asks permission on drift correction work canon authorizes autonomously.
+- **Phase 2 (Judgment Trail)** — `tools/emit_decision.py` + `data/agent_decisions.jsonl` (would be 8th append-only file) + 9-trigger canon rule. Schema in master brief includes `identity / classification / authority_surface / decision_summary / calibration / contextual_surface / outcome / grading_state`. Calibration corpus only grades `judgment_driven` decisions, not `canon_mandated` ones.
+- **Phase 3 (Subagent Isolation)** — `X-Miru-Tool-Profile` header on dispatch + gateway-side per-connection tool gating. Profiles: `drift_executor` (`linear_*`, `git_*`, `fs_*` — NO `telegram_*`), `vp_ops`, `reviewer`, `full_operator`. Includes Phase 3 Denial Test gate before W2 can auto-assign.
+- **Phase 4 (Ingress Classifier)** — W2 extension to pre-classify tasks as `routine | judgment | ambiguous | blocked` before CH wakes up. Imposes `tool_profile` rather than asking CH to self-classify.
 
-**Pre-existing items still open from prior handoff:**
+**Other open items (non-blocking):**
 
-- **PRO-276 (In Review, Urgent)** — fix shipped to GitHub, but local D:\dev\miru hasn't pulled, AND no Telegram smoke test has happened. Two blockers, not one.
-- **PRO-275 (Todo, Medium)** — append 2026-05-02 sprint anchor to Notion Work Log. Not investigated this thread.
-- **W1 504 retry import** — PR #71 merged. n8n manual import status not verified.
-- **PRO-7 (deck builder rebuild)** — paused. Seven-phase sequence still stands.
-- **Worker profiles** all show `last_confirmed_at IS NULL`.
-- **MCP gateway bootstrap** — operator did a restart, but D:\dev\miru never pulled, so the gateway is still pre-merge. PRO-284 is the structural fix; in the meantime, a `git pull` on D:\dev\miru followed by another gateway restart would unblock.
+- Pre-existing test failure in `tests/test_miru_mcp_gateway_git_write.py::test_resolve_allowed_paths_rejects_worker_rule_file_other_than_claude` — predates today; CURSOR.md is in `_ALLOWED_EXACT` but the test asserts rejection. Flagged in PR #82 description; not filed as a separate ticket.
 
-## Decisions made this thread
+## Decisions made
 
-- **Operator paused working with Claude Chat** over autonomy gaps. Will use Claude Code in the meantime. Pause lifts when PRO-284 / PRO-289 ship at minimum.
-- **Drift correction is autonomous** (re-affirmed) — Claude Chat had been asking permission on routine drift work; that's the behavior PRO-289 addresses.
-- **PRO-276 closing rule** — do not move to Done without an end-to-end Telegram tap.
+- **Switch sessions per phase.** Phase 2 starts in a NEW CC session. Reasoning: Phase 1 is the bus that enables clean fresh-context handoffs; PRO-289's long-session permission-bias failure mode argues for resets at phase boundaries; phases are independent in code dependencies. Within a phase, stay in one session.
+- **Copy-paste content goes in code blocks** — hard rule for all workers. Operator runs a manual multi-LLM routing workflow.
+- **Phase 1 single-field `expires_at` is state-dependent.** pending → message TTL; claimed → claim TTL (overwritten); requeued → fresh window. Documented in `agent_bus.py` and the migration .sql.
+- **Phase 1 does NOT modify `memory_tools.py`.** Existing `sqlite3.connect(timeout=5)` already maps to `busy_timeout=5000` at the Python driver level; WAL is sticky on the .db file.
+- **DDL via gateway memory MCP `write_query` is BLOCKED** — confirmed during Phase 1. Future schema changes go through `tools/migrations/` + direct sqlite3 application.
 
 ## What the next thread should do first
 
-**If next thread is Claude Chat resuming after the pause:**
-
-1. Read PRO-284 / PRO-285 / PRO-286 / PRO-287 / PRO-288 / PRO-289 first. These are the conditions for resuming.
-2. Confirm with operator which ones have shipped before doing any other work.
-
-**If next thread is Claude Code or another worker:**
-
-1. PRO-284 is the highest-leverage ticket — fixes the post-merge pull gap that broke today.
-2. PRO-289 needs canon edits to `claude-operating-model.md`, `guardrails.md`, `CLAUDE_CHAT.md` — Claude Chat's surface, but operator-approved edits via Claude Code are valid.
-3. Operator: pulling D:\dev\miru to main + restarting the gateway would unblock the in-flight PRO-278 verification, but that's optional — the structural fix is PRO-284.
+1. Read this handoff. Read `CLAUDE_CHAT.md` (if CH) or `CLAUDE.md` (if CC) and confirm the new "Copy-paste content — Hard Rule" + the existing "Drift correction is autonomous" rule are both internalized.
+2. Query Project Memory: `stack_state`, recent `decisions` (last ~10), active `agenda` items where priority ≤ 2.
+3. Tail `data/cc_completion_log.jsonl` for the last few terminal markers.
+4. Check Linear for any new tickets in Backlog/Todo since session close (most recent: PRO-290).
+5. **Wait for operator direction on Phase 2.** Phases 2/3/4 are explicitly locked.
 
 ## What NOT to do
 
-- Do not resume Claude Chat dispatching or autonomous work until operator lifts the pause.
-- Do not move PRO-276 to Done without a real operator tap going through W7.
-- Do not assume PRO-278's merge is "live" — D:\dev\miru hasn't pulled.
-- Do not append a corrective completion marker for PR #74 — Claude Chat does not write `cc_completion_log.jsonl` (hard rule).
-- Do not start partnership conversation with projectraftel.dev. PM ships first.
-- Do not file deck-builder rebuild tickets without reading PM 02 first.
+- Do NOT begin Phase 2, 3, or 4 without explicit operator approval.
+- Do NOT modify `tools/agent_bus.py` or `tools/migrations/m005_agent_messages.sql` unless fixing a Phase 1 bug.
+- Do NOT modify decision logging (no `agent_decisions.jsonl` exists yet — that's Phase 2).
+- Do NOT modify tool profiles or W2 classifier behavior (Phase 3 / Phase 4).
+- Do NOT change canon authority rules.
+- Do NOT generate paste-ready content for the operator without wrapping in a code block (new hard rule).
 
 ## Loop health
 
-Loop hardening campaign closed 2026-05-03 ~01:00 UTC. PRO-276 fix on GitHub but unverified end-to-end. PRO-278 fix on GitHub but not on disk. Six autonomy gaps filed as tickets. Claude Chat paused at operator's call.
+- All 5 services healthy (mcp_gateway 18766, pm 18080, miru_ai 18765, dispatch_listener 19100, n8n 15678).
+- Local `main` at `0942ec9` (PRO-290 marker push). Working tree clean.
+- 7 append-only data files healthy. 86 markers in `cc_completion_log.jsonl`.
+- `agent_messages` table live but empty (Phase 1 just shipped, no agents using it yet).
+- VP Ops verification working — used today on PRO-290 closeout, returned VERIFIED with zero flags.
 
 ## Key files / surfaces touched
 
-- **Linear:** PRO-276 (state + comment), PRO-278 (state + 3 comments + description rewrite + → Done), PRO-284 / PRO-285 / PRO-286 / PRO-287 / PRO-288 / PRO-289 (filed Backlog, Urgent/High/Medium).
-- **GitHub:** PR #73 merged → commit `72b2fb3` on origin/main; branch deleted.
-- **Project Memory:** 4 decisions rows added.
-- **Repo (read-only):** restart_tools.py, restart_mcp_gateway.ps1, completion log tail, recent activity, W7 executions, PR #73 diff.
-- **Handoff:** rewritten three times this thread (drift correction, PRO-278 closeout, this final state).
+- **Linear:** PRO-284..289 → Done; PRO-290 created + Done; closeout comments on all seven.
+- **GitHub:** PRs #79, #80, #81, #82, #83, #84, #85 all merged. Local main `e656830...0942ec9`.
+- **Notion:** 01 Now + Work Log both updated.
+- **Project Memory:** 2 new active priority-2 agenda rows.
+- **Repo new files:** `tools/migrations/m005_agent_messages.sql`, `tools/agent_bus.py`, `tests/test_agent_bus.py`, `tests/test_emit_completion_ticket_id_autofill.py`, `tests/test_drift_scanner_orphan_markers.py`, `tests/test_git_local_status.py`, `tests/test_git_pull_main.py`, `archive/design_docs/deck_builder_before.html`.
+- **Repo edits:** `CLAUDE.md`, `CLAUDE_CHAT.md`, `miru-context/canon-and-drift.md`, `miru-context/claude-operating-model.md`, `miru-context/guardrails.md`, `miru-context/operator-profile.md`, `miru-context/state-handoff-log.md` (this file), `tools/emit_completion.py`, `tools/miru_mcp_gateway/git_tools.py`, `docker/n8n/workflows/w-drift-scanner.json`, `.pre-commit-config.yaml`.
+- **Schema:** `data/miru_memory.db` gained `agent_messages` table + WAL mode.
+- **CC auto-memory:** new entry `feedback_copy_paste_code_blocks.md`.
