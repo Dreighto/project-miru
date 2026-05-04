@@ -20,16 +20,16 @@ const ALLOWLIST_DEF = Object.freeze({
   },
   gemini: { binary: 'gemini.cmd', flags: ['-p', '', '--yolo', '--skip-trust'] },
   // -c overrides applied before `exec` (global flags must precede the subcommand):
-  //   model/effort: use gpt-4o + medium for automated dispatch (faster than the
-  //     interactive gpt-5.4/high config; interactive sessions are unaffected).
+  //   model_reasoning_effort: medium instead of high for automated dispatch
+  //     (significantly faster; interactive sessions keep their own config).
   //   mcp_servers.justtcg.enabled=false: disable the HTTP SSE MCP server that
   //     triggers an rmcp transport fatal during MCP init (missing-content-type
   //     on the initialized notification). JustTCG is not needed for code tasks.
+  //   Note: model is NOT overridden — gpt-4o is rejected by ChatGPT accounts;
+  //     gpt-5.4 from config.toml is the only supported model here.
   codex: {
     binary: 'codex.cmd',
     flags: [
-      '-c',
-      'model="gpt-4o"',
       '-c',
       'model_reasoning_effort="medium"',
       '-c',
