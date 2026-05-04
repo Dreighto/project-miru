@@ -138,6 +138,17 @@ function Invoke-Restart {
             Write-Log "$($Svc.key)_docker_restart_failed: $($_.Exception.Message)"
             return $false
         }
+    } elseif ($Svc.restart_type -eq "script") {
+        try {
+            Start-Process powershell.exe `
+                -ArgumentList @('-NoLogo', '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', $Svc.restart_script) `
+                -WindowStyle Hidden -ErrorAction Stop
+            Write-Log "$($Svc.key)_restart_script_started script=$($Svc.restart_script)"
+            return $true
+        } catch {
+            Write-Log "$($Svc.key)_restart_script_failed: $($_.Exception.Message)"
+            return $false
+        }
     } else {
         try {
             Start-ScheduledTask -TaskName $Svc.restart_task -ErrorAction Stop
@@ -152,11 +163,11 @@ function Invoke-Restart {
 
 $services = @(
     @{
-        key          = "gateway"
-        label        = "MCP Gateway (18766)"
-        health_url   = "http://127.0.0.1:18766/health"
-        restart_type = "task"
-        restart_task = "MiruRestartMcpGateway"
+        key            = "gateway"
+        label          = "MCP Gateway (18766)"
+        health_url     = "http://127.0.0.1:18766/health"
+        restart_type   = "script"
+        restart_script = (Join-Path $PSScriptRoot "restart_mcp_gateway_task.ps1")
     },
     @{
         key          = "dispatch_listener"
