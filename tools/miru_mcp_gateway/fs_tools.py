@@ -118,8 +118,9 @@ def is_denied_path_string(path: str) -> bool:
 
 
 def fs_read_text_file(path: str, head: int | None = None, tail: int | None = None) -> str:
-    """Read a UTF-8 text file under D:\\dev\\miru. Database, secret, log, and
-    .git files are denied. Use head OR tail to truncate, not both.
+    """Read a UTF-8 text file under the configured filesystem root (see
+    fs_list_allowed_directories). Database, secret, log, and .git files are
+    denied. Use head OR tail to truncate, not both.
     """
     args: dict[str, Any] = {"path": path}
     if head is not None:
@@ -130,8 +131,8 @@ def fs_read_text_file(path: str, head: int | None = None, tail: int | None = Non
 
 
 def fs_read_media_file(path: str) -> dict[str, Any]:
-    """Read an image or audio file under D:\\dev\\miru as base64. Returns a
-    dict with `mimeType` and `data` keys.
+    """Read an image or audio file under the configured filesystem root as
+    base64. Returns a dict with `mimeType` and `data` keys.
     """
     return stdio_mcp._read_media_file({"path": path})
 
@@ -144,7 +145,7 @@ def fs_read_multiple_files(paths: list[str]) -> str:
 
 
 def fs_list_directory(path: str) -> str:
-    """List a directory under D:\\dev\\miru. Denied entries are omitted."""
+    """List a directory under the configured filesystem root. Denied entries are omitted."""
     return stdio_mcp._list_directory({"path": path})
 
 
@@ -189,7 +190,7 @@ def fs_get_file_info(path: str) -> str:
 
 
 def fs_list_allowed_directories() -> str:
-    """List the single Project Miru root exposed by this gateway."""
+    """List the filesystem root exposed by this gateway."""
     return f"Allowed directories:\n{stdio_mcp.ROOT}"
 
 

@@ -45,7 +45,8 @@ _MODULE_CATEGORY: dict[str, str] = {
 _PARAM_REGEX: dict[str, re.Pattern[str]] = {
     "owner": re.compile(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,38})$"),
     "repo": re.compile(r"^[a-zA-Z0-9._-]{1,100}$"),
-    "path": re.compile(r"^[a-zA-Z0-9_./\\-]+$"),
+    "path": re.compile(r"^[a-zA-Z0-9_.:/\\-]+$"),
+    "db_path": re.compile(r"^[a-zA-Z0-9_.:/\\-]+$"),
     "workflow_id": re.compile(r"^[a-zA-Z0-9_-]{1,128}$"),
     "execution_id": re.compile(r"^[a-zA-Z0-9_-]{1,64}$"),
     "workflow_id_param": re.compile(r"^[a-zA-Z0-9_-]{1,128}$"),

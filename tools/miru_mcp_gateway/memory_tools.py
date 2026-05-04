@@ -1,11 +1,13 @@
-"""PRO-163: miru_memory SQLite tools surfaced in the gateway.
+"""PRO-163: memory SQLite tools surfaced in the gateway.
 
-Read/write access to data/miru_memory.db for Claude Chat sessions.
+Read/write access to SQLite memory databases for Claude Chat sessions.
+Supports multiple databases via the optional db_path parameter.
 Gated by MIRU_MEMORY_ENABLED=1.
 
 Security model:
   read_query  — SELECT only (no DML, no DDL, no PRAGMA writes)
-  write_query — INSERT / UPDATE / DELETE only (no DDL, no ATTACH/DETACH)
+  write_query — INSERT / UPDATE / DELETE / CREATE TABLE IF NOT EXISTS only
+                (no DROP, no ALTER, no ATTACH/DETACH)
   list_tables — sqlite_master query, read-only
   describe_table — PRAGMA table_info, read-only
 
@@ -16,6 +18,7 @@ Reads are audited through the standard gateway_security read-audit path.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -37,7 +40,6 @@ _DB_PATH: Path | None = None
 _MAX_ROWS = 500
 _MAX_SQL_LEN = 4096
 
-# Tokens that are never allowed in any query (DML or read)
 _DENY_TOKENS: frozenset[str] = frozenset(
     {
         "attach",
@@ -48,13 +50,13 @@ _DENY_TOKENS: frozenset[str] = frozenset(
         "savepoint",
         "release",
         "checkpoint",
+        "drop",
+        "alter",
     }
 )
 
-# Only these lead-tokens are allowed for write_query
-_WRITE_ALLOWED_LEAD: frozenset[str] = frozenset({"insert", "update", "delete"})
+_WRITE_ALLOWED_LEAD: frozenset[str] = frozenset({"insert", "update", "delete", "create"})
 
-# Only this lead-token is allowed for read_query (after list/describe are handled separately)
 _READ_ALLOWED_LEAD: frozenset[str] = frozenset({"select"})
 
 
@@ -80,14 +82,41 @@ def _check_deny_tokens(sql_lower: str) -> None:
             )
 
 
-def _connect(write: bool = False) -> sqlite3.Connection:
-    if _DB_PATH is None:
-        raise stdio_mcp.McpError("memory_tools: not configured", -32000)
-    if not _DB_PATH.exists():
+def _resolve_db_path(db_path: str | None) -> Path:
+    """Resolve which database to use. If db_path is given, validate it
+    against the filesystem root. Otherwise use the default."""
+    if db_path is None:
+        if _DB_PATH is None:
+            raise stdio_mcp.McpError("memory_tools: not configured", -32000)
+        return _DB_PATH
+
+    p = Path(db_path).resolve()
+    if not p.suffix == ".db":
         raise stdio_mcp.McpError(
-            json.dumps({"error": "db_not_found", "path": str(_DB_PATH)}), -32000
+            json.dumps({"error": "invalid_db_path", "reason": "must end with .db"}), -32602
         )
-    uri = _DB_PATH.as_uri()
+    fs_root = stdio_mcp.ROOT
+    try:
+        common = os.path.commonpath([str(fs_root), str(p)])
+    except ValueError:
+        raise stdio_mcp.McpError(
+            json.dumps({"error": "invalid_db_path", "reason": "outside allowed root"}), -32602
+        ) from None
+    if common != str(fs_root):
+        raise stdio_mcp.McpError(
+            json.dumps({"error": "invalid_db_path", "reason": "outside allowed root"}), -32602
+        )
+    if not p.exists():
+        p.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(p), timeout=5)
+        conn.close()
+    return p
+
+
+def _connect(db: Path, write: bool = False) -> sqlite3.Connection:
+    if not db.exists():
+        raise stdio_mcp.McpError(json.dumps({"error": "db_not_found", "path": str(db)}), -32000)
+    uri = db.as_uri()
     if not write:
         uri += "?mode=ro"
     flags = sqlite3.PARSE_DECLTYPES
@@ -120,25 +149,33 @@ def _audit_write(tool: str, sql: str, rows_affected: int, error: str | None) -> 
         pass
 
 
-def list_tables() -> str:
-    """List all user tables in miru_memory.db."""
-    with _connect(write=False) as conn:
+def list_tables(db_path: str | None = None) -> str:
+    """List all user tables in a memory database.
+
+    db_path: absolute path to a .db file under the allowed filesystem root.
+    Omit to use the default database.
+    """
+    db = _resolve_db_path(db_path)
+    with _connect(db, write=False) as conn:
         rows = conn.execute(
             "SELECT name, type FROM sqlite_master " "WHERE type IN ('table','view') ORDER BY name"
         ).fetchall()
     return json.dumps([dict(r) for r in rows], indent=2)
 
 
-def describe_table(table_name: str) -> str:
-    """Return column schema for a table in miru_memory.db.
+def describe_table(table_name: str, db_path: str | None = None) -> str:
+    """Return column schema for a table in a memory database.
 
-    Uses PRAGMA table_info(). table_name must be alphanumeric + underscores.
+    table_name must be alphanumeric + underscores.
+    db_path: absolute path to a .db file under the allowed filesystem root.
+    Omit to use the default database.
     """
     if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]{0,63}", table_name):
         raise stdio_mcp.McpError(
             json.dumps({"error": "invalid_table_name", "name": table_name[:64]}), -32602
         )
-    with _connect(write=False) as conn:
+    db = _resolve_db_path(db_path)
+    with _connect(db, write=False) as conn:
         rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
     if not rows:
         raise stdio_mcp.McpError(
@@ -147,11 +184,13 @@ def describe_table(table_name: str) -> str:
     return json.dumps([dict(r) for r in rows], indent=2)
 
 
-def read_query(sql: str, params: list[Any] | None = None) -> str:
-    """Run a SELECT query against miru_memory.db.
+def read_query(sql: str, params: list[Any] | None = None, db_path: str | None = None) -> str:
+    """Run a SELECT query against a memory database.
 
-    Only SELECT statements are allowed. Returns up to 500 rows as a JSON array.
+    Only SELECT statements are allowed. Returns up to 500 rows as JSON.
     Use params (positional ? placeholders) to avoid SQL injection.
+    db_path: absolute path to a .db file under the allowed filesystem root.
+    Omit to use the default database.
     """
     if len(sql) > _MAX_SQL_LEN:
         raise stdio_mcp.McpError(json.dumps({"error": "sql_too_long", "max": _MAX_SQL_LEN}), -32602)
@@ -162,8 +201,9 @@ def read_query(sql: str, params: list[Any] | None = None) -> str:
     if lead not in _READ_ALLOWED_LEAD:
         raise stdio_mcp.McpError(json.dumps({"error": "read_only", "lead_token": lead}), -32600)
     _check_deny_tokens(clean.lower())
+    db = _resolve_db_path(db_path)
     bind = params or []
-    with _connect(write=False) as conn:
+    with _connect(db, write=False) as conn:
         cur = conn.execute(clean, bind)
         rows = cur.fetchmany(_MAX_ROWS)
         columns = [d[0] for d in cur.description] if cur.description else []
@@ -171,11 +211,13 @@ def read_query(sql: str, params: list[Any] | None = None) -> str:
     return json.dumps(result, indent=2, default=str)
 
 
-def write_query(sql: str, params: list[Any] | None = None) -> str:
-    """Run an INSERT, UPDATE, or DELETE against miru_memory.db.
+def write_query(sql: str, params: list[Any] | None = None, db_path: str | None = None) -> str:
+    """Run INSERT, UPDATE, DELETE, or CREATE TABLE against a memory database.
 
-    DDL (CREATE, DROP, ALTER), ATTACH, DETACH, and VACUUM are blocked.
+    DROP, ALTER, ATTACH, DETACH, and VACUUM are blocked.
     Returns rows_affected count as JSON.
+    db_path: absolute path to a .db file under the allowed filesystem root.
+    Omit to use the default database.
     """
     if len(sql) > _MAX_SQL_LEN:
         raise stdio_mcp.McpError(json.dumps({"error": "sql_too_long", "max": _MAX_SQL_LEN}), -32602)
@@ -191,11 +233,12 @@ def write_query(sql: str, params: list[Any] | None = None) -> str:
             -32600,
         )
     _check_deny_tokens(clean.lower())
+    db = _resolve_db_path(db_path)
     bind = params or []
     error_str: str | None = None
     rows_affected = 0
     try:
-        with _connect(write=True) as conn:
+        with _connect(db, write=True) as conn:
             cur = conn.execute(clean, bind)
             rows_affected = cur.rowcount if cur.rowcount >= 0 else 0
             conn.commit()
