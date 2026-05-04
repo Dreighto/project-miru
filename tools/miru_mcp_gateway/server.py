@@ -33,6 +33,7 @@ Path-stripped mode:
 
 from __future__ import annotations
 
+import contextvars
 import sys
 import traceback
 from pathlib import Path
@@ -149,6 +150,42 @@ class _RootAlias:
         await self.app(scope, receive, send)
 
 
+current_profile: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "current_profile", default="full_operator"
+)
+current_trace_id: contextvars.ContextVar[str] = contextvars.ContextVar(
+    "current_trace_id", default=""
+)
+
+
+class _ProfileExtractor:
+    """ASGI middleware that reads X-Miru-Tool-Profile from HTTP headers."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http":
+            headers = scope.get("headers", [])
+            profile = "full_operator"
+            trace_id = ""
+            for name, value in headers:
+                lower = name.lower() if isinstance(name, bytes) else name.encode().lower()
+                if lower == b"x-miru-tool-profile":
+                    profile = value.decode("utf-8") if isinstance(value, bytes) else value
+                elif lower == b"x-miru-trace-id":
+                    trace_id = value.decode("utf-8") if isinstance(value, bytes) else value
+            tok_p = current_profile.set(profile)
+            tok_t = current_trace_id.set(trace_id)
+            try:
+                await self.app(scope, receive, send)
+            finally:
+                current_profile.reset(tok_p)
+                current_trace_id.reset(tok_t)
+        else:
+            await self.app(scope, receive, send)
+
+
 def _print_category_summary(cfg: gw_config.GatewayConfig, counts: dict[str, int]) -> None:
     """Banner footer: one line per category, total at the end."""
     total = 0
@@ -248,7 +285,8 @@ def main() -> int:
         f"  fs_root      : {cfg.fs_root}\n"
         f"  internal mcp : http://{cfg.host}:{cfg.port}{cfg.mcp_path}\n"
         f"  internal hlth: http://{cfg.host}:{cfg.port}{cfg.health_path}\n"
-        f"  public via   : Tailscale Funnel + /mcp/<SECRET> (strips prefix)",
+        f"  public via   : Tailscale Funnel + /mcp/<SECRET> (strips prefix)\n"
+        f"  profiles     : {'ENFORCING' if cfg.profile_enforcement_enabled else 'audit-only (set MIRU_PROFILE_ENFORCEMENT_ENABLED=1 to enforce)'}",
         flush=True,
     )
 
@@ -269,7 +307,8 @@ def main() -> int:
         ) from exc
 
     inner_app = mcp.http_app(path=cfg.mcp_path, transport="streamable-http")
-    wrapped_app = _RootAlias(inner_app)
+    profiled_app = _ProfileExtractor(inner_app)
+    wrapped_app = _RootAlias(profiled_app)
 
     try:
         uvicorn.run(

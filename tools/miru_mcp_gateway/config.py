@@ -108,6 +108,9 @@ class GatewayConfig:
     dispatch_hmac_secret: str | None = None
     dispatch_listener_url: str = "http://127.0.0.1:19100"
 
+    # Phase 3: subagent isolation — profile enforcement gate
+    profile_enforcement_enabled: bool = False
+
     # PRO-137 rate limits (calls per 60s sliding window, per category)
     rate_limit_by_category: dict[str, int] = field(default_factory=dict)
 
@@ -332,6 +335,7 @@ def load() -> GatewayConfig:
     worker_path_allow_prefixes = _comma_tuple("MIRU_WORKER_PATH_ALLOWLIST")
     n8n_execution_data_skip_approval = _truthy_env("MIRU_N8N_EXECUTION_DATA_SKIP_APPROVAL")
     rate_limit_by_category = _load_rate_limits()
+    profile_enforcement_enabled = _truthy_env("MIRU_PROFILE_ENFORCEMENT_ENABLED")
 
     memory_enabled = _truthy_env("MIRU_MEMORY_ENABLED")
     raw_mem_db = os.environ.get("MIRU_MEMORY_DB_PATH", "").strip()
@@ -387,6 +391,7 @@ def load() -> GatewayConfig:
         worker_path_allow_prefixes=worker_path_allow_prefixes,
         n8n_execution_data_skip_approval=n8n_execution_data_skip_approval,
         rate_limit_by_category=rate_limit_by_category,
+        profile_enforcement_enabled=profile_enforcement_enabled,
         memory_enabled=memory_enabled,
         memory_db_path=memory_db_path,
         linear_write_enabled=linear_write_enabled,

@@ -21,6 +21,7 @@ if str(_TOOLS_DIR) not in sys.path:
 import miru_readonly_filesystem_mcp as stdio_mcp  # noqa: E402
 
 from miru_mcp_gateway import audit as gw_audit  # noqa: E402
+from miru_mcp_gateway import profiles as _profiles  # noqa: E402
 from miru_mcp_gateway import redact as _redact  # noqa: E402
 
 _MODULE_CATEGORY: dict[str, str] = {
@@ -153,13 +154,61 @@ def _append_read_audit_row(cfg: Any, row: dict[str, Any]) -> None:
         gw_audit.append_read_audit(cfg.fs_root, row)
 
 
+def _get_current_profile() -> str:
+    from miru_mcp_gateway.server import current_profile
+
+    return current_profile.get()
+
+
+def _get_current_trace_id() -> str:
+    from miru_mcp_gateway.server import current_trace_id
+
+    return current_trace_id.get()
+
+
 def wrap_tool_entry(func: Callable[..., Any], cfg: Any) -> Callable[..., Any]:
-    """Rate-limit, validate params, optional read-audit (PRO-137)."""
+    """Profile-gate, rate-limit, validate params, optional read-audit."""
     category = _tool_category(func)
     audit_reads = _should_audit_read_log(func)
 
     @functools.wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
+        profile = _get_current_profile()
+        trace_id = _get_current_trace_id()
+
+        if getattr(cfg, "profile_enforcement_enabled", False) and not _profiles.is_allowed(
+            profile, category
+        ):
+            if audit_reads:
+                _append_read_audit_row(
+                    cfg,
+                    {
+                        "ts": gw_audit._utc_iso(),
+                        "tool": func.__name__,
+                        "category": category,
+                        "caller": gw_audit.caller_from_fastmcp_context(kwargs.get("ctx")),
+                        "params": _redact.redact_dict(
+                            {k: v for k, v in kwargs.items() if k != "ctx"}
+                        ),
+                        "result": "profile_denied",
+                        "duration_ms": 0,
+                        "error": None,
+                        "profile": profile,
+                        "trace_id": trace_id,
+                    },
+                )
+            raise stdio_mcp.McpError(
+                json.dumps(
+                    {
+                        "error": "profile_denied",
+                        "profile": profile,
+                        "category": category,
+                        "tool": func.__name__,
+                    }
+                ),
+                -32003,
+            )
+
         lim = _limit_for_category(cfg, category)
         ok, retry_after = _rate_allow(category, lim)
         if not ok:
