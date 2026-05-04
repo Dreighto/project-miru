@@ -80,6 +80,9 @@ def _post_dispatch(base_url: str, body: bytes, hmac_hex: str) -> tuple[int, dict
         conn.close()
 
 
+_TOOL_PROFILE_RE = __import__("re").compile(r"^[a-z_]{3,30}$")
+
+
 def dispatch_worker(
     worker: str,
     prompt: str,
@@ -87,6 +90,7 @@ def dispatch_worker(
     timeout_seconds: int = _DEFAULT_TIMEOUT_S,
     model: str | None = None,
     thinking_level: str | None = None,
+    tool_profile: str | None = None,
     ctx: Any = None,
 ) -> str:
     """Trigger an approved worker via the dispatch listener (PRO-235).
@@ -97,6 +101,7 @@ def dispatch_worker(
     ``timeout_seconds``: 1-1800 (default 600).
     ``model``: optional model override (e.g. 'claude-opus-4-7'); claude-code only.
     ``thinking_level``: 'extended' or 'none'; claude-code only (PRO-265).
+    ``tool_profile``: Phase 3 subagent isolation profile (e.g. 'drift_executor').
     Returns JSON: ok, trace_id, worker, ticket_id, http_status, listener_response.
     """
     cfg = _CFG
@@ -140,6 +145,15 @@ def dispatch_worker(
                 -32602,
             )
 
+    if tool_profile is not None:
+        tool_profile = str(tool_profile).strip()
+        if not _TOOL_PROFILE_RE.match(tool_profile):
+            raise stdio_mcp.McpError(
+                f"dispatch_worker: invalid tool_profile {tool_profile!r}. "
+                "Must match /^[a-z_]{3,30}$/",
+                -32602,
+            )
+
     trace_id = _generate_trace_id(ticket_id)
 
     # Write prompt file — listener reads this synchronously before 202.
@@ -161,6 +175,8 @@ def dispatch_worker(
         body_dict["model"] = model
     if thinking_level is not None:
         body_dict["thinking_level"] = thinking_level
+    if tool_profile is not None:
+        body_dict["tool_profile"] = tool_profile
 
     body = json.dumps(body_dict, separators=(",", ":")).encode("utf-8")
 
@@ -196,6 +212,7 @@ def dispatch_worker(
             "timeout_seconds": ts,
             "model": model,
             "thinking_level": thinking_level,
+            "tool_profile": tool_profile,
             "http_status": status_code,
             "listener_response": resp_data,
         },

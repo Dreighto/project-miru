@@ -20,6 +20,7 @@ const {
 const { writeDlqEntry } = require('./dlq');
 const { spawnWorker } = require('./spawn');
 const { leaseSlot, releaseSlot, getLeaseByTraceId } = require('./worktree');
+const { writeMcpConfig } = require('./mcp_config');
 
 const PORT = 19100;
 const BIND_HOST = '127.0.0.1';
@@ -171,6 +172,7 @@ app.post(
       use_api_key: useApiKey,
       model,
       thinking_level: thinkingLevel,
+      tool_profile: toolProfile,
     } = payload || {};
     let timeoutSeconds = (payload && payload.timeout_seconds) || TIMEOUT_DEFAULT;
 
@@ -199,6 +201,12 @@ app.post(
     ) {
       return res.status(400).json({ error: 'bad_request', reason: 'invalid_thinking_level' });
     }
+    if (
+      toolProfile !== undefined &&
+      (typeof toolProfile !== 'string' || !/^[a-z_]{3,30}$/.test(toolProfile))
+    ) {
+      return res.status(400).json({ error: 'bad_request', reason: 'invalid_tool_profile' });
+    }
 
     if (!isAllowed(worker)) {
       log.warn('allowlist_reject', { trace_id: traceId, worker });
@@ -222,6 +230,11 @@ app.post(
       return res.status(409).json({ error: 'already_dispatched' });
     }
 
+    const resolvedProfile =
+      typeof toolProfile === 'string' && toolProfile.trim()
+        ? toolProfile.trim()
+        : 'standard_worker';
+
     const slotPath = leaseSlot(traceId, worker);
     if (slotPath === null) {
       log.warn('no_worktree_available', { trace_id: traceId, worker });
@@ -238,6 +251,18 @@ app.post(
         log.error('dlq_write_failed', { error: err.message });
       }
       return res.status(503).json({ error: 'no_worktree_available' });
+    }
+
+    try {
+      writeMcpConfig(slotPath);
+    } catch (err) {
+      releaseSlot(slotPath);
+      log.error('mcp_config_write_failed', {
+        trace_id: traceId,
+        slot: slotPath,
+        error: err.message,
+      });
+      return res.status(500).json({ error: 'spawn_failed', reason: 'mcp_config_write_failed' });
     }
 
     const promptAbs = path.isAbsolute(promptPath) ? promptPath : path.join(REPO_ROOT, promptPath);
@@ -335,6 +360,7 @@ app.post(
         model: typeof model === 'string' && model.trim() ? model.trim() : null,
         thinkingLevel:
           typeof thinkingLevel === 'string' && thinkingLevel.trim() ? thinkingLevel.trim() : null,
+        toolProfile: resolvedProfile,
         cwd: slotPath,
         traceLogDir: TRACE_LOG_DIR,
         onDone: () => releaseSlot(slotPath),

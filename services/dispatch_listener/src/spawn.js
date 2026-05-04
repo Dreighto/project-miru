@@ -99,6 +99,7 @@ function spawnWorker({
   useApiKey = false,
   model = null,
   thinkingLevel = null,
+  toolProfile = 'standard_worker',
   cwd,
   traceLogDir,
   onDone,
@@ -183,6 +184,7 @@ function spawnWorker({
   // include it in their JSONL rows. Without this, log correlation across
   // dispatch → worker → marker → bridge is impossible.
   childEnv.MIRU_TRACE_ID = traceId;
+  childEnv.MIRU_TOOL_PROFILE = toolProfile;
 
   log.info('spawn_auth_debug', {
     trace_id: traceId,
