@@ -361,8 +361,16 @@ def _validate_decision_summary(record):
         )
 
     decision = record.get("decision", "")
-    if isinstance(decision, str) and not decision.strip():
-        errors.append("decision must be a non-empty narrative describing what was decided")
+    if isinstance(decision, str):
+        stripped = decision.strip()
+        if not stripped:
+            errors.append("decision must be a non-empty narrative describing what was decided")
+        elif len(stripped) < _MIN_MEANINGFUL_LENGTH:
+            errors.append(
+                f"decision is too short ({len(stripped)} chars, need >= "
+                f"{_MIN_MEANINGFUL_LENGTH}); state a clear narrative of what was "
+                "decided, not placeholder text"
+            )
 
     return errors
 
@@ -375,11 +383,19 @@ def _validate_calibration(record):
         errors.append(f"confidence must be one of {sorted(CONFIDENCE_LEVELS)}, got {confidence!r}")
 
     reason = record.get("confidence_reason", "")
-    if isinstance(reason, str) and not reason.strip():
-        errors.append(
-            "confidence_reason must be a non-empty explanation; confidence "
-            "without reason is not calibration data"
-        )
+    if isinstance(reason, str):
+        stripped_reason = reason.strip()
+        if not stripped_reason:
+            errors.append(
+                "confidence_reason must be a non-empty explanation; confidence "
+                "without reason is not calibration data"
+            )
+        elif len(stripped_reason) < _MIN_MEANINGFUL_LENGTH:
+            errors.append(
+                f"confidence_reason is too short ({len(stripped_reason)} chars, "
+                f"need >= {_MIN_MEANINGFUL_LENGTH}); explain the calibration "
+                "genuinely, not in placeholder language"
+            )
 
     wcmf = record.get("would_change_mind_if", "")
     if isinstance(wcmf, str):

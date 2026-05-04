@@ -293,6 +293,14 @@ class EmitDecisionCalibrationTests(_DecisionTestBase):
             self._emit(record)
         self.assertTrue(any("confidence_reason" in e for e in ctx.exception.errors))
 
+    def test_short_confidence_reason_rejected(self):
+        record = _valid_judgment_record(confidence_reason="too short")
+        with self.assertRaises(EmitDecisionError) as ctx:
+            self._emit(record)
+        self.assertTrue(
+            any("confidence_reason" in e and "short" in e for e in ctx.exception.errors)
+        )
+
     def test_short_would_change_mind_if_rejected(self):
         record = _valid_judgment_record(would_change_mind_if="too short")
         with self.assertRaises(EmitDecisionError) as ctx:
@@ -341,6 +349,15 @@ class EmitDecisionClassificationTests(_DecisionTestBase):
         )
         result = self._emit(record)
         self.assertEqual(result["proposed_tag"], "canon_mandated")
+
+    def test_hybrid_without_canon_refs_rejected(self):
+        # The conditional rule applies to both canon_mandated AND hybrid; this
+        # test covers the hybrid branch that test_canon_mandated_without_canon_refs_rejected
+        # leaves uncovered.
+        record = _valid_judgment_record(proposed_tag="hybrid", canon_refs=[])
+        with self.assertRaises(EmitDecisionError) as ctx:
+            self._emit(record)
+        self.assertTrue(any("canon_refs" in e and "hybrid" in e for e in ctx.exception.errors))
 
     def test_judgment_driven_without_assumptions_or_uncertainties_rejected(self):
         record = _valid_judgment_record(
@@ -481,6 +498,14 @@ class EmitDecisionEvidenceTests(_DecisionTestBase):
             self._emit(record)
         joined = " ".join(ctx.exception.errors).lower()
         self.assertIn("decision", joined)
+
+    def test_short_decision_narrative_rejected(self):
+        record = _valid_judgment_record(decision="x")
+        with self.assertRaises(EmitDecisionError) as ctx:
+            self._emit(record)
+        self.assertTrue(
+            any("decision" in e.lower() and "short" in e.lower() for e in ctx.exception.errors)
+        )
 
 
 # ---------------------------------------------------------------------------
