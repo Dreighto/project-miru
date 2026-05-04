@@ -277,6 +277,31 @@ Full root-cause history and rationale: `docs/n8n/WORKFLOW_MAP.md` (PRO-159 entry
 - Never write to the database through any MCP tool
 - `git_commit_and_push` (PRO-187) is for Claude Chat / orchestrator-scoped commits only. It may commit allowlisted canon/docs/skills files after hygiene, but must not be used for worker code changes, workflow JSON, DB files, append-only JSONL files, force-push, branch creation, rebase, reset, merge, cherry-pick, amend, or `--no-verify`.
 
+## Gateway Tool Profile Enforcement (Phase 3 — Subagent Isolation)
+
+Dispatched workers connect to the MCP Gateway via a `.mcp.json` generated in their worktree at dispatch time. Each worker runs under a tool profile set by the `MIRU_TOOL_PROFILE` environment variable, passed to the gateway as the `X-Miru-Tool-Profile` HTTP header.
+
+**Profiles (deny-all default):**
+
+| Profile           | Purpose                                              | Restricted from                                                                     |
+| ----------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `drift_executor`  | Routine drift scans. Read-everything, write-nothing. | telegram, dispatch, restart, vp_ops, linear_write, n8n_write, docs_write, git_write |
+| `reviewer`        | Peer review. Same as drift_executor.                 | (same as drift_executor)                                                            |
+| `standard_worker` | Ticket-executing subagents.                          | telegram, dispatch, restart, vp_ops                                                 |
+| `vp_ops`          | VP Ops verification.                                 | telegram, dispatch, restart                                                         |
+| `full_operator`   | Operator's direct session (default when no header).  | (unrestricted)                                                                      |
+
+**Enforcement state:** Controlled by `MIRU_PROFILE_ENFORCEMENT_ENABLED` env var. When off (default), profiles are extracted and logged but not enforced (audit mode). When on, denied tool calls raise `McpError -32003`.
+
+**Key rules:**
+
+- Unknown profile strings get `drift_executor` restrictions (most conservative)
+- No header = `full_operator` (backward-compatible for operator's direct session)
+- Tool Access and Canon Authority are SEPARATE gates — no profile grants canon-write authority
+- Denials are logged to `logs/mcp_gateway_reads.jsonl` with `result: "profile_denied"`
+- Profile definitions live in `tools/miru_mcp_gateway/profiles.py`
+- Do NOT add automatic profile assignment in W2/n8n — that is Phase 4 (Ingress Classifier)
+
 ## Database Rules
 
 - card_catalog.db is the live database — never write to it directly from a worker session

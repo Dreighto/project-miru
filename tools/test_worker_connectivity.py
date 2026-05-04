@@ -28,7 +28,14 @@ PROMPTS = {
     "gemini": "Read the file CLAUDE.md and report the first 4 lines of content. Then exit.",
     "codex": "Read the file CLAUDE.md and report the first 5 lines of content. Then exit.",
 }
-TIMEOUT_S = 120
+# Per-worker dispatch + polling timeouts (seconds).
+# Codex uses gpt-5.4 with reasoning effort: high — needs more time to
+# initialize MCP servers and produce a response.
+TIMEOUTS = {
+    "claude-code": 120,
+    "gemini": 120,
+    "codex": 300,
+}
 
 # Load .env
 env_path = REPO_ROOT / ".env"
@@ -67,11 +74,12 @@ def dispatch(worker: str) -> dict:
     )
     prompt_path = f"data/n8n_inbox/{trace_id}.prompt.json"
 
+    timeout_s = TIMEOUTS.get(worker, 120)
     body_dict = {
         "trace_id": trace_id,
         "worker": worker,
         "prompt_path": prompt_path,
-        "timeout_seconds": TIMEOUT_S,
+        "timeout_seconds": timeout_s,
     }
     body = json.dumps(body_dict, separators=(",", ":")).encode("utf-8")
     sig = hmac.new(SECRET.encode("utf-8"), body, hashlib.sha256).hexdigest()
@@ -80,7 +88,7 @@ def dispatch(worker: str) -> dict:
     print(f"DISPATCHING: {worker}")
     print(f"  trace_id:    {trace_id}")
     print(f"  prompt_file: {prompt_file}")
-    print(f"  timeout:     {TIMEOUT_S}s")
+    print(f"  timeout:     {TIMEOUTS.get(worker, 120)}s")
 
     try:
         conn = http.client.HTTPConnection("127.0.0.1", 19100, timeout=15)
@@ -184,14 +192,15 @@ def main():
     print(f"Repo root: {REPO_ROOT}")
     print(f"HMAC secret: {'*' * 4}...set")
     print(f"Prompts: {len(PROMPTS)} unique (per-worker to avoid hash collisions)")
-    print(f"Timeout per worker: {TIMEOUT_S}s")
+    print(f"Timeouts: { {w: f'{t}s' for w, t in TIMEOUTS.items()} }")
 
     results = []
     for worker in WORKERS:
         dispatch_result = dispatch(worker)
         if dispatch_result.get("http_status") == 202:
             trace_id = dispatch_result["trace_id"]
-            check = check_result(trace_id, worker, timeout=TIMEOUT_S + 10)
+            t = TIMEOUTS.get(worker, 120)
+            check = check_result(trace_id, worker, timeout=t + 10)
             results.append(check)
         else:
             results.append(dispatch_result)

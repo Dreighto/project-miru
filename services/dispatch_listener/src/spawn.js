@@ -99,6 +99,7 @@ function spawnWorker({
   useApiKey = false,
   model = null,
   thinkingLevel = null,
+  toolProfile = 'standard_worker',
   cwd,
   traceLogDir,
   onDone,
@@ -172,10 +173,18 @@ function spawnWorker({
   const childEnv = { ...process.env };
   delete childEnv.ANTHROPIC_API_KEY;
 
+  // Gemini CLI trust gate: --skip-trust flag is unreliable in headless
+  // environments on some versions. Injecting the env var is the guaranteed
+  // alternative per the CLI docs and the error message itself.
+  if (worker === 'gemini') {
+    childEnv.GEMINI_CLI_TRUST_WORKSPACE = 'true';
+  }
+
   // Expose trace_id to the worker so emit_heartbeat / emit_completion can
   // include it in their JSONL rows. Without this, log correlation across
   // dispatch → worker → marker → bridge is impossible.
   childEnv.MIRU_TRACE_ID = traceId;
+  childEnv.MIRU_TOOL_PROFILE = toolProfile;
 
   log.info('spawn_auth_debug', {
     trace_id: traceId,

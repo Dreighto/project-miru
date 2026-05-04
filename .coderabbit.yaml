@@ -119,7 +119,7 @@ integrations:
 
 knowledge_base:
   mcp:
-    usage: "auto"  # Set to "enabled" once MCP server is wired in web UI
+    usage: "enabled"
   learnings:
     scope: "auto"
 
