@@ -222,7 +222,7 @@ This rule was added after PRO-214 cleanup required operator intervention to rest
 
 ## Append-only data files — Hard Rule
 
-Seven files in `data/` are strictly append-only. Never edit, never truncate, never sort, never deduplicate, never read-modify-write. Only `fs.appendFileSync` (or the equivalent strict-append shell `>>`) is allowed.
+Eight files in `data/` are strictly append-only. Never edit, never truncate, never sort, never deduplicate, never read-modify-write. Only `fs.appendFileSync` (or the equivalent strict-append shell `>>`) is allowed.
 
 - `data/cc_completion_log.jsonl` — completion markers (tracked)
 - `data/routing_history.jsonl` — W2 routing decisions (gitignored)
@@ -231,6 +231,7 @@ Seven files in `data/` are strictly append-only. Never edit, never truncate, nev
 - `data/cc_heartbeat_log.jsonl` — worker heartbeat / liveness signal (gitignored)
 - `data/vp_ops_supervision.jsonl` — VP Ops verification records (gitignored)
 - `data/drift_scanner_log.jsonl` — daily Linear↔completion-marker drift scan results (gitignored)
+- `data/agent_decisions.jsonl` — Phase 2 Judgment Trail / agent decision records, calibration corpus (gitignored)
 
 Pre-commit hooks `trailing-whitespace` and `end-of-file-fixer` exclude `^data/.*\.jsonl$` so they cannot rewrite these files structurally (locked 2026-04-28 per PRO-159). If you find yourself wanting to weaken that exclude or add a hook that read-modify-writes any of these: STOP, escalate to operator. The append-only invariant is enforced by `tests/test_jsonl_append_only_invariant.py` — that test failing means the contract is breaking.
 

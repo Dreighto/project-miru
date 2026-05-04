@@ -39,6 +39,8 @@ APPEND_ONLY_FILES = (
     "data/vp_ops_supervision.jsonl",
     # Ticket B7 — daily Linear↔completion-marker drift scan results.
     "data/drift_scanner_log.jsonl",
+    # Phase 2 Judgment Trail — agent decision records (calibration corpus).
+    "data/agent_decisions.jsonl",
 )
 
 
