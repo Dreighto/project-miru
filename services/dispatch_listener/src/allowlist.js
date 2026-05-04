@@ -18,7 +18,7 @@ const ALLOWLIST_DEF = Object.freeze({
     binary: 'claude.cmd',
     flags: ['--print', '--dangerously-skip-permissions'],
   },
-  gemini: { binary: 'gemini.cmd', flags: ['-p', '', '--yolo'] },
+  gemini: { binary: 'gemini.cmd', flags: ['-p', '', '--yolo', '--skip-trust'] },
   codex: { binary: 'codex.cmd', flags: ['exec', '-'] },
 });
 
