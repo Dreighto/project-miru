@@ -168,11 +168,11 @@ function Invoke-Restart {
 
 $services = @(
     @{
-        key          = "gateway"
-        label        = "MCP Gateway (18766)"
-        health_url   = "http://127.0.0.1:18766/health"
-        restart_type = "task"
-        restart_task = "MiruRestartMcpGateway"
+        key            = "gateway"
+        label          = "MCP Gateway (18766)"
+        health_url     = "http://127.0.0.1:18766/health"
+        restart_type   = "script"
+        restart_script = (Join-Path $PSScriptRoot "restart_mcp_gateway_task.ps1")
     },
     @{
         key          = "dispatch_listener"
