@@ -19,13 +19,24 @@ const ALLOWLIST_DEF = Object.freeze({
     flags: ['--print', '--dangerously-skip-permissions'],
   },
   gemini: { binary: 'gemini.cmd', flags: ['-p', '', '--yolo', '--skip-trust'] },
-  // -p headless: use gpt-4o/medium profile (faster for automated dispatch).
-  // -c mcp_servers.justtcg.enabled=false: disable the HTTP SSE MCP server that
-  //   triggers an rmcp transport fatal during MCP init (missing-content-type on
-  //   the initialized notification). Not needed for code tasks.
+  // -c overrides applied before `exec` (global flags must precede the subcommand):
+  //   model/effort: use gpt-4o + medium for automated dispatch (faster than the
+  //     interactive gpt-5.4/high config; interactive sessions are unaffected).
+  //   mcp_servers.justtcg.enabled=false: disable the HTTP SSE MCP server that
+  //     triggers an rmcp transport fatal during MCP init (missing-content-type
+  //     on the initialized notification). JustTCG is not needed for code tasks.
   codex: {
     binary: 'codex.cmd',
-    flags: ['-p', 'headless', '-c', 'mcp_servers.justtcg.enabled=false', 'exec', '-'],
+    flags: [
+      '-c',
+      'model="gpt-4o"',
+      '-c',
+      'model_reasoning_effort="medium"',
+      '-c',
+      'mcp_servers.justtcg.enabled=false',
+      'exec',
+      '-',
+    ],
   },
 });
 
