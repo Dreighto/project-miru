@@ -64,6 +64,9 @@ data/cc_heartbeat_log.jsonl
 # Daily Linear↔completion-marker drift scan log (append-only; ticket B7)
 data/drift_scanner_log.jsonl
 
+# Phase 2 Judgment Trail (calibration corpus, gitignored — per-machine, append-only)
+data/agent_decisions.jsonl
+
 # n8n W4 inbox runtime artifacts (prompts + receipts; .gitkeep is tracked)
 data/n8n_inbox/*.json
 data/n8n_inbox/*.result.json
