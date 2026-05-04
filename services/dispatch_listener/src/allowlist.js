@@ -19,7 +19,14 @@ const ALLOWLIST_DEF = Object.freeze({
     flags: ['--print', '--dangerously-skip-permissions'],
   },
   gemini: { binary: 'gemini.cmd', flags: ['-p', '', '--yolo', '--skip-trust'] },
-  codex: { binary: 'codex.cmd', flags: ['exec', '-'] },
+  // -p headless: use gpt-4o/medium profile (faster for automated dispatch).
+  // -c mcp_servers.justtcg.enabled=false: disable the HTTP SSE MCP server that
+  //   triggers an rmcp transport fatal during MCP init (missing-content-type on
+  //   the initialized notification). Not needed for code tasks.
+  codex: {
+    binary: 'codex.cmd',
+    flags: ['-p', 'headless', '-c', 'mcp_servers.justtcg.enabled=false', 'exec', '-'],
+  },
 });
 
 // Some Windows installations virtualize %APPDATA%\npm into an AppContainer
