@@ -275,6 +275,7 @@ def linear_create_issue(
     title: str,
     description: str | None = None,
     team_id: str | None = None,
+    project_id: str | None = None,
     priority: int | None = None,
     parent_id: str | None = None,
     ctx: Any = None,
@@ -282,19 +283,32 @@ def linear_create_issue(
     """Create a new Linear issue.
 
     ``title`` is required. ``team_id`` defaults to MIRU_LINEAR_TEAM_ID.
+    ``project_id`` is required — every ticket must belong to a project per
+    the CLAUDE.md hard rule (tickets without a project are invisible to the
+    project-based workflow). See CLAUDE.md for the canonical project ID table.
     ``priority``: 0=None, 1=Urgent, 2=High, 3=Normal, 4=Low.
     ``parent_id``: identifier (e.g. 'PRO-226') or UUID of a parent issue.
     """
     caller = gw_audit.caller_from_fastmcp_context(ctx)
     if not title or not title.strip():
         raise stdio_mcp.McpError("linear_write: title is required", -32602)
+    if not project_id or not project_id.strip():
+        raise stdio_mcp.McpError(
+            "linear_write: project_id is required — every ticket must belong to a project "
+            "(CLAUDE.md hard rule). See CLAUDE.md for the canonical project ID table.",
+            -32602,
+        )
     resolved_team_id = (team_id or "").strip() or getattr(_cfg(), "linear_team_id", None)
     if not resolved_team_id:
         raise stdio_mcp.McpError(
             "linear_write: team_id required (or set MIRU_LINEAR_TEAM_ID)", -32602
         )
     _reject_if_secrets(title + " " + (description or ""))
-    inp: dict[str, Any] = {"teamId": resolved_team_id, "title": title.strip()}
+    inp: dict[str, Any] = {
+        "teamId": resolved_team_id,
+        "projectId": project_id.strip(),
+        "title": title.strip(),
+    }
     if description:
         inp["description"] = description
     if priority is not None:

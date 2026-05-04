@@ -138,6 +138,22 @@ function Invoke-Restart {
             Write-Log "$($Svc.key)_docker_restart_failed: $($_.Exception.Message)"
             return $false
         }
+    } elseif ($Svc.restart_type -eq "script") {
+        try {
+            $proc = Start-Process powershell.exe `
+                -ArgumentList @('-NoLogo', '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', $Svc.restart_script) `
+                -WindowStyle Hidden -PassThru -Wait -ErrorAction Stop
+            if ($proc.ExitCode -eq 0) {
+                Write-Log "$($Svc.key)_restart_script_ok script=$($Svc.restart_script) exit_code=0"
+                return $true
+            } else {
+                Write-Log "$($Svc.key)_restart_script_failed script=$($Svc.restart_script) exit_code=$($proc.ExitCode)"
+                return $false
+            }
+        } catch {
+            Write-Log "$($Svc.key)_restart_script_failed: $($_.Exception.Message)"
+            return $false
+        }
     } else {
         try {
             Start-ScheduledTask -TaskName $Svc.restart_task -ErrorAction Stop

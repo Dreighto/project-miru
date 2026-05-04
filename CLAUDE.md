@@ -64,6 +64,34 @@ The script checks for staged/unstaged changes to tracked files. Untracked files 
 - If another worker is actively working on the same file or feature: STOP. Report the conflict to the operator. Do not proceed until the operator decides.
 - Never modify a file that is currently open and being edited by another worker
 
+## Linear — Ticket Routing — Hard Rule
+
+Every Linear ticket created by any worker (CC, CH, Codex, Cursor) **MUST include a `projectId`**. Never create a ticket at team level only — tickets without a project are invisible to the project-based workflow and will be lost.
+
+The `linear_projects` table in the miru_memory DB is the authoritative source. Quick reference below.
+
+**Team: Project Miru (key: PRO, team_id: f9d6193c-4572-40a9-b834-c408439f1aa1)**
+
+| Project                       | ID                                     | Route tickets here for                                        |
+| ----------------------------- | -------------------------------------- | ------------------------------------------------------------- |
+| PM Storefront                 | `ff3233bb-a958-484b-9009-b19a6a5063a5` | Storefront UI, card browsing, user-facing PM features         |
+| Miru Orchestration / Autonomy | `2ba0133d-6f39-41a6-9846-9566e7c895ec` | Worker dispatch, orchestration, autonomy rules, routing logic |
+| Tooling / MCP Gateway         | `cb5c362c-c1f4-4f55-b119-578fa017ca7d` | MCP server config, gateway, tool permissions                  |
+| Automation / Integrations     | `d0701b07-d4c6-4f18-a72a-3e4e817b50f5` | n8n workflows, Telegram bots, alerts, watchdogs               |
+| Memory / Context System       | `b94573e3-be3b-4c2a-8022-8fbf87e8581f` | Memory files, context boot, session continuity                |
+| Docs / Canon / Process        | `9816755f-1bec-40c6-8c8b-17a2be9a688e` | CLAUDE.md, AGENTS.md, operating docs, process rules           |
+| Research / Experiments        | `ebe8640f-e79e-4b88-b450-c6fe0e3d3d28` | Spikes, evals, benchmarks, proofs of concept                  |
+
+**Team: NASDOOM (key: NAS, team_id: aaddbe1a-a8a2-48fe-bebf-4adb34d67618)**
+
+| Project           | ID                                     | Route tickets here for                                  |
+| ----------------- | -------------------------------------- | ------------------------------------------------------- |
+| NASDOOM Dashboard | `db48a3f5-73e7-4289-bbcc-0732028f5041` | NAS dashboard UI, SvelteKit, Plex/Sonarr/Radarr/SABnzbd |
+
+**Never use** the legacy "Project Miru" catch-all (`7c2b40d5-058a-457d-84c7-d57d6bf3f281`). Always pick the specific project above. If unsure: default to Miru Orchestration / Autonomy for internal system work, or Docs / Canon / Process for rule/doc changes.
+
+Set 2026-05-04. Root cause: tickets were created without `projectId` and landed at team level, making them unfindable by project.
+
 ## Notion — Read/Write Rules
 
 - ALL workers may READ Notion to understand the current job, active tasks, and system state
