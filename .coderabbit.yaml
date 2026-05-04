@@ -1,0 +1,127 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# Project Miru — CodeRabbit configuration
+
+language: "en-US"
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+
+  # Path-specific review instructions for project-specific rules
+  path_instructions:
+
+    # Append-only JSONL files — any modification is a violation
+    - path: "data/**/*.jsonl"
+      instructions: |
+        These files are STRICTLY append-only. Flag ANY edit, truncation, deduplication,
+        sorting, or read-modify-write as a critical violation. The only allowed operation
+        is appending via fs.appendFileSync or shell >>. Never accept a diff that deletes
+        or rewrites existing lines in these files. Affected files include:
+        cc_completion_log.jsonl, routing_history.jsonl, pending_callbacks.jsonl,
+        dispatch_dlq.jsonl, cc_heartbeat_log.jsonl, vp_ops_supervision.jsonl,
+        drift_scanner_log.jsonl, agent_decisions.jsonl.
+
+    # n8n workflow JSON — JS boundary-crossing test required
+    - path: "docker/n8n/workflows/**/*.json"
+      instructions: |
+        If this diff touches any jsCode field in a workflow node, verify that a
+        corresponding test loads the JSON from disk via fs.readFileSync/JSON.parse,
+        extracts the jsCode string, and evals it (new Function or vm.Script) to confirm
+        it parses without SyntaxError. A test that imports a clean extracted copy of
+        the algorithm instead of the embedded jsCode string does NOT satisfy this
+        requirement. This is a hard project rule (PRO-189 retro).
+
+    # Database artifact — flag any committed .db file
+    - path: "data/**/*.db"
+      instructions: |
+        .db files are runtime artifacts and must never be committed. Flag any diff
+        that adds or modifies a .db binary file.
+
+    # Service boundary + DB write detection
+    - path: "miru_ai/**"
+      instructions: |
+        Code here belongs to the Miru AI service (port 18765). Flag any imports from
+        pm/ or dispatcher/. Shared utilities must live in shared/ only if used by 2+
+        services. Also flag any sqlite3.connect(), open(), or DB client call that
+        opens card_catalog.db or any .db file in write mode (r+, w, a, or without
+        mode=ro). All schema changes require explicit operator approval.
+
+    - path: "pm/**"
+      instructions: |
+        Code here belongs to the PM Dashboard (port 18080). Flag any imports from
+        miru_ai/ or dispatcher/. Claude Code must never touch HTML/CSS/JS templates
+        in this directory.
+
+    - path: "dispatcher/**"
+      instructions: |
+        The Task Dispatcher (port 19000) is DECOMMISSIONED as of PRO-234 (2026-04-30).
+        Code is kept for reference only — the service is stopped. Flag any new files
+        added here or any attempt to restart/re-enable the service.
+
+    # MCP gateway — DB write detection + no .mcp.json changes
+    - path: "tools/miru_mcp_gateway/**"
+      instructions: |
+        Flag any sqlite3.connect() or open() call that opens card_catalog.db or any
+        .db file in write mode. The sqlite-ro-snapshot MCP is the only approved read
+        path for card data; write_query in memory_tools.py is the only approved write
+        path for memory DBs. Flag any direct write that bypasses those paths.
+
+    # Services — guard port assignments
+    - path: "services/**"
+      instructions: |
+        Port 8765 must NEVER be touched under any circumstances. Port 8080 is RESERVED.
+        Flag any change that assigns, reassigns, or references port 8765 or 8080 for
+        a new service. Active ports: 18080 (PM UI), 18765 (Miru AI), 19100 (dispatch
+        listener). Port 19000 (dispatcher) is decommissioned.
+
+    # Tests — no DB mocks
+    - path: "tests/**"
+      instructions: |
+        Integration tests must not mock card_catalog.db. Real DB access via
+        sqlite-ro-snapshot is required (past incident: mocked tests passed while
+        a prod migration failed). Flag any test that monkey-patches or mocks the
+        database layer.
+
+    # Worker instruction files — operator-controlled
+    - path: "CLAUDE.md"
+      instructions: |
+        This file is operator-controlled canon. Flag any change that removes or
+        weakens a Hard Rule section without a corresponding operator decision noted
+        in the diff description.
+
+    - path: "AGENTS.md"
+      instructions: "Same as CLAUDE.md — operator-controlled canon. Hard Rules must not be weakened silently."
+
+    - path: "data/cc_completion_log.jsonl"
+      instructions: |
+        Append-only. Every new line must be a valid JSON object with these required
+        fields: timestamp, ticket_id, status (CONFIRMED_WORKING|INCONCLUSIVE|FAILED),
+        summary, files_touched, test_evidence. Flag missing fields or malformed JSON.
+
+  # Finishing touches — auto-suggest fixes for minor issues
+  finishing_touches:
+    docstrings:
+      enabled: false  # Project convention: no docstrings except where non-obvious
+    other_finishing_touches:
+      enabled: true
+
+integrations:
+  linear:
+    usage: "enabled"  # Connect Linear team in app.coderabbit.ai/integrations first
+
+knowledge_base:
+  mcp:
+    usage: "auto"  # Set to "enabled" once MCP server is wired in web UI
+  learnings:
+    scope: "auto"
+
+chat:
+  auto_reply: true
