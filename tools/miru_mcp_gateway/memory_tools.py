@@ -57,6 +57,10 @@ _DENY_TOKENS: frozenset[str] = frozenset(
 
 _WRITE_ALLOWED_LEAD: frozenset[str] = frozenset({"insert", "update", "delete", "create"})
 
+# Only CREATE TABLE IF NOT EXISTS is permitted — bare CREATE TABLE and all other
+# CREATE variants (VIEW, INDEX, TRIGGER, etc.) are blocked.
+_CREATE_SAFE_RE = re.compile(r"^\s*create\s+table\s+if\s+not\s+exists\s+", re.IGNORECASE)
+
 _READ_ALLOWED_LEAD: frozenset[str] = frozenset({"select"})
 
 
@@ -82,9 +86,13 @@ def _check_deny_tokens(sql_lower: str) -> None:
             )
 
 
-def _resolve_db_path(db_path: str | None) -> Path:
+def _resolve_db_path(db_path: str | None, *, create: bool = False) -> Path:
     """Resolve which database to use. If db_path is given, validate it
-    against the filesystem root. Otherwise use the default."""
+    against the filesystem root. Otherwise use the default.
+
+    create=True is only passed by write_query — read operations raise
+    McpError on a missing path rather than silently creating the file.
+    """
     if db_path is None:
         if _DB_PATH is None:
             raise stdio_mcp.McpError("memory_tools: not configured", -32000)
@@ -107,6 +115,8 @@ def _resolve_db_path(db_path: str | None) -> Path:
             json.dumps({"error": "invalid_db_path", "reason": "outside allowed root"}), -32602
         )
     if not p.exists():
+        if not create:
+            raise stdio_mcp.McpError(json.dumps({"error": "db_not_found", "path": str(p)}), -32000)
         p.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(str(p), timeout=5)
         conn.close()
@@ -232,8 +242,19 @@ def write_query(sql: str, params: list[Any] | None = None, db_path: str | None =
             ),
             -32600,
         )
+    if lead == "create" and not _CREATE_SAFE_RE.match(clean):
+        raise stdio_mcp.McpError(
+            json.dumps(
+                {
+                    "error": "dml_only",
+                    "detail": "only CREATE TABLE IF NOT EXISTS is permitted; "
+                    "bare CREATE TABLE and other CREATE variants are blocked",
+                }
+            ),
+            -32600,
+        )
     _check_deny_tokens(clean.lower())
-    db = _resolve_db_path(db_path)
+    db = _resolve_db_path(db_path, create=True)
     bind = params or []
     error_str: str | None = None
     rows_affected = 0

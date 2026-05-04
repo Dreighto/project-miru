@@ -140,11 +140,16 @@ function Invoke-Restart {
         }
     } elseif ($Svc.restart_type -eq "script") {
         try {
-            Start-Process powershell.exe `
+            $proc = Start-Process powershell.exe `
                 -ArgumentList @('-NoLogo', '-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-File', $Svc.restart_script) `
-                -WindowStyle Hidden -ErrorAction Stop
-            Write-Log "$($Svc.key)_restart_script_started script=$($Svc.restart_script)"
-            return $true
+                -WindowStyle Hidden -PassThru -Wait -ErrorAction Stop
+            if ($proc.ExitCode -eq 0) {
+                Write-Log "$($Svc.key)_restart_script_ok script=$($Svc.restart_script) exit_code=0"
+                return $true
+            } else {
+                Write-Log "$($Svc.key)_restart_script_failed script=$($Svc.restart_script) exit_code=$($proc.ExitCode)"
+                return $false
+            }
         } catch {
             Write-Log "$($Svc.key)_restart_script_failed: $($_.Exception.Message)"
             return $false
@@ -163,11 +168,11 @@ function Invoke-Restart {
 
 $services = @(
     @{
-        key            = "gateway"
-        label          = "MCP Gateway (18766)"
-        health_url     = "http://127.0.0.1:18766/health"
-        restart_type   = "script"
-        restart_script = (Join-Path $PSScriptRoot "restart_mcp_gateway_task.ps1")
+        key          = "gateway"
+        label        = "MCP Gateway (18766)"
+        health_url   = "http://127.0.0.1:18766/health"
+        restart_type = "task"
+        restart_task = "MiruRestartMcpGateway"
     },
     @{
         key          = "dispatch_listener"

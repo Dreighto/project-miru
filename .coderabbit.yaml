@@ -39,19 +39,20 @@ reviews:
         the algorithm instead of the embedded jsCode string does NOT satisfy this
         requirement. This is a hard project rule (PRO-189 retro).
 
-    # Database — no direct writes ever
+    # Database artifact — flag any committed .db file
     - path: "data/**/*.db"
       instructions: |
-        No worker should ever write directly to card_catalog.db or any .db file.
-        Flag any code that opens a DB file with write mode. All schema changes must
-        be operator-approved before execution.
+        .db files are runtime artifacts and must never be committed. Flag any diff
+        that adds or modifies a .db binary file.
 
-    # Service boundary enforcement
+    # Service boundary + DB write detection
     - path: "miru_ai/**"
       instructions: |
         Code here belongs to the Miru AI service (port 18765). Flag any imports from
         pm/ or dispatcher/. Shared utilities must live in shared/ only if used by 2+
-        services.
+        services. Also flag any sqlite3.connect(), open(), or DB client call that
+        opens card_catalog.db or any .db file in write mode (r+, w, a, or without
+        mode=ro). All schema changes require explicit operator approval.
 
     - path: "pm/**"
       instructions: |
@@ -65,11 +66,13 @@ reviews:
         Code is kept for reference only — the service is stopped. Flag any new files
         added here or any attempt to restart/re-enable the service.
 
-    # MCP gateway — never modify .mcp.json or gateway config
+    # MCP gateway — DB write detection + no .mcp.json changes
     - path: "tools/miru_mcp_gateway/**"
       instructions: |
-        Flag any code that writes to card_catalog.db. The sqlite-ro-snapshot MCP is
-        the only approved read path for card data.
+        Flag any sqlite3.connect() or open() call that opens card_catalog.db or any
+        .db file in write mode. The sqlite-ro-snapshot MCP is the only approved read
+        path for card data; write_query in memory_tools.py is the only approved write
+        path for memory DBs. Flag any direct write that bypasses those paths.
 
     # Services — guard port assignments
     - path: "services/**"
