@@ -26,12 +26,12 @@
 
 **Building blocks:**
 
-| Step | Tool                       | Input            | Output                            | Notes                     |
-| ---- | -------------------------- | ---------------- | --------------------------------- | ------------------------- |
-| A    | `get_issue` (Linear MCP)   | ticket_id        | Ticket state, PR number, assignee | —                         |
-| B    | `github_get_pr`            | pr_number from A | PR status, merge state, merge SHA | Needs output from A       |
-| C    | `activity_since`           | ticket_id        | Completion marker (if exists)     | Independent of A/B        |
-| D    | `n8n_read_routing_history` | —                | Routing record for this ticket    | Independent — audit trail |
+| Step | Tool                     | Input                          | Output                                                | Notes                          |
+| ---- | ------------------------ | ------------------------------ | ----------------------------------------------------- | ------------------------------ |
+| A    | `get_issue` (Linear MCP) | ticket_id                      | Ticket state, PR number, assignee                     | —                              |
+| B    | `github_get_pr`          | pr_number from A               | PR status, merge state, merge SHA                     | Needs output from A            |
+| C    | `activity_since`         | minutes (time window)          | Cross-system timeline — scan for ticket_id in results | Independent of A/B             |
+| D    | `fs_read_text_file`      | `data/cc_completion_log.jsonl` | Completion markers — grep for ticket_id               | Independent — direct file read |
 
 Steps A→B have a data dependency (B needs A's PR number). Steps C and D are independent — run alongside A.
 
@@ -86,11 +86,11 @@ Check ports (A) and health endpoints (B) to confirm services are running. Check 
 
 **Building blocks:**
 
-| Step | Tool                  | Input                     | Output                         | Notes                   |
-| ---- | --------------------- | ------------------------- | ------------------------------ | ----------------------- |
-| A    | `worker_availability` | —                         | Idle status per slot           | Must be idle before B   |
-| B    | `dispatch_worker`     | worker, prompt, ticket_id | trace_id                       | Needs A to confirm idle |
-| C    | `activity_since`      | trace_id or ticket_id     | Heartbeat + completion entries | Poll every 3–5 min      |
+| Step | Tool                  | Input                     | Output                                               | Notes                   |
+| ---- | --------------------- | ------------------------- | ---------------------------------------------------- | ----------------------- |
+| A    | `worker_availability` | —                         | Idle status per slot                                 | Must be idle before B   |
+| B    | `dispatch_worker`     | worker, prompt, ticket_id | trace_id                                             | Needs A to confirm idle |
+| C    | `activity_since`      | minutes (time window)     | Cross-system timeline — scan for trace_id in results | Poll every 3–5 min      |
 
 Steps A→B→C form a strict data dependency chain.
 
@@ -154,13 +154,13 @@ Steps B through F all need a PR number but are independent of each other.
 
 **Building blocks:**
 
-| Step | Tool                     | Input                   | Output                  | Notes                           |
-| ---- | ------------------------ | ----------------------- | ----------------------- | ------------------------------- |
-| 0    | `system_tail_safe_log`   | drift_scanner_log.jsonl | Latest scan results     | Check before manual query       |
-| A    | `get_issue` (Linear MCP) | ticket_id               | Linear state            | Only if scanner didn't cover it |
-| B    | `github_get_pr`          | pr_number               | PR/merge state          | —                               |
-| C    | `activity_since`         | ticket_id               | Completion marker state | —                               |
-| D    | `save_issue`             | Correction payload      | State update            | Final corrective act            |
+| Step | Tool                     | Input                          | Output                                                | Notes                           |
+| ---- | ------------------------ | ------------------------------ | ----------------------------------------------------- | ------------------------------- |
+| 0    | `fs_read_text_file`      | `data/drift_scanner_log.jsonl` | Latest scan results                                   | Check before manual query       |
+| A    | `get_issue` (Linear MCP) | ticket_id                      | Linear state                                          | Only if scanner didn't cover it |
+| B    | `github_get_pr`          | pr_number                      | PR/merge state                                        | —                               |
+| C    | `activity_since`         | minutes (time window)          | Cross-system timeline — scan for ticket_id in results | —                               |
+| D    | `save_issue`             | Correction payload             | State update                                          | Final corrective act            |
 
 Step 0 runs first. Steps A–C are parallel (no dependency on each other). Step D depends on the comparison result.
 
@@ -205,11 +205,11 @@ All steps are independent — run in parallel.
 
 **Building blocks:**
 
-| Step | Tool                   | Input                    | Output                       | Notes                |
-| ---- | ---------------------- | ------------------------ | ---------------------------- | -------------------- |
-| A    | `worker_status`        | —                        | Last heartbeat time + state  | —                    |
-| B    | `activity_since`       | ticket_id                | Heartbeat staleness check    | Needs ticket context |
-| C    | `system_tail_safe_log` | Worker stdout/stderr log | Error messages or crash info | —                    |
+| Step | Tool                   | Input                    | Output                                            | Notes                |
+| ---- | ---------------------- | ------------------------ | ------------------------------------------------- | -------------------- |
+| A    | `worker_status`        | —                        | Last heartbeat time + state                       | —                    |
+| B    | `activity_since`       | minutes (time window)    | Cross-system timeline — check heartbeat staleness | Needs ticket context |
+| C    | `system_tail_safe_log` | Worker stdout/stderr log | Error messages or crash info                      | —                    |
 
 Steps A→B have context dependency. Step C is independent.
 

@@ -93,7 +93,7 @@ Cross-references `docs/dispatch_contract.md` for the full prompt template and au
 | --------------------- | -------------------------- | -------------------------------- | ----------------------------------------------------- |
 | Check worker idle     | `worker_availability`      | —                                | Returns idle/busy/stalled                             |
 | Dispatch task         | `dispatch_worker`          | Worker must be idle              | Poll `activity_since` for completion                  |
-| Check dispatch result | `activity_since`           | Need trace_id or ticket_id       | Look for completion marker                            |
+| Check dispatch result | `activity_since`           | minutes (time window)            | Scan results for trace_id or ticket_id                |
 | Read dispatch log     | `n8n_read_routing_history` | —                                | Latest entry = most recent routing                    |
 | Trigger W2 manually   | `n8n_trigger_w2_route`     | —                                | Starts the full routing pipeline (in n8n_write_tools) |
 | VP Ops verify ticket  | `vp_ops_verify_ticket`     | Ticket must be in terminal state | Returns verification result                           |
