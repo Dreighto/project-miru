@@ -300,7 +300,40 @@ Dispatched workers connect to the MCP Gateway via a `.mcp.json` generated in the
 - Tool Access and Canon Authority are SEPARATE gates — no profile grants canon-write authority
 - Denials are logged to `logs/mcp_gateway_reads.jsonl` with `result: "profile_denied"`
 - Profile definitions live in `tools/miru_mcp_gateway/profiles.py`
-- Do NOT add automatic profile assignment in W2/n8n — that is Phase 4 (Ingress Classifier)
+
+## Ingress Classifier (Phase 4 — Automatic Profile Assignment)
+
+The W2 router automatically classifies tasks and assigns a tool profile before dispatch. The classifier node `w2008a-assign-profile` runs after risk classification (w2008) and before the confidence branch (w2009).
+
+**Task modes and profile mapping:**
+
+| Mode      | Profile           | When assigned                                                              |
+| --------- | ----------------- | -------------------------------------------------------------------------- |
+| routine   | `drift_executor`  | Keywords: audit, read-only, repo scan, schema read, second opinion, etc.   |
+| judgment  | `standard_worker` | Task types: Bug, Feature, Improvement, chore, design (default for unknown) |
+| ambiguous | `reviewer`        | Keywords: unclear, investigate, figure out, explore options, etc.          |
+| blocked   | (no dispatch)     | Keywords: blocked, waiting on, depends on                                  |
+
+**Classification tiers:**
+
+1. **Tier 1 — Keywords** take precedence. Surface keywords from the ticket are checked against rule lists.
+2. **Tier 2 — Task type** fallback. If no keyword match, task_type determines the mode.
+3. **Safety override:** High-risk tasks never get `drift_executor` — bumped to `judgment/standard_worker`.
+
+**Classification rules** are externalized in `data/config/w2_profile_rules.json` and loaded at execution time. Tunable without workflow redeployment.
+
+**Operator override:** The Telegram proposal message shows the suggested profile. A Profile button lets the operator override the profile before approving. Profile overrides are recorded as `profile_override` rows in `pending_callbacks.jsonl`.
+
+**Plan-only mode:** Ambiguous tasks dispatched with `reviewer` profile get plan-only instructions injected into the prompt. The worker produces a plan in its completion output (the operator posts it) — no branches, PRs, or file modifications.
+
+**Audit trail:** `routing_history.jsonl` records `suggested_profile`, `final_profile`, `task_mode`, and `profile_rationale` for every routing decision.
+
+**Key rules:**
+
+- `vp_ops` and `full_operator` are never classifier-assigned — those are operator-only
+- Manual dispatches (operator labels ticket directly in Linear) default to `standard_worker`
+- Profiles are NOT canon-authority grants — Tool Access and Canon Authority remain separate gates
+- Profile definitions still live in `tools/miru_mcp_gateway/profiles.py` (Phase 3, unchanged)
 
 ## Database Rules
 
@@ -336,7 +369,7 @@ Every file created must go in the correct location. These rules are non-negotiab
 - Standalone data/AI utility scripts → `tools/`
 - Test files → `tests/`
 - Documentation → `docs/`
-- Config JSON → `config/`
+- Config JSON → `config/` (exception: `data/config/` for runtime config loaded inside Docker via bind-mount, e.g. `w2_profile_rules.json`)
 - Batch run outputs, reports, audit CSVs → `data/batch_reports/`
 - Official snapshots → `data/snapshots/`
 - DB overlay/correction files → `data/overlays/`
@@ -443,13 +476,23 @@ Every task must end with exactly one of:
 
 Plus a summary of what changed and what did not.
 
-### Bugbot findings handling (CC) — see AGENTS.md
+### Automated PR review completion sequence — Hard Rule (all workers + CH)
 
-Before declaring `CONFIRMED_WORKING` on any PR, CC must execute the Bugbot completion sequence
-defined in `AGENTS.md` (repo root). That sequence covers: polling for Bugbot check-run completion,
-categorizing findings by severity, auto-fixing Low/Medium (one iteration max), surfacing High
-findings and override-condition findings to the operator. Do not declare `CONFIRMED_WORKING` until
-Bugbot is clean or all findings have been addressed or surfaced.
+Before declaring `CONFIRMED_WORKING` on any PR, the worker (or CH if it owns the PR) MUST:
+
+1. **Wait for all automated reviewers** to complete — CodeRabbit, Bugbot (chatgpt-codex-connector), and CI hygiene checks.
+2. **Read every finding** — PR comments, inline review comments, and check-run annotations.
+3. **Fix valid findings** — push a follow-up commit addressing each actionable issue. For each finding, either fix it or explain in a commit message why it's not applicable.
+4. **Re-run and poll** — after pushing fixes, wait for the next review cycle to complete. Repeat steps 2–4 until no new actionable findings remain.
+5. **Confirm green** — all status checks must show pass/success before declaring done. `CHANGES_REQUESTED` from an automated reviewer with no remaining actionable comments is acceptable only if all specific findings have been addressed in commits.
+
+**What counts as actionable:** Code bugs, missing fields that break downstream consumers, false-positive keyword matches, test gaps the adopted lesson requires (PRO-189 boundary-crossing tests), permission contradictions (e.g. telling a read-only worker to write), and any finding rated P1/P2 or flagged as a potential issue.
+
+**What does NOT count:** Style preferences that conflict with project conventions, docstring coverage warnings (project convention: no docstrings unless non-obvious), and suggestions to add features beyond the PR scope.
+
+**Applies to:** CC, CH, Cursor, Codex, Gemini — any worker or orchestrator that opens a PR. This is not optional. A PR with unaddressed P1 findings that gets merged is a discipline violation.
+
+Set 2026-05-04 by operator. Replaces the previous CC-only Bugbot rule.
 
 ### Stall classification (PROVISIONAL — promote to adopted after first validated use)
 

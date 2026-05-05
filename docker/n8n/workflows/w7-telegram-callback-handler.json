@@ -128,7 +128,7 @@
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w7006-lookup-pending\n// Read /miru-data/pending_callbacks.jsonl (append-only). Walk in reverse to find\n// the latest 'intent' row matching token, AND any 'decided' row for same token.\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\n\nconst data = $input.item.json;\nconst targetToken = data.token;\n\nlet content = '';\ntry {\n  if (fs.existsSync(PENDING)) {\n    content = fs.readFileSync(PENDING, 'utf8');\n  }\n} catch (e) {\n  return { json: { ...data, found: false, reject_reason: 'pending_callbacks read error: ' + e.message } };\n}\n\nconst lines = content.split('\\n').filter(Boolean);\nlet intentRow = null;\nlet decidedRow = null;\nfor (let i = lines.length - 1; i >= 0; i--) {\n  let row;\n  try { row = JSON.parse(lines[i]); } catch (e) { continue; }\n  if (row.token !== targetToken) continue;\n  if (row.kind === 'decided' && !decidedRow) decidedRow = row;\n  if (row.kind === 'intent' && !intentRow) intentRow = row;\n  if (intentRow && decidedRow) break;\n}\n\nif (!intentRow) {\n  return { json: { ...data, found: false, reject_reason: 'token not found in pending_callbacks' } };\n}\n\nif (decidedRow) {\n  return { json: { ...data, found: true, already_decided: true, decided_action: decidedRow.action, decided_at: decidedRow.decided_at, intent_row: intentRow } };\n}\n\nreturn { json: {\n  ...data,\n  found: true,\n  already_decided: false,\n  trace_id: intentRow.trace_id,\n  issue_id: intentRow.issue_id,\n  issue_identifier: intentRow.issue_identifier,\n  chosen_worker: intentRow.chosen_worker,\n  confidence: intentRow.confidence,\n  risk: intentRow.risk,\n  button_set: intentRow.button_set,\n  issue_existing_label_ids: intentRow.issue_existing_label_ids || [],\n  labels_map: intentRow.labels_map || {},\n  intent_written_at: intentRow.intent_written_at\n}};"
+        "jsCode": "// w7006-lookup-pending\n// Read /miru-data/pending_callbacks.jsonl (append-only). Walk in reverse to find\n// the latest 'intent' row matching token, any 'decided' row, and any\n// 'profile_override' row for same token (Phase 4 Ingress Classifier).\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\n\nconst data = $input.item.json;\nconst targetToken = data.token;\n\nlet content = '';\ntry {\n  if (fs.existsSync(PENDING)) {\n    content = fs.readFileSync(PENDING, 'utf8');\n  }\n} catch (e) {\n  return { json: { ...data, found: false, reject_reason: 'pending_callbacks read error: ' + e.message } };\n}\n\nconst lines = content.split('\\n').filter(Boolean);\nlet intentRow = null;\nlet decidedRow = null;\nlet profileOverrideRow = null;\nfor (let i = lines.length - 1; i >= 0; i--) {\n  let row;\n  try { row = JSON.parse(lines[i]); } catch (e) { continue; }\n  if (row.token !== targetToken) continue;\n  if (row.kind === 'decided' && !decidedRow) decidedRow = row;\n  if (row.kind === 'profile_override' && !profileOverrideRow) profileOverrideRow = row;\n  if (row.kind === 'intent' && !intentRow) intentRow = row;\n  if (intentRow && decidedRow && profileOverrideRow) break;\n}\n\nif (!intentRow) {\n  return { json: { ...data, found: false, reject_reason: 'token not found in pending_callbacks' } };\n}\n\nif (decidedRow) {\n  return { json: { ...data, found: true, already_decided: true, decided_action: decidedRow.action, decided_at: decidedRow.decided_at, intent_row: intentRow } };\n}\n\n// Phase 4: if a profile_override row exists, use its final_profile\nconst effectiveProfile = profileOverrideRow ? profileOverrideRow.final_profile : null;\n\nreturn { json: {\n  ...data,\n  found: true,\n  already_decided: false,\n  trace_id: intentRow.trace_id,\n  issue_id: intentRow.issue_id,\n  issue_identifier: intentRow.issue_identifier,\n  chosen_worker: intentRow.chosen_worker,\n  confidence: intentRow.confidence,\n  risk: intentRow.risk,\n  button_set: intentRow.button_set,\n  issue_existing_label_ids: intentRow.issue_existing_label_ids || [],\n  labels_map: intentRow.labels_map || {},\n  intent_written_at: intentRow.intent_written_at,\n  suggested_profile: intentRow.suggested_profile || null,\n  task_mode: intentRow.task_mode || null,\n  final_profile_override: effectiveProfile\n}};"
       },
       "id": "w7006-lookup-pending",
       "name": "w7006-lookup-pending",
@@ -650,7 +650,7 @@
       "typeVersion": 1,
       "position": [
         1700,
-        1000
+        1400
       ]
     },
     {
@@ -814,7 +814,7 @@
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w7011-mark-decided\n// Two file appends: pending_callbacks.jsonl 'decided' row + routing_history.jsonl extension row.\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\nconst HISTORY = '/miru-data/routing_history.jsonl';\nconst WORKFLOW_VERSION = 'phase-2-v1';\n\nconst prior = $('w7008-build-mutation').item.json;\nconst editResp = $input.item.json;\n\nconst decided_at = prior.decided_at;\nconst action = prior.action;\nconst action_label = prior.action_label;\nconst token = prior.token;\nconst trace_id = prior.trace_id;\nconst task_id = prior.issue_id;\nconst task_identifier = prior.issue_identifier;\n\n// 1) pending_callbacks.jsonl: 'decided' row\nconst decidedRow = {\n  kind: 'decided',\n  token,\n  action,\n  action_label,\n  decided_at,\n  decided_by_user_id: prior.from_user_id != null ? prior.from_user_id : null,\n  trace_id,\n  task_id,\n  task_identifier,\n  edit_message_ok: !(editResp && editResp.error)\n};\nfs.appendFileSync(PENDING, JSON.stringify(decidedRow) + '\\n');\n\n// 2) routing_history.jsonl: full row matching canon schema + Phase 2 extensions\nconst historyRow = {\n  timestamp: decided_at,\n  trace_id,\n  task_id,\n  task_identifier,\n  extracted_signals: null,\n  ranked_candidates: null,\n  chosen_worker: prior.chosen_worker,\n  confidence: prior.confidence,\n  risk: prior.risk,\n  operator_override_flag: action !== 'a',\n  outcome: 'callback-decided',\n  worker_response_ref: 'callback-' + token,\n  proposed_model_version: null,\n  actual_model_version: null,\n  w2_workflow_version: WORKFLOW_VERSION,\n  callback_source: 'telegram',\n  button_tapped: action_label,\n  button_set: prior.button_set,\n  callback_age_seconds: prior.callback_age_seconds != null ? prior.callback_age_seconds : null,\n  decided_at,\n  decided_by_user_id: prior.from_user_id != null ? prior.from_user_id : null\n};\nfs.appendFileSync(HISTORY, JSON.stringify(historyRow) + '\\n');\n\nreturn { json: { ...prior, _decided_persisted: true, _history_persisted: true } };"
+        "jsCode": "// w7011-mark-decided\n// Two file appends: pending_callbacks.jsonl 'decided' row + routing_history.jsonl extension row.\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\nconst HISTORY = '/miru-data/routing_history.jsonl';\nconst WORKFLOW_VERSION = 'phase-2-v1';\n\nconst prior = $('w7008-build-mutation').item.json;\nconst editResp = $input.item.json;\n\nconst decided_at = prior.decided_at;\nconst action = prior.action;\nconst action_label = prior.action_label;\nconst token = prior.token;\nconst trace_id = prior.trace_id;\nconst task_id = prior.issue_id;\nconst task_identifier = prior.issue_identifier;\n\n// 1) pending_callbacks.jsonl: 'decided' row\nconst decidedRow = {\n  kind: 'decided',\n  token,\n  action,\n  action_label,\n  decided_at,\n  decided_by_user_id: prior.from_user_id != null ? prior.from_user_id : null,\n  trace_id,\n  task_id,\n  task_identifier,\n  edit_message_ok: !(editResp && editResp.error)\n};\nfs.appendFileSync(PENDING, JSON.stringify(decidedRow) + '\\n');\n\n// 2) routing_history.jsonl: full row matching canon schema + Phase 2 extensions\nconst historyRow = {\n  timestamp: decided_at,\n  trace_id,\n  task_id,\n  task_identifier,\n  extracted_signals: null,\n  ranked_candidates: null,\n  chosen_worker: prior.chosen_worker,\n  confidence: prior.confidence,\n  risk: prior.risk,\n  operator_override_flag: action !== 'a',\n  outcome: 'callback-decided',\n  worker_response_ref: 'callback-' + token,\n  proposed_model_version: null,\n  actual_model_version: null,\n  w2_workflow_version: WORKFLOW_VERSION,\n  callback_source: 'telegram',\n  button_tapped: action_label,\n  button_set: prior.button_set,\n  callback_age_seconds: prior.callback_age_seconds != null ? prior.callback_age_seconds : null,\n  decided_at,\n  decided_by_user_id: prior.from_user_id != null ? prior.from_user_id : null,\n  suggested_profile: prior.suggested_profile || null,\n  final_profile: prior.final_profile_override || prior.suggested_profile || null,\n  task_mode: prior.task_mode || null\n};\nfs.appendFileSync(HISTORY, JSON.stringify(historyRow) + '\\n');\n\nreturn { json: { ...prior, _decided_persisted: true, _history_persisted: true } };"
       },
       "id": "w7011-mark-decided",
       "name": "w7011-mark-decided",
@@ -1044,7 +1044,7 @@
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w7-mint-original-keyboard (PRO-80 Phase A)\n// Back tap: re-mint the original keyboard with fresh HMACs. Re-uses the same\n// token; new nonces and ts_hex. Restores 2-button layout for watchdog-originated\n// messages (button_set === 'watchdog'), 4-button layout otherwise.\nconst crypto = require('crypto');\nconst ANCHOR_UNIX = 1767225600;\n\nconst data = $input.item.json;\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret) throw new Error('TELEGRAM_CALLBACK_SECRET not set');\n\nconst token = data.token;\nconst ts_minutes = Math.floor((Math.floor(Date.now()/1000) - ANCHOR_UNIX) / 60);\nconst ts_hex = ts_minutes.toString(16).padStart(8, '0').slice(-8);\n\nfunction origButton(actionCode, label) {\n  const nonce = crypto.randomBytes(4).toString('hex');\n  const payload = token + actionCode + nonce + ts_hex;\n  const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\n  const cb = token + actionCode + nonce + ts_hex + hmac;\n  if (cb.length !== 61) throw new Error('original-keyboard callback_data length mismatch: ' + cb.length);\n  return { text: label, callback_data: cb };\n}\n\nconst isWatchdog = data.button_set === 'watchdog';\nconst inline_keyboard = isWatchdog\n  ? [[origButton('o', 'Override'), origButton('t', 'Triage')]]\n  : [\n      [origButton('a', 'Approve'), origButton('o', 'Override')],\n      [origButton('t', 'Triage'), origButton('r', 'Request Revision')]\n    ];\n\nconst telegram_edit_body = {\n  chat_id: data.chat_id,\n  message_id: data.message_id,\n  reply_markup: { inline_keyboard }\n};\n\nreturn { json: { ...data, telegram_edit_body, _back_minted_at: new Date().toISOString() } };"
+        "jsCode": "// w7-mint-original-keyboard (PRO-80 Phase A + Phase 4)\n// Back tap: re-mint the original keyboard with fresh HMACs. Re-uses the same\n// token; new nonces and ts_hex. Restores 2-button layout for watchdog-originated\n// messages (button_set === 'watchdog'), 4+1-button layout otherwise.\n// Phase 4: adds Profile button as 5th button in 3rd row.\nconst crypto = require('crypto');\nconst ANCHOR_UNIX = 1767225600;\n\nconst data = $input.item.json;\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret) throw new Error('TELEGRAM_CALLBACK_SECRET not set');\n\nconst token = data.token;\nconst ts_minutes = Math.floor((Math.floor(Date.now()/1000) - ANCHOR_UNIX) / 60);\nconst ts_hex = ts_minutes.toString(16).padStart(8, '0').slice(-8);\n\nfunction origButton(actionCode, label) {\n  const nonce = crypto.randomBytes(4).toString('hex');\n  const payload = token + actionCode + nonce + ts_hex;\n  const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\n  const cb = token + actionCode + nonce + ts_hex + hmac;\n  if (cb.length !== 61) throw new Error('original-keyboard callback_data length mismatch: ' + cb.length);\n  return { text: label, callback_data: cb };\n}\n\nconst profileLabel = data.final_profile_override || data.suggested_profile || 'standard_worker';\nconst isWatchdog = data.button_set === 'watchdog';\nconst inline_keyboard = isWatchdog\n  ? [\n      [origButton('o', 'Override'), origButton('t', 'Triage')],\n      [origButton('p', 'Profile: ' + profileLabel)]\n    ]\n  : [\n      [origButton('a', 'Approve'), origButton('o', 'Override')],\n      [origButton('t', 'Triage'), origButton('r', 'Request Revision')],\n      [origButton('p', 'Profile: ' + profileLabel)]\n    ];\n\nconst telegram_edit_body = {\n  chat_id: data.chat_id,\n  message_id: data.message_id,\n  reply_markup: { inline_keyboard }\n};\n\nreturn { json: { ...data, telegram_edit_body, _back_minted_at: new Date().toISOString() } };"
       },
       "id": "w7-mint-original-keyboard",
       "name": "w7-mint-original-keyboard",
@@ -1149,7 +1149,7 @@
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w7-determine-dispatch-target (PRO-84)\n// Reached after w7011-mark-decided (Approve flow) OR w7-picker-mark-decided (Picker flow).\n// Extracts the dispatchable worker label name. Returns _no_dispatch=true for non-dispatchable\n// actions (Triage, Request Revision, picker Triage). Cursor IS dispatchable (degenerate path\n// in W4 produces an Open-in-Linear edit; the button + W4 invocation still happen).\nconst data = $input.item.json;\nconst DISPATCHABLE = new Set(['claude-code', 'cursor', 'codex', 'gemini']);\n\nlet target = null;\nlet flow = null;\nif (data.action === 'a') {\n  // Approve flow: target is the originally chosen worker.\n  target = data.chosen_worker || null;\n  flow = 'approve';\n} else if (data.action === 'c' || data.action === 'u' || data.action === 'x' || data.action === 'g') {\n  // Picker flow: target is the operator-selected label.\n  target = data.picker_label_name || null;\n  flow = 'picker';\n}\n// Triage ('t', 'T'), Request Revision ('r'), Back ('b'), unknown -> no dispatch target.\n\nif (!target || !DISPATCHABLE.has(target)) {\n  return { json: { ...data, _no_dispatch: true, _no_dispatch_reason: target ? ('non-dispatchable target: ' + target) : 'no target (action=' + data.action + ')' } };\n}\n\nreturn { json: { ...data, _no_dispatch: false, dispatch_target_worker: target, dispatch_flow: flow } };"
+        "jsCode": "// w7-determine-dispatch-target (PRO-84)\n// Reached after w7011-mark-decided (Approve flow) OR w7-picker-mark-decided (Picker flow).\n// Extracts the dispatchable worker label name. Returns _no_dispatch=true for non-dispatchable\n// actions (Triage, Request Revision, picker Triage). Cursor IS dispatchable (degenerate path\n// in W4 produces an Open-in-Linear edit; the button + W4 invocation still happen).\nconst data = $input.item.json;\nconst DISPATCHABLE = new Set(['claude-code', 'cursor', 'codex', 'gemini']);\n\nlet target = null;\nlet flow = null;\nif (data.action === 'a') {\n  // Approve flow: target is the originally chosen worker.\n  target = data.chosen_worker || null;\n  flow = 'approve';\n} else if (data.action === 'c' || data.action === 'u' || data.action === 'x' || data.action === 'g') {\n  // Picker flow: target is the operator-selected label.\n  target = data.picker_label_name || null;\n  flow = 'picker';\n}\n// Triage ('t', 'T'), Request Revision ('r'), Back ('b'), unknown -> no dispatch target.\n\nif (!target || !DISPATCHABLE.has(target)) {\n  return { json: { ...data, _no_dispatch: true, _no_dispatch_reason: target ? ('non-dispatchable target: ' + target) : 'no target (action=' + data.action + ')' } };\n}\n\nconst tool_profile = data.final_profile_override || data.final_profile || data.suggested_profile || 'standard_worker';\nreturn { json: { ...data, _no_dispatch: false, dispatch_target_worker: target, dispatch_flow: flow, tool_profile: tool_profile } };"
       },
       "id": "w7-determine-dispatch-target",
       "name": "w7-determine-dispatch-target",
@@ -1197,7 +1197,7 @@
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w7-build-dispatch-message (PRO-84)\n// Builds the second-stage Telegram sendMessage payload with a 'Dispatch' inline button.\n// Mints a NEW callback_data for action='d' using the SAME token (so W4's pending_callbacks\n// lookup can correlate). HMAC anchor + algorithm match w7004 / w7-mint-picker-keyboard.\n// Per-worker button label: claude-code/codex/gemini get '🚀 Dispatch <worker>',\n// cursor gets '🔗 Open in Linear (Cursor)' (degenerate path handled in W4).\nconst crypto = require('crypto');\nconst ANCHOR_UNIX = 1767225600;\n\nconst data = $input.item.json;\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret) throw new Error('TELEGRAM_CALLBACK_SECRET not set');\n\nconst token = data.token;\nconst worker = data.dispatch_target_worker;\n\nconst LABEL_MAP = {\n  'claude-code': '\\uD83D\\uDE80 Dispatch Claude Code',\n  'codex': '\\uD83D\\uDE80 Dispatch Codex',\n  'gemini': '\\uD83D\\uDE80 Dispatch Gemini CLI',\n  'cursor': '\\uD83D\\uDD17 Open in Linear (Cursor)'\n};\nconst buttonText = LABEL_MAP[worker];\nif (!buttonText) throw new Error('no button label mapping for worker: ' + worker);\n\nconst nonce = crypto.randomBytes(4).toString('hex');\nconst ts_minutes = Math.floor((Math.floor(Date.now()/1000) - ANCHOR_UNIX) / 60);\nconst ts_hex = ts_minutes.toString(16).padStart(8, '0').slice(-8);\nconst payload = token + 'd' + nonce + ts_hex;\nconst hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\nconst callback_data = token + 'd' + nonce + ts_hex + hmac;\nif (callback_data.length !== 61) throw new Error('dispatch callback_data length mismatch: ' + callback_data.length);\n\nfunction esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\n\nconst issue_identifier = data.issue_identifier || data.task_identifier || '?';\nconst text = '<b>\\u2705 Approved: ' + esc(worker) + '</b>\\n<i>' + esc(issue_identifier) + '</i>';\n\nconst telegram_send_body = {\n  chat_id: data.chat_id,\n  text,\n  parse_mode: 'HTML',\n  reply_markup: { inline_keyboard: [[{ text: buttonText, callback_data }]] }\n};\n\nreturn { json: { ...data, dispatch_callback_data: callback_data, dispatch_button_text: buttonText, dispatch_minted_at: new Date().toISOString(), telegram_send_body } };"
+        "jsCode": "// w7-build-dispatch-message (PRO-84)\n// Builds the second-stage Telegram sendMessage payload with a 'Dispatch' inline button.\n// Mints a NEW callback_data for action='d' using the SAME token (so W4's pending_callbacks\n// lookup can correlate). HMAC anchor + algorithm match w7004 / w7-mint-picker-keyboard.\n// Per-worker button label: claude-code/codex/gemini get '🚀 Dispatch <worker>',\n// cursor gets '🔗 Open in Linear (Cursor)' (degenerate path handled in W4).\nconst crypto = require('crypto');\nconst ANCHOR_UNIX = 1767225600;\n\nconst data = $input.item.json;\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret) throw new Error('TELEGRAM_CALLBACK_SECRET not set');\n\nconst token = data.token;\nconst worker = data.dispatch_target_worker;\n\nconst LABEL_MAP = {\n  'claude-code': '\\uD83D\\uDE80 Dispatch Claude Code',\n  'codex': '\\uD83D\\uDE80 Dispatch Codex',\n  'gemini': '\\uD83D\\uDE80 Dispatch Gemini CLI',\n  'cursor': '\\uD83D\\uDD17 Open in Linear (Cursor)'\n};\nconst buttonText = LABEL_MAP[worker];\nif (!buttonText) throw new Error('no button label mapping for worker: ' + worker);\n\nconst nonce = crypto.randomBytes(4).toString('hex');\nconst ts_minutes = Math.floor((Math.floor(Date.now()/1000) - ANCHOR_UNIX) / 60);\nconst ts_hex = ts_minutes.toString(16).padStart(8, '0').slice(-8);\nconst payload = token + 'd' + nonce + ts_hex;\nconst hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 32);\nconst callback_data = token + 'd' + nonce + ts_hex + hmac;\nif (callback_data.length !== 61) throw new Error('dispatch callback_data length mismatch: ' + callback_data.length);\n\nfunction esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }\n\nconst issue_identifier = data.issue_identifier || data.task_identifier || '?';\nconst profileLabel = data.tool_profile || 'standard_worker';\nconst text = '<b>\\u2705 Approved: ' + esc(worker) + '</b>\\n<i>' + esc(issue_identifier) + '</i>\\nProfile: ' + esc(profileLabel);\n\nconst telegram_send_body = {\n  chat_id: data.chat_id,\n  text,\n  parse_mode: 'HTML',\n  reply_markup: { inline_keyboard: [[{ text: buttonText, callback_data }]] }\n};\n\nreturn { json: { ...data, dispatch_callback_data: callback_data, dispatch_button_text: buttonText, dispatch_minted_at: new Date().toISOString(), telegram_send_body } };"
       },
       "id": "w7-build-dispatch-message",
       "name": "w7-build-dispatch-message",
@@ -1240,7 +1240,7 @@
       "parameters": {
         "language": "javaScript",
         "mode": "runOnceForEachItem",
-        "jsCode": "// w7-store-pending-dispatch (PRO-84)\n// Append a pending_callbacks row with kind='dispatch' so W4's lookup-by-(token, kind=dispatch)\n// can pull worker/issue_id/issue_url/dispatch message context. Append-only per PRO-77.\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\n\nconst prior = $('w7-build-dispatch-message').item.json;\nconst sendResp = $input.item.json;\n\n// Telegram sendMessage response shape: { ok: true, result: { message_id, chat: { id }, ... } }\n// On HTTP failure (continueOnFail), $json contains the error response shape -- still proceed,\n// but dispatch_message_id may be null. The button + message text reach Telegram regardless\n// in the happy case; failure is a Telegram API outage which is its own escalation.\nlet dispatch_message_id = null;\nlet dispatch_chat_id = prior.chat_id || null;\nif (sendResp && sendResp.ok && sendResp.result) {\n  dispatch_message_id = sendResp.result.message_id || null;\n  if (sendResp.result.chat && sendResp.result.chat.id != null) dispatch_chat_id = sendResp.result.chat.id;\n}\n\nconst issue_url = prior.issue_url || (prior.issue_identifier ? ('https://linear.app/project-miru/issue/' + prior.issue_identifier) : null);\n\nconst row = {\n  schema_version: 'v1',\n  kind: 'dispatch',\n  token: prior.token,\n  trace_id: prior.trace_id || prior.token,\n  worker: prior.dispatch_target_worker,\n  flow: prior.dispatch_flow,\n  issue_id: prior.issue_id || prior.task_id || null,\n  issue_identifier: prior.issue_identifier || prior.task_identifier || null,\n  issue_url,\n  dispatch_chat_id,\n  dispatch_message_id,\n  dispatch_callback_data: prior.dispatch_callback_data,\n  prompt_path: 'data/n8n_inbox/' + (prior.trace_id || prior.token) + '.json',\n  status: 'awaiting',\n  created_at: prior.dispatch_minted_at || new Date().toISOString(),\n  send_message_ok: !!(sendResp && sendResp.ok)\n};\nfs.appendFileSync(PENDING, JSON.stringify(row) + '\\n');\n\nreturn { json: { ...prior, _dispatch_pending_persisted: true, dispatch_message_id, dispatch_chat_id } };"
+        "jsCode": "// w7-store-pending-dispatch (PRO-84)\n// Append a pending_callbacks row with kind='dispatch' so W4's lookup-by-(token, kind=dispatch)\n// can pull worker/issue_id/issue_url/dispatch message context. Append-only per PRO-77.\nconst fs = require('fs');\nconst PENDING = '/miru-data/pending_callbacks.jsonl';\n\nconst prior = $('w7-build-dispatch-message').item.json;\nconst sendResp = $input.item.json;\n\n// Telegram sendMessage response shape: { ok: true, result: { message_id, chat: { id }, ... } }\n// On HTTP failure (continueOnFail), $json contains the error response shape -- still proceed,\n// but dispatch_message_id may be null. The button + message text reach Telegram regardless\n// in the happy case; failure is a Telegram API outage which is its own escalation.\nlet dispatch_message_id = null;\nlet dispatch_chat_id = prior.chat_id || null;\nif (sendResp && sendResp.ok && sendResp.result) {\n  dispatch_message_id = sendResp.result.message_id || null;\n  if (sendResp.result.chat && sendResp.result.chat.id != null) dispatch_chat_id = sendResp.result.chat.id;\n}\n\nconst issue_url = prior.issue_url || (prior.issue_identifier ? ('https://linear.app/project-miru/issue/' + prior.issue_identifier) : null);\n\nconst row = {\n  schema_version: 'v1',\n  kind: 'dispatch',\n  token: prior.token,\n  trace_id: prior.trace_id || prior.token,\n  worker: prior.dispatch_target_worker,\n  flow: prior.dispatch_flow,\n  issue_id: prior.issue_id || prior.task_id || null,\n  issue_identifier: prior.issue_identifier || prior.task_identifier || null,\n  issue_url,\n  dispatch_chat_id,\n  dispatch_message_id,\n  dispatch_callback_data: prior.dispatch_callback_data,\n  prompt_path: 'data/n8n_inbox/' + (prior.trace_id || prior.token) + '.json',\n  status: 'awaiting',\n  created_at: prior.dispatch_minted_at || new Date().toISOString(),\n  send_message_ok: !!(sendResp && sendResp.ok),\n  tool_profile: prior.tool_profile || 'standard_worker',\n  task_mode: prior.task_mode || null\n};\nfs.appendFileSync(PENDING, JSON.stringify(row) + '\\n');\n\nreturn { json: { ...prior, _dispatch_pending_persisted: true, dispatch_message_id, dispatch_chat_id } };"
       },
       "id": "w7-store-pending-dispatch",
       "name": "w7-store-pending-dispatch",
@@ -1518,6 +1518,174 @@
         1300
       ],
       "parameters": {}
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ar5",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "p",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "w7-action-router-5",
+      "name": "w7-action-router-5",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1500,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ar6a",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "D",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "ar6b",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "S",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "ar6c",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "R",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "w7-action-router-6",
+      "name": "w7-action-router-6",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1500,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w7-mint-profile-picker (Phase 4 Ingress Classifier)\n// Profile override tap arrives here. Mint a 4-button profile picker keyboard\n// re-using the existing token (same HMAC anchor pattern as w2012a, w7-mint-picker-keyboard).\n// No pending_callbacks row written here — the original intent row remains valid;\n// the profile pick (D/S/R) writes a profile_override row.\nconst crypto = require(\"crypto\");\nconst ANCHOR_UNIX = 1767225600;\n\nconst data = $input.item.json;\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret) throw new Error(\"TELEGRAM_CALLBACK_SECRET not set\");\n\nconst token = data.token;\nconst ts_minutes = Math.floor((Math.floor(Date.now()/1000) - ANCHOR_UNIX) / 60);\nconst ts_hex = ts_minutes.toString(16).padStart(8, \"0\").slice(-8);\n\nfunction pickerButton(actionCode, label) {\n  const nonce = crypto.randomBytes(4).toString(\"hex\");\n  const payload = token + actionCode + nonce + ts_hex;\n  const hmac = crypto.createHmac(\"sha256\", secret).update(payload).digest(\"hex\").slice(0, 32);\n  const cb = token + actionCode + nonce + ts_hex + hmac;\n  if (cb.length !== 61) throw new Error(\"profile-picker callback_data length mismatch: \" + cb.length);\n  return { text: label, callback_data: cb };\n}\n\nconst currentProfile = data.final_profile_override || data.suggested_profile || \"standard_worker\";\nconst inline_keyboard = [\n  [pickerButton(\"D\", \"drift_executor\" + (currentProfile === \"drift_executor\" ? \" \\u2714\" : \"\")),\n   pickerButton(\"S\", \"standard_worker\" + (currentProfile === \"standard_worker\" ? \" \\u2714\" : \"\"))],\n  [pickerButton(\"R\", \"reviewer\" + (currentProfile === \"reviewer\" ? \" \\u2714\" : \"\")),\n   pickerButton(\"b\", \"\\u21A9 Back\")]\n];\n\nconst telegram_edit_body = {\n  chat_id: data.chat_id,\n  message_id: data.message_id,\n  reply_markup: { inline_keyboard }\n};\n\nreturn { json: { ...data, telegram_edit_body, _profile_picker_minted_at: new Date().toISOString() } };"
+      },
+      "id": "w7-mint-profile-picker",
+      "name": "w7-mint-profile-picker",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        1000
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageReplyMarkup",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.telegram_edit_body) }}",
+        "options": {}
+      },
+      "id": "w7-edit-to-profile-picker",
+      "name": "w7-edit-to-profile-picker",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1900,
+        1000
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "mode": "runOnceForEachItem",
+        "jsCode": "// w7-profile-set-and-back (Phase 4 Ingress Classifier)\n// Profile picker selection (D/S/R). Maps action to final_profile, writes a\n// profile_override row to pending_callbacks (append-only), then re-mints the\n// original keyboard with the Profile button showing the new selection.\nconst crypto = require(\"crypto\");\nconst fs = require(\"fs\");\nconst PENDING = \"/miru-data/pending_callbacks.jsonl\";\nconst ANCHOR_UNIX = 1767225600;\n\nconst data = $input.item.json;\nconst secret = $env.TELEGRAM_CALLBACK_SECRET;\nif (!secret) throw new Error(\"TELEGRAM_CALLBACK_SECRET not set\");\n\nconst PROFILE_MAP = { D: \"drift_executor\", S: \"standard_worker\", R: \"reviewer\" };\nconst finalProfile = PROFILE_MAP[data.action];\nif (!finalProfile) throw new Error(\"unexpected profile action: \" + data.action);\n\n// 1) Write profile_override row to pending_callbacks (append-only)\nconst overrideRow = {\n  schema_version: \"v1\",\n  kind: \"profile_override\",\n  token: data.token,\n  trace_id: data.trace_id || data.token,\n  final_profile: finalProfile,\n  previous_profile: data.final_profile_override || data.suggested_profile || \"standard_worker\",\n  overridden_by_user_id: data.from_user_id != null ? data.from_user_id : null,\n  overridden_at: new Date().toISOString()\n};\nfs.appendFileSync(PENDING, JSON.stringify(overrideRow) + \"\\n\");\n\n// 2) Re-mint original keyboard with updated Profile button label\nconst token = data.token;\nconst ts_minutes = Math.floor((Math.floor(Date.now()/1000) - ANCHOR_UNIX) / 60);\nconst ts_hex = ts_minutes.toString(16).padStart(8, \"0\").slice(-8);\n\nfunction origButton(actionCode, label) {\n  const nonce = crypto.randomBytes(4).toString(\"hex\");\n  const payload = token + actionCode + nonce + ts_hex;\n  const hmac = crypto.createHmac(\"sha256\", secret).update(payload).digest(\"hex\").slice(0, 32);\n  const cb = token + actionCode + nonce + ts_hex + hmac;\n  if (cb.length !== 61) throw new Error(\"profile-back callback_data length mismatch: \" + cb.length);\n  return { text: label, callback_data: cb };\n}\n\nconst isWatchdog = data.button_set === \"watchdog\";\nconst inline_keyboard = isWatchdog\n  ? [\n      [origButton(\"o\", \"Override\"), origButton(\"t\", \"Triage\")],\n      [origButton(\"p\", \"Profile: \" + finalProfile)]\n    ]\n  : [\n      [origButton(\"a\", \"Approve\"), origButton(\"o\", \"Override\")],\n      [origButton(\"t\", \"Triage\"), origButton(\"r\", \"Request Revision\")],\n      [origButton(\"p\", \"Profile: \" + finalProfile)]\n    ];\n\nconst telegram_edit_body = {\n  chat_id: data.chat_id,\n  message_id: data.message_id,\n  reply_markup: { inline_keyboard }\n};\n\nreturn { json: { ...data, telegram_edit_body, final_profile_override: finalProfile, _profile_set_at: new Date().toISOString() } };"
+      },
+      "id": "w7-profile-set-and-back",
+      "name": "w7-profile-set-and-back",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1700,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/editMessageReplyMarkup",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.telegram_edit_body) }}",
+        "options": {}
+      },
+      "id": "w7-edit-profile-back",
+      "name": "w7-edit-profile-back",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1900,
+        1200
+      ],
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -1762,7 +1930,7 @@
         ],
         [
           {
-            "node": "w7-noop-unknown-action",
+            "node": "w7-action-router-5",
             "type": "main",
             "index": 0
           }
@@ -2127,6 +2295,64 @@
         [
           {
             "node": "w7-report-send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w7-action-router-5": {
+      "main": [
+        [
+          {
+            "node": "w7-mint-profile-picker",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w7-action-router-6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w7-action-router-6": {
+      "main": [
+        [
+          {
+            "node": "w7-profile-set-and-back",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "w7-noop-unknown-action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w7-mint-profile-picker": {
+      "main": [
+        [
+          {
+            "node": "w7-edit-to-profile-picker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "w7-profile-set-and-back": {
+      "main": [
+        [
+          {
+            "node": "w7-edit-profile-back",
             "type": "main",
             "index": 0
           }

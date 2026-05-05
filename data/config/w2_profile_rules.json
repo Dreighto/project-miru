@@ -1,0 +1,56 @@
+{
+  "$schema_version": "1.0.0",
+  "$description": "Profile assignment rules for Phase 4 Ingress Classifier. Keywords (Tier 1) take precedence over task_type (Tier 2). Loaded by w2008a-assign-profile at execution time. Tunable without workflow redeployment.",
+  "routine_keywords": [
+    "audit",
+    "read-only",
+    "repo scan",
+    "schema read",
+    "second opinion",
+    "second-opinion",
+    "alternate framing",
+    "grep across",
+    "survey of",
+    "inventory of",
+    "code audit",
+    "logging audit",
+    "pattern audit",
+    "inspect schema",
+    "data model inspect",
+    "scan repo"
+  ],
+  "blocked_keywords": [
+    "blocked",
+    "blocked by",
+    "waiting on",
+    "depends on"
+  ],
+  "ambiguous_keywords": [
+    "unclear",
+    "needs clarification",
+    "investigate",
+    "figure out",
+    "explore options",
+    "not sure",
+    "determine whether"
+  ],
+  "routine_types": [
+    "research"
+  ],
+  "judgment_types": [
+    "Bug",
+    "Feature",
+    "Improvement",
+    "chore",
+    "design"
+  ],
+  "blocked_types": [
+    "blocked"
+  ],
+  "mode_profile_map": {
+    "routine": "drift_executor",
+    "judgment": "standard_worker",
+    "ambiguous": "reviewer",
+    "blocked": null
+  }
+}
