@@ -177,9 +177,12 @@ def test_runs_from_outside_repo_via_psscriptroot_fallback():
             timeout=30,
             check=False,
         )
-        # Either it finds the repo via PSScriptRoot fallback (preferred) or it
-        # errors cleanly. It must NOT crash with a null-method-call exception.
-        assert result.returncode == 0 or "Could not resolve repo root" in result.stderr
+        # Must succeed — the script anchors to its own location, so being run
+        # from a non-git directory is a supported case. Strict assertions:
+        # exit 0, no resolution-failure text, and crucially no null-method-call
+        # exception (which was the original bug this test guards against).
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+        assert "Could not resolve repo root" not in result.stderr
         assert "null-valued expression" not in result.stderr
     finally:
         cwd_outside.rmdir()
