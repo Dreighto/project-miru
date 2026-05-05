@@ -212,6 +212,10 @@ function spawnWorker({
     if (thinkingLevel && EFFORT_MAP[thinkingLevel]) {
       extraFlags.push('--effort', EFFORT_MAP[thinkingLevel]);
     }
+    const mcpConfigPath = path.join(cwd, '.mcp.json');
+    if (fs.existsSync(mcpConfigPath)) {
+      extraFlags.push('--mcp-config', mcpConfigPath, '--strict-mcp-config');
+    }
   }
 
   log.info('spawn_flags', {
