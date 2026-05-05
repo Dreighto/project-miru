@@ -33,7 +33,6 @@ Path-stripped mode:
 
 from __future__ import annotations
 
-import contextvars
 import sys
 import traceback
 from pathlib import Path
@@ -150,12 +149,7 @@ class _RootAlias:
         await self.app(scope, receive, send)
 
 
-current_profile: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "current_profile", default="full_operator"
-)
-current_trace_id: contextvars.ContextVar[str] = contextvars.ContextVar(
-    "current_trace_id", default=""
-)
+from miru_mcp_gateway._context import current_profile, current_trace_id
 
 
 class _ProfileExtractor:

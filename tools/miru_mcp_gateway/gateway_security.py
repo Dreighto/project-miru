@@ -155,13 +155,13 @@ def _append_read_audit_row(cfg: Any, row: dict[str, Any]) -> None:
 
 
 def _get_current_profile() -> str:
-    from miru_mcp_gateway.server import current_profile
+    from miru_mcp_gateway._context import current_profile
 
     return current_profile.get()
 
 
 def _get_current_trace_id() -> str:
-    from miru_mcp_gateway.server import current_trace_id
+    from miru_mcp_gateway._context import current_trace_id
 
     return current_trace_id.get()
 

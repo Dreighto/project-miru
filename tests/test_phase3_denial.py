@@ -21,8 +21,8 @@ from types import SimpleNamespace
 
 import miru_readonly_filesystem_mcp as stdio_mcp
 from miru_mcp_gateway import profiles
+from miru_mcp_gateway._context import current_profile, current_trace_id
 from miru_mcp_gateway.gateway_security import wrap_tool_entry
-from miru_mcp_gateway.server import current_profile, current_trace_id
 
 
 def _make_cfg(*, enforcement: bool = True) -> SimpleNamespace:
