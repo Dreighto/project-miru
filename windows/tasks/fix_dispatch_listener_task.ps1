@@ -23,5 +23,5 @@ $action = New-ScheduledTaskAction `
 
 Set-ScheduledTask -TaskName "MiruDispatchListener" -Action $action
 
-Write-Host "MiruDispatchListener updated — now uses hidden VBS wrapper." -ForegroundColor Green
+Write-Host "MiruDispatchListener updated - now uses hidden VBS wrapper." -ForegroundColor Green
 Write-Host "No restart needed; change takes effect on next task launch." -ForegroundColor DarkGray
