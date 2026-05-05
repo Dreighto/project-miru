@@ -80,7 +80,8 @@ Each row includes the authority gate CH must check before acting.
 | Append to canon doc        | `docs_append_file`                                  | Standing authority (VP Ops) | Allowlisted paths only                                 |
 | Git commit + push          | `git_commit_and_push`                               | CH (allowlisted files)      | No workflow JSON, no DB, no JSONL                      |
 | Delete GitHub branch       | `github_delete_branch`                              | CH freely                   | Only after confirmed merge                             |
-| Create GitHub PR           | `github_create_pr_comment`                          | CH freely                   | —                                                      |
+| Create GitHub PR           | `create_pull_request` (GitHub MCP)                  | CH freely                   | Not in gateway — use GitHub MCP directly               |
+| Add PR comment             | `github_create_pr_comment`                          | CH freely                   | Posts comment on existing PR, not PR creation          |
 
 ---
 

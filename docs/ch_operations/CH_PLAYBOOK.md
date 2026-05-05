@@ -41,11 +41,11 @@ Read the ticket (A) to get its state and PR number. Check the PR (B) for merge s
 
 **Error recovery:**
 
-| Failure                   | Likely cause                              | Recovery                                             |
-| ------------------------- | ----------------------------------------- | ---------------------------------------------------- |
-| No PR number on ticket    | Worker didn't link PR to ticket           | Search `github_list_open_prs` by branch name pattern |
-| Completion marker missing | Worker forgot to emit                     | Check `system_tail_safe_log` for worker's stdout log |
-| Linear state stale        | Worker completed but didn't update Linear | Correct via `save_issue` per drift correction rules  |
+| Failure                   | Likely cause                              | Recovery                                                                                                                              |
+| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| No PR number on ticket    | Worker didn't link PR to ticket           | List open PRs via `github_list_open_prs`, then `github_get_pr` on candidates to match `head` branch ref against ticket branch pattern |
+| Completion marker missing | Worker forgot to emit                     | Check `system_tail_safe_log` for worker's stdout log                                                                                  |
+| Linear state stale        | Worker completed but didn't update Linear | Correct via `save_issue` per drift correction rules                                                                                   |
 
 ---
 
