@@ -476,13 +476,23 @@ Every task must end with exactly one of:
 
 Plus a summary of what changed and what did not.
 
-### Bugbot findings handling (CC) — see AGENTS.md
+### Automated PR review completion sequence — Hard Rule (all workers + CH)
 
-Before declaring `CONFIRMED_WORKING` on any PR, CC must execute the Bugbot completion sequence
-defined in `AGENTS.md` (repo root). That sequence covers: polling for Bugbot check-run completion,
-categorizing findings by severity, auto-fixing Low/Medium (one iteration max), surfacing High
-findings and override-condition findings to the operator. Do not declare `CONFIRMED_WORKING` until
-Bugbot is clean or all findings have been addressed or surfaced.
+Before declaring `CONFIRMED_WORKING` on any PR, the worker (or CH if it owns the PR) MUST:
+
+1. **Wait for all automated reviewers** to complete — CodeRabbit, Bugbot (chatgpt-codex-connector), and CI hygiene checks.
+2. **Read every finding** — PR comments, inline review comments, and check-run annotations.
+3. **Fix valid findings** — push a follow-up commit addressing each actionable issue. For each finding, either fix it or explain in a commit message why it's not applicable.
+4. **Re-run and poll** — after pushing fixes, wait for the next review cycle to complete. Repeat steps 2–4 until no new actionable findings remain.
+5. **Confirm green** — all status checks must show pass/success before declaring done. `CHANGES_REQUESTED` from an automated reviewer with no remaining actionable comments is acceptable only if all specific findings have been addressed in commits.
+
+**What counts as actionable:** Code bugs, missing fields that break downstream consumers, false-positive keyword matches, test gaps the adopted lesson requires (PRO-189 boundary-crossing tests), permission contradictions (e.g. telling a read-only worker to write), and any finding rated P1/P2 or flagged as a potential issue.
+
+**What does NOT count:** Style preferences that conflict with project conventions, docstring coverage warnings (project convention: no docstrings unless non-obvious), and suggestions to add features beyond the PR scope.
+
+**Applies to:** CC, CH, Cursor, Codex, Gemini — any worker or orchestrator that opens a PR. This is not optional. A PR with unaddressed P1 findings that gets merged is a discipline violation.
+
+Set 2026-05-04 by operator. Replaces the previous CC-only Bugbot rule.
 
 ### Stall classification (PROVISIONAL — promote to adopted after first validated use)
 
