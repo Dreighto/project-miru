@@ -37,7 +37,7 @@ Steps A→B have a data dependency (B needs A's PR number). Steps C and D are in
 
 **Composition example:**
 
-Read the ticket (A) to get its state and PR number. Check the PR (B) for merge status. Read the completion log (C) for a terminal marker. If PR merged + completion marker shows `CONFIRMED_WORKING` + Linear state is Done → verified. If any surface disagrees → use §5 (Drift Detection) to correct.
+Read the ticket (A) to get its state and PR number. Check the PR (B) for merge status. Read the completion log (D) for a terminal marker. If PR merged + completion marker shows `CONFIRMED_WORKING` + Linear state is Done → verified. If any surface disagrees → use §5 (Drift Detection) to correct.
 
 **Error recovery:**
 
@@ -186,12 +186,12 @@ Read the drift scanner log (0). If the scanner flagged ticket PRO-XXX as `stale_
 
 **Building blocks:**
 
-| Step | Tool                         | Input          | Output                    | Notes |
-| ---- | ---------------------------- | -------------- | ------------------------- | ----- |
-| A    | `n8n_list_recent_executions` | —              | Recent execution list     | —     |
-| B    | `n8n_read_routing_history`   | —              | Recent routing decisions  | —     |
-| C    | `activity_since`             | —              | Recent completion markers | —     |
-| D    | `list_issues` (Linear MCP)   | filter: recent | Recently updated tickets  | —     |
+| Step | Tool                         | Input                 | Output                    | Notes |
+| ---- | ---------------------------- | --------------------- | ------------------------- | ----- |
+| A    | `n8n_list_recent_executions` | —                     | Recent execution list     | —     |
+| B    | `n8n_read_routing_history`   | —                     | Recent routing decisions  | —     |
+| C    | `activity_since`             | minutes (time window) | Recent completion markers | —     |
+| D    | `list_issues` (Linear MCP)   | filter: recent        | Recently updated tickets  | —     |
 
 All steps are independent — run in parallel.
 
