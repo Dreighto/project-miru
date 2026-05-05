@@ -113,10 +113,6 @@ reviews:
     other_finishing_touches:
       enabled: true
 
-integrations:
-  linear:
-    usage: "enabled"  # Connect Linear team in app.coderabbit.ai/integrations first
-
 knowledge_base:
   mcp:
     usage: "enabled"
