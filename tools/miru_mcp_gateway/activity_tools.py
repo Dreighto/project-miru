@@ -311,7 +311,7 @@ def activity_since(
         if "n8n" in srcs:
             futs.append(("n8n", pool.submit(_n8n_events, since)))
         if "filesystem" in srcs:
-            futs.append(("fs", pool.submit(_fs_events, since, cfg.fs_root)))
+            futs.append(("fs", pool.submit(_fs_events, since, cfg.repo_root)))
         for _name, fut in futs:
             try:
                 events.extend(fut.result(timeout=5.0))

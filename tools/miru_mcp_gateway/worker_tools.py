@@ -266,7 +266,7 @@ def worker_availability(worker_name: str | None = None) -> str:
 
     # Build latest-heartbeat-per-worker_id map
     hb_rows = _read_last_jsonl(
-        cfg.fs_root / "data" / "cc_heartbeat_log.jsonl", _HEARTBEAT_READ_LINES
+        cfg.repo_root / "data" / "cc_heartbeat_log.jsonl", _HEARTBEAT_READ_LINES
     )
     latest: dict[str, dict[str, Any]] = {}
     for row in hb_rows:
@@ -279,7 +279,7 @@ def worker_availability(worker_name: str | None = None) -> str:
 
     # Collect completed ticket IDs from completion log
     cp_rows = _read_last_jsonl(
-        cfg.fs_root / "data" / "cc_completion_log.jsonl", _COMPLETION_READ_LINES
+        cfg.repo_root / "data" / "cc_completion_log.jsonl", _COMPLETION_READ_LINES
     )
     completed_tickets: set[str] = set()
     for row in cp_rows:

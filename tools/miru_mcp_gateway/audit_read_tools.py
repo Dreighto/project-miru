@@ -72,7 +72,7 @@ def gateway_audit_tail(
         lim = 50
     lim = max(1, min(lim, 500))
 
-    writes_p, docs_p, reads_p = gw_audit.default_audit_paths(cfg.fs_root)
+    writes_p, docs_p, reads_p = gw_audit.default_audit_paths(cfg.repo_root)
     path = {"writes": writes_p, "reads": reads_p, "docs": docs_p}[lk]
 
     raw_lines = _tail_jsonl_lines(path, lim * 3)

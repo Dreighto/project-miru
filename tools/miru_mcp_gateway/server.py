@@ -277,6 +277,7 @@ def main() -> int:
         f"  host         : {cfg.host}\n"
         f"  port         : {cfg.port}\n"
         f"  fs_root      : {cfg.fs_root}\n"
+        f"  repo_root    : {cfg.repo_root}\n"
         f"  internal mcp : http://{cfg.host}:{cfg.port}{cfg.mcp_path}\n"
         f"  internal hlth: http://{cfg.host}:{cfg.port}{cfg.health_path}\n"
         f"  public via   : Tailscale Funnel + /mcp/<SECRET> (strips prefix)\n"

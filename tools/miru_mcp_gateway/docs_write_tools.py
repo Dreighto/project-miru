@@ -94,7 +94,7 @@ def _audit_docs(
     result: str,
     error: str | None,
 ) -> None:
-    _, docs_log, _ = gw_audit.default_audit_paths(cfg.fs_root)
+    _, docs_log, _ = gw_audit.default_audit_paths(cfg.repo_root)
     row = {
         "ts": gw_audit._utc_iso(),
         "tool": tool,

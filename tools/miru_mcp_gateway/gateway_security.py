@@ -151,7 +151,7 @@ def _should_audit_read_log(func: Callable[..., Any]) -> bool:
 
 def _append_read_audit_row(cfg: Any, row: dict[str, Any]) -> None:
     with contextlib.suppress(Exception):
-        gw_audit.append_read_audit(cfg.fs_root, row)
+        gw_audit.append_read_audit(cfg.repo_root, row)
 
 
 def _get_current_profile() -> str:
