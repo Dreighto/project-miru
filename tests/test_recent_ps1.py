@@ -160,6 +160,31 @@ def test_malformed_json_skipped_with_warning():
         fixture.unlink()
 
 
+def test_runs_from_outside_repo_via_psscriptroot_fallback():
+    # When invoked with an absolute path from a non-git directory (e.g.
+    # operator running `pwsh D:\path\to\recent.ps1` from their home dir),
+    # `git rev-parse` fails. Script must fall back to PSScriptRoot to
+    # locate the repo. This was a real regression.
+    cwd_outside = Path(tempfile.mkdtemp())
+    try:
+        cmd = ["pwsh", "-NoProfile", "-File", str(SCRIPT_PATH), "-Count", "1"]
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            cwd=cwd_outside,
+            timeout=30,
+            check=False,
+        )
+        # Either it finds the repo via PSScriptRoot fallback (preferred) or it
+        # errors cleanly. It must NOT crash with a null-method-call exception.
+        assert result.returncode == 0 or "Could not resolve repo root" in result.stderr
+        assert "null-valued expression" not in result.stderr
+    finally:
+        cwd_outside.rmdir()
+
+
 def test_count_clamped_to_minimum_one():
     rows = [
         {

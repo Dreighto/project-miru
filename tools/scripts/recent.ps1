@@ -27,14 +27,48 @@ $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 if ($Count -lt 1) { $Count = 1 }
 
 if (-not $LogPath) {
-    try {
-        $gitCommonDir = (& git rev-parse --git-common-dir 2>$null).Trim()
-        if (-not $gitCommonDir) { throw 'not a git repo' }
-        $repoRoot = (Resolve-Path (Join-Path $gitCommonDir '..')).Path
-    } catch {
-        Write-Error "Could not resolve repo root via git: $_"
+    # Resolution order — both anchored to the SCRIPT'S location, not CWD,
+    # so the operator gets the same canonical log no matter where they run from.
+    #
+    #   1. git rev-parse --git-common-dir (run with -C $PSScriptRoot to handle
+    #      the case of being invoked from outside any git tree). Resolves to
+    #      the canonical repo even when the script lives in a worktree.
+    #   2. $PSScriptRoot fallback (e.g. git binary missing).
+    $repoRoot = $null
+    $scriptDir = $PSScriptRoot
+
+    if ($scriptDir) {
+        $gitOutput = & git -C $scriptDir rev-parse --git-common-dir 2>$null
+        if ($LASTEXITCODE -eq 0 -and $gitOutput) {
+            $gitCommonDir = ([string]$gitOutput).Trim()
+            if ($gitCommonDir) {
+                # git-common-dir may be relative when run with -C; resolve
+                # against the script directory, not the user's CWD.
+                if (-not [IO.Path]::IsPathRooted($gitCommonDir)) {
+                    $gitCommonDir = Join-Path $scriptDir $gitCommonDir
+                }
+                try {
+                    $repoRoot = (Resolve-Path (Join-Path $gitCommonDir '..') -ErrorAction Stop).Path
+                } catch {
+                    $repoRoot = $null
+                }
+            }
+        }
+
+        if (-not $repoRoot) {
+            # Script lives at <repo>\tools\scripts\recent.ps1 — climb two levels.
+            $candidate = (Resolve-Path (Join-Path $scriptDir '..\..') -ErrorAction SilentlyContinue).Path
+            if ($candidate -and (Test-Path (Join-Path $candidate 'data'))) {
+                $repoRoot = $candidate
+            }
+        }
+    }
+
+    if (-not $repoRoot) {
+        Write-Error "Could not resolve repo root. Run from inside the repo or pass -LogPath."
         exit 1
     }
+
     $LogPath = [IO.Path]::Combine($repoRoot, 'data', 'cc_completion_log.jsonl')
 }
 
