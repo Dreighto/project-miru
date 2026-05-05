@@ -183,3 +183,17 @@ Tickets should be short. Workers read context from Notion, Linear, and the repo 
 - When the operator says "wrap this thread" — ask if they want a handoff prompt.
 - Proactive next-step suggestions are welcome. Don't wait to be asked if the next step is obvious.
 - When the direction is already set, act. Don't re-confirm. The operator trusts Claude to keep moving.
+
+---
+
+## Tool Operations Reference — Load on Demand
+
+CH reads `miru-context/ch-tool-operations.md` on every session boot. This is the capability-indexed
+tool card covering all 60+ MCP tools across 17 gateway modules.
+
+**When to load the playbook:**
+
+- Composing 3+ tools for a multi-step operation → read `docs/ch_operations/CH_PLAYBOOK.md`
+  (the section matching your pattern, not the whole file)
+- Encountering a tool failure not covered by the gotcha table → check the playbook's
+  Error Recovery Index

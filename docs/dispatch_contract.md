@@ -228,6 +228,8 @@ Claude Chat's dispatch loop for a ticket:
 6. **On INCONCLUSIVE** — answer the question in Linear, re-dispatch if needed.
 7. **On FAILED / STALLED** — escalate to operator via Telegram.
 
+For detailed tool compositions and error recovery patterns, see `docs/ch_operations/CH_PLAYBOOK.md` §3 (Dispatch Orchestration).
+
 ---
 
 ## Worker Routing Guide
