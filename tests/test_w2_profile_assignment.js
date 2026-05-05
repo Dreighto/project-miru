@@ -151,15 +151,15 @@ function runClassifier(signals, risk) {
     })();
   `;
 
-  try {
-    const script = new vm.Script(wrappedCode);
-    const context = vm.createContext(sandbox);
-    script.runInContext(context);
-    return sandbox._result ? sandbox._result.json : null;
-  } catch (e) {
-    console.error('  Runtime error: ' + e.message);
-    return null;
+  const script = new vm.Script(wrappedCode);
+  const context = vm.createContext(sandbox);
+  script.runInContext(context);
+  if (!sandbox._result || !sandbox._result.json) {
+    console.error('  FAIL: runClassifier returned no result');
+    failed++;
+    return {};
   }
+  return sandbox._result.json;
 }
 
 // Test case 1: Bug + "audit this" keywords → routine/drift_executor (keyword precedence)
@@ -398,6 +398,99 @@ console.log('\nTest 12: Config missing → judgment/standard_worker (graceful fa
     );
   }
 }
+
+// ==========================================
+// Step 5: Boundary-crossing syntax tests for W4 and W7 (PRO-189 adopted lesson)
+// ==========================================
+console.log('\n--- W4/W7 Boundary-Crossing Syntax Tests ---');
+
+const W4_PATH = path.join(
+  __dirname,
+  '..',
+  'docker',
+  'n8n',
+  'workflows',
+  'w4-dispatch-button-handler.json'
+);
+const W7_PATH = path.join(
+  __dirname,
+  '..',
+  'docker',
+  'n8n',
+  'workflows',
+  'w7-telegram-callback-handler.json'
+);
+
+// W4: verify all jsCode nodes parse
+console.log('\nW4 jsCode syntax check:');
+const w4 = JSON.parse(fs.readFileSync(W4_PATH, 'utf8'));
+w4.nodes.forEach((n) => {
+  if (n.parameters && n.parameters.jsCode) {
+    try {
+      new Function(n.parameters.jsCode);
+      passed++;
+    } catch (e) {
+      console.error('  FAIL: W4 node ' + n.id + ' SyntaxError — ' + e.message);
+      failed++;
+    }
+  }
+});
+console.log('  All W4 jsCode nodes parse OK');
+
+// W4: verify w4021-assemble-prompt has plan-only mode
+const w4021 = w4.nodes.find((n) => n.id === 'w4021-assemble-prompt');
+assert(w4021, 'W4 w4021-assemble-prompt exists');
+assert(w4021.parameters.jsCode.includes('PLAN-ONLY MODE'), 'W4 w4021 has plan-only instructions');
+assert(w4021.parameters.jsCode.includes('tool_profile'), 'W4 w4021 reads tool_profile');
+
+// W4: verify w4023 includes tool_profile in POST body
+const w4023 = w4.nodes.find((n) => n.id === 'w4023-build-listener-request');
+assert(w4023, 'W4 w4023-build-listener-request exists');
+assert(
+  w4023.parameters.jsCode.includes('tool_profile: data.tool_profile'),
+  'W4 w4023 includes tool_profile in POST body'
+);
+
+// W7: verify all jsCode nodes parse
+console.log('\nW7 jsCode syntax check:');
+const w7 = JSON.parse(fs.readFileSync(W7_PATH, 'utf8'));
+w7.nodes.forEach((n) => {
+  if (n.parameters && n.parameters.jsCode) {
+    try {
+      new Function(n.parameters.jsCode);
+      passed++;
+    } catch (e) {
+      console.error('  FAIL: W7 node ' + n.id + ' SyntaxError — ' + e.message);
+      failed++;
+    }
+  }
+});
+console.log('  All W7 jsCode nodes parse OK');
+
+// W7: verify w7006 reads profile_override rows
+const w7006 = w7.nodes.find((n) => n.id === 'w7006-lookup-pending');
+assert(w7006, 'W7 w7006-lookup-pending exists');
+assert(
+  w7006.parameters.jsCode.includes('profile_override'),
+  'W7 w7006 scans for profile_override rows'
+);
+assert(
+  w7006.parameters.jsCode.includes('final_profile_override'),
+  'W7 w7006 outputs final_profile_override'
+);
+
+// W7: verify w7-determine-dispatch-target uses final_profile_override
+const w7dispatch = w7.nodes.find((n) => n.id === 'w7-determine-dispatch-target');
+assert(w7dispatch, 'W7 w7-determine-dispatch-target exists');
+assert(
+  w7dispatch.parameters.jsCode.includes('final_profile_override'),
+  'W7 dispatch target uses final_profile_override'
+);
+
+// W7: verify w7-store-pending-dispatch includes task_mode
+const w7store = w7.nodes.find((n) => n.id === 'w7-store-pending-dispatch');
+assert(w7store, 'W7 w7-store-pending-dispatch exists');
+assert(w7store.parameters.jsCode.includes('task_mode'), 'W7 dispatch row includes task_mode');
 
 // ==========================================
 // Summary
