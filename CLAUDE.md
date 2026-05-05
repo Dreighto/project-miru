@@ -312,7 +312,7 @@ The W2 router automatically classifies tasks and assigns a tool profile before d
 | routine   | `drift_executor`  | Keywords: audit, read-only, repo scan, schema read, second opinion, etc.   |
 | judgment  | `standard_worker` | Task types: Bug, Feature, Improvement, chore, design (default for unknown) |
 | ambiguous | `reviewer`        | Keywords: unclear, investigate, figure out, explore options, etc.          |
-| blocked   | (no dispatch)     | Keywords: blocked, waiting on, depends on, dependency                      |
+| blocked   | (no dispatch)     | Keywords: blocked, waiting on, depends on                                  |
 
 **Classification tiers:**
 
@@ -324,7 +324,7 @@ The W2 router automatically classifies tasks and assigns a tool profile before d
 
 **Operator override:** The Telegram proposal message shows the suggested profile. A Profile button lets the operator override the profile before approving. Profile overrides are recorded as `profile_override` rows in `pending_callbacks.jsonl`.
 
-**Plan-only mode:** Ambiguous tasks dispatched with `reviewer` profile get plan-only instructions injected into the prompt. The worker produces a plan and posts it as a Linear comment — no branches, PRs, or file modifications.
+**Plan-only mode:** Ambiguous tasks dispatched with `reviewer` profile get plan-only instructions injected into the prompt. The worker produces a plan in its completion output (the operator posts it) — no branches, PRs, or file modifications.
 
 **Audit trail:** `routing_history.jsonl` records `suggested_profile`, `final_profile`, `task_mode`, and `profile_rationale` for every routing decision.
 
@@ -369,7 +369,7 @@ Every file created must go in the correct location. These rules are non-negotiab
 - Standalone data/AI utility scripts → `tools/`
 - Test files → `tests/`
 - Documentation → `docs/`
-- Config JSON → `config/`
+- Config JSON → `config/` (exception: `data/config/` for runtime config loaded inside Docker via bind-mount, e.g. `w2_profile_rules.json`)
 - Batch run outputs, reports, audit CSVs → `data/batch_reports/`
 - Official snapshots → `data/snapshots/`
 - DB overlay/correction files → `data/overlays/`
