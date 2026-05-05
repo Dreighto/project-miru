@@ -50,6 +50,7 @@ class GatewayConfig:
     port: int
     url_secret: str
     fs_root: Path
+    repo_root: Path
     mcp_path: str
     health_path: str
 
@@ -120,7 +121,7 @@ class GatewayConfig:
 
     @property
     def data_dir(self) -> Path:
-        return self.fs_root / "data"
+        return self.repo_root / "data"
 
     @property
     def mcp_gateway_pending_writes_path(self) -> Path:
@@ -294,6 +295,11 @@ def load() -> GatewayConfig:
     if not fs_root.exists():
         raise SystemExit(f"FATAL: MIRU_FS_ALLOW_ROOT does not exist: {fs_root}")
 
+    raw_repo = os.environ.get("MIRU_REPO_ROOT", str(DEFAULT_ROOT))
+    repo_root = Path(raw_repo).resolve()
+    if not repo_root.exists():
+        raise SystemExit(f"FATAL: MIRU_REPO_ROOT does not exist: {repo_root}")
+
     raw_port = os.environ.get("MIRU_MCP_GATEWAY_PORT", str(DEFAULT_PORT))
     try:
         port = int(raw_port)
@@ -331,7 +337,7 @@ def load() -> GatewayConfig:
     linear_team_id = os.environ.get("MIRU_LINEAR_TEAM_ID", "").strip() or None
     n8n_container_name = os.environ.get("MIRU_N8N_CONTAINER_NAME", "").strip() or "miru-n8n"
     workers_config_raw = os.environ.get("MIRU_WORKERS_CONFIG", "").strip()
-    workers_yaml_path = _workers_yaml_path(fs_root)
+    workers_yaml_path = _workers_yaml_path(repo_root)
     worker_path_allow_prefixes = _comma_tuple("MIRU_WORKER_PATH_ALLOWLIST")
     n8n_execution_data_skip_approval = _truthy_env("MIRU_N8N_EXECUTION_DATA_SKIP_APPROVAL")
     rate_limit_by_category = _load_rate_limits()
@@ -342,9 +348,9 @@ def load() -> GatewayConfig:
     memory_db_path: Path | None = None
     if raw_mem_db:
         p = Path(raw_mem_db)
-        memory_db_path = p if p.is_absolute() else (fs_root / p).resolve()
+        memory_db_path = p if p.is_absolute() else (repo_root / p).resolve()
     elif memory_enabled:
-        memory_db_path = fs_root / "data" / "miru_memory.db"
+        memory_db_path = repo_root / "data" / "miru_memory.db"
 
     linear_write_enabled = _truthy_env("MIRU_LINEAR_WRITE_ENABLED")
     telegram_bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or None
@@ -366,6 +372,7 @@ def load() -> GatewayConfig:
         port=port,
         url_secret=secret,
         fs_root=fs_root,
+        repo_root=repo_root,
         mcp_path=INTERNAL_MCP_PATH,
         health_path=INTERNAL_HEALTH_PATH,
         github_token=github_token,

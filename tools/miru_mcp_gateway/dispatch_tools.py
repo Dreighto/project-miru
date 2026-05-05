@@ -157,7 +157,7 @@ def dispatch_worker(
     trace_id = _generate_trace_id(ticket_id)
 
     # Write prompt file — listener reads this synchronously before 202.
-    inbox_dir = cfg.fs_root / "data" / "n8n_inbox"
+    inbox_dir = cfg.repo_root / "data" / "n8n_inbox"
     inbox_dir.mkdir(parents=True, exist_ok=True)
     prompt_file = inbox_dir / f"{trace_id}.prompt.json"
     prompt_file.write_text(json.dumps({"prompt": prompt}, ensure_ascii=False), encoding="utf-8")
