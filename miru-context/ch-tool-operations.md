@@ -41,22 +41,22 @@
 
 ## Track / Query (State Monitoring)
 
-| Need to...            | Use                          | Module          | Watch out for                                      |
-| --------------------- | ---------------------------- | --------------- | -------------------------------------------------- |
-| Get Linear ticket     | `get_issue`                  | linear MCP      | Use `get_issue` for single, `list_issues` for bulk |
-| Check ticket state    | `get_issue`                  | linear MCP      | State name must match exactly                      |
-| List open PRs         | `github_list_open_prs`       | github_tools    | Returns summary of all open PRs                    |
-| Get single PR         | `github_get_pr`              | github_tools    | Full PR details including merge state              |
-| Poll for completion   | `activity_since`             | activity_tools  | Check both heartbeat + completion log              |
-| Query n8n execution   | `n8n_get_execution`          | n8n_tools       | ID from `n8n_list_recent_executions`               |
-| Get execution summary | `n8n_get_execution_summary`  | n8n_tools       | Lighter than full execution data                   |
-| List n8n executions   | `n8n_list_recent_executions` | n8n_tools       | Most recent first                                  |
-| Read memory table     | `read_query`                 | miru_memory MCP | SQL query against memory DB                        |
-| List memory tables    | `list_tables`                | miru_memory MCP | Shows all available tables                         |
-| Describe memory table | `describe_table`             | miru_memory MCP | Column names and types                             |
-| Check dispatch status | `worker_availability`        | worker_tools    | Returns idle/busy/stalled                          |
-| Read recent commits   | `github_list_recent_commits` | github_tools    | Default branch history                             |
-| Get repo status       | `github_get_repo_status`     | github_tools    | Branch protection, default branch                  |
+| Need to...            | Use                          | Module          | Watch out for                                                                                         |
+| --------------------- | ---------------------------- | --------------- | ----------------------------------------------------------------------------------------------------- |
+| Get Linear ticket     | `get_issue`                  | linear MCP      | Use `get_issue` for single, `list_issues` for bulk                                                    |
+| Check ticket state    | `get_issue`                  | linear MCP      | State name must match exactly                                                                         |
+| List open PRs         | `github_list_open_prs`       | github_tools    | Returns summary of all open PRs                                                                       |
+| Get single PR         | `github_get_pr`              | github_tools    | Full PR details including merge state                                                                 |
+| Poll for completion   | `activity_since`             | activity_tools  | Returns cross-system timeline (Linear, GitHub, n8n, file modifications) — does not parse log contents |
+| Query n8n execution   | `n8n_get_execution`          | n8n_tools       | ID from `n8n_list_recent_executions`                                                                  |
+| Get execution summary | `n8n_get_execution_summary`  | n8n_tools       | Lighter than full execution data                                                                      |
+| List n8n executions   | `n8n_list_recent_executions` | n8n_tools       | Most recent first                                                                                     |
+| Read memory table     | `read_query`                 | miru_memory MCP | SQL query against memory DB                                                                           |
+| List memory tables    | `list_tables`                | miru_memory MCP | Shows all available tables                                                                            |
+| Describe memory table | `describe_table`             | miru_memory MCP | Column names and types                                                                                |
+| Check dispatch status | `worker_availability`        | worker_tools    | Returns idle/busy/stalled                                                                             |
+| Read recent commits   | `github_list_recent_commits` | github_tools    | Default branch history                                                                                |
+| Get repo status       | `github_get_repo_status`     | github_tools    | Branch protection, default branch                                                                     |
 
 ---
 
