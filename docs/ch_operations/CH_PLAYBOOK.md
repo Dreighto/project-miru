@@ -86,11 +86,11 @@ Check ports (A) and health endpoints (B) to confirm services are running. Check 
 
 **Building blocks:**
 
-| Step | Tool                  | Input                     | Output                                               | Notes                   |
-| ---- | --------------------- | ------------------------- | ---------------------------------------------------- | ----------------------- |
-| A    | `worker_availability` | —                         | Idle status per slot                                 | Must be idle before B   |
-| B    | `dispatch_worker`     | worker, prompt, ticket_id | trace_id                                             | Needs A to confirm idle |
-| C    | `activity_since`      | minutes (time window)     | Cross-system timeline — scan for trace_id in results | Poll every 3–5 min      |
+| Step | Tool                  | Input                     | Output                                                                                                          | Notes                   |
+| ---- | --------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| A    | `worker_availability` | —                         | Idle status per slot                                                                                            | Must be idle before B   |
+| B    | `dispatch_worker`     | worker, prompt, ticket_id | trace_id                                                                                                        | Needs A to confirm idle |
+| C    | `activity_since`      | minutes (time window)     | Cross-system timeline — scan for dispatch-related activity (ticket state changes, PR events, log modifications) | Poll every 3–5 min      |
 
 Steps A→B→C form a strict data dependency chain.
 
@@ -168,7 +168,7 @@ Step 0 runs first. Steps A–C are parallel (no dependency on each other). Step 
 
 **Composition example:**
 
-Read the drift scanner log (0). If the scanner flagged ticket PRO-XXX as `stale_linear` (Linear shows In Progress but completion marker exists), confirm by reading the ticket (A) and the completion log (C). If confirmed stale → move Linear to Done (D) and add a comment explaining the correction. No operator approval needed — this is reversible.
+Read the drift scanner log (0). If the scanner flagged ticket PRO-XXX as `stale_linear` (Linear shows In Progress but completion marker exists), confirm by reading the ticket (A) and checking recent activity via `activity_since` (C). If confirmed stale → move Linear to Done (D) and add a comment explaining the correction. No operator approval needed — this is reversible.
 
 **Error recovery:**
 
@@ -205,11 +205,11 @@ All steps are independent — run in parallel.
 
 **Building blocks:**
 
-| Step | Tool                   | Input                    | Output                                            | Notes                |
-| ---- | ---------------------- | ------------------------ | ------------------------------------------------- | -------------------- |
-| A    | `worker_status`        | —                        | Last heartbeat time + state                       | —                    |
-| B    | `activity_since`       | minutes (time window)    | Cross-system timeline — check heartbeat staleness | Needs ticket context |
-| C    | `system_tail_safe_log` | Worker stdout/stderr log | Error messages or crash info                      | —                    |
+| Step | Tool                   | Input                    | Output                                               | Notes                |
+| ---- | ---------------------- | ------------------------ | ---------------------------------------------------- | -------------------- |
+| A    | `worker_availability`  | —                        | Idle / busy / stalled per slot (reads heartbeat log) | —                    |
+| B    | `activity_since`       | minutes (time window)    | Cross-system timeline — check heartbeat staleness    | Needs ticket context |
+| C    | `system_tail_safe_log` | Worker stdout/stderr log | Error messages or crash info                         | —                    |
 
 Steps A→B have context dependency. Step C is independent.
 
