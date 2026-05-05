@@ -9,70 +9,62 @@ The charter tells you why it matters and what kind of worker you are expected to
 
 ---
 
-## Bugbot Findings Handling Contract (CC only, locked PRO-212 2026-04-29)
+## Automated PR Review Completion Sequence (all workers + CH, locked 2026-05-04)
 
-This contract applies to Claude Code (CC) only. It is not yet extended to Codex, Cursor, Gemini,
-Copilot, or Windsurf — CC only until proven over several PRs.
+This contract applies to ALL workers (CC, Codex, Cursor, Gemini, Copilot, Windsurf) and Claude
+Chat when it owns a PR. Supersedes the previous CC-only Bugbot contract (PRO-212).
 
-After CC pushes a branch and opens a PR, and **before** declaring `CONFIRMED_WORKING`, CC must
-execute the following Bugbot completion sequence:
+Before declaring `CONFIRMED_WORKING` on any PR, the worker (or CH if it owns the PR) MUST:
 
-### Step 1 — Poll for Bugbot check-run completion
+### Step 1 — Wait for all automated reviewers to complete
 
-First, obtain the PR head SHA: run `git rev-parse HEAD` after pushing, or call
-`GET /repos/{owner}/{repo}/pulls/{number}` and read `.head.sha`.
+Poll `gh pr checks <number> --watch` or `GET /repos/{owner}/{repo}/commits/{sha}/check-runs`
+until all automated reviewers reach a terminal state:
 
-Then poll `GET /repos/{owner}/{repo}/commits/{sha}/check-runs` (substituting the head SHA) until
-`Cursor Bugbot` has reached a terminal state (`completed`).
+- **CodeRabbit** — AI code review
+- **Bugbot** (chatgpt-codex-connector) — automated bug detection
+- **CI hygiene** — lint, format, schema validation
 
-- `Cursor Bugbot Autofix` is advisory — do **not** wait for it. Proceed once `Cursor Bugbot` is
-  `completed`, regardless of Autofix state.
-- **Timeout:** if `Cursor Bugbot` has not reached `completed` after **10 minutes**, stop polling.
-  Surface the timeout in the completion ping and proceed with whatever findings exist (or none).
+**Timeout:** if any reviewer has not completed after **10 minutes**, stop polling. Surface the
+timeout in the completion report and proceed with whatever findings exist.
 
-Typical wait: 3–5 minutes. Poll with backoff; do not hammer the API.
+### Step 2 — Read every finding
 
-### Step 2 — Evaluate Cursor Bugbot conclusion
+Read all review comments via `gh api repos/{owner}/{repo}/pulls/{number}/comments` and
+`gh api repos/{owner}/{repo}/pulls/{number}/reviews`. Categorize each finding:
 
-- If `Cursor Bugbot` conclusion is **`success`** or **`neutral`**: skip to Step 5.
-- If `Cursor Bugbot` conclusion is anything else (e.g. `failure`, `action_required`): continue to
-  Step 3.
+**Actionable:** Code bugs, missing fields that break downstream consumers, false-positive keyword
+matches, test gaps the adopted lesson requires (PRO-189 boundary-crossing tests), permission
+contradictions (e.g. telling a read-only worker to write), and any finding rated P1/P2 or flagged
+as a potential issue.
 
-### Step 3 — Read and categorize findings
+**Not actionable:** Style preferences that conflict with project conventions, docstring coverage
+warnings (project convention: no docstrings unless non-obvious), and suggestions to add features
+beyond the PR scope.
 
-Read all review comments via `GET /repos/{owner}/{repo}/pulls/{number}/comments`.
+### Step 3 — Fix valid findings
 
-Categorize each finding by Bugbot's severity classification:
+Push a follow-up commit addressing each actionable issue. For each finding, either fix it or
+explain in a commit message why it's not applicable.
 
-| Severity   | Action                                                                                            |
-| ---------- | ------------------------------------------------------------------------------------------------- |
-| **Low**    | Attempt fix, commit, push. Wait for next Bugbot pass. **Maximum one iteration — do not loop.**    |
-| **Medium** | Attempt fix, commit, push. Wait for next Bugbot pass. **Maximum one iteration — do not loop.**    |
-| **High**   | Surface in completion ping with severity + recommendation. **Do NOT auto-fix.** Operator decides. |
+### Step 4 — Re-run and poll
 
-### Step 4 — Override conditions (surface instead of auto-fix)
+After pushing fixes, wait for the next review cycle to complete. Repeat Steps 2–4 until no new
+actionable findings remain.
 
-Even for Low/Medium findings, **do NOT auto-fix** if any of the following apply:
+### Step 5 — Confirm green and declare terminal state
 
-- The fix contradicts the Linear ticket spec.
-- The fix requires touching a file on the ticket's `Don't touch` list.
-- The finding appears incorrect or based on a misread of the code.
-- Applying the fix would require changes outside the ticket's stated scope.
+All status checks must show pass/success before declaring done. `CHANGES_REQUESTED` from an
+automated reviewer with no remaining actionable comments is acceptable only if all specific
+findings have been addressed in commits.
 
-In any of these cases: surface the finding in the completion ping with your rationale.
-
-### Step 5 — Declare terminal state
-
-After Bugbot is clean (or all findings have been addressed or surfaced), append the
-`cc_completion_log.jsonl` marker and report `CONFIRMED_WORKING` (or the appropriate terminal state)
-to the operator.
+Append the `cc_completion_log.jsonl` marker and report `CONFIRMED_WORKING` (or the appropriate
+terminal state) to the operator.
 
 ### Scope
 
-- **Applies to:** every PR CC opens, starting with the first dispatch after this contract is locked.
-- **Does not apply to:** Codex, Cursor, Gemini, Copilot, Windsurf workers.
-- **Does not modify:** dispatcher runtime code, W4, W7, or any other section of this file unrelated
-  to PR completion and Bugbot handling.
+- **Applies to:** every PR any worker or CH opens, starting 2026-05-04.
+- A PR with unaddressed P1 findings that gets merged is a discipline violation.
 
 ---
 

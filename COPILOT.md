@@ -4,7 +4,7 @@
 
 - 18080 = Project Miru UI — ACTIVE
 - 18765 = Miru AI — ACTIVE
-- 19000 = Task Dispatcher — ACTIVE
+- 19000 = Task Dispatcher — DECOMMISSIONED (PRO-234, 2026-04-30; code kept, service stopped)
 - 8080 = RESERVED — do not touch
 - 8765 = NEVER TOUCH under any circumstances
 - 11434 = Ollama — local dependency, not Miru-owned
@@ -52,7 +52,7 @@
 
 - PM (18080): `powershell -ExecutionPolicy Bypass -File windows\restart_pm.ps1`
 - Miru AI (18765): `powershell -ExecutionPolicy Bypass -File windows\restart_miru_ai.ps1`
-- Dispatcher (19000): `powershell -ExecutionPolicy Bypass -File windows\restart_dispatcher.ps1`
+- Dispatcher (19000): DECOMMISSIONED — do not restart
 - Never use nssm restart directly
 - Never create alternate restart scripts
 
@@ -64,7 +64,7 @@ Every file created must go in the correct location. These rules are non-negotiab
 
 - `miru_ai/` — ALL code for the Miru AI service (port 18765): Python modules, workers, templates, static, tools, migrations
 - `pm/` — ALL code for the PM Dashboard (port 18080): app.py, templates, static
-- `dispatcher/` — ALL code for the Task Dispatcher (port 19000): task_dispatcher.py, handlers/, templates/, static/
+- `dispatcher/` — Task Dispatcher code — DECOMMISSIONED (PRO-234, 2026-04-30). Code kept for reference; service stopped. Do not add new files here.
 - `shared/` — Only utilities imported by 2+ services. Not a dumping ground.
 - `windows/` — Windows operational scripts (.ps1, .cmd) for service management ONLY. No Python service code here.
 
