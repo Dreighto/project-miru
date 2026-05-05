@@ -300,7 +300,40 @@ Dispatched workers connect to the MCP Gateway via a `.mcp.json` generated in the
 - Tool Access and Canon Authority are SEPARATE gates — no profile grants canon-write authority
 - Denials are logged to `logs/mcp_gateway_reads.jsonl` with `result: "profile_denied"`
 - Profile definitions live in `tools/miru_mcp_gateway/profiles.py`
-- Do NOT add automatic profile assignment in W2/n8n — that is Phase 4 (Ingress Classifier)
+
+## Ingress Classifier (Phase 4 — Automatic Profile Assignment)
+
+The W2 router automatically classifies tasks and assigns a tool profile before dispatch. The classifier node `w2008a-assign-profile` runs after risk classification (w2008) and before the confidence branch (w2009).
+
+**Task modes and profile mapping:**
+
+| Mode      | Profile           | When assigned                                                              |
+| --------- | ----------------- | -------------------------------------------------------------------------- |
+| routine   | `drift_executor`  | Keywords: audit, read-only, repo scan, schema read, second opinion, etc.   |
+| judgment  | `standard_worker` | Task types: Bug, Feature, Improvement, chore, design (default for unknown) |
+| ambiguous | `reviewer`        | Keywords: unclear, investigate, figure out, explore options, etc.          |
+| blocked   | (no dispatch)     | Keywords: blocked, waiting on, depends on, dependency                      |
+
+**Classification tiers:**
+
+1. **Tier 1 — Keywords** take precedence. Surface keywords from the ticket are checked against rule lists.
+2. **Tier 2 — Task type** fallback. If no keyword match, task_type determines the mode.
+3. **Safety override:** High-risk tasks never get `drift_executor` — bumped to `judgment/standard_worker`.
+
+**Classification rules** are externalized in `data/config/w2_profile_rules.json` and loaded at execution time. Tunable without workflow redeployment.
+
+**Operator override:** The Telegram proposal message shows the suggested profile. A Profile button lets the operator override the profile before approving. Profile overrides are recorded as `profile_override` rows in `pending_callbacks.jsonl`.
+
+**Plan-only mode:** Ambiguous tasks dispatched with `reviewer` profile get plan-only instructions injected into the prompt. The worker produces a plan and posts it as a Linear comment — no branches, PRs, or file modifications.
+
+**Audit trail:** `routing_history.jsonl` records `suggested_profile`, `final_profile`, `task_mode`, and `profile_rationale` for every routing decision.
+
+**Key rules:**
+
+- `vp_ops` and `full_operator` are never classifier-assigned — those are operator-only
+- Manual dispatches (operator labels ticket directly in Linear) default to `standard_worker`
+- Profiles are NOT canon-authority grants — Tool Access and Canon Authority remain separate gates
+- Profile definitions still live in `tools/miru_mcp_gateway/profiles.py` (Phase 3, unchanged)
 
 ## Database Rules
 
