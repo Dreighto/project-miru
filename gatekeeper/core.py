@@ -459,6 +459,11 @@ def log_decision(decision: dict[str, Any], *, ticket_id: str) -> None:
         "canon_refs": [],
         "evidence_refs": [],
         "alternatives_considered": [],
+        "assumptions": [
+            "ticket frontmatter is the canonical original-intent gospel for this dispatch",
+            "deterministic floor (trace_id, A2A bus, worktree, in-flight) passed before LLM call",
+            f"LLM validation ran at temperature=0.0 on {ticket_id}",
+        ],
     }
 
     try:
