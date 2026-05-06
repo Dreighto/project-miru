@@ -173,7 +173,7 @@ def handler(job) -> None:
         log.exception("Unexpected error in gemini handler for job %s", job.id)
 
 
-def _kill_gemini_children(pid: int):
+def _kill_gemini_children(pid: int) -> None:
     """Best-effort kill of the gemini-cli process tree for a specific PID.
 
     Targets ``pid`` and its descendants via ``taskkill /T`` so cancelling one
@@ -186,6 +186,7 @@ def _kill_gemini_children(pid: int):
             ["taskkill", "/PID", str(pid), "/T", "/F"],
             timeout=10,
             capture_output=True,
+            check=False,
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
     except Exception:
