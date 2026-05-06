@@ -1,5 +1,17 @@
 # AGENTS.md — Project Miru Worker Baseline
 
+# Framework source: Dreighto/worker-framework | docs/worker-framework/AGENTS.md
+
+# Last synced: 2026-05-06
+
+#
+
+# Universal rules (Operator Communication Standard, PR Review Sequence, Return-to-main,
+
+# Try Harder Discipline, Merge Policy, Completion Contract) are maintained in the
+
+# framework and embedded here. Miru-specific rules follow the universal sections.
+
 This file is the shared worker baseline for Project Miru. Workers read this on every dispatch.
 Worker-specific rule files (CLAUDE.md, GEMINI.md, CURSOR.md, etc.) layer on top of this baseline.
 
