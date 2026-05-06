@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cards</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f8f9fa;
+      }
+      .container {
+        max-width: 375px;
+        margin: 0 auto;
+        background: #fff;
+        min-height: 100vh;
+      }
+      header {
+        padding: 16px;
+        border-bottom: 1px solid #dee2e6;
+      }
+      h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+
+      /* Tab buttons: intentionally undersized at 32px */
+      .tab-bar {
+        display: flex;
+        border-bottom: 1px solid #dee2e6;
+      }
+      .tab-btn {
+        flex: 1;
+        height: 32px;
+        border: none;
+        background: none;
+        font-size: 0.8rem;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        color: #6c757d;
+      }
+      .tab-btn.active {
+        border-bottom-color: #0066cc;
+        color: #0066cc;
+        font-weight: 600;
+      }
+
+      .search-bar {
+        padding: 12px 16px;
+      }
+      .search-input {
+        width: 100%;
+        height: 44px;
+        padding: 0 16px;
+        border: 1px solid #dee2e6;
+        border-radius: 22px;
+        font-size: 0.9rem;
+        background: #f8f9fa;
+      }
+
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 12px 16px 80px;
+      }
+      .card-tile {
+        aspect-ratio: 63/88;
+        background: #e9ecef;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: flex-end;
+      }
+      .card-tile-label {
+        font-size: 0.6rem;
+        color: #1a1a1a;
+        padding: 4px;
+        background: rgba(255, 255, 255, 0.85);
+        width: 100%;
+        border-radius: 0 0 6px 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .nav-bar {
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 375px;
+        display: flex;
+        background: #fff;
+        border-top: 1px solid #dee2e6;
+      }
+      .nav-item {
+        flex: 1;
+        height: 52px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+        color: #6c757d;
+        border: none;
+        background: none;
+        cursor: pointer;
+        gap: 2px;
+      }
+      .nav-item.active {
+        color: #0066cc;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header><h1>Cards</h1></header>
+
+      <div class="tab-bar">
+        <button class="tab-btn active">All</button>
+        <button class="tab-btn">Leaders</button>
+        <button class="tab-btn">Characters</button>
+        <button class="tab-btn">Events</button>
+      </div>
+
+      <div class="search-bar">
+        <input class="search-input" type="search" placeholder="Search cards..." />
+      </div>
+
+      <div class="card-grid">
+        <div class="card-tile"><span class="card-tile-label">Luffy OP01-001</span></div>
+        <div class="card-tile"><span class="card-tile-label">Zoro OP01-024</span></div>
+        <div class="card-tile"><span class="card-tile-label">Nami OP01-016</span></div>
+        <div class="card-tile"><span class="card-tile-label">Sanji OP01-013</span></div>
+        <div class="card-tile"><span class="card-tile-label">Chopper OP01-020</span></div>
+        <div class="card-tile"><span class="card-tile-label">Robin OP01-021</span></div>
+        <div class="card-tile"><span class="card-tile-label">Franky OP01-022</span></div>
+        <div class="card-tile"><span class="card-tile-label">Brook OP01-023</span></div>
+        <div class="card-tile"><span class="card-tile-label">Usopp OP01-025</span></div>
+      </div>
+
+      <nav class="nav-bar">
+        <button class="nav-item">Home</button>
+        <button class="nav-item active">Cards</button>
+        <button class="nav-item">Watchlist</button>
+        <button class="nav-item">Decks</button>
+        <button class="nav-item">Profile</button>
+      </nav>
+    </div>
+  </body>
+</html>

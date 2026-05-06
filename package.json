@@ -1,5 +1,6 @@
 {
   "devDependencies": {
-    "@perplexity-ai/mcp-server": "^0.9.0"
+    "@perplexity-ai/mcp-server": "^0.9.0",
+    "@playwright/test": "1.59"
   }
 }
