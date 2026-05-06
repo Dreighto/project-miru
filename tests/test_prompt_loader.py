@@ -1,5 +1,7 @@
 """
-Unit tests for dispatcher/router/prompt_loader.py (PRO-201).
+Unit tests for tools/prompt_loader.py (PRO-201).
+
+Relocated from dispatcher/router/ in PRO-303.
 
 Coverage goals:
   1. scan_for_injection catches each of the 9 OWASP-sourced patterns.
@@ -23,13 +25,13 @@ from pathlib import Path
 from typing import ClassVar
 
 # ---------------------------------------------------------------------------
-# Path setup — add dispatcher/router/ to sys.path so the import works both
-# when run from repo root (pytest) and from inside dispatcher/router/.
+# Path setup — add tools/ to sys.path so the import works both
+# when run from repo root (pytest) and standalone.
 # ---------------------------------------------------------------------------
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_ROUTER_DIR = _REPO_ROOT / "dispatcher" / "router"
-if str(_ROUTER_DIR) not in sys.path:
-    sys.path.insert(0, str(_ROUTER_DIR))
+_TOOLS_DIR = _REPO_ROOT / "tools"
+if str(_TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DIR))
 
 import prompt_loader  # noqa: E402  (after sys.path fix)
 from prompt_loader import (  # noqa: E402
