@@ -12,32 +12,12 @@ const path = require('path');
 // Stdin behavior verified empirically (2026-04-26):
 //   * claude --print --dangerously-skip-permissions  -- reads prompt from stdin
 //   * gemini -p "" --yolo                            -- stdin appended to (empty) -p; --yolo auto-approves all tool actions (equivalent of --dangerously-skip-permissions)
-//   * codex exec -                                   -- explicit `-` reads stdin
 const ALLOWLIST_DEF = Object.freeze({
   'claude-code': {
     binary: 'claude.cmd',
     flags: ['--print', '--dangerously-skip-permissions'],
   },
   gemini: { binary: 'gemini.cmd', flags: ['-p', '', '--yolo', '--skip-trust'] },
-  // -c overrides applied before `exec` (global flags must precede the subcommand):
-  //   model_reasoning_effort: medium instead of high for automated dispatch
-  //     (significantly faster; interactive sessions keep their own config).
-  //   mcp_servers.justtcg.enabled=false: disable the HTTP SSE MCP server that
-  //     triggers an rmcp transport fatal during MCP init (missing-content-type
-  //     on the initialized notification). JustTCG is not needed for code tasks.
-  //   Note: model is NOT overridden — gpt-4o is rejected by ChatGPT accounts;
-  //     gpt-5.4 from config.toml is the only supported model here.
-  codex: {
-    binary: 'codex.cmd',
-    flags: [
-      '-c',
-      'model_reasoning_effort="medium"',
-      '-c',
-      'mcp_servers.justtcg.enabled=false',
-      'exec',
-      '-',
-    ],
-  },
 });
 
 // Some Windows installations virtualize %APPDATA%\npm into an AppContainer
