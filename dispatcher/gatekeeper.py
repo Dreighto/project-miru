@@ -541,6 +541,24 @@ def gate_dispatch(payload: dict[str, Any]) -> dict[str, Any]:
             checks=checks,
         )
 
+    if not checks["worktree_clean"]:
+        modified = checks.get("_modified_paths", [])
+        modified_summary = (
+            ", ".join(modified[:5]) + (f" (+{len(modified) - 5} more)" if len(modified) > 5 else "")
+            if modified
+            else "(no detail)"
+        )
+        return _rejection_response(
+            trace_id=trace_id,
+            ticket_id=ticket_id,
+            reason="dirty_worktree",
+            explanation=f"main repo has uncommitted tracked changes: {modified_summary}",
+            suggested_correction="Commit, stash, or revert the working-tree changes "
+            "on main before dispatching. Per CLAUDE.md, every session ends on main "
+            "with a clean tree.",
+            checks=checks,
+        )
+
     delta = payload.get("conversational_delta")
     parent_summary = payload.get("parent_conversation_summary", "")
     parent_hash = (
@@ -560,9 +578,12 @@ def gate_dispatch(payload: dict[str, Any]) -> dict[str, Any]:
     model = payload.get("gatekeeper_model", DEFAULT_MODEL)
     decision, latency_ms = call_ollama(prompt, model=model)
 
-    decision.setdefault("trace_id", trace_id)
-    decision.setdefault("ticket_id", ticket_id)
-    decision.setdefault("schema_version", "2")
+    # Force canonical IDs and schema version even if the model emitted
+    # different values — the model is not authoritative on identity.
+    decision["trace_id"] = trace_id
+    decision["ticket_id"] = ticket_id
+    decision["schema_version"] = "2"
+
     cs = decision.setdefault("context_snapshot", {})
     cs.setdefault("parent_conversation_summary_hash", parent_hash)
     cs.setdefault("conversational_delta", delta)
@@ -575,6 +596,41 @@ def gate_dispatch(payload: dict[str, Any]) -> dict[str, Any]:
     decision["flags"].append(f"model:{model}")
 
     log_decision(decision, ticket_id=ticket_id)
+
+    # Phase 2/3 cutover: forward to dispatch_listener if accepted AND not
+    # in shadow mode. Phase 1 (this PR) defaults shadow_mode=True so no
+    # actual dispatch routing change happens — the Gatekeeper just emits
+    # decisions for shadow-mode bench against routing_history.jsonl.
+    shadow_mode = bool(payload.get("shadow_mode", True))
+    decision_accepted = (
+        decision.get("validation", {}).get("is_legitimate_build") is True
+        and decision.get("rejection") is None
+        and decision.get("decision", {}).get("worker") in forwarder.ALLOWLISTED_WORKERS
+    )
+
+    if decision_accepted and not shadow_mode:
+        try:
+            execution = decision.get("execution", {}) or {}
+            forward_response = forwarder.forward(
+                trace_id=trace_id,
+                worker=decision["decision"]["worker"],
+                prompt_text=payload.get("prompt", ""),
+                timeout_seconds=int(execution.get("timeout_seconds", 600)),
+                model=execution.get("model") or None,
+                thinking_level=execution.get("thinking_level") or None,
+                tool_profile=decision["decision"].get("tool_profile") or "standard_worker",
+            )
+            decision["flags"].append(f"forwarded:{forward_response.get('status','?')}")
+        except forwarder.ForwarderError as e:
+            log.warning(
+                "forwarder_failed trace_id=%s reason=%s detail=%s",
+                trace_id,
+                e.reason,
+                e.detail,
+            )
+            decision["flags"].append(f"forward_failed:{e.reason}")
+    elif decision_accepted and shadow_mode:
+        decision["flags"].append("shadow_mode:no_forward")
 
     return decision
 

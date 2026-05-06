@@ -1,10 +1,18 @@
 """Local Governance Gatekeeper — Miru dispatch-validation core.
 
-Resurrected from the decommissioned ``dispatcher`` service (PRO-234,
-2026-04-30) in a new role: a thin validation layer in front of the
-existing ``dispatch_listener`` (port 19100). The Gatekeeper closes
-Claude Chat's self-serve loophole at the structural level by gating
-all conversational dispatches through cross-context validation.
+The ``dispatcher`` package has been REPURPOSED. The legacy port-19000
+service it used to host is decommissioned (PRO-234, 2026-04-30). The
+package now hosts the Local Governance Gatekeeper: a thin validation
+layer in front of the existing ``dispatch_listener`` (port 19100).
+The Gatekeeper closes Claude Chat's self-serve loophole at the
+structural level by gating all conversational dispatches through
+cross-context validation.
+
+Distinction:
+- The legacy ``dispatcher.task_dispatcher`` MODULE is a deprecation stub
+  with no functional code (full deletion deferred to PRO-303).
+- The ``dispatcher`` PACKAGE is the canonical home for the Gatekeeper
+  modules listed below. New code SHOULD import from this package.
 
 Public surface
 --------------

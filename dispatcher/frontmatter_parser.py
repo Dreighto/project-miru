@@ -52,7 +52,7 @@ VALID_PRIORITY = {"urgent", "normal", "low"}
 REQUIRED_FIELDS = ("worker", "scope")
 
 _FRONTMATTER_RE = re.compile(
-    r"<!--\s*dispatch:\s*\n(.*?)\s*-->",
+    r"\A\s*<!--\s*dispatch:\s*\n(.*?)\s*-->",
     re.DOTALL,
 )
 
@@ -61,9 +61,14 @@ def extract(description: str) -> str | None:
     """Pull the YAML block out of a ticket description.
 
     Returns the inner YAML text (between ``dispatch:`` and ``-->``), or
-    ``None`` if no frontmatter block is present. Returning ``None`` is
-    valid — the Gatekeeper treats absent frontmatter as "default to
-    ``standard_worker`` / ``judgment`` and dispatch conservatively".
+    ``None`` if no frontmatter block is present. The block MUST be the
+    first content in the description (per the spec at
+    ``docs/dispatch/ticket_frontmatter_schema.md`` Hard Rule #1) — the
+    regex anchors to the start of the string with optional leading
+    whitespace, so a later ``<!-- dispatch: ... -->`` deeper in the body
+    does NOT match. Returning ``None`` is valid — the Gatekeeper treats
+    absent frontmatter as "default to ``standard_worker`` / ``judgment``
+    and dispatch conservatively".
 
     The captured text is dedented via ``textwrap.dedent`` so the YAML
     parser sees a consistently-indented mapping. Operators typically
@@ -71,7 +76,7 @@ def extract(description: str) -> str | None:
     """
     if not description:
         return None
-    m = _FRONTMATTER_RE.search(description)
+    m = _FRONTMATTER_RE.match(description)
     if not m:
         return None
     return textwrap.dedent(m.group(1)).strip()
@@ -147,10 +152,10 @@ def _validate(d: dict[str, Any]) -> None:
                 f"worker=none requires expected_mode=blocked or omitted, got {mode!r}",
             )
 
-    if d.get("expected_mode") == "ambiguous" and d.get("plan_only") is False:
+    if d.get("expected_mode") == "ambiguous" and d.get("plan_only") is not True:
         raise FrontmatterError(
             "frontmatter_ambiguous_requires_plan_only",
-            "expected_mode=ambiguous tasks must have plan_only=true",
+            f"expected_mode=ambiguous tasks must have plan_only=true (got {d.get('plan_only')!r})",
         )
 
     for arr_field in ("context_files", "do_not_touch"):

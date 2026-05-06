@@ -75,6 +75,9 @@ def _sign(body: bytes) -> str:
     return hmac.new(_load_secret(), body, hashlib.sha256).hexdigest()
 
 
+_TRACE_ID_FILENAME_RE = __import__("re").compile(r"^[A-Za-z0-9_-]{6,128}$")
+
+
 def mint_trace_id(ticket_id: str) -> str:
     """Generate a trace_id matching the listener's ``/^[a-zA-Z0-9_-]{6,128}$/``.
 
@@ -91,9 +94,20 @@ def write_prompt_file(trace_id: str, prompt_text: str) -> Path:
     The listener expects a JSON file with a ``prompt`` field. Path is
     relative to repo root; we use absolute path on disk but pass relative
     in the dispatch payload (listener resolves both).
+
+    ``trace_id`` is interpolated into the filename, so we enforce a
+    strict allowlist (the same regex the listener uses:
+    ``/^[A-Za-z0-9_-]{6,128}$/``) before writing. Reject path-traversal
+    attempts via ValueError.
     """
+    if not _TRACE_ID_FILENAME_RE.match(trace_id):
+        raise ValueError(
+            f"trace_id violates filename safety regex /^[A-Za-z0-9_-]{{6,128}}$/: " f"{trace_id!r}"
+        )
     INBOX_DIR.mkdir(parents=True, exist_ok=True)
     abs_path = INBOX_DIR / f"{trace_id}.prompt.json"
+    if abs_path.parent.resolve() != INBOX_DIR.resolve():
+        raise ValueError(f"resolved prompt path escapes INBOX_DIR: {abs_path}")
     payload = {"prompt": prompt_text}
     abs_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     return abs_path
