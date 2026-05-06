@@ -686,13 +686,11 @@ def api_job_stream(job_id: str):
 
 
 # ---------------------------------------------------------------------------
-# Entrypoint
+# Entrypoint — DECOMMISSIONED (PRO-234, 2026-04-30)
 # ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    _init_db()
-    log.info(
-        "Starting Miru Task Dispatcher on 0.0.0.0:19000 - "
-        "no auth layer; intended for private Tailscale / trusted network only"
-    )
-    app.run(host="0.0.0.0", port=19000, debug=False, use_reloader=False, threaded=True)
+# Port 19000 service is decommissioned. The runnable entrypoint is removed
+# so this module cannot be executed accidentally. The module remains for
+# reference and will be deprecated in full when PR 3 (PRO-302) extracts
+# `dispatcher/gatekeeper.py` as the new dispatch-validation core.
+#
+# Per CodeRabbit review on PR #94 (PRO-301).

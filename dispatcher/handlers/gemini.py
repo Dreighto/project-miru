@@ -117,7 +117,7 @@ def handler(job) -> None:
         while elapsed < timeout:
             if job.cancel_event.is_set():
                 proc.kill()
-                _kill_gemini_children()
+                _kill_gemini_children(proc.pid)
                 job.status = "cancelled"
                 job.output = "[cancelled by operator]\n" + "".join(collected)
                 log.info("Job %s cancelled; Gemini CLI killed", job.id)
@@ -137,7 +137,7 @@ def handler(job) -> None:
             elapsed += poll_interval
         else:
             proc.kill()
-            _kill_gemini_children()
+            _kill_gemini_children(proc.pid)
             job.status = "failed"
             job.output = f"[timeout after {timeout}s]\n" + "".join(collected)
             log.warning("Job %s timed out after %ds", job.id, timeout)
@@ -173,18 +173,19 @@ def handler(job) -> None:
         log.exception("Unexpected error in gemini handler for job %s", job.id)
 
 
-def _kill_gemini_children():
-    """Best-effort kill of any running gemini-cli node.exe processes."""
+def _kill_gemini_children(pid: int):
+    """Best-effort kill of the gemini-cli process tree for a specific PID.
+
+    Targets ``pid`` and its descendants via ``taskkill /T`` so cancelling one
+    job does not kill unrelated gemini processes elsewhere on the system
+    (e.g. the operator's IDE). Per CodeRabbit review on PR #94 — the prior
+    pattern-match-by-command-line was too broad.
+    """
     try:  # noqa: SIM105
         subprocess.run(
-            [
-                "powershell",
-                "-Command",
-                "Get-Process -Name node -EA SilentlyContinue "
-                "| Where-Object { $_.CommandLine -match 'gemini' } "
-                "| Stop-Process -Force -EA SilentlyContinue",
-            ],
+            ["taskkill", "/PID", str(pid), "/T", "/F"],
             timeout=10,
+            capture_output=True,
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
     except Exception:
