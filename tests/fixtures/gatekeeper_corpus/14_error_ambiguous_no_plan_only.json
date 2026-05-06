@@ -1,0 +1,6 @@
+{
+  "description": "expected_mode=ambiguous without plan_only=true (required pairing violation)",
+  "frontmatter_block": "<!-- dispatch:\n  worker: claude-code\n  scope: investigate/scope\n  expected_mode: ambiguous\n  plan_only: false\n-->",
+  "expected_parse": null,
+  "expected_error": "frontmatter_ambiguous_requires_plan_only"
+}

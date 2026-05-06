@@ -1,0 +1,11 @@
+{
+  "description": "Valid Gemini dispatch with routine mode and drift_executor profile",
+  "frontmatter_block": "<!-- dispatch:\n  worker: gemini\n  scope: repo-wide/audit\n  expected_mode: routine\n  expected_tool_profile: drift_executor\n-->",
+  "expected_parse": {
+    "worker": "gemini",
+    "scope": "repo-wide/audit",
+    "expected_mode": "routine",
+    "expected_tool_profile": "drift_executor"
+  },
+  "expected_error": null
+}

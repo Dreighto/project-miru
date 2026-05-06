@@ -1,0 +1,6 @@
+{
+  "description": "Invalid expected_tool_profile enum value",
+  "frontmatter_block": "<!-- dispatch:\n  worker: claude-code\n  scope: backend/fix\n  expected_tool_profile: superuser\n-->",
+  "expected_parse": null,
+  "expected_error": "frontmatter_invalid_tool_profile_enum"
+}

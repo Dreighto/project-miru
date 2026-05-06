@@ -1,0 +1,12 @@
+{
+  "description": "Valid ambiguous mode with plan_only=true (required pairing)",
+  "frontmatter_block": "<!-- dispatch:\n  worker: claude-code\n  scope: investigate/cross-service\n  expected_mode: ambiguous\n  expected_tool_profile: reviewer\n  plan_only: true\n-->",
+  "expected_parse": {
+    "worker": "claude-code",
+    "scope": "investigate/cross-service",
+    "expected_mode": "ambiguous",
+    "expected_tool_profile": "reviewer",
+    "plan_only": true
+  },
+  "expected_error": null
+}

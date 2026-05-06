@@ -1,0 +1,6 @@
+{
+  "description": "Invalid dispatch_priority enum value",
+  "frontmatter_block": "<!-- dispatch:\n  worker: claude-code\n  scope: backend/fix\n  dispatch_priority: critical\n-->",
+  "expected_parse": null,
+  "expected_error": "frontmatter_invalid_priority_enum"
+}

@@ -1,0 +1,6 @@
+{
+  "description": "Malformed YAML inside the dispatch block",
+  "frontmatter_block": "<!-- dispatch:\n  worker: claude-code\n  scope: [unclosed bracket\n-->",
+  "expected_parse": null,
+  "expected_error": "frontmatter_yaml_invalid"
+}

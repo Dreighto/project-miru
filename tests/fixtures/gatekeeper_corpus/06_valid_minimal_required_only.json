@@ -1,0 +1,9 @@
+{
+  "description": "Minimal valid frontmatter with only required fields",
+  "frontmatter_block": "<!-- dispatch:\n  worker: claude-code\n  scope: backend/fix\n-->",
+  "expected_parse": {
+    "worker": "claude-code",
+    "scope": "backend/fix"
+  },
+  "expected_error": null
+}

@@ -1,0 +1,6 @@
+{
+  "description": "Frontmatter YAML parses to a list instead of a mapping",
+  "frontmatter_block": "<!-- dispatch:\n  - one\n  - two\n-->",
+  "expected_parse": null,
+  "expected_error": "frontmatter_not_a_mapping"
+}

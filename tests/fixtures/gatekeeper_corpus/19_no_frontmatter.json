@@ -1,0 +1,7 @@
+{
+  "description": "Ticket description with no dispatch frontmatter block at all",
+  "frontmatter_block": "This is a plain ticket description without any frontmatter.\n\nJust some text about a bug fix.",
+  "expected_parse": null,
+  "expected_error": null,
+  "note": "No frontmatter is valid — returns None, not an error"
+}

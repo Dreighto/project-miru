@@ -1,0 +1,6 @@
+{
+  "description": "do_not_touch array contains a non-string entry",
+  "frontmatter_block": "<!-- dispatch:\n  worker: claude-code\n  scope: backend/fix\n  do_not_touch:\n    - card_catalog.db\n    - 42\n-->",
+  "expected_parse": null,
+  "expected_error": "frontmatter_array_entry_not_string"
+}
