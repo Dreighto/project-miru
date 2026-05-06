@@ -12,7 +12,6 @@ Full rule and rationale: `miru-context/operator-profile.md` "Copy-paste content 
 
 - 18080 = Project Miru UI — ACTIVE
 - 18765 = Miru AI — ACTIVE
-- 19000 = Task Dispatcher — DECOMMISSIONED (PRO-234, 2026-04-30; code kept, service stopped)
 - 8080 = RESERVED — do not touch
 - 8765 = NEVER TOUCH under any circumstances
 - 11434 = Ollama — local dependency, not Miru-owned
@@ -366,7 +365,6 @@ Set 2026-05-05 by operator. Root cause: periodic tasks (MiruServiceWatchdog 2 mi
 
 - PM (18080): `powershell -ExecutionPolicy Bypass -File windows\restart_pm.ps1`
 - Miru AI (18765): `powershell -ExecutionPolicy Bypass -File windows\restart_miru_ai.ps1`
-- Dispatcher (19000): `powershell -ExecutionPolicy Bypass -File windows\restart_dispatcher.ps1`
 - Never use nssm restart directly
 - Never create alternate restart scripts
 
