@@ -1,0 +1,168 @@
+# routing_schema.gbnf
+#
+# Local Governance Gatekeeper output grammar.
+#
+# Constrains llama3.1:8b-instruct (or any other GBNF-compatible local
+# model run via llama.cpp / Ollama) to emit a routing decision JSON
+# object matching the closed-enum schema consumed by the
+# dispatch_listener. Closed enums are encoded as quoted-literal
+# alternations so the sampler cannot drift outside the allowed values.
+#
+# Notes
+#  - GBNF cannot enforce exact arithmetic bounds; numeric ranges are
+#    encoded by digit-shape (best-effort). Downstream Pydantic /
+#    validator must still range-check `self_serve_probability`
+#    in [0.0, 1.0] and `timeout_seconds` in [60, 3600].
+#  - String escapes follow the JSON spec subset used in llama.cpp's
+#    bundled `grammars/json.gbnf` (no `\/` escape; control chars 0x00
+#    through 0x1F and 0x7F excluded from raw bytes).
+#  - `rejection` is `null` OR the full object; the two are mutually
+#    exclusive (no partial object).
+#
+# Reference: https://github.com/ggerganov/llama.cpp/blob/master/grammars/README.md
+
+root ::= ws "{" ws
+         "\"schema_version\":" ws schema-version-value ws "," ws
+         "\"trace_id\":" ws trace-id-value ws "," ws
+         "\"ticket_id\":" ws ticket-id-value ws "," ws
+         "\"decision\":" ws decision-object ws "," ws
+         "\"validation\":" ws validation-object ws "," ws
+         "\"context_snapshot\":" ws context-snapshot-object ws "," ws
+         "\"execution\":" ws execution-object ws "," ws
+         "\"rejection\":" ws rejection-value ws "," ws
+         "\"flags\":" ws flags-array ws "," ws
+         "\"rationale\":" ws string ws
+         "}" ws
+
+# ---------------------------------------------------------------------------
+# Top-level scalar pairs
+# ---------------------------------------------------------------------------
+
+schema-version-value ::= "\"2\""
+
+# "PRO-<digits>"
+ticket-id-value ::= "\"PRO-" [0-9]+ "\""
+
+# "rtr-PRO-<digits>-<alnum>"
+trace-id-value ::= "\"rtr-PRO-" [0-9]+ "-" [a-zA-Z0-9]+ "\""
+
+# ---------------------------------------------------------------------------
+# decision
+# ---------------------------------------------------------------------------
+
+decision-object ::= "{" ws
+                    "\"worker\":" ws worker-value ws "," ws
+                    "\"mode\":" ws mode-value ws "," ws
+                    "\"tool_profile\":" ws tool-profile-value ws "," ws
+                    "\"confidence\":" ws confidence-value ws
+                    "}"
+
+worker-value       ::= "\"claude-code\"" | "\"gemini\"" | "\"both\"" | "\"none\""
+mode-value         ::= "\"routine\"" | "\"judgment\"" | "\"ambiguous\"" | "\"blocked\""
+tool-profile-value ::= "\"drift_executor\"" | "\"standard_worker\"" | "\"reviewer\"" | "null"
+confidence-value   ::= "\"high\"" | "\"medium\"" | "\"low\""
+
+# ---------------------------------------------------------------------------
+# validation
+# ---------------------------------------------------------------------------
+
+validation-object ::= "{" ws
+                      "\"is_legitimate_build\":" ws bool ws "," ws
+                      "\"self_serve_probability\":" ws prob01 ws "," ws
+                      "\"deterministic_checks\":" ws deterministic-checks-object ws "," ws
+                      "\"rationale\":" ws string ws
+                      "}"
+
+deterministic-checks-object ::= "{" ws
+                                "\"trace_id_valid\":" ws bool ws "," ws
+                                "\"ticket_exists_and_open\":" ws bool ws "," ws
+                                "\"worktree_clean\":" ws bool ws "," ws
+                                "\"no_in_flight_dispatch\":" ws bool ws
+                                "}"
+
+# ---------------------------------------------------------------------------
+# context_snapshot
+# ---------------------------------------------------------------------------
+
+context-snapshot-object ::= "{" ws
+                            "\"parent_conversation_summary_hash\":" ws hex-string ws "," ws
+                            "\"conversational_delta\":" ws nullable-string ws "," ws
+                            "\"ticket_vs_conversation_coherent\":" ws bool ws
+                            "}"
+
+# ---------------------------------------------------------------------------
+# execution
+# ---------------------------------------------------------------------------
+
+execution-object ::= "{" ws
+                     "\"model\":" ws string ws "," ws
+                     "\"thinking_level\":" ws nullable-string ws "," ws
+                     "\"timeout_seconds\":" ws timeout-seconds-value ws "," ws
+                     "\"plan_only\":" ws bool ws
+                     "}"
+
+# Bounded 60-3600 by digit-shape:
+#   [6-9][0-9]            -> 60-99
+#   [1-9][0-9][0-9]       -> 100-999
+#   [1-2][0-9][0-9][0-9]  -> 1000-2999
+#   "3" [0-5][0-9][0-9]   -> 3000-3599
+#   "3600"                -> 3600
+# Operators: still range-validate downstream.
+timeout-seconds-value ::= [6-9] [0-9]
+                        | [1-9] [0-9] [0-9]
+                        | [1-2] [0-9] [0-9] [0-9]
+                        | "3" [0-5] [0-9] [0-9]
+                        | "3600"
+
+# ---------------------------------------------------------------------------
+# rejection (null OR full object, mutually exclusive)
+# ---------------------------------------------------------------------------
+
+rejection-value ::= "null" | rejection-object
+
+rejection-object ::= "{" ws
+                     "\"reason\":" ws rejection-reason-value ws "," ws
+                     "\"explanation\":" ws string ws "," ws
+                     "\"suggested_correction\":" ws string ws
+                     "}"
+
+rejection-reason-value ::= "\"ticket_drift_unresolved\""
+                         | "\"already_completed\""
+                         | "\"dirty_worktree\""
+                         | "\"not_a_build\""
+                         | "\"ghost_task\""
+
+# ---------------------------------------------------------------------------
+# flags (array of strings; may be empty)
+# ---------------------------------------------------------------------------
+
+flags-array ::= "[" ws "]"
+              | "[" ws string (ws "," ws string)* ws "]"
+
+# ---------------------------------------------------------------------------
+# Primitives
+# ---------------------------------------------------------------------------
+
+bool ::= "true" | "false"
+
+# self_serve_probability: float in [0.0, 1.0].
+#   "0" "." [0-9]+    -> 0.0, 0.5, 0.999, ...
+#   "1"               -> 1
+#   "1" "." "0"+      -> 1.0, 1.00, ...
+prob01 ::= "0" "." [0-9]+
+         | "1"
+         | "1" "." "0"+
+
+# JSON string with standard escapes (mirrors llama.cpp grammars/json.gbnf).
+string ::= "\"" (
+            [^"\\\x7F\x00-\x1F]
+          | "\\" (["\\bfnrt] | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F])
+          )* "\""
+
+nullable-string ::= string | "null"
+
+# Hex string (e.g. parent_conversation_summary_hash). At least one hex char.
+hex-string ::= "\"" [0-9a-fA-F]+ "\""
+
+# Permissive whitespace; sampler will typically emit minimal whitespace.
+ws ::= [ \t\n\r]*

@@ -1,0 +1,201 @@
+GEMINI PEER REVIEW — Phase 3 Scope Adjudication
+=================================================
+
+ROLE: You are reviewing a scope conflict in Project Miru's Autonomy
+Overhaul. Two competing definitions of "Phase 3" exist. Your job is to
+determine which is correct based on the canonical source material below,
+and flag any risks.
+
+THE CONFLICT
+============
+
+DEFINITION A (Notion canon + approved plan):
+  Phase 3 = "Subagent Isolation"
+  - X-Miru-Tool-Profile header on dispatch
+  - MIRU_TOOL_PROFILE env injection at spawn boundary
+  - Gateway-level per-connection profile enforcement
+  - Restricted profiles (drift_executor, vp_ops, reviewer, full_operator)
+  - Phase 3 Denial Test (5 criteria from canon)
+  - Phase 4 = Ingress Classifier (LOCKED until Phase 3 ships)
+
+  This plan was written by CC (Claude Code), peer-reviewed by BOTH
+  Gemini 3.1 AND GPT, and approved by the operator. Plan file exists
+  at C:\Users\Dreighto\.claude\plans\zippy-squishing-codd.md.
+
+DEFINITION B (handoff from a subsequent CC session):
+  Phase 3 = "Worktree slot management / parallel dispatch safety"
+  - Slot registry to track free vs occupied worktree slots
+  - Dispatch listener integration for slot acquisition/release
+  - Queue or reject when no slot available
+  - Observability endpoint for slot state
+  - Phase 4 = tool profiles / gateway enforcement (LOCKED)
+
+  This handoff was written by a CC session that ran AFTER the plan was
+  approved. It also references a file "miru-context/autonomy-roadmap.md"
+  that DOES NOT EXIST in the repo (never has, per git history).
+
+CRITICAL FINDING: THE SLOT MANAGEMENT ALREADY EXISTS
+=====================================================
+
+The file services/dispatch_listener/src/worktree.js (153 lines) already
+implements everything Definition B describes:
+
+1. SLOT REGISTRY — 6 configurable slots (WORKTREE_SLOT_1..6, defaults
+   D:\dev\miru-w1 through w6). In-memory Map backed by persistent JSON
+   file at data/worktree_leases.json. Write-through cache; every mutation
+   flushes to disk.
+
+2. DISPATCH LISTENER INTEGRATION — index.js calls leaseSlot(traceId,
+   worker) before spawning (line 225). Returns null if no slot available.
+   releaseSlot(slotPath) called on every exit path: worker completion
+   (line 340), prompt read failure (line 255), duplicate detection
+   (line 284), placeholder race (line 318), spawn failure (line 343).
+
+3. FREE-SLOT ALLOCATION — When leaseSlot() returns null, the listener
+   logs 'no_worktree_available', writes a DLQ entry with errorClass
+   'no_worktree_available', and returns HTTP 503 to the caller
+   (lines 226-242).
+
+4. DEAD PID RECLAMATION — pidIsAlive() checks via signal 0. Dead entries
+   cleared at startup (_loadFromDisk) and opportunistically during
+   leaseSlot(). Lease entries include { trace_id, worker, leased_at, pid }.
+
+5. OBSERVABILITY — Structured logging via log module for every lease/
+   release/reclaim event. (No HTTP endpoint, but all state transitions
+   are logged.)
+
+Additionally, miru-context/concurrency-policy.md already defines:
+  - Hard cap: 2-3 concurrent workers
+  - Future expansion to 6-7 behind a decision gate
+  - Shared state protection rules
+  - Per-file single-writer discipline
+
+NOTION CANON — PHASE DEFINITIONS (verbatim from page 356c5d34...)
+==================================================================
+
+Current Status section:
+  Phase 1 -- A2A Bus: SHIPPED (PR #85, PRO-290)
+  Phase 2 -- Judgment Trail: SHIPPED (PR #86)
+  Phase 3 -- Subagent Isolation: NEXT CANDIDATE PHASE
+  Phase 4 -- Ingress Classifier: LOCKED
+
+Source Blueprint (Gemini-authored, preserved) — Phase 3 section:
+
+  ### Phase 3 -- Subagent Isolation
+
+  Status: NEXT CANDIDATE PHASE
+
+  Target components:
+  - X-Miru-Tool-Profile header
+  - MIRU_TOOL_PROFILE environment injection
+  - Gateway-level profile enforcement
+  - Restricted profiles such as drift_executor
+  - Phase 3 Denial Test
+
+  Purpose of Phase 3: Physically restrict routine subagents from
+  escalation tools or canon-write paths. This prevents "polite assistant"
+  behavior from resurfacing by removing tools the subagent should not have.
+
+  Important Phase 3 rule: Before W2 can assign drift_executor
+  automatically, the system must pass a Denial Test proving:
+  - drift_executor cannot access Telegram/escalation tools
+  - drift_executor cannot broaden its own tool profile
+  - Denied attempts are logged
+  - Decision trace records escalation_attempted and escalation_result
+  - Agent continues or fails safely after denial
+
+Global Rule from the Gemini Blueprint:
+  Tool Access and Canon Authority are separate gates.
+  A tool profile controls what tools an agent can access.
+  Canon authority controls whether an agent can modify source-of-truth
+  rules, instruction files, or canonical Notion pages.
+  No tool profile automatically grants canon-writing authority,
+  including full_operator.
+
+APPROVED PLAN SUMMARY (Definition A)
+======================================
+
+The approved plan (zippy-squishing-codd.md) covers:
+- 5 profiles × 17 gateway categories with deny-all default
+- 8 implementation components:
+    A. Dispatch payload extension (tool_profile field in POST /dispatch)
+    B. MIRU_TOOL_PROFILE env injection at spawn.js alongside MIRU_TRACE_ID
+    C. Worktree .mcp.json generation (connects workers to gateway)
+    D. Gateway profile extraction middleware (_ProfileExtractor ASGI wrapper)
+    E. Gateway enforcement in wrap_tool_entry (McpError -32003 on denial)
+    F. Profile definitions module (profiles.py)
+    G. Config extension (profile_enforcement_enabled feature flag)
+    H. Dispatch tool extension (tool_profile param on dispatch_worker MCP)
+- 12+ denial tests mapped to 5 canon requirements
+- 3-phase migration: audit mode → denial test → enforcement on
+- 7 hard boundaries protecting Phase 4
+
+Critical architectural finding in the plan: spawned workers currently do
+NOT connect to the Miru MCP Gateway. The gateway is accessed via user-level
+Claude Code settings, not the project .mcp.json. Phase 3 Component C
+bridges this gap by generating a gateway-only .mcp.json in the worktree at
+dispatch time, using env var interpolation for the profile header.
+
+WHAT THE PREVIOUS SESSION ACTUALLY DID (commits since planning)
+================================================================
+
+6 commits, all legitimate dispatch fixes:
+  b74050b — add --skip-trust to gemini flags + enable coderabbit MCP
+  1d29cb5 — inject GEMINI_CLI_TRUST_WORKSPACE=true for gemini workers
+  57e3c15 — per-worker timeouts in connectivity test (300s for codex)
+  74e134a — codex headless profile + disable justtcg MCP (fixed rmcp stall)
+  8191317 — use -c flags for codex overrides (profile TOML invalid)
+  4c4de79 — drop gpt-4o override (not supported on ChatGPT accounts)
+
+Plus PR #87 (merged before these): CodeRabbit config, worker connectivity
+test, gateway security regex fix, memory tools multi-DB support, watchdog
+fix. All legitimate.
+
+None of these commits changed the Notion canon, CLAUDE.md phase definitions,
+or created autonomy-roadmap.md. The handoff's scope redefinition appears to
+be the session's own interpretation, not based on any canonical source.
+
+WORKER CONNECTIVITY TEST RESULTS (from the handoff)
+=====================================================
+
+  claude-code: PASS (30-60s)
+  gemini: PASS (16-84s)
+  codex: BENCHED (rmcp fixed but gpt-5.4 has ~5min latency per tool call)
+
+Active worker roster: claude-code (primary) + gemini (secondary).
+
+QUESTIONS FOR YOUR REVIEW
+==========================
+
+1. SCOPE: Should Phase 3 follow the Notion canon definition (Subagent
+   Isolation / tool profiles) or the handoff's redefinition (worktree
+   slot management)? Given that slot management already exists in
+   worktree.js, is the handoff describing solved problems?
+
+2. PHASE NUMBERING: Did anything in the previous session's work justify
+   reordering the phases? The code changes are all dispatch fixes, not
+   architectural decisions. Should the 4-phase plan from the Gemini
+   blueprint remain authoritative?
+
+3. RISKS: If we proceed with Definition A (the approved plan), are there
+   any gaps the previous session's handoff identified that ARE real and
+   should be addressed as prerequisites? For example:
+   - Is the existing slot management in worktree.js sufficient for
+     parallel dispatch, or does it need hardening?
+   - Does the concurrency policy need updating for 2-4 CC workers?
+   - Are there dispatch listener changes needed before tool profile
+     enforcement can work?
+
+4. THE PHANTOM FILE: The handoff references miru-context/autonomy-roadmap.md
+   which does not exist. Should this file be created as part of canon
+   maintenance, or is the Notion page sufficient as the phase roadmap?
+
+REQUESTED OUTPUT FORMAT
+========================
+
+Please respond with:
+  SCOPE VERDICT: [Definition A / Definition B / Hybrid with rationale]
+  PHASE NUMBERING: [Canon stands / Reorder needed with rationale]
+  PREREQUISITE GAPS: [List any real gaps, or "none found"]
+  RISKS: [Any risks with proceeding on the approved plan]
+  RECOMMENDATION: [One paragraph, concrete next step]

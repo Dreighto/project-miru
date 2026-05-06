@@ -1,0 +1,52 @@
+GMI peer review — Local Router Architecture (hybrid orchestration pivot)
+Reviewer: Gemini (operator-relay)
+Date: 2026-05-05
+Source thread: pressure-test of Notion design doc 358c5d340141817c8dda-e2f91a50a9c5
+
+This is a sophisticated, high-fidelity architectural pivot. As a peer architect, I've reviewed your 4-phase Autonomy Overhaul foundation—specifically the SQLite A2A bus, the `agent_decisions` judgment trail, and the Phase 3 gateway-level profile enforcement.
+
+The move to a structural fix for the "Claude Chat self-serve" problem is correct; as you've identified, instructional prompts have a "ceiling" in the face of RLHF-driven helpfulness. Here is the pressure test of your proposed design.
+
+### 1. Complexity vs. Utility: Is the local model earning its keep?
+At 5–15 calls per day, a 14GB resident model (Llama 3.1 8B) is overkill for **routing**, but it is potentially vital for **governance**.
+* **The Design Weakness:** If the router only performs a keyword-based "is this a build?" check, you should replace port 19000 with a 50-line Python validation script.
+* **The Architectural Win:** The local model earns its keep only if it performs **Cross-Context Validation**. It should read the Linear ticket, scan the repo `git_status`, and then compare that against the CH request.
+* **Recommendation:** Don't call it a "Router"; call it a **"Governance Gatekeeper."** Its job is to detect if CH is "hallucinating a handoff" (i.e., asking for a handoff for something it already did or shouldn't do). If you aren't doing that, cut the model and use a deterministic Python script.
+
+### 2. Implementing `is_legitimate_build`
+The core risk is **Prompt Injection/Gaming** where CH "talks past" the validator.
+* **How to implement:** Do not use pure pattern matching. Use a **Deterministic-Probabilistic Hybrid**.
+    1.  **Deterministic Floor:** Verify `trace_id` and `ticket_id` exist and match the SQLite A2A bus state.
+    2.  **LLM Classifier:** Use the local model to score the request on a "Self-Serve Probability" (0.0–1.0).
+* **Failure Mode:** If the validator is gamed, you have a **"Ghost Task"** where a worker is dispatched with no actual work to do because CH already finished it.
+* **Mitigation:** The router must verify the **working-tree clean state** via the gateway before signing the dispatch.
+
+### 3. Schema Review: What's missing?
+The schema is strong, particularly the use of closed enums for `mode` and `tool_profile`.
+* **What's missing:** **`parent_conversation_summary_hash`**.
+* **Why:** You need to ensure the worker isn't acting on stale conversational context. If the handoff is triggered by a conversation, the worker needs a "frozen" snapshot of the *reason* for the handoff.
+* **What's over-specified:** `thinking_level`. Unless your `dispatch_listener` actually adjusts model parameters (like temperature or top-p) based on this, it's just noise in the log.
+
+### 4. Phased Rollout Critique
+* **Phase 1 & 2 are correct.** Shadow mode is the only way to calibrate the "Self-Serve Probability" threshold without breaking the operator's workflow.
+* **The Gap:** You are missing a **"Phase 2.5: The Rejection Loop."** * **Architect's View:** What happens when the Local Router says `is_legitimate_build: false`? You need a protocol for the router to "talk back" to CH via the `cc_handoff` tool result, telling it why it failed so CH can correct its behavior. Without this, the cutover in Phase 3 will be a "wall" that causes user frustration.
+
+### 5. The Single Biggest Design Risk: "Context Fragmentation"
+Your design relies on the **Linear ticket as the source of truth** for the handoff.
+* **The Risk:** In a conversational dispatch, the "truth" of the task often drifts from the original Linear ticket during the chat. If the Local Router reads only the ticket and ignores the "delta" from the conversation, the dispatched worker (Claude Code) will execute the **original** ticket requirements, potentially overwriting or ignoring the specific refinements you just discussed with CH.
+* **Pressure Point:** Does `cc_handoff` include a `conversational_delta` payload? If not, you aren't dispatching a worker to help you; you're dispatching a worker to ignore you and follow the original ticket.
+
+### Peer Architect's Verdict
+**Design is SOLID** on infrastructure (leveraging the Phase 1-4 foundations) but **WEAK** on context-transfer.
+
+**What I'd cut:** Remove the `flags` field from the schema; your `trigger_class` and `tag` system in the judgment trail already handle this.
+**What I'd add:** A **"Context Snapshot"** requirement for the `cc_handoff` tool. Ensure the Local Router validates the *Conversation vs. Ticket* delta before signing the dispatch.
+
+**Overall:** Proceed, but treat the Local Router as a **Judge**, not just a postman. It must be empowered to say "No" to Claude Chat.
+
+- Inputs I used: `Async A2A Communication in Multi-Agent CLI Systems.md`, `00-synthesis.md`, `01-architecture-and-system-design.md`, `02-data-schemas-and-field-definitions.md`, `03-deterministic-vs-judgment-driven.md`, `zippy-squishing-codd.md`, `2026-05-04_phase3_scope_adjudication_gmi.txt`.
+- What might already exist: The `dispatch_worker` tool and its established listener. The A2A bus for state management.
+- Next step (1–3 bullets):
+    - Implement the "Context Snapshot" in the `cc_handoff` tool.
+    - Define the "Rejection Protocol" for when the Local Router denies a dispatch.
+    - Initiate Phase 1 (Shadow Mode) and log the "hallucination rate" of CH dispatches.
