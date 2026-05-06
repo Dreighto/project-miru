@@ -438,21 +438,27 @@ def log_decision(decision: dict[str, Any], *, ticket_id: str) -> None:
         log.warning("emit_decision_script_missing skipping_log")
         return
 
+    dec_block = decision.get("decision", {}) or {}
+    is_rejected = decision.get("rejection") is not None or dec_block.get("worker") == "none"
     short = {
         "trigger": "scope_interpretation",
         "proposed_tag": "judgment_driven",
-        "authority_mode": "operator",
-        "confidence": decision.get("decision", {}).get("confidence", "medium"),
-        "decision": decision.get("rationale", "")[:400] or "gatekeeper decision",
-        "confidence_reason": decision.get("validation", {}).get("rationale", "")[:400]
-        or "see validation block",
-        "would_change_mind_if": "deterministic floor or LLM emit changes",
+        "authority_mode": "limited_write",
+        "confidence": dec_block.get("confidence") or "medium",
+        "decision": decision.get("rationale", "")[:400] or "gatekeeper routing decision",
+        "confidence_reason": (decision.get("validation", {}) or {}).get("rationale", "")[:400]
+        or "see validation block in full decision JSON",
+        "would_change_mind_if": "deterministic floor result or LLM validation changes",
         "ticket_id": ticket_id,
-        "source": "gatekeeper_shadow_mode",
-        "context_refs": [],
+        "trace_id": decision.get("trace_id", ""),
+        "worker": dec_block.get("worker") or "unknown",
+        "tool_profile": dec_block.get("tool_profile") or "standard_worker",
+        "decision_type": "gatekeeper_routing_decision",
+        "expected_outcome": "dispatch_rejected" if is_rejected else "dispatch_accepted",
+        "context_used": [],
         "canon_refs": [],
         "evidence_refs": [],
-        "alternatives_rejected": [],
+        "alternatives_considered": [],
     }
 
     try:
