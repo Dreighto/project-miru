@@ -19,9 +19,11 @@ universal rules but must not weaken safety or operator-protection rules.
 **For new projects:** Copy this file to the project repo as `AGENTS.md`, add the header
 below, then append project-specific rules after the `--- PROJECT OVERLAY ---` marker.
 
-```
+```markdown
 # AGENTS.md — [Project Name] Worker Overlay
+
 # Framework source: Dreighto/worker-framework | Last synced: YYYY-MM-DD
+
 # Project-specific rules are appended below the universal baseline.
 ```
 
@@ -38,7 +40,7 @@ operator do translation work — which defeats the purpose of having autonomous 
 
 ### Required format for all operator-facing outputs
 
-```
+```text
 What happened:       [one sentence, no jargon]
 Does it work:        [Yes / No / Partially — plus one plain-English reason]
 What you need to do: [specific action, or "Nothing — it's done"]
@@ -268,7 +270,7 @@ Change = add capability or alter the contract. When unsure, default to Tier 3.
 
 **Mandatory pre-commit decision — run this before every commit:**
 
-```
+```text
 1. Does ANY file match the Tier 1 list? → Commit direct to main.
 2. Do ALL files match the Tier 2 list?  → Open PR, self-merge after checks pass.
 3. Does ANY file match the Tier 3 list? → Open PR, ping operator. Do not merge.

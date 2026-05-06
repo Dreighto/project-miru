@@ -40,8 +40,8 @@ cd <project-name>
 ### 2. Copy the framework files
 
 ```bash
-# From the worker-framework repo (or docs/worker-framework/ in any Miru worktree)
-cp AGENTS.md CLAUDE.md GEMINI.md <project-root>/
+# Run from the Miru repo root
+cp docs/worker-framework/{AGENTS.md,CLAUDE.md,GEMINI.md} <project-root>/
 ```
 
 ### 3. Add the project header to each file
