@@ -1,13 +1,14 @@
 # Operator Translation Layer
 
-Every decision that reaches the operator must be comprehensible without technical context.
-This document defines the required format for operator-facing messages and the standard
-for plain-English translation across all worker and system communications.
+This is the default communication contract between the operator and all workers.
 
-For the operator's communication style preferences (tone, length, plain English calibration),
-see operator-profile.md. This document adds the structured approval format.
+The operator speaks naturally. Workers translate intent into execution structure.
+Workers reply in plain English by default, with technical detail only when needed.
 
-Last updated: 2026-05-01
+For the operator's communication style preferences (tone, length, calibration),
+see `operator-profile.md`. This document defines the always-on translation protocol.
+
+Last updated: 2026-05-06
 
 ---
 
@@ -22,9 +23,56 @@ at any point, and they can only override what they understand.
 Translate every technical fact before it leaves the system. Do not assume the operator
 has read the logs, knows the error code, or remembers what was decided last session.
 
+### Natural-language-first rule
+
+The operator is never required to use template language or "prompt engineering" syntax.
+
+Workers must:
+
+- infer intent from natural phrasing
+- infer likely scope from active context and canon
+- infer likely constraints from existing project rules
+- ask a clarifying question only when ambiguity creates material execution risk
+
+Do not force the operator to restate requests in structured prompt format.
+
+### Plain-English-first rule
+
+Workers must default to plain English in both progress and final messages.
+
+- Explain what happened before naming implementation jargon.
+- If technical terms are necessary, define them inline in one sentence.
+- Never require the operator to say "in English please."
+
 ---
 
-## 2. Operator Approval Message Format
+## 2. Translation Pipeline (Always On)
+
+Every worker follows this internal pipeline before execution:
+
+1. `Intent Parse`
+   What does the operator actually want changed or decided?
+
+2. `Constraint Pull`
+   What existing hard rules apply (scope, safety, ownership, quality gates)?
+
+3. `Execution Shape`
+   Convert request into task structure:
+   objective, scope, constraints, done-when, verification.
+
+4. `Risk Check`
+   Is there ambiguity that can cause real damage or rework?
+   If yes, ask one concise clarifying question.
+   If no, proceed.
+
+5. `Plain-English Reporting`
+   Report status and outcomes in operator-readable language.
+
+This translation is mandatory and silent by default. It should happen without operator prompting.
+
+---
+
+## 3. Operator Approval Message Format
 
 Every message that asks the operator to decide something uses this structure.
 
@@ -61,7 +109,7 @@ requires the operator to ask "so what do you need from me?"
 
 ---
 
-## 3. Translation Examples
+## 4. Translation Examples
 
 ### Technical → Plain English
 
@@ -73,6 +121,23 @@ requires the operator to ask "so what do you need from me?"
 | `worker_exit exit_code=-1 timed_out=true`                      | "The worker was still running after the time limit so it was stopped automatically. No output was produced."                                           |
 | `401 Unauthorized on POST /webhook`                            | "The API rejected our message — it didn't recognize our key. May need to check if the key expired."                                                    |
 | `git branch -d failed: branch not merged`                      | "I tried to delete the old branch but it still has work on it that hasn't been saved to main yet. Checking whether it's safe to delete."               |
+
+### Example: Natural operator request -> worker interpretation
+
+Operator says:
+
+`I want this cleaned up and sustainable before we move on.`
+
+Worker interprets internally:
+
+- Intent: architecture hardening and reliability
+- Scope: active lane plus known drift points
+- Constraints: no runtime regressions, no scope creep
+- Done-when: explicit checks pass, handoff artifacts updated
+
+Operator-facing response:
+
+`I can do that. I'll focus on cleanup that reduces real drift, avoid feature expansion, and verify no runtime behavior regresses before closeout.`
 
 ### Example: Full approval message
 
@@ -103,7 +168,7 @@ Confidence: High
 
 ---
 
-## 4. Tone Rules
+## 5. Tone Rules
 
 These apply to all operator-facing messages (Telegram, PR descriptions, Linear comments
 visible to the operator):
@@ -114,10 +179,11 @@ visible to the operator):
 - **Concrete over abstract.** "The PM Dashboard health check returned `{"storefront_built": false}`" is better than "the health check failed."
 - **Say what's next.** Every escalation message ends with a clear statement of what happens based on the operator's answer.
 - **Warm, not clinical.** This is a collaborative system. Avoid machine-report tone. Write like a competent colleague who respects the operator's time.
+- **English-first by default.** Summarize in plain language first; add technical appendix only when useful.
 
 ---
 
-## 5. What NOT to Send
+## 6. What NOT to Send
 
 The operator should not receive:
 
@@ -129,3 +195,36 @@ The operator should not receive:
 
 If you find yourself writing any of these, rewrite to the approval format or hold the
 message until there's actually a decision needed.
+
+---
+
+## 7. Clarification Threshold (Fail-Closed Without Friction)
+
+Workers should not ask unnecessary clarifying questions.
+
+Ask a question only if one of these is true:
+
+- executing now can violate a hard safety or ownership rule
+- two materially different interpretations lead to different outcomes
+- missing requirement can cause avoidable rework or break acceptance
+
+If none apply, proceed with best interpretation and state assumptions briefly.
+
+This keeps operator flow natural while preserving execution safety.
+
+---
+
+## 8. Worker Adoption Scope
+
+This protocol applies to all workers used by the operator, not only current-loop workers.
+
+- Claude Code (autonomous — backend production lane)
+- Gemini (autonomous — frontend/audit production lane)
+- Cursor (manual — IDE worker, operator-driven)
+- Any future worker added to the roster
+
+Project overlays may add local nuance, but they must not override:
+
+1. natural-language-first operator input
+2. plain-English-first worker output
+3. translation pipeline behavior
