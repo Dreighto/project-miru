@@ -173,15 +173,21 @@ function spawnWorker({
   const childEnv = { ...process.env };
   delete childEnv.ANTHROPIC_API_KEY;
 
-  // Token isolation: dispatched workers get the restricted worker token only.
-  // ROOM_TOKEN_OPERATOR (account-level, can create repos) must not be available
-  // inside a worker session — the framework's behavioral guardrails are the
-  // enforcement layer, but removing the key from childEnv is the hard backstop.
-  // GH_TOKEN is the gh CLI's env-var auth path — workers authenticate
-  // automatically without needing a separate `gh auth login` step.
+  // Token isolation: strip all GitHub auth vars from child env before setting
+  // the restricted worker token. This covers both the new ROOM_TOKEN_* names
+  // and the legacy GITHUB_TOKEN_* names that may still exist during rotation.
+  // Any inherited GH_TOKEN is also cleared so we fully control what the worker
+  // gets — no accidental operator-level access via an inherited value.
   delete childEnv.ROOM_TOKEN_OPERATOR;
-  if (process.env.ROOM_TOKEN_WORKER) {
-    childEnv.GH_TOKEN = process.env.ROOM_TOKEN_WORKER;
+  delete childEnv.GITHUB_TOKEN_WRITE;
+  delete childEnv.GITHUB_TOKEN_READ;
+  delete childEnv.GH_TOKEN;
+
+  // Set GH_TOKEN so gh CLI authenticates automatically inside the worker.
+  // Prefer ROOM_TOKEN_WORKER; fall back to legacy read token during rotation.
+  const workerGhToken = process.env.ROOM_TOKEN_WORKER || process.env.GITHUB_TOKEN_READ;
+  if (workerGhToken) {
+    childEnv.GH_TOKEN = workerGhToken;
   }
 
   // Gemini CLI trust gate: --skip-trust flag is unreliable in headless

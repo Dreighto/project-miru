@@ -119,10 +119,11 @@ def _check_pr_state(marker: dict) -> tuple[str | None, list[str]]:
         import urllib.request
 
         token = (
-            os.environ.get("ROOM_TOKEN_OPERATOR")
-            or os.environ.get("ROOM_TOKEN_WORKER")
-            or os.environ.get("GITHUB_TOKEN_READ")
-            or os.environ.get("GITHUB_TOKEN_WRITE")
+            (os.environ.get("ROOM_TOKEN_OPERATOR") or "").strip()
+            or (os.environ.get("ROOM_TOKEN_WORKER") or "").strip()
+            or (os.environ.get("GITHUB_TOKEN_READ") or "").strip()
+            or (os.environ.get("GITHUB_TOKEN_WRITE") or "").strip()
+            or None
         )
         if not token:
             return "unknown", []

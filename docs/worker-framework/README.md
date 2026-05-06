@@ -101,6 +101,8 @@ When a universal rule changes in this repo:
    section into each project's corresponding file.
 3. If a project has a project-specific variant of the rule that conflicts: the
    project-specific rule wins for that project. Document the divergence.
+   **Exception:** project overlays may never weaken safety rules or
+   operator-protection rules — those are universal floors, not defaults.
 
 **Who syncs:** The worker (CC) that changes the framework is responsible for propagating
 the change to all active projects in the same PR or in a follow-up ticket. The operator
