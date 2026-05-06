@@ -139,7 +139,7 @@ def call_model(
     timeout_s: float = DEFAULT_TIMEOUT_S,
 ) -> tuple[dict | None, float]:
     """
-    Call local Ollama with the GBNF grammar attached.
+    Call local Ollama with the routing JSON schema enforced via ``format``.
 
     Returns (parsed_json | None, latency_ms). On any HTTP / JSON parse error
     the first element is None and latency_ms still reflects the wall clock
@@ -147,12 +147,17 @@ def call_model(
 
     Note on grammar transport
     -------------------------
-    Ollama's vanilla `/api/chat` accepts `format` (either "json" or a JSON
-    schema) but not GBNF directly. Many builds pass `options.grammar`
-    through to the underlying llama.cpp runner; that is the convention used
-    here. If the operator's Ollama build ignores `options.grammar`,
-    translate the GBNF to a JSON schema and pass it via the top-level
-    `format` field instead.
+    The GBNF at ``grammar_path`` is the canonical schema spec. CC verified
+    on 2026-05-06 that this Ollama build silently ignores ``options.grammar``
+    across model families (qwen2.5:7b, llama3.2:3b, mistral:7b-instruct).
+    The ``format`` field with a JSON schema works cleanly. We import the
+    schema mirror from ``dispatcher.gatekeeper`` so there is exactly one
+    schema spec, derived from the GBNF.
+
+    The ``grammar_path`` arg is preserved for forward compatibility with
+    Ollama builds that DO honor ``options.grammar`` — pass the path and the
+    function will read the GBNF and include it alongside ``format`` so
+    grammar-aware backends can use either. Current builds use the schema.
     """
     if requests is None:
         raise RuntimeError(
@@ -160,17 +165,26 @@ def call_model(
             "(this repo already uses requests in tools/miru_mcp_gateway)."
         )
 
-    grammar_text = pathlib.Path(grammar_path).read_text(encoding="utf-8")
+    try:
+        from dispatcher.gatekeeper import ROUTING_JSON_SCHEMA
+    except ImportError:
+        sys.path.insert(0, str(REPO_ROOT))
+        from dispatcher.gatekeeper import ROUTING_JSON_SCHEMA
 
     payload = {
         "model": model_name,
         "messages": [{"role": "user", "content": prompt}],
         "stream": False,
-        "options": {
-            "grammar": grammar_text,
-            "temperature": 0.0,
-        },
+        "format": ROUTING_JSON_SCHEMA,
+        "options": {"temperature": 0.0},
     }
+
+    if grammar_path is not None:
+        try:
+            grammar_text = pathlib.Path(grammar_path).read_text(encoding="utf-8")
+            payload["options"]["grammar"] = grammar_text
+        except OSError:
+            pass
 
     t0 = time.perf_counter()
     try:
