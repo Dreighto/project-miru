@@ -37,7 +37,7 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from . import forwarder
 from .frontmatter_parser import FrontmatterError
@@ -54,10 +54,7 @@ DEFAULT_MODEL = "qwen2.5:7b"
 
 IN_FLIGHT_WINDOW_SECONDS = 600
 
-ALLOWLISTED_WORKERS: tuple[Literal["claude-code", "gemini"], ...] = (
-    "claude-code",
-    "gemini",
-)
+ALLOWLISTED_WORKERS = forwarder.ALLOWLISTED_WORKERS
 
 # JSON schema mirror of routing_schema.gbnf — used in the Ollama
 # ``format`` field because this build silently ignores
@@ -293,7 +290,7 @@ def run_deterministic_floor(
     repo_root = repo_root or REPO_ROOT
 
     trace_valid = _check_trace_id_format(trace_id)
-    a2a_clean, a2a_detail = _check_a2a_bus_state(trace_id)
+    _a2a_clean, a2a_detail = _check_a2a_bus_state(trace_id)
     worktree_clean, modified = _check_git_status(repo_root)
     no_in_flight, in_flight_detail = _check_in_flight_dispatch(ticket_id)
 
@@ -622,7 +619,7 @@ def gate_dispatch(payload: dict[str, Any]) -> dict[str, Any]:
             forward_response = forwarder.forward(
                 trace_id=trace_id,
                 worker=decision["decision"]["worker"],
-                prompt_text=payload.get("prompt", ""),
+                prompt_text=prompt_text,
                 timeout_seconds=int(execution.get("timeout_seconds", 600)),
                 model=execution.get("model") or None,
                 thinking_level=execution.get("thinking_level") or None,

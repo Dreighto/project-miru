@@ -25,6 +25,7 @@ import os
 import secrets
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any, Literal
@@ -163,6 +164,16 @@ def forward(
 
     body = json.dumps(payload).encode("utf-8")
     signature = _sign(body)
+
+    # Defense in depth: ensure LISTENER_URL is http(s). Prevents an
+    # MIRU_DISPATCH_LISTENER_URL override from sneaking in a file:// or
+    # other scheme that would have urllib treat it as a local read/write.
+    parsed = urllib.parse.urlparse(LISTENER_URL)
+    if parsed.scheme not in ("http", "https"):
+        raise ForwarderError(
+            "listener_url_invalid_scheme",
+            f"LISTENER_URL must be http(s); got scheme={parsed.scheme!r}",
+        )
 
     req = urllib.request.Request(
         LISTENER_URL,
