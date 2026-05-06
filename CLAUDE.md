@@ -342,6 +342,26 @@ The W2 router automatically classifies tasks and assigns a tool profile before d
 - All schema changes must be proposed to Claude Chat first and approved by the operator before execution
 - sqlite3 is available system-wide at C:\tools\sqlite3\sqlite3.exe
 
+## Scheduled Tasks — Hard Rule (no focus stealing)
+
+Any new Windows scheduled task or background service that runs periodically or at startup **MUST be completely non-interactive**. The operator works on this machine and any window that appears or steals focus is unacceptable.
+
+**Mandatory approach (in order of preference):**
+
+1. **Run as SYSTEM** (`/RU "SYSTEM" /RP ""` via schtasks, or `LogonType: ServiceAccount` in Task Scheduler). Session 0 is physically isolated from the user desktop — no windows, no focus stealing possible. Use this for any task that only needs network access, file I/O, or Python scripts. Use the `data/config/python_path.txt` mechanism for Python tasks (written by the FIX_TASK_SESSIONS_RUN_AS_ADMIN.bat setup script).
+
+2. **VBS wrapper with SW_HIDE** if SYSTEM is not viable (e.g. task needs a user-mounted drive like G:\, or a WinGet/NVM tool installed in user profile). Use `WshShell.Run "...", 0, False` — this properly sets `STARTF_USESHOWWINDOW | SW_HIDE` at process creation. VBS wrappers live in `windows/tasks/run_<name>.vbs`.
+
+**Never do these:**
+
+- Never create a task with `LogonType: Interactive` and a bare `powershell.exe` or `python.exe` command without a wrapper — even with `-WindowStyle Hidden`, a new process in the interactive session can briefly steal focus on Windows 11.
+- Never use `Win32_Process.Create` (WMI) to launch hidden processes — it does not reliably suppress the window.
+- Never register a new task in `startup_all.ps1` with `LogonType: Interactive` without adding it to the FIX_TASK_SESSIONS_RUN_AS_ADMIN.bat setup script.
+
+**Exception documentation:** If a task must stay Interactive (e.g. needs user-mounted Google Drive), document the exception inline in the script with a comment explaining why SYSTEM cannot be used.
+
+Set 2026-05-05 by operator. Root cause: periodic tasks (MiruServiceWatchdog 2 min, MiruStallRecovery 3 min, MiruSentinel 20 min, MiruN8nWatchdog 15 min) ran Interactive and repeatedly stole focus while operator was typing.
+
 ## Restart Rules
 
 - PM (18080): `powershell -ExecutionPolicy Bypass -File windows\restart_pm.ps1`

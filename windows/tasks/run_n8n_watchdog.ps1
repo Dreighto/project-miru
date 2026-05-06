@@ -1,0 +1,19 @@
+# Wrapper for MiruN8nWatchdog scheduled task.
+# Reads python path from data/config/python_path.txt (written at task setup time)
+# so it works under SYSTEM (session 0) where user PATH is unavailable.
+$repoRoot   = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$configFile = Join-Path $repoRoot "data\config\python_path.txt"
+
+$pythonExe = $null
+if (Test-Path $configFile) {
+    $pythonExe = (Get-Content $configFile -ErrorAction SilentlyContinue |
+                  Where-Object { $_ -and (Test-Path $_) } |
+                  Select-Object -First 1)
+}
+if (-not $pythonExe) {
+    $pythonExe = (Get-Command python -ErrorAction SilentlyContinue)?.Source
+}
+if (-not $pythonExe) { exit 1 }
+
+$logFile = Join-Path $repoRoot "logs\n8n_loop_watchdog_sched.log"
+& $pythonExe (Join-Path $repoRoot "tools\n8n_loop_watchdog.py") *>> $logFile
