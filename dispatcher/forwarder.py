@@ -35,7 +35,12 @@ LISTENER_URL = os.environ.get("MIRU_DISPATCH_LISTENER_URL", "http://127.0.0.1:19
 LISTENER_TIMEOUT_S = 30
 HMAC_SECRET_ENV = "W4_LISTENER_HMAC_SECRET"
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+# Honor MIRU_REPO_ROOT so the prompt file lands in the same tree the
+# Gatekeeper and dispatch_listener expect (per PR #89 — gateway and
+# downstream consumers all read MIRU_REPO_ROOT). Falls back to the
+# package-relative parent so the module is still importable in a stock
+# checkout without the env var set.
+REPO_ROOT = Path(os.environ.get("MIRU_REPO_ROOT") or Path(__file__).resolve().parents[1])
 INBOX_DIR = REPO_ROOT / "data" / "n8n_inbox"
 
 

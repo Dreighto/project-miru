@@ -494,6 +494,14 @@ def gate_dispatch(payload: dict[str, Any]) -> dict[str, Any]:
     if not ticket_id:
         raise GatekeeperError("payload_missing_ticket_id")
 
+    prompt_text = payload.get("prompt")
+    if not isinstance(prompt_text, str) or not prompt_text.strip():
+        raise GatekeeperError(
+            "payload_missing_prompt",
+            "cc_handoff payload must include a non-empty 'prompt' string — "
+            "the Gatekeeper validates intent against the prompt body, not just the ticket",
+        )
+
     trace_id = payload.get("trace_id") or forwarder.mint_trace_id(ticket_id)
 
     frontmatter = payload.get("ticket_frontmatter")
