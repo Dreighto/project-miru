@@ -142,16 +142,17 @@ and after any GitHub PAT rotation.
 ### Command
 
 ```bash
-echo "$GITHUB_TOKEN_WRITE" | gh auth login --with-token
+echo "$ROOM_TOKEN_OPERATOR" | gh auth login --with-token
 ```
 
-`GITHUB_TOKEN_WRITE` is the PAT stored in `D:\dev\miru\.env`. Do not echo the token value into
-logs or chat.
+`ROOM_TOKEN_OPERATOR` is the operator-level PAT stored in `D:\dev\miru\.env`. Do not echo the
+token value into logs or chat. Dispatched workers authenticate via `GH_TOKEN` (injected by
+`spawn.js`) and do not need to run this command.
 
 ### When this is needed
 
 - Fresh ROOM node setup (new machine or re-imaged OS)
-- After rotating the `GITHUB_TOKEN_WRITE` PAT in `.env`
+- After rotating the `ROOM_TOKEN_OPERATOR` PAT in `.env`
 - After a `gh auth logout` or credential cache invalidation
 - If CC reports "gh-not-authenticated" during a PR creation step
 

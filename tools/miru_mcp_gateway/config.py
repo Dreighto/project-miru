@@ -165,12 +165,18 @@ def _validate_secret(secret: str) -> str:
 
 
 def _load_github_settings() -> tuple[str | None, tuple[str, ...]]:
-    """Read GitHub token + allowlist. Read-scope only: refuse to use a
-    write-scope token even if the operator set GITHUB_TOKEN_WRITE.
+    """Read GitHub token + allowlist.
+
+    Prefers ROOM_TOKEN_WORKER (framework token); falls back to legacy
+    GITHUB_TOKEN_READ for backward compatibility during rotation.
 
     Returns (token_or_None, allowlist_patterns).
     """
-    read_token = os.environ.get("GITHUB_TOKEN_READ", "").strip() or None
+    read_token = (
+        os.environ.get("ROOM_TOKEN_WORKER", "").strip()
+        or os.environ.get("GITHUB_TOKEN_READ", "").strip()
+        or None
+    )
 
     raw_allow = os.environ.get("MIRU_GITHUB_REPO_ALLOWLIST", "").strip()
     allowlist: tuple[str, ...] = ()

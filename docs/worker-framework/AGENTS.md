@@ -137,18 +137,22 @@ Without it, all automated PR creation fails.
 ### Command
 
 ```bash
-echo "$GITHUB_TOKEN_WRITE" | gh auth login --with-token
+echo "$ROOM_TOKEN_OPERATOR" | gh auth login --with-token
 ```
 
-Store `GITHUB_TOKEN_WRITE` in the project's `.env` file. Never echo the token value
+Store `ROOM_TOKEN_OPERATOR` in the project's `.env` file. Never echo the token value
 into logs or chat output.
+
+**Dispatched workers** do not need this command — `spawn.js` injects `GH_TOKEN` set
+to `ROOM_TOKEN_WORKER` automatically. The bootstrap above is for the operator's
+direct CC session only.
 
 ### When this is needed
 
 - Fresh machine setup or re-imaged OS
-- After rotating the GitHub PAT in `.env`
+- After rotating `ROOM_TOKEN_OPERATOR` in `.env`
 - After `gh auth logout` or credential cache invalidation
-- If a worker reports "gh-not-authenticated" during PR creation
+- If CC reports "gh-not-authenticated" during PR creation in a direct session
 
 ### Verify
 

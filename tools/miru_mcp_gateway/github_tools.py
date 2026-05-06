@@ -104,7 +104,7 @@ def _gh_get(path: str, params: dict[str, Any] | None = None) -> Any:
             -32000,
         )
     if not _TOKEN:
-        raise stdio_mcp.McpError("github: GITHUB_TOKEN_READ not configured", -32000)
+        raise stdio_mcp.McpError("github: ROOM_TOKEN_WORKER not configured", -32000)
 
     url = f"{_API_BASE}{path}"
     headers = {
@@ -126,7 +126,7 @@ def _gh_get(path: str, params: dict[str, Any] | None = None) -> Any:
 
     if resp.status_code == 401:
         raise stdio_mcp.McpError(
-            "github: 401 Unauthorized -- GITHUB_TOKEN_READ may be expired or revoked",
+            "github: 401 Unauthorized -- ROOM_TOKEN_WORKER may be expired or revoked",
             -32000,
         )
     if resp.status_code == 403:
@@ -429,7 +429,7 @@ def _gh_graphql(query: str, variables: dict[str, Any]) -> dict[str, Any]:
             -32000,
         )
     if not _TOKEN:
-        raise stdio_mcp.McpError("github: GITHUB_TOKEN_READ not configured", -32000)
+        raise stdio_mcp.McpError("github: ROOM_TOKEN_WORKER not configured", -32000)
     try:
         resp = requests.post(
             "https://api.github.com/graphql",
@@ -735,7 +735,7 @@ def _gh_post(path: str, json_body: dict) -> Any:
         )
     if not _WRITE_TOKEN:
         raise stdio_mcp.McpError(
-            "github: GITHUB_TOKEN_WRITE not configured; cannot post comments", -32000
+            "github: ROOM_TOKEN_OPERATOR not configured; cannot post comments", -32000
         )
     url = f"{_API_BASE}{path}"
     headers = {
@@ -756,7 +756,7 @@ def _gh_post(path: str, json_body: dict) -> Any:
         ) from exc
     if resp.status_code == 401:
         raise stdio_mcp.McpError(
-            "github: 401 Unauthorized -- GITHUB_TOKEN_WRITE may be expired", -32000
+            "github: 401 Unauthorized -- ROOM_TOKEN_OPERATOR may be expired", -32000
         )
     if not (200 <= resp.status_code < 300):
         body_preview = _redact.redact(resp.text[:_BODY_SUMMARY_BYTES])
@@ -796,7 +796,7 @@ def _gh_put(path: str, json_body: dict) -> Any:
         )
     if not _WRITE_TOKEN:
         raise stdio_mcp.McpError(
-            "github: GITHUB_TOKEN_WRITE not configured; cannot merge PRs", -32000
+            "github: ROOM_TOKEN_OPERATOR not configured; cannot merge PRs", -32000
         )
     url = f"{_API_BASE}{path}"
     headers = {
@@ -817,7 +817,7 @@ def _gh_put(path: str, json_body: dict) -> Any:
         ) from exc
     if resp.status_code == 401:
         raise stdio_mcp.McpError(
-            "github: 401 Unauthorized -- GITHUB_TOKEN_WRITE may be expired", -32000
+            "github: 401 Unauthorized -- ROOM_TOKEN_OPERATOR may be expired", -32000
         )
     if resp.status_code == 405:
         raise stdio_mcp.McpError(
@@ -848,7 +848,7 @@ def _gh_delete(path: str) -> int:
         )
     if not _WRITE_TOKEN:
         raise stdio_mcp.McpError(
-            "github: GITHUB_TOKEN_WRITE not configured; cannot delete branches", -32000
+            "github: ROOM_TOKEN_OPERATOR not configured; cannot delete branches", -32000
         )
     url = f"{_API_BASE}{path}"
     headers = {
@@ -869,7 +869,7 @@ def _gh_delete(path: str) -> int:
         ) from exc
     if resp.status_code == 401:
         raise stdio_mcp.McpError(
-            "github: 401 Unauthorized -- GITHUB_TOKEN_WRITE may be expired", -32000
+            "github: 401 Unauthorized -- ROOM_TOKEN_OPERATOR may be expired", -32000
         )
     if resp.status_code == 404:
         raise stdio_mcp.McpError(f"github: 404 Not Found: {path}", -32000)
@@ -1026,7 +1026,11 @@ def register(mcp, cfg) -> int:
 
     global _WRITE_TOKEN
     _TOKEN = cfg.github_token
-    _WRITE_TOKEN = os.environ.get("GITHUB_TOKEN_WRITE", "").strip() or None
+    _WRITE_TOKEN = (
+        os.environ.get("ROOM_TOKEN_OPERATOR", "").strip()
+        or os.environ.get("GITHUB_TOKEN_WRITE", "").strip()
+        or None
+    )
     _ALLOWLIST = tuple(cfg.github_allowlist or ())
 
     from miru_mcp_gateway.gateway_security import wrap_tool_entry
