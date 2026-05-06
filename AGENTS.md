@@ -9,6 +9,59 @@ The charter tells you why it matters and what kind of worker you are expected to
 
 ---
 
+## Operator Communication Standard — Hard Rule (all workers, set 2026-05-06)
+
+Every output that reaches the operator for review must open with a plain-English summary.
+No exceptions. No jargon. No walls of file paths.
+
+**The operator is not a developer.** Technical status does not communicate "is this done and
+what do I need to do." Workers that skip the plain-English layer are making the operator do
+translation work — which defeats the purpose of having autonomous workers.
+
+### Required format for all operator-facing outputs
+
+```
+What happened:      [one sentence, no jargon]
+Does it work:       [Yes / No / Partially — plus one plain-English reason]
+What you need to do: [specific action, or "Nothing — it's done"]
+```
+
+Technical content (file paths, commit SHAs, test output, JSON) goes below a `---` divider.
+Other workers will find what they need there. The operator will not have to scroll past
+jargon to understand what happened.
+
+### Rules
+
+- The plain-English block comes **first**. Always. No preamble before it.
+- "What happened" is one sentence. If you need more than one, you are over-explaining.
+- "Does it work" must be a definitive answer. "It should work" is not an answer. If you
+  cannot say yes, say Partially or No, and say why in one plain sentence.
+- "What you need to do" must be actionable. "Approve the PR at [url]" is actionable.
+  "Review the changes" is not. If there is nothing to do, write "Nothing — it's done."
+
+### What counts as operator-facing
+
+- Telegram notifications
+- In-chat completion reports from any worker in the operator's session
+- PR titles and the opening section of PR descriptions
+- Linear comments on a ticket the operator is watching or reviewing
+- Escalation messages (ESCALATE, INCONCLUSIVE, BLOCKED_ON)
+
+### What is exempt
+
+- Worker-to-worker coordination: Linear internal comments, heartbeat logs, the JSON
+  completion record — these stay technical. Workers can read code.
+- Internal logs, test output, diffs — never operator-facing.
+
+### Why this exists
+
+The operator runs a multi-worker autonomous system. Their job is to make decisions, not
+to translate technical status into plain language. Every minute spent parsing jargon is a
+minute not spent on the next decision. Workers that communicate clearly make the whole
+system faster. Workers that bury the status in word vomit make it slower.
+
+---
+
 ## Automated PR Review Completion Sequence (all workers + CH, locked 2026-05-04)
 
 This contract applies to ALL workers (CC, Codex, Cursor, Gemini, Copilot, Windsurf) and Claude
