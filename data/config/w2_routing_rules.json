@@ -13,17 +13,6 @@
       "read-only audits"
     ]
   },
-  "codex": {
-    "best_for": [
-      "technical repo work",
-      "analysis-heavy coding",
-      "multi-file implement"
-    ],
-    "hard_no_go": [
-      "interactive UI builds",
-      "direct DB execution"
-    ]
-  },
   "cursor": {
     "best_for": [
       "rapid UI iteration",
