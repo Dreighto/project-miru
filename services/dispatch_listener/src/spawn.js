@@ -173,6 +173,17 @@ function spawnWorker({
   const childEnv = { ...process.env };
   delete childEnv.ANTHROPIC_API_KEY;
 
+  // Token isolation: dispatched workers get the restricted worker token only.
+  // ROOM_TOKEN_OPERATOR (account-level, can create repos) must not be available
+  // inside a worker session — the framework's behavioral guardrails are the
+  // enforcement layer, but removing the key from childEnv is the hard backstop.
+  // GH_TOKEN is the gh CLI's env-var auth path — workers authenticate
+  // automatically without needing a separate `gh auth login` step.
+  delete childEnv.ROOM_TOKEN_OPERATOR;
+  if (process.env.ROOM_TOKEN_WORKER) {
+    childEnv.GH_TOKEN = process.env.ROOM_TOKEN_WORKER;
+  }
+
   // Gemini CLI trust gate: --skip-trust flag is unreliable in headless
   // environments on some versions. Injecting the env var is the guaranteed
   // alternative per the CLI docs and the error message itself.

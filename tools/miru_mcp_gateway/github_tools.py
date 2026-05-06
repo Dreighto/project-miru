@@ -1026,7 +1026,11 @@ def register(mcp, cfg) -> int:
 
     global _WRITE_TOKEN
     _TOKEN = cfg.github_token
-    _WRITE_TOKEN = os.environ.get("GITHUB_TOKEN_WRITE", "").strip() or None
+    _WRITE_TOKEN = (
+        os.environ.get("ROOM_TOKEN_OPERATOR", "").strip()
+        or os.environ.get("GITHUB_TOKEN_WRITE", "").strip()
+        or None
+    )
     _ALLOWLIST = tuple(cfg.github_allowlist or ())
 
     from miru_mcp_gateway.gateway_security import wrap_tool_entry
