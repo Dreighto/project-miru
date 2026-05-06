@@ -484,11 +484,28 @@ def gate_dispatch(payload: dict[str, Any]) -> dict[str, Any]:
 
     Args:
       payload: cc_handoff input. Required keys:
-        ticket_id (str), prompt (str — the worker prompt body).
-        Optional: trace_id, conversational_delta, ticket_frontmatter,
-        ticket_description (parser will extract frontmatter from this),
-        worker (overrides model judgment), model, thinking_level,
-        timeout_seconds, tool_profile, plan_only, parent_conversation_summary.
+        - ``ticket_id`` (str)
+        - ``prompt`` (str) — the worker prompt body
+        Optional context keys (read-only — used to build the LLM prompt):
+        - ``trace_id`` — caller-supplied; if absent, one is minted
+        - ``conversational_delta`` — text refinement from CH chat
+        - ``parent_conversation_summary`` — hashed for staleness detection
+        - ``ticket_frontmatter`` — parsed dict (caller-provided)
+        - ``ticket_description`` — raw ticket body; parser will extract
+          frontmatter from this if ``ticket_frontmatter`` is absent
+        - ``shadow_mode`` (bool, default True) — if True, do not actually
+          forward to dispatch_listener even on accept; just emit the
+          decision JSON
+        - ``gatekeeper_model`` — override the Ollama model used for the
+          validation call (default: ``DEFAULT_MODEL``)
+
+    The Gatekeeper is the validation authority. The model's emitted
+    ``decision.{worker, mode, tool_profile, confidence}`` and
+    ``execution.{model, thinking_level, timeout_seconds, plan_only}``
+    fields are canonical; the payload does NOT override them. Caller
+    overrides would defeat the validation purpose. Phase 2 may
+    reconsider this for narrow allowlisted cases (e.g. operator-forced
+    re-dispatch with explicit reason), tracked as a future enhancement.
 
     Returns the routing decision JSON (schema version "2"). On
     Phase 2.5 Rejection, ``decision.worker = "none"`` and ``rejection``
