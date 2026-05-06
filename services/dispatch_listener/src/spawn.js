@@ -196,7 +196,7 @@ function spawnWorker({
   // PRO-265: per-dispatch model and effort flags (claude-code only).
   // thinking_level "extended" maps to --effort max (the Claude CLI effort scale is
   // low/medium/high/xhigh/max; "extended" is the semantic alias used by Claude Chat).
-  // For gemini and codex the override flags are not yet wired; values are
+  // For gemini the override flags are not yet wired; values are
   // logged but ignored so callers don't get a silent no-op without a trace.
   const EFFORT_MAP = {
     extended: 'max',

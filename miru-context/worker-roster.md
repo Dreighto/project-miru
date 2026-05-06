@@ -6,15 +6,36 @@ evaluating parallel execution options.
 
 ---
 
-## AI Workers (CLI workers — dispatched via W4 on port 19100)
+## Production Autonomous Workers (CLI — dispatched via W4 on port 19100)
+
+These two workers are the active autonomous-dispatch roster. W2 routes tasks between them; W4 spawns them headlessly via the Dispatch Listener.
 
 | Worker        | Binary       | Auth                                                            | Best for                                                                                             |
 | ------------- | ------------ | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | `claude-code` | `claude.cmd` | `CLAUDE_CODE_OAUTH_TOKEN` (OAuth, subscription — no API charge) | Backend code, multi-file Python refactors, test writing, full task ownership                         |
 | `gemini`      | `gemini.cmd` | Gemini CLI stored auth                                          | Second opinions, large-context reads (whole service in one pass), multimodal, alternative approaches |
-| `codex`       | `codex.cmd`  | Stored auth                                                     | Cross-file bug hunting, contract verification, architecture audits, refactor planning                |
 
 **Auth rule:** All dispatches use `CLAUDE_CODE_OAUTH_TOKEN` (OAuth, subscription — no API charge). `ANTHROPIC_API_KEY` is stripped from the child env at spawn time. There is no `use_api_key` dispatch flag — OAuth is the only supported auth path.
+
+---
+
+## Validator (Local Governance Gatekeeper)
+
+| Role                             | Model        | Notes                                                                                                                                             |
+| -------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dispatch validation (Gatekeeper) | `qwen2.5:7b` | Locked 2026-05-06 after 3-model bench (qwen 7b vs mistral 7b vs qwen 14b). 100% format validity, p50=27.7s. Not yet wired into runtime — Phase 2. |
+
+The Gatekeeper is a thin LLM-validation layer that sits between Claude Chat and the dispatch_listener. It is NOT a dispatch worker — it never owns a task. It only validates that a proposed handoff is legitimate before forwarding to the listener. See `dispatcher/gatekeeper.py` and Notion page `358c5d34-0141-817c-8dda-e2f91a50a9c5` for the full architecture.
+
+---
+
+## Benched Workers
+
+These workers are NOT in active production dispatch and should not be referenced in routing logic, allowlists, or new wiring. Treat them as stale unless an explicit ticket re-promotes them.
+
+| Worker  | Status  | Reason                                                                                                                                                                                                                                                                                                                                                                            |
+| ------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `codex` | Benched | 2026-05-04 connectivity gate. MCP transport stalls (`rmcp` fatal "Unexpected content type: missing-content-type" at startup). Repeated 17-min hangs followed by listener timeout-kill. Not autonomously dispatchable until the transport is fixed and re-evaluated. PR #93 stripped from listener allowlist; PRO-304 stripped from gateway allowlist + W2 router + worker roster. |
 
 ---
 
@@ -88,7 +109,7 @@ only when the smaller one returns low confidence or flags something it cannot re
 | Complex backend execution             | `claude-code` (OAuth)        |
 | Routine backend execution             | `claude-code` (OAuth)        |
 | UI/UX execution (templates, CSS, JS)  | `cursor` (manual)            |
-| Cross-file bug / contract audit       | `codex` or `gemini`          |
+| Cross-file bug / contract audit       | `gemini`                     |
 | Second opinion / alternative approach | `gemini`                     |
 | Architecture decision                 | Claude Chat (Opus 4.7)       |
 
@@ -110,18 +131,6 @@ budget governance uses "Cost bucket"; dispatch wiring uses "Dispatch mode."
 | Cost bucket                    | Free (OAuth subscription; no API billing)                                   |
 | Requires operator involvement  | For operator-column PRs, ESCALATE signals, or REPEATED_FAILURE              |
 | Known limitations              | Cannot touch HTML/CSS/JS templates, `.mcp.json` files, or `card_catalog.db` |
-
-### codex
-
-| Attribute                      | Value                                                                               |
-| ------------------------------ | ----------------------------------------------------------------------------------- |
-| Dispatch mode                  | Headless CLI (via W4 / Dispatch Listener on port 19100)                             |
-| Can run headless               | Yes                                                                                 |
-| Can be monitored via heartbeat | Yes — emits heartbeats if configured                                                |
-| Model / effort tuneable        | Yes — standard Codex model                                                          |
-| Cost bucket                    | Low-Medium (API-billed)                                                             |
-| Requires operator involvement  | For scope expansion, ESCALATE signals                                               |
-| Known limitations              | Does not autonomously edit CLAUDE.md or worker prompts; executes assigned work only |
 
 ### gemini
 
@@ -158,7 +167,7 @@ Claude Chat selects model and effort level at dispatch time. Workers run at defa
 | Routine fix, single-file edit, doc update     | None (default)         | None                          |
 | Multi-file refactor, non-trivial backend work | None (default Sonnet)  | None                          |
 | Complex architecture, deep reasoning required | `claude-opus-4-7`      | `extended` (→ `--effort max`) |
-| Budget Watch state                            | Prefer Haiku or Codex  | None                          |
+| Budget Watch state                            | Prefer Haiku           | None                          |
 | Budget Limit state                            | Cheapest capable model | None                          |
 
 **How overrides are applied (PRO-265 shipped):** Pass `model` and `thinking_level` as explicit fields in the `dispatch_worker` call. The dispatch listener maps `thinking_level: "extended"` to `--effort max` on the claude-code CLI; direct effort values (`low`, `medium`, `high`, `xhigh`, `max`) are also accepted.

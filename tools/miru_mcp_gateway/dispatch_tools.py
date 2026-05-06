@@ -28,7 +28,7 @@ import miru_readonly_filesystem_mcp as stdio_mcp  # noqa: E402
 
 from miru_mcp_gateway import redact as _redact  # noqa: E402
 
-_APPROVED_WORKERS = frozenset({"claude-code", "gemini", "codex"})
+_APPROVED_WORKERS = frozenset({"claude-code", "gemini"})
 # "extended" is the semantic alias for --effort max; direct effort values also accepted.
 _APPROVED_THINKING_LEVELS = frozenset({"extended", "none", "low", "medium", "high", "xhigh", "max"})
 _DEFAULT_TIMEOUT_S = 600
@@ -95,7 +95,7 @@ def dispatch_worker(
 ) -> str:
     """Trigger an approved worker via the dispatch listener (PRO-235).
 
-    ``worker``: one of claude-code, gemini, codex.
+    ``worker``: one of claude-code, gemini.
     ``prompt``: full prompt text delivered to the worker's stdin.
     ``ticket_id``: optional Linear ticket ID (e.g. PRO-235); used in trace_id.
     ``timeout_seconds``: 1-1800 (default 600).
