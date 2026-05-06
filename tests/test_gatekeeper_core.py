@@ -581,6 +581,113 @@ class TestGateDispatch(unittest.TestCase):
         self.assertEqual(result["rejection"]["reason"], "not_a_build")
         self.assertIn("Frontmatter parse failed", result["rejection"]["explanation"])
 
+    @patch("gatekeeper.core.call_ollama")
+    @patch("gatekeeper.core.subprocess.run")
+    def test_is_legitimate_build_derived_when_model_omits(self, mock_run, mock_ollama):
+        """When the model omits is_legitimate_build, it's derived from worker + rejection."""
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        mock_ollama.return_value = (
+            {
+                "schema_version": "2",
+                "trace_id": "ignored",
+                "ticket_id": "ignored",
+                "decision": {
+                    "worker": "claude-code",
+                    "mode": "judgment",
+                    "tool_profile": "standard_worker",
+                    "confidence": "high",
+                },
+                "validation": {"rejection": None},
+                "context_snapshot": {},
+                "execution": {},
+                "rejection": None,
+                "flags": [],
+                "rationale": "Looks good",
+            },
+            500.0,
+        )
+        result = gate_dispatch(
+            {
+                "ticket_id": "PRO-40",
+                "prompt": "Build the feature",
+                "trace_id": "rtr-PRO-40-abcdef0123456789",
+                "shadow_mode": True,
+            }
+        )
+        self.assertTrue(result["validation"]["is_legitimate_build"])
+        self.assertIn("shadow_mode:no_forward", result["flags"])
+
+    @patch("gatekeeper.core.call_ollama")
+    @patch("gatekeeper.core.subprocess.run")
+    def test_is_legitimate_build_false_when_worker_none(self, mock_run, mock_ollama):
+        """is_legitimate_build derived as False when worker is 'none'."""
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        mock_ollama.return_value = (
+            {
+                "schema_version": "2",
+                "trace_id": "ignored",
+                "ticket_id": "ignored",
+                "decision": {
+                    "worker": "none",
+                    "mode": "ambiguous",
+                    "tool_profile": None,
+                    "confidence": "low",
+                },
+                "validation": {},
+                "context_snapshot": {},
+                "execution": {},
+                "rejection": None,
+                "flags": [],
+                "rationale": "Unclear",
+            },
+            300.0,
+        )
+        result = gate_dispatch(
+            {
+                "ticket_id": "PRO-41",
+                "prompt": "Maybe build something",
+                "trace_id": "rtr-PRO-41-abcdef0123456789",
+                "shadow_mode": True,
+            }
+        )
+        self.assertFalse(result["validation"]["is_legitimate_build"])
+
+    @patch("gatekeeper.core.call_ollama")
+    @patch("gatekeeper.core.subprocess.run")
+    def test_is_legitimate_build_preserved_when_model_emits(self, mock_run, mock_ollama):
+        """When the model explicitly emits is_legitimate_build, we don't override."""
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        mock_ollama.return_value = (
+            {
+                "schema_version": "2",
+                "trace_id": "ignored",
+                "ticket_id": "ignored",
+                "decision": {
+                    "worker": "claude-code",
+                    "mode": "judgment",
+                    "tool_profile": "standard_worker",
+                    "confidence": "high",
+                },
+                "validation": {"is_legitimate_build": False, "rationale": "nope"},
+                "context_snapshot": {},
+                "execution": {},
+                "rejection": None,
+                "flags": [],
+                "rationale": "Looks suspicious",
+            },
+            400.0,
+        )
+        result = gate_dispatch(
+            {
+                "ticket_id": "PRO-42",
+                "prompt": "Do the task",
+                "trace_id": "rtr-PRO-42-abcdef0123456789",
+                "shadow_mode": True,
+            }
+        )
+        # Model said False explicitly — we respect that even though worker is allowlisted
+        self.assertFalse(result["validation"]["is_legitimate_build"])
+
 
 # ---------------------------------------------------------------------------
 # _build_prompt()

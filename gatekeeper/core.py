@@ -613,6 +613,17 @@ def gate_dispatch(payload: dict[str, Any]) -> dict[str, Any]:
     decision["ticket_id"] = ticket_id
     decision["schema_version"] = "2"
 
+    # Derive is_legitimate_build when the model omits it.  qwen2.5:7b
+    # sometimes drops validation sub-fields despite the JSON schema
+    # constraint.  The derivation is safe: if the model DID emit the
+    # field we leave it alone; otherwise we infer from worker + rejection.
+    val = decision.setdefault("validation", {})
+    if "is_legitimate_build" not in val:
+        val["is_legitimate_build"] = (
+            decision.get("decision", {}).get("worker") in forwarder.ALLOWLISTED_WORKERS
+            and decision.get("rejection") is None
+        )
+
     cs = decision.setdefault("context_snapshot", {})
     cs.setdefault("parent_conversation_summary_hash", parent_hash)
     cs.setdefault("conversational_delta", delta)
