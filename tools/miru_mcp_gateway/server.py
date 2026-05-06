@@ -50,6 +50,7 @@ from miru_mcp_gateway import (
     dispatch_tools,
     docs_write_tools,
     fs_tools,
+    gatekeeper_tools,
     git_tools,
     github_tools,
     linear_write_tools,
@@ -89,6 +90,7 @@ CATEGORIES: tuple[tuple[str, Any], ...] = (
     ("linear_write", linear_write_tools),
     ("telegram", telegram_tools),
     ("dispatch", dispatch_tools),
+    ("gatekeeper", gatekeeper_tools),
     ("vp_ops", vp_ops_tools),
 )
 
