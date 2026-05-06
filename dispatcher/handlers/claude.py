@@ -106,9 +106,8 @@ def handler(job) -> None:
         job.proc = proc
 
         # Close stdin immediately.  Claude CLI (Node.js) detects an open stdin
-        # pipe and waits for more input — never producing output.  Sending EOF
+        # pipe and waits for more input — never producing output. Sending EOF
         # tells it no interactive input is coming and it proceeds to run.
-        # Approval-bridge writes handle BrokenPipeError via the write_exc handler.
         try:  # noqa: SIM105
             proc.stdin.close()
         except Exception:
