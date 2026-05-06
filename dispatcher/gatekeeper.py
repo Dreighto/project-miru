@@ -224,14 +224,20 @@ def _check_git_status(repo_root: Path) -> tuple[bool, list[str]]:
         log.warning("git_status_nonzero", extra={"stderr": result.stderr[:200]})
         return True, []
 
+    # Treat any non-blank, non-untracked status code as "modified". The
+    # earlier whitelist (M, A, D, R, MM, AM) missed rename-modified (RM),
+    # merge conflicts (UU, AA, UD, DU, DD), typechange (T), and assorted
+    # other porcelain codes. The safer policy is "if git porcelain has
+    # something to say AND it isn't an untracked-file marker, it counts."
     modified = []
     for line in result.stdout.splitlines():
         if not line.strip():
             continue
         code = line[:2]
         path = line[3:].strip()
-        if code.strip() in ("M", "A", "D", "R", "MM", "AM"):
-            modified.append(path)
+        if code == "??":
+            continue
+        modified.append(path)
 
     return (len(modified) == 0), modified
 
@@ -290,7 +296,7 @@ def run_deterministic_floor(
     repo_root = repo_root or REPO_ROOT
 
     trace_valid = _check_trace_id_format(trace_id)
-    _a2a_clean, a2a_detail = _check_a2a_bus_state(trace_id)
+    a2a_clean, a2a_detail = _check_a2a_bus_state(trace_id)
     worktree_clean, modified = _check_git_status(repo_root)
     no_in_flight, in_flight_detail = _check_in_flight_dispatch(ticket_id)
 
@@ -299,6 +305,7 @@ def run_deterministic_floor(
         "ticket_exists_and_open": True,
         "worktree_clean": worktree_clean,
         "no_in_flight_dispatch": no_in_flight,
+        "a2a_clean": a2a_clean,
         "_modified_paths": modified,
         "_a2a_detail": a2a_detail,
         "_in_flight_detail": in_flight_detail,
@@ -524,8 +531,8 @@ def gate_dispatch(payload: dict[str, Any]) -> dict[str, Any]:
             explanation="trace_id format is invalid",
         )
 
-    a2a_detail = checks.get("_a2a_detail", "")
-    if "already in A2A bus" in a2a_detail:
+    if not checks["a2a_clean"]:
+        a2a_detail = checks.get("_a2a_detail", "")
         return _rejection_response(
             trace_id=trace_id,
             ticket_id=ticket_id,
