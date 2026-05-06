@@ -1,4 +1,4 @@
-# Gemini CLI (gemini-2.5-pro) — Project Miru
+# Gemini CLI — Project Miru
 
 ## Ports — Permanent Reference
 

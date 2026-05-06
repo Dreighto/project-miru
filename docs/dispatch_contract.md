@@ -245,7 +245,7 @@ For detailed tool compositions and error recovery patterns, see `docs/ch_operati
 - **Auth:** Personal Google account OAuth (~/.gemini/ stored credentials) — no API charge
 - **Use for:** Simple single-file fixes, log checks, validation tasks, heartbeat emits
 - **Permission flag:** `--yolo` (auto-approves all tool actions — equivalent of dangerously-skip-permissions)
-- **Rate limits:** 60 RPM / 1,000 RPD on Gemini 2.5 Pro free tier — sufficient for current dispatch volume
+- **Rate limits:** 60 RPM / 1,000 RPD on Gemini Pro free tier — sufficient for current dispatch volume (rate limits may shift with model updates; verify if dispatch volume increases)
 - **MCP warning:** Gemini CLI prints "MCP issues detected" to stdout on start — this is cosmetic, does not affect execution
 - **Validated:** 2026-05-01 — tool use (file write/read), stdin prompt, --yolo mode all confirmed working
 
