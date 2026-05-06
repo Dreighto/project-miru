@@ -235,12 +235,26 @@ function spawnWorker({
     // Dropping detached:true makes the worker a normal child of the listener:
     // listener crash will kill mid-flight workers (acceptable Phase 1 behavior
     // per the README, the orphan sweep already handles that case at startup).
-    child = spawn('cmd', ['/c', binary, ...workerSpec.flags, ...extraFlags], {
+    //
+    // windowsHide:true sets CREATE_NO_WINDOW on Windows. This is correct for
+    // claude-code (no console needed) but breaks gemini: gemini's startup
+    // sequence runs conpty_console_list_agent.js which calls AttachConsole().
+    // CREATE_NO_WINDOW prevents any console from being allocated, so
+    // AttachConsole() fails and gemini exits immediately.
+    //
+    // The dispatch_listener's startup script (windows/start_dispatch_listener.ps1)
+    // hides the PowerShell console window via ShowWindow(hwnd, 0) but leaves the
+    // console allocated. Without windowsHide, gemini inherits that hidden console,
+    // AttachConsole() succeeds, and no new window appears on the user's desktop.
+    const spawnOpts = {
       cwd,
-      windowsHide: true,
       stdio: [promptFd, stdoutFd, stderrFd],
       env: childEnv,
-    });
+    };
+    if (worker !== 'gemini') {
+      spawnOpts.windowsHide = true;
+    }
+    child = spawn('cmd', ['/c', binary, ...workerSpec.flags, ...extraFlags], spawnOpts);
   } catch (err) {
     fs.closeSync(promptFd);
     fs.closeSync(stdoutFd);
