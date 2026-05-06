@@ -1,7 +1,7 @@
 # W4 Dispatch Listener
 
 Tiny host webhook service that receives HMAC-signed POSTs from n8n and spawns
-the requested worker CLI (claude / gemini / codex) as a child process. Built
+the requested worker CLI (claude / gemini) as a child process. Built
 for [PRO-83](https://linear.app/project-miru/issue/PRO-83); consumed by
 PRO-84 once the W7 Dispatch button ships.
 
@@ -9,7 +9,8 @@ PRO-84 once the W7 Dispatch button ships.
 - Auth: HMAC-SHA256 of the raw request body, header `X-W4-HMAC`, secret
   `W4_LISTENER_HMAC_SECRET` from `D:\dev\miru\.env`.
 - Allowlist (hardcoded; adding any binary requires a code change + PR):
-  `claude-code`, `gemini`, `codex`.
+  `claude-code`, `gemini`. Codex was removed from the autonomous dispatch
+  roster 2026-05-04 (connectivity gate; PR #93 stripped from this allowlist).
 - n8n container reaches it via `http://host.docker.internal:19100/dispatch`.
 
 ## Why a top-level `services/` parent
@@ -85,7 +86,7 @@ Body:
 {
   "schema_version": "v1",
   "trace_id": "<uuid or 12-hex token>",
-  "worker": "claude-code|gemini|codex",
+  "worker": "claude-code|gemini",
   "prompt_path": "data/n8n_inbox/<trace_id>.json",
   "timeout_seconds": 600
 }
@@ -199,7 +200,7 @@ from this PR to a focused hardening ticket. They're tracked, not forgotten.
   marker so a partial write is detectable on restart).
 - **Worker child inherits `W4_LISTENER_HMAC_SECRET` via `process.env` (Low).**
   The spawned cmd inherits the listener's env verbatim, including the HMAC
-  secret. Workers (`claude`, `gemini`, `codex`) routinely log env, send
+  secret. Workers (`claude`, `gemini`) routinely log env, send
   telemetry, or are themselves AI models that may surface env values in
   transcripts. Realistic fix: filter `W4_LISTENER_HMAC_SECRET` (and any other
   listener-only secrets) from the child's `env` in `spawn.js`.
