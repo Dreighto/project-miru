@@ -6,19 +6,16 @@ The HANDLER_MAP maps model names (as accepted by the API) to their handler.
 Models not in the map fall back to the simulation handler.
 """
 
-from .simulation import handler as simulation_handler
 from .claude import handler as claude_handler
-from .cursor import handler as cursor_handler
-from .ollama import handler as ollama_handler
 from .gemini import handler as gemini_handler
-from .codex import handler as codex_handler
+from .ollama import handler as ollama_handler
+from .simulation import handler as simulation_handler
 
 HANDLER_MAP = {
-    "Ollama":  ollama_handler,   # local  — Ollama HTTP API
-    "Claude":  claude_handler,   # real   — Claude Code CLI
-    "Cursor":  cursor_handler,   # real   — Cursor bundled Agent SDK CLI
-    "Gemini":  gemini_handler,   # real   — Gemini CLI (Google)
-    "Codex":   codex_handler,    # real   — OpenAI Codex CLI
+    "Ollama": ollama_handler,  # local  — Ollama HTTP API
+    "Claude": claude_handler,  # real   — Claude Code CLI
+    "Gemini": gemini_handler,  # real   — Gemini CLI (Google)
+    "Simulation": simulation_handler,  # dry-run / unknown-model fallback
 }
 
 
