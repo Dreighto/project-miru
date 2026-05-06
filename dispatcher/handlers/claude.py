@@ -6,15 +6,12 @@ non-interactive --print mode with --dangerously-skip-permissions for
 headless operation.  Effort is passed as an annotated prefix in the
 prompt because the CLI has no native --effort flag.
 
-Approval bridge: if the CLI emits a line matching known approval
-patterns, the bridge posts to Slack and waits for the operator's reply.
 """
 
 from __future__ import annotations
 
 import logging
 import os
-import re
 import subprocess
 import threading
 import time
@@ -24,18 +21,6 @@ log = logging.getLogger("miru.dispatcher.handler.claude")
 
 # Claude Code CLI — installed via `npm install -g @anthropic-ai/claude-code`
 _CLAUDE_CLI = Path(os.environ.get("APPDATA", "")) / "npm" / "claude.cmd"
-
-APPROVAL_PATTERNS = [
-    r"\(y/n\)",
-    r"\[y/N\]",
-    r"1\.\s+Allow",
-    r"Allow once",
-    r"Proceed\?",
-    r"Do you want to",
-    r"May I",
-    r"Approve",
-]
-_APPROVAL_RE = re.compile("|".join(APPROVAL_PATTERNS), re.IGNORECASE)
 
 
 def handler(job) -> None:
@@ -49,9 +34,7 @@ def handler(job) -> None:
 
     # Effort → max-turns hint injected as a comment prefix.
     effort_hint = {"Quick": "brief", "Standard": "standard", "Deep": "thorough"}
-    annotated_prompt = (
-        f"[effort:{effort_hint.get(job.effort, 'standard')}] {job.prompt}"
-    )
+    annotated_prompt = f"[effort:{effort_hint.get(job.effort, 'standard')}] {job.prompt}"
 
     timeout_seconds = {"Quick": 120, "Standard": 300, "Deep": 600}
     timeout = timeout_seconds.get(job.effort, 300)
@@ -59,7 +42,9 @@ def handler(job) -> None:
     # Build cmd — primary path: APPDATA npm .cmd wrapped through cmd /c
     if _CLAUDE_CLI.exists():
         cmd = [
-            "cmd", "/c", str(_CLAUDE_CLI),
+            "cmd",
+            "/c",
+            str(_CLAUDE_CLI),
             "--print",
             "--dangerously-skip-permissions",
             annotated_prompt,
@@ -71,7 +56,9 @@ def handler(job) -> None:
             # Use cmd /c for .cmd files, direct exec for native binaries
             if which_claude.lower().endswith(".cmd"):
                 cmd = [
-                    "cmd", "/c", which_claude,
+                    "cmd",
+                    "/c",
+                    which_claude,
                     "--print",
                     "--dangerously-skip-permissions",
                     annotated_prompt,
@@ -119,10 +106,9 @@ def handler(job) -> None:
         job.proc = proc
 
         # Close stdin immediately.  Claude CLI (Node.js) detects an open stdin
-        # pipe and waits for more input — never producing output.  Sending EOF
+        # pipe and waits for more input — never producing output. Sending EOF
         # tells it no interactive input is coming and it proceeds to run.
-        # Approval-bridge writes handle BrokenPipeError via the write_exc handler.
-        try:
+        try:  # noqa: SIM105
             proc.stdin.close()
         except Exception:
             pass
@@ -139,24 +125,7 @@ def handler(job) -> None:
         def _reader():
             nonlocal _read_done
             for raw_line in proc.stdout:
-                _stdout_lines.append(raw_line.replace('\r', ''))
-                # Check for approval prompt
-                stripped = raw_line.strip()
-                if _APPROVAL_RE.search(stripped):
-                    try:
-                        from task_dispatcher import ApprovalBridge
-                        bridge = ApprovalBridge(timeout_seconds=600)
-                        reply = bridge.ask(job, stripped)
-                        if reply == "review":
-                            reply = "n"
-                        if reply and proc.stdin:
-                            try:
-                                proc.stdin.write(reply + "\n")
-                                proc.stdin.flush()
-                            except Exception as write_exc:
-                                log.warning("Failed to write approval to stdin: %s", write_exc)
-                    except Exception as bridge_exc:
-                        log.warning("ApprovalBridge error: %s", bridge_exc)
+                _stdout_lines.append(raw_line.replace("\r", ""))
             _read_done = True
 
         rt = threading.Thread(target=_reader, daemon=True)
@@ -211,7 +180,9 @@ def handler(job) -> None:
             )
             log.warning(
                 "Job %s failed: rc=%d stderr=%s",
-                job.id, proc.returncode, stderr_text[:200],
+                job.id,
+                proc.returncode,
+                stderr_text[:200],
             )
 
     except FileNotFoundError:
@@ -221,7 +192,7 @@ def handler(job) -> None:
             f"Expected: {_CLAUDE_CLI} (or claude on PATH)"
         )
         log.error("Claude CLI FileNotFoundError for job %s", job.id)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         job.status = "failed"
         job.output = f"[claude_cli] unexpected error: {exc}"
         log.exception("Unexpected error in claude handler for job %s", job.id)

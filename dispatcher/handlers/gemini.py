@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import logging
 import os
-import re
 import re as _re
 import shutil
 import subprocess
@@ -23,22 +22,13 @@ log = logging.getLogger("miru.dispatcher.handler.gemini")
 
 _REPO_ROOT = r"D:\dev\miru"
 
-APPROVAL_PATTERNS = [
-    r"\(y/n\)",
-    r"\[y/N\]",
-    r"Approve:",
-    r"Allow\?",
-    r"Proceed\?",
-    r"1\.\s+Allow",
-]
-_APPROVAL_RE = re.compile("|".join(APPROVAL_PATTERNS), re.IGNORECASE)
 _GEMINI_NOISE_RE = _re.compile(
-    r'(?:'
-    r'\[WARN\]\s+Skipping unreadable directory'
-    r'|YOLO mode is enabled'
-    r'|All tool calls will be automatically approved'
-    r'|MCP issues detected\. Run /mcp list'
-    r')',
+    r"(?:"
+    r"\[WARN\]\s+Skipping unreadable directory"
+    r"|YOLO mode is enabled"
+    r"|All tool calls will be automatically approved"
+    r"|MCP issues detected\. Run /mcp list"
+    r")",
     _re.IGNORECASE,
 )
 
@@ -101,7 +91,7 @@ def handler(job) -> None:
 
         # Close stdin — with --yolo, Gemini never prompts for input;
         # keeping stdin open can cause the process to hang on some platforms.
-        try:
+        try:  # noqa: SIM105
             proc.stdin.close()
         except Exception:
             pass
@@ -112,22 +102,9 @@ def handler(job) -> None:
         def _reader():
             nonlocal _read_done
             for raw_line in proc.stdout:
-                clean = raw_line.replace('\r', '')
+                clean = raw_line.replace("\r", "")
                 if not _GEMINI_NOISE_RE.search(clean):
                     _stdout_lines.append(clean)
-                stripped = raw_line.strip()
-                if _APPROVAL_RE.search(stripped):
-                    try:
-                        from task_dispatcher import ApprovalBridge
-                        bridge = ApprovalBridge(timeout_seconds=600)
-                        reply = bridge.ask(job, stripped)
-                        if reply == "review":
-                            reply = "n"
-                        if reply and proc.stdin:
-                            proc.stdin.write(reply + "\n")
-                            proc.stdin.flush()
-                    except Exception as bridge_exc:
-                        log.warning("ApprovalBridge error: %s", bridge_exc)
             _read_done = True
 
         rt = threading.Thread(target=_reader, daemon=True)
@@ -140,7 +117,7 @@ def handler(job) -> None:
         while elapsed < timeout:
             if job.cancel_event.is_set():
                 proc.kill()
-                _kill_gemini_children()
+                _kill_gemini_children(proc.pid)
                 job.status = "cancelled"
                 job.output = "[cancelled by operator]\n" + "".join(collected)
                 log.info("Job %s cancelled; Gemini CLI killed", job.id)
@@ -160,7 +137,7 @@ def handler(job) -> None:
             elapsed += poll_interval
         else:
             proc.kill()
-            _kill_gemini_children()
+            _kill_gemini_children(proc.pid)
             job.status = "failed"
             job.output = f"[timeout after {timeout}s]\n" + "".join(collected)
             log.warning("Job %s timed out after %ds", job.id, timeout)
@@ -196,15 +173,20 @@ def handler(job) -> None:
         log.exception("Unexpected error in gemini handler for job %s", job.id)
 
 
-def _kill_gemini_children():
-    """Best-effort kill of any running gemini-cli node.exe processes."""
-    try:
+def _kill_gemini_children(pid: int) -> None:
+    """Best-effort kill of the gemini-cli process tree for a specific PID.
+
+    Targets ``pid`` and its descendants via ``taskkill /T`` so cancelling one
+    job does not kill unrelated gemini processes elsewhere on the system
+    (e.g. the operator's IDE). Per CodeRabbit review on PR #94 — the prior
+    pattern-match-by-command-line was too broad.
+    """
+    try:  # noqa: SIM105
         subprocess.run(
-            ["powershell", "-Command",
-             "Get-Process -Name node -EA SilentlyContinue "
-             "| Where-Object { $_.CommandLine -match 'gemini' } "
-             "| Stop-Process -Force -EA SilentlyContinue"],
+            ["taskkill", "/PID", str(pid), "/T", "/F"],
             timeout=10,
+            capture_output=True,
+            check=False,
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
     except Exception:
