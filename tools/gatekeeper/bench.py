@@ -151,7 +151,7 @@ def call_model(
     on 2026-05-06 that this Ollama build silently ignores ``options.grammar``
     across model families (qwen2.5:7b, llama3.2:3b, mistral:7b-instruct).
     The ``format`` field with a JSON schema works cleanly. We import the
-    schema mirror from ``dispatcher.gatekeeper`` so there is exactly one
+    schema mirror from ``gatekeeper.core`` so there is exactly one
     schema spec, derived from the GBNF.
 
     The ``grammar_path`` arg is preserved for forward compatibility with
@@ -166,10 +166,10 @@ def call_model(
         )
 
     try:
-        from dispatcher.gatekeeper import ROUTING_JSON_SCHEMA
+        from gatekeeper.core import ROUTING_JSON_SCHEMA
     except ImportError:
         sys.path.insert(0, str(REPO_ROOT))
-        from dispatcher.gatekeeper import ROUTING_JSON_SCHEMA
+        from gatekeeper.core import ROUTING_JSON_SCHEMA
 
     payload = {
         "model": model_name,
@@ -326,7 +326,7 @@ def _percentile(values: list[float], pct: float) -> float | None:
 def _build_prompt(entry: dict) -> str:
     """Build a Gatekeeper-style prompt for a historical routing entry.
 
-    Imports ``GOVERNANCE_PREAMBLE`` from ``dispatcher.gatekeeper`` so the
+    Imports ``GOVERNANCE_PREAMBLE`` from ``gatekeeper.core`` so the
     bench exercises the same governance prefix the production Gatekeeper
     uses. The historical row is presented as the dynamic-tail context
     (ticket id, task type, suggested worker, outcome). Closed-enum
@@ -334,10 +334,10 @@ def _build_prompt(entry: dict) -> str:
     prompt just provides the context and asks for the decision JSON.
     """
     try:
-        from dispatcher.gatekeeper import GOVERNANCE_PREAMBLE
+        from gatekeeper.core import GOVERNANCE_PREAMBLE
     except ImportError:
         sys.path.insert(0, str(REPO_ROOT))
-        from dispatcher.gatekeeper import GOVERNANCE_PREAMBLE
+        from gatekeeper.core import GOVERNANCE_PREAMBLE
 
     ticket_id = entry.get("task_identifier") or entry.get("ticket_id") or "PRO-?"
     task_type = entry.get("task_type") or entry.get("type") or "(unknown)"

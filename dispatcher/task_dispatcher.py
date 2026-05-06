@@ -15,9 +15,9 @@ The new dispatch flow:
     Captain ↔ Claude Chat (interface, design, ticket writing)
                 │
                 ▼  via cc_handoff MCP tool (planned, Phase 2)
-    dispatcher.gatekeeper  (validation core)
+    gatekeeper.core  (validation core, relocated PRO-306)
                 │
-                ▼  HMAC-signed POST via dispatcher.forwarder
+                ▼  HMAC-signed POST via gatekeeper.forwarder
     services/dispatch_listener (port 19100)  → spawns workers
                 │
                 ▼
@@ -35,15 +35,16 @@ future confusion if anything still imports it.
 from __future__ import annotations
 
 # This module intentionally exposes nothing. Importing it is a no-op.
-# Use the new modules under ``dispatcher`` instead:
+# The Gatekeeper modules have been relocated to the top-level
+# ``gatekeeper`` package (PRO-306). Use the new import paths:
 #
-#   from dispatcher.gatekeeper import gate_dispatch
-#   from dispatcher.frontmatter_parser import parse, FrontmatterError
-#   from dispatcher.forwarder import forward, mint_trace_id
+#   from gatekeeper.core import gate_dispatch
+#   from gatekeeper.frontmatter_parser import parse, FrontmatterError
+#   from gatekeeper.forwarder import forward, mint_trace_id
 #
 # The legacy SQLite job history previously stored at
 # ``dispatcher/data/jobs.db`` is archived as ``jobs.db.legacy`` in the
 # same directory. See ``dispatcher/data/README.md`` for schema notes
-# and access guidance. The new Gatekeeper has no SQLite dependency.
+# and access guidance. The Gatekeeper has no SQLite dependency.
 
 __all__: list[str] = []
