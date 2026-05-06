@@ -2,7 +2,7 @@
 
 This directory previously held the SQLite job-history database for the
 decommissioned dispatcher service on port 19000. The new Local Governance
-Gatekeeper (`dispatcher.gatekeeper`, shipped in PRO-302 / PR #95) has no
+Gatekeeper (`gatekeeper.core`, relocated in PRO-306 from `dispatcher.gatekeeper`) has no
 SQLite dependency — all dispatch state lives in `services/dispatch_listener/`
 (in-memory + per-trace receipts) and the canonical append-only JSONL files
 under `data/`.
@@ -45,7 +45,7 @@ The `job_history` table held one row per dispatched job:
 Per CLAUDE.md merge policy ("operator merges changes" + "do not silently
 delete user data"), the old database is preserved rather than dropped.
 If the operator wants to inspect past dispatch history (e.g. for the
-shadow-mode bench corpus), the file is here. The `dispatcher.gatekeeper`
+shadow-mode bench corpus), the file is here. The `gatekeeper.core`
 module does NOT read this database — it's purely for reference.
 
 ## Recommended rename
