@@ -239,3 +239,74 @@ Long session. CH was offline so CC ran direct. Six discrete pieces shipped:
 - worktree `D:\dev\miru-w1` — detached HEAD at `4bbb314`, clean. Ready for next dispatch's worktree-cleanliness gate.
 - Linear PRO-298 → Done; PRO-299 → Backlog.
 - All five services healthy (port 18766, 18080, 18765, 19100, 15678).
+
+---
+
+# 2026-05-06 — Hybrid orchestration pivot Phase 1 SHIPPED + 3-model bench + canon sync
+
+## Summary
+
+Hybrid orchestration pivot Phase 1 complete. Local Governance Gatekeeper extracted from the decommissioned dispatcher into standalone modules, three-model bench run to lock the production model, canon synced across Notion + memory DB + repo.
+
+## What got done
+
+- **Three coordinated PRs landed in sequence on main:**
+  - **PR #93 (PRO-300, Cursor)** `11900f0` — strip dead Cursor + Codex handlers from `dispatcher/handlers/`. Removed `dispatcher/handlers/cursor.py`, `dispatcher/handlers/codex.py`, mockup HTML, and `codex` from listener allowlist. HANDLER_MAP shrunk to claude/gemini/ollama/simulation.
+  - **PR #94 (PRO-301, Codex)** `0108637` — strip the Flask UI dashboard, WebSocket layer, and Slack-bolt approval bridge from `task_dispatcher.py`. Also fixed a latent footgun: `_kill_gemini_children(pid)` was pattern-matching all node processes with "gemini" in their command line and would have killed the operator's IDE. Now scoped to specific PID via `taskkill /T /F`.
+  - **PR #95 (PRO-302, CC)** `37cb884` — extract `dispatcher/gatekeeper.py` (760 lines), `dispatcher/frontmatter_parser.py` (173), `dispatcher/forwarder.py` (238). Replace `task_dispatcher.py` with a 60-line deprecation stub. Archive `jobs.db` as `jobs.db.legacy` (operator Decision C).
+
+- **Tooling shipped alongside:** `tools/gatekeeper/bench.py` (bench harness), `tools/gatekeeper/routing_schema.gbnf` (Cursor-built closed-enum grammar, 169 lines), `ROUTING_JSON_SCHEMA` mirror in `dispatcher/gatekeeper.py` (used in Ollama `format` field — this build silently ignores `options.grammar`, confirmed via smoke test 2026-05-06). Spec at `docs/dispatch/ticket_frontmatter_schema.md` (HTML-comment YAML format, 380+ lines, 5 worked examples).
+
+- **Three-model bench (10 samples each, sampled from 212 chosen_worker rows in `routing_history.jsonl`):**
+  - `qwen2.5:7b` — 100% format validity, p50=27.7s p95=31s, 2/10 populate `rejection.reason`
+  - `mistral:7b-instruct` — 100% format validity, p50=24.9s p95=30s, 0/10 populate `rejection.reason` (regression)
+  - `qwen2.5:14b` — 100% format validity, p50=47.1s p95=58s, 9/10 populate `rejection.reason` with richer vocab (`not_a_build`, `ghost_task`, `ticket_drift_unresolved`). 1.7x slower than 7b. Occasional Chinese-character bleed in rationale text.
+
+- **LOCKED `DEFAULT_MODEL = qwen2.5:7b`** in `dispatcher/gatekeeper.py` (already the default — no code change). Choice rationale: per-dispatch validation latency budget should stay under 30s; qwen 7b is the best balance of speed + correct rejection-vocab usage; mistral regressed on reason population; 14b's richer reasoning is real but not worth 2x latency for a Gatekeeper that runs on every dispatch. Phase 2 prompt engineering can lift qwen 7b's rejection vocab usage — that's a prompt issue, not a capability issue.
+
+- **Bench limitation flagged for Phase 2 work:** confidence scoring is broken (numeric historical 0–1 vs enum predicted high/medium/low). Bench measures format validity + latency only. Decision-correctness scoring requires synthetic test cases (frontmatter says X, delta says Y → expect specific rejection reason). Acceptable for Phase 1 model selection; Phase 2 should bring synthetic corpus.
+
+- **`tools/gatekeeper/bench.py` updated** to replace TODO stub prompt with the real Gatekeeper-style prompt — imports `GOVERNANCE_PREAMBLE` from `dispatcher.gatekeeper`, builds a context block matching production payload shape (frontmatter / git_status / conversational_delta).
+
+## Canon updates (Notion + Memory DB + Repo)
+
+**Notion (2 pages):**
+
+- `358c5d34-0141-817c-8dda-e2f91a50a9c5` Dispatcher (Resurrected) — appended Phase 1 SHIPPED block with full PR list, bench results, model lock decision, bench limitation note, and Phase 2/3 next steps.
+- `09bd7fc1-b3c4-43dc-a745-cbf109606ffa` 01 Now — appended 2026-05-06 update with pointer to dispatcher resurrection page.
+
+**Memory DB (3 writes):**
+
+- INSERT `decisions`: Phase 1 ship summary (3 PRs, bench data, model lock, source = "CC session 2026-05-06").
+- UPDATE `agenda` id `8f46ee05...`: Phase 1 → status=done, context appended.
+- INSERT `agenda`: Phase 2 cc_handoff MCP tool planning, priority=1, status=active.
+- UPDATE `stack_state[phase]`: refreshed to reflect Phase 1 hybrid pivot ship.
+
+**Repo:**
+
+- `tools/gatekeeper/bench.py` — TODO stub prompt replaced with real Gatekeeper-style prompt builder.
+- `miru-context/state-handoff-log.md` — this entry.
+
+## What's still open
+
+**Phase 2 (next planning pass):** add `cc_handoff` MCP tool that invokes `dispatcher.gatekeeper.gate_dispatch()` instead of CH calling `dispatch_listener` directly. Additive on CH (`dispatch_worker` still present in tool profile). Run in shadow mode — Gatekeeper validates and logs decisions to `data/agent_decisions.jsonl` for calibration, but does not gate dispatch yet. Spec: Notion page 358c5d34. Priority-1 agenda row added. Implementation requires fresh approval gate.
+
+**Phase 3 (cutover, after Phase 2 validated):** remove `dispatch_worker` from CH's tool profile. CH only has `cc_handoff`. Self-serve loophole closes structurally rather than instructionally.
+
+**PRO-303 (deferred):** `task_dispatcher.py` is a 60-line deprecation stub. Pre-existing bugs in the old code paths should now mostly close as obsolete since the file is a stub. Not blocking.
+
+**Bench evidence files:** `data/batch_reports/bench_qwen2.5_7b_*`, `bench_mistral_7b-instruct_*`, `bench_qwen2.5_14b_*` — currently untracked, not in `.gitignore`. Decide whether to commit as model-lock evidence or add to `.gitignore` (treat like `logs/`).
+
+## What NOT to do
+
+- Do NOT begin Phase 2 implementation without explicit operator approval — planning only until then.
+- Do NOT modify CH's tool profile (remove `dispatch_worker`) until Phase 2 is verified working in shadow mode.
+- Do NOT re-introduce the old workstreams (file browser, runtime control, repo browser) when wiring Phase 2 — Gatekeeper is dispatch-validation-only.
+- Do NOT trust the bench's `cost_weighted_score` for model differentiation — confidence scoring is broken. Use validity + latency until synthetic corpus exists.
+
+## Session ended on
+
+- main repo `D:\dev\miru` — on `main` at `37cb884` (PR #95 squash-merge). Working tree state pending final commit of bench.py + this handoff entry.
+- All five services healthy (ports 18766 / 18080 / 18765 / 19100 / 15678).
+- 89+ markers in `cc_completion_log.jsonl` (PRO-302 marker landed via PR #95 cleanup).
+- Linear: PRO-300 → Done, PRO-301 → Done, PRO-302 → Done.

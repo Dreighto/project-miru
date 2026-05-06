@@ -324,18 +324,43 @@ def _percentile(values: list[float], pct: float) -> float | None:
 
 
 def _build_prompt(entry: dict) -> str:
+    """Build a Gatekeeper-style prompt for a historical routing entry.
+
+    Imports ``GOVERNANCE_PREAMBLE`` from ``dispatcher.gatekeeper`` so the
+    bench exercises the same governance prefix the production Gatekeeper
+    uses. The historical row is presented as the dynamic-tail context
+    (ticket id, task type, suggested worker, outcome). Closed-enum
+    JSON schema is enforced via ``format`` in ``call_model`` — this
+    prompt just provides the context and asks for the decision JSON.
     """
-    Stub prompt template. Replace with the real Gatekeeper system prompt
-    once it is finalized. Intentionally minimal: the operator will pair
-    this with a system message and the actual cc_handoff payload structure.
-    """
-    return (
-        "TODO: replace with the canonical Gatekeeper system prompt.\n"
-        "Validate this dispatch and emit a routing decision JSON matching "
-        "tools/gatekeeper/routing_schema.gbnf.\n\n"
-        "Historical row:\n"
-        f"{json.dumps(entry, ensure_ascii=False, sort_keys=True)}\n"
+    try:
+        from dispatcher.gatekeeper import GOVERNANCE_PREAMBLE
+    except ImportError:
+        sys.path.insert(0, str(REPO_ROOT))
+        from dispatcher.gatekeeper import GOVERNANCE_PREAMBLE
+
+    ticket_id = entry.get("task_identifier") or entry.get("ticket_id") or "PRO-?"
+    task_type = entry.get("task_type") or entry.get("type") or "(unknown)"
+    suggested = entry.get("suggested_worker") or entry.get("proposed_worker") or "(none)"
+    chosen = entry.get("chosen_worker") or entry.get("selected_worker") or "(none)"
+    outcome = entry.get("outcome") or "(unknown)"
+
+    context = (
+        f"TICKET: {ticket_id}\n"
+        f"TASK TYPE: {task_type}\n"
+        f"SUGGESTED WORKER (W2): {suggested}\n"
+        f"OUTCOME (historical): {outcome}\n"
+        f"GROUND TRUTH (historical chosen worker): {chosen}\n\n"
+        "FRONTMATTER: (no frontmatter on historical ticket)\n"
+        "GIT STATUS: (clean tree)\n"
+        "CONVERSATIONAL DELTA: (no delta — historical entry)\n"
+        "DETERMINISTIC CHECKS: all passed\n\n"
+        'Emit the routing decision JSON. schema_version "2". trace_id '
+        f'must use format "rtr-{ticket_id}-<rand>". '
+        "Be conservative on edge cases. ``rejection`` is null when the "
+        "dispatch is legitimate, or an object with a ``reason`` enum when not."
     )
+    return GOVERNANCE_PREAMBLE + "\n\n---\n\n" + context
 
 
 def _default_log_file(model_name: str) -> pathlib.Path:
@@ -367,6 +392,13 @@ def run_bench(
     rows = load_history(history_path)
     if not rows:
         raise ValueError(f"Empty history at {history_path}")
+
+    # Filter to rows with a non-null chosen_worker — those are the ones
+    # we can actually score against. Shadow-dispatched, callback-decided,
+    # and dispatched outcomes all qualify.
+    rows = [r for r in rows if r.get("chosen_worker")]
+    if not rows:
+        raise ValueError(f"No rows with chosen_worker in {history_path}")
 
     rng = random.Random(seed)
     sample = rng.sample(rows, k=min(sample_size, len(rows)))
