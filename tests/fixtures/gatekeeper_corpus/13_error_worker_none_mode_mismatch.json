@@ -1,0 +1,6 @@
+{
+  "description": "worker=none with expected_mode=routine (inconsistent pairing)",
+  "frontmatter_block": "<!-- dispatch:\n  worker: none\n  scope: infra/review\n  expected_mode: routine\n-->",
+  "expected_parse": null,
+  "expected_error": "frontmatter_inconsistent_worker_none"
+}

@@ -1,0 +1,11 @@
+{
+  "description": "Valid frontmatter with do_not_touch array",
+  "frontmatter_block": "<!-- dispatch:\n  worker: gemini\n  scope: audit/security\n  do_not_touch:\n    - card_catalog.db\n    - .mcp.json\n  dispatch_priority: urgent\n-->",
+  "expected_parse": {
+    "worker": "gemini",
+    "scope": "audit/security",
+    "do_not_touch": ["card_catalog.db", ".mcp.json"],
+    "dispatch_priority": "urgent"
+  },
+  "expected_error": null
+}

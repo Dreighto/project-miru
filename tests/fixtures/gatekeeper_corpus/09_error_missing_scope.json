@@ -1,0 +1,6 @@
+{
+  "description": "Missing required field: scope",
+  "frontmatter_block": "<!-- dispatch:\n  worker: claude-code\n-->",
+  "expected_parse": null,
+  "expected_error": "frontmatter_missing_required_field"
+}

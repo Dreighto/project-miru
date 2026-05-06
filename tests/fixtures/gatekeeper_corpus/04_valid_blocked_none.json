@@ -1,0 +1,10 @@
+{
+  "description": "Valid worker=none with blocked mode (consistent pairing)",
+  "frontmatter_block": "<!-- dispatch:\n  worker: none\n  scope: infra/blocked\n  expected_mode: blocked\n-->",
+  "expected_parse": {
+    "worker": "none",
+    "scope": "infra/blocked",
+    "expected_mode": "blocked"
+  },
+  "expected_error": null
+}

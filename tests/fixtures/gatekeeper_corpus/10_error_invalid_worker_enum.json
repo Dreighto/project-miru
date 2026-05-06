@@ -1,0 +1,6 @@
+{
+  "description": "Invalid worker enum value",
+  "frontmatter_block": "<!-- dispatch:\n  worker: cursor\n  scope: frontend/ui\n-->",
+  "expected_parse": null,
+  "expected_error": "frontmatter_invalid_worker_enum"
+}

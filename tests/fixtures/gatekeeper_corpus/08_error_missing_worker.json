@@ -1,0 +1,6 @@
+{
+  "description": "Missing required field: worker",
+  "frontmatter_block": "<!-- dispatch:\n  scope: backend/auth\n-->",
+  "expected_parse": null,
+  "expected_error": "frontmatter_missing_required_field"
+}

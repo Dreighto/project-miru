@@ -1,0 +1,10 @@
+{
+  "description": "Valid dispatch targeting both workers",
+  "frontmatter_block": "<!-- dispatch:\n  worker: both\n  scope: frontend/ui\n  expected_mode: judgment\n-->",
+  "expected_parse": {
+    "worker": "both",
+    "scope": "frontend/ui",
+    "expected_mode": "judgment"
+  },
+  "expected_error": null
+}

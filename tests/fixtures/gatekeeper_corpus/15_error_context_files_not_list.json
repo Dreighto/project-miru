@@ -1,0 +1,6 @@
+{
+  "description": "context_files is a string instead of a list",
+  "frontmatter_block": "<!-- dispatch:\n  worker: claude-code\n  scope: backend/fix\n  context_files: src/main.py\n-->",
+  "expected_parse": null,
+  "expected_error": "frontmatter_field_must_be_list"
+}

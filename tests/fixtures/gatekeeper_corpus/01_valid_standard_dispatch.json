@@ -1,0 +1,13 @@
+{
+  "description": "Happy path: valid frontmatter, clean worktree, no in-flight dispatch",
+  "frontmatter_block": "<!-- dispatch:\n  worker: claude-code\n  scope: backend/auth\n  context_files:\n    - src/middleware/auth.py\n  expected_mode: judgment\n  expected_tool_profile: standard_worker\n  plan_only: false\n-->",
+  "expected_parse": {
+    "worker": "claude-code",
+    "scope": "backend/auth",
+    "context_files": ["src/middleware/auth.py"],
+    "expected_mode": "judgment",
+    "expected_tool_profile": "standard_worker",
+    "plan_only": false
+  },
+  "expected_error": null
+}
