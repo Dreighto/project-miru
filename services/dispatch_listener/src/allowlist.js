@@ -12,12 +12,14 @@ const path = require('path');
 // Stdin behavior verified empirically (2026-04-26):
 //   * claude --print --dangerously-skip-permissions  -- reads prompt from stdin
 //   * gemini -p "" --yolo                            -- stdin appended to (empty) -p; --yolo auto-approves all tool actions (equivalent of --dangerously-skip-permissions)
+// Note: --skip-trust was removed in gemini-cli 0.38.0. Workspace trust is now
+// controlled via GEMINI_CLI_TRUST_WORKSPACE=true env var (set in spawn.js).
 const ALLOWLIST_DEF = Object.freeze({
   'claude-code': {
     binary: 'claude.cmd',
     flags: ['--print', '--dangerously-skip-permissions'],
   },
-  gemini: { binary: 'gemini.cmd', flags: ['-p', '', '--yolo', '--skip-trust'] },
+  gemini: { binary: 'gemini.cmd', flags: ['-p', '', '--yolo'] },
 });
 
 // Some Windows installations virtualize %APPDATA%\npm into an AppContainer
