@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Watchlist</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f8f9fa;
+      }
+      .container {
+        max-width: 375px;
+        margin: 0 auto;
+        background: #fff;
+        min-height: 100vh;
+      }
+      header {
+        padding: 16px;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+      }
+      h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        flex: 1;
+      }
+
+      /* Filter tabs: intentionally undersized at 36px height */
+      .filter-tabs {
+        display: flex;
+        gap: 8px;
+        padding: 8px 16px;
+        overflow-x: auto;
+      }
+      .filter-tab {
+        height: 36px;
+        padding: 0 14px;
+        border: 1px solid #dee2e6;
+        border-radius: 18px;
+        background: #fff;
+        font-size: 0.875rem;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .filter-tab.active {
+        background: #0066cc;
+        color: #fff;
+        border-color: #0066cc;
+      }
+
+      /* Sort toggle: intentionally undersized at 36px */
+      .sort-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 16px;
+      }
+      .sort-toggle {
+        height: 36px;
+        width: 36px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #6c757d;
+      }
+
+      .card-list {
+        padding: 0 16px 80px;
+      }
+      .card-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .card-thumb {
+        width: 44px;
+        height: 62px;
+        background: #e9ecef;
+        border-radius: 4px;
+        flex-shrink: 0;
+      }
+      .card-info {
+        flex: 1;
+      }
+      .card-name {
+        font-size: 0.9rem;
+        font-weight: 500;
+      }
+      .card-meta {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 2px;
+      }
+      .card-price {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #1a1a1a;
+      }
+
+      /* Watchlist button: correctly sized at 44px */
+      .watchlist-btn {
+        width: 44px;
+        height: 44px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #e63946;
+        flex-shrink: 0;
+      }
+
+      .nav-bar {
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 375px;
+        display: flex;
+        background: #fff;
+        border-top: 1px solid #dee2e6;
+      }
+      /* Nav items: correctly sized at 52px */
+      .nav-item {
+        flex: 1;
+        height: 52px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+        color: #6c757d;
+        border: none;
+        background: none;
+        cursor: pointer;
+        gap: 2px;
+      }
+      .nav-item.active {
+        color: #0066cc;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header><h1>Watchlist</h1></header>
+
+      <div class="filter-tabs">
+        <button class="filter-tab active">All</button>
+        <button class="filter-tab">Rising</button>
+        <button class="filter-tab">Falling</button>
+        <button class="filter-tab">Leaders</button>
+        <button class="filter-tab">Characters</button>
+      </div>
+
+      <div class="sort-bar">
+        <span style="font-size: 0.8rem; color: #6c757d">24 cards</span>
+        <button class="sort-toggle" aria-label="Sort">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M2 4h12M4 8h8M6 12h4" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="card-list">
+        <div class="card-row">
+          <div class="card-thumb"></div>
+          <div class="card-info">
+            <div class="card-name">Monkey D. Luffy</div>
+            <div class="card-meta">OP01-001 · Leader</div>
+          </div>
+          <div class="card-price">$42.00</div>
+          <button class="watchlist-btn" aria-label="Remove from watchlist">&#9829;</button>
+        </div>
+        <div class="card-row">
+          <div class="card-thumb"></div>
+          <div class="card-info">
+            <div class="card-name">Roronoa Zoro</div>
+            <div class="card-meta">OP01-024 · Character</div>
+          </div>
+          <div class="card-price">$18.50</div>
+          <button class="watchlist-btn" aria-label="Remove from watchlist">&#9829;</button>
+        </div>
+        <div class="card-row">
+          <div class="card-thumb"></div>
+          <div class="card-info">
+            <div class="card-name">Nami</div>
+            <div class="card-meta">OP01-016 · Character</div>
+          </div>
+          <div class="card-price">$7.25</div>
+          <button class="watchlist-btn" aria-label="Remove from watchlist">&#9829;</button>
+        </div>
+      </div>
+
+      <nav class="nav-bar">
+        <button class="nav-item">Home</button>
+        <button class="nav-item">Cards</button>
+        <button class="nav-item active">Watchlist</button>
+        <button class="nav-item">Decks</button>
+        <button class="nav-item">Profile</button>
+      </nav>
+    </div>
+  </body>
+</html>

@@ -57,4 +57,17 @@ export default [
       globals: NODE_COMMONJS_GLOBALS,
     },
   },
+  // PRO-309 — UI verification harness + Playwright config. Mixed Node/browser context:
+  // page.evaluate() callbacks run in-browser, so document/window are legitimate.
+  {
+    files: ['tools/ui_verifier/**/*.js', 'playwright.config.js'],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: {
+        ...NODE_COMMONJS_GLOBALS,
+        document: 'readonly',
+        window: 'readonly',
+      },
+    },
+  },
 ];
