@@ -119,10 +119,11 @@ class TestVerifyPrMerged(unittest.TestCase):
         mock_result.stdout = json.dumps(pr_data)
 
         with patch("prune_merged_branches.subprocess.run", return_value=mock_result):
-            result = mod.verify_pr_merged("dreighto/pro-200-feature", "Dreighto/project-miru")
+            pr, err = mod.verify_pr_merged("dreighto/pro-200-feature", "Dreighto/project-miru")
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result["number"], 42)
+        self.assertIsNotNone(pr)
+        self.assertIsNone(err)
+        self.assertEqual(pr["number"], 42)
 
     def test_returns_none_when_no_pr(self):
         mock_result = MagicMock()
@@ -130,19 +131,22 @@ class TestVerifyPrMerged(unittest.TestCase):
         mock_result.stdout = "[]"
 
         with patch("prune_merged_branches.subprocess.run", return_value=mock_result):
-            result = mod.verify_pr_merged("dreighto/orphan", "Dreighto/project-miru")
+            pr, err = mod.verify_pr_merged("dreighto/orphan", "Dreighto/project-miru")
 
-        self.assertIsNone(result)
+        self.assertIsNone(pr)
+        self.assertIsNone(err)
 
-    def test_returns_none_on_command_failure(self):
+    def test_returns_error_on_command_failure(self):
         mock_result = MagicMock()
-        mock_result.returncode = 1
+        mock_result.returncode = 4
         mock_result.stdout = ""
 
         with patch("prune_merged_branches.subprocess.run", return_value=mock_result):
-            result = mod.verify_pr_merged("dreighto/orphan", "Dreighto/project-miru")
+            pr, err = mod.verify_pr_merged("dreighto/orphan", "Dreighto/project-miru")
 
-        self.assertIsNone(result)
+        self.assertIsNone(pr)
+        self.assertIsNotNone(err)
+        self.assertIn("exit 4", err)
 
 
 class TestPruneDryRun(unittest.TestCase):
@@ -333,11 +337,16 @@ class TestPruneDivergedTip(unittest.TestCase):
 
 
 class TestVerifyPrMergedGhMissing(unittest.TestCase):
-    def test_returns_none_when_gh_not_installed(self):
-        with patch("prune_merged_branches.subprocess.run", side_effect=FileNotFoundError("gh")):
-            result = mod.verify_pr_merged("dreighto/some-branch", "Dreighto/project-miru")
+    def test_returns_error_when_gh_not_installed(self):
+        with patch(
+            "prune_merged_branches.subprocess.run",
+            side_effect=FileNotFoundError("gh"),
+        ):
+            pr, err = mod.verify_pr_merged("dreighto/some-branch", "Dreighto/project-miru")
 
-        self.assertIsNone(result)
+        self.assertIsNone(pr)
+        self.assertIsNotNone(err)
+        self.assertIn("not found", err)
 
 
 class TestPruneBranchListFailure(unittest.TestCase):

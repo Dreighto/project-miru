@@ -23,19 +23,16 @@ DEFAULT_REPO = "Dreighto/project-miru"
 
 def _repo_root() -> str:
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--git-common-dir"],
-            capture_output=True,
-            text=True,
-            cwd=script_dir,
-            timeout=5,
-        )
-        if result.returncode == 0:
-            common_dir = os.path.normpath(os.path.join(script_dir, result.stdout.strip()))
-            return os.path.dirname(common_dir)
-    except Exception:
-        pass
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        cwd=script_dir,
+        timeout=5,
+        check=False,
+    )
+    if result.returncode == 0:
+        return result.stdout.strip()
     return os.path.dirname(script_dir)
 
 
@@ -102,10 +99,11 @@ def list_local_branches(cwd: str) -> list[dict] | None:
     return branches
 
 
-def verify_pr_merged(branch: str, repo: str) -> dict | None:
+def verify_pr_merged(branch: str, repo: str) -> tuple[dict | None, str | None]:
     """Check GitHub for a merged PR from this branch.
 
-    Returns PR info dict if a merged PR exists, None otherwise.
+    Returns (pr_info, error). On success: (dict, None) or (None, None).
+    On command failure: (None, error_message).
     """
     try:
         result = subprocess.run(
@@ -130,13 +128,17 @@ def verify_pr_merged(branch: str, repo: str) -> dict | None:
             check=False,
         )
         if result.returncode != 0:
-            return None
+            return None, f"gh pr list failed (exit {result.returncode})"
         prs = json.loads(result.stdout)
         if prs:
-            return prs[0]
-    except (json.JSONDecodeError, subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-    return None
+            return prs[0], None
+    except FileNotFoundError:
+        return None, "gh CLI not found"
+    except subprocess.TimeoutExpired:
+        return None, "gh pr list timed out"
+    except json.JSONDecodeError:
+        return None, "gh pr list returned invalid JSON"
+    return None, None
 
 
 def _local_branch_tip(branch: str, cwd: str) -> str | None:
@@ -248,7 +250,22 @@ def prune(
     for b in candidates:
         branch = b["name"]
 
-        pr = verify_pr_merged(branch, repo)
+        pr, err = verify_pr_merged(branch, repo)
+        if err is not None:
+            actions.append(
+                {
+                    "branch": branch,
+                    "action": "failed",
+                    "pr_number": None,
+                    "pr_title": None,
+                    "reason": err,
+                }
+            )
+            print(
+                f"  FAIL  {branch} — {err}",
+                file=sys.stderr,
+            )
+            continue
         if pr is None:
             actions.append(
                 {
