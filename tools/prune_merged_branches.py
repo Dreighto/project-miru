@@ -120,7 +120,7 @@ def verify_pr_merged(branch: str, repo: str) -> dict | None:
                 "--state",
                 "merged",
                 "--json",
-                "number,title,mergedAt",
+                "number,title,mergedAt,headRefOid",
                 "--limit",
                 "1",
             ],
@@ -134,9 +134,23 @@ def verify_pr_merged(branch: str, repo: str) -> dict | None:
         prs = json.loads(result.stdout)
         if prs:
             return prs[0]
-    except (json.JSONDecodeError, subprocess.TimeoutExpired):
+    except (json.JSONDecodeError, subprocess.TimeoutExpired, FileNotFoundError):
         pass
     return None
+
+
+def _local_branch_tip(branch: str, cwd: str) -> str | None:
+    result = subprocess.run(
+        ["git", "rev-parse", branch],
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+        timeout=5,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip()
 
 
 def delete_local_branch(branch: str, cwd: str) -> bool:
@@ -219,6 +233,24 @@ def prune(
             )
             print(
                 f"  SKIP  {branch} — no merged PR found",
+                file=sys.stderr,
+            )
+            continue
+
+        pr_head = pr.get("headRefOid")
+        local_tip = _local_branch_tip(branch, cwd)
+        if pr_head and local_tip and local_tip != pr_head:
+            actions.append(
+                {
+                    "branch": branch,
+                    "action": "skipped",
+                    "pr_number": pr["number"],
+                    "pr_title": pr["title"],
+                    "reason": "local branch diverged from merged PR head",
+                }
+            )
+            print(
+                f"  SKIP  {branch} — local tip {local_tip[:8]} != PR head {pr_head[:8]}",
                 file=sys.stderr,
             )
             continue

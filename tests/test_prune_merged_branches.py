@@ -147,12 +147,24 @@ class TestVerifyPrMerged(unittest.TestCase):
 
 class TestPruneDryRun(unittest.TestCase):
     def _make_run_side_effect(self):
-        pr_data = [{"number": 99, "title": "Test PR", "mergedAt": "2026-05-07T00:00:00Z"}]
+        tip_sha = "abc1234567890"
+        pr_data = [
+            {
+                "number": 99,
+                "title": "Test PR",
+                "mergedAt": "2026-05-07T00:00:00Z",
+                "headRefOid": tip_sha,
+            }
+        ]
 
         def side_effect(cmd, **kwargs):
             result = MagicMock()
             if cmd[0] == "git" and cmd[1] == "fetch":
                 result.returncode = 0
+                return result
+            if cmd[0] == "git" and cmd[1] == "rev-parse":
+                result.returncode = 0
+                result.stdout = tip_sha
                 return result
             if cmd[0] == "git" and cmd[1] == "branch":
                 result.returncode = 0
@@ -198,12 +210,24 @@ class TestPruneDryRun(unittest.TestCase):
 
 class TestPruneExecute(unittest.TestCase):
     def _make_run_side_effect(self):
-        pr_data = [{"number": 50, "title": "Merged PR", "mergedAt": "2026-05-07T00:00:00Z"}]
+        tip_sha = "def4567890abc"
+        pr_data = [
+            {
+                "number": 50,
+                "title": "Merged PR",
+                "mergedAt": "2026-05-07T00:00:00Z",
+                "headRefOid": tip_sha,
+            }
+        ]
 
         def side_effect(cmd, **kwargs):
             result = MagicMock()
             if cmd[0] == "git" and cmd[1] == "fetch":
                 result.returncode = 0
+                return result
+            if cmd[0] == "git" and cmd[1] == "rev-parse":
+                result.returncode = 0
+                result.stdout = tip_sha
                 return result
             if cmd[0] == "git" and cmd[1] == "branch" and "-D" in cmd:
                 result.returncode = 0
@@ -258,6 +282,62 @@ class TestPruneExecute(unittest.TestCase):
         self.assertIn("dreighto/pro-200-old-feature", delete_calls)
         self.assertIn("dreighto/pro-201-another", delete_calls)
         self.assertNotIn("dreighto/stale-no-pr", delete_calls)
+
+
+class TestPruneDivergedTip(unittest.TestCase):
+    def _make_run_side_effect(self):
+        pr_data = [
+            {
+                "number": 70,
+                "title": "Old PR",
+                "mergedAt": "2026-05-07T00:00:00Z",
+                "headRefOid": "oldsha1234",
+            }
+        ]
+
+        def side_effect(cmd, **kwargs):
+            result = MagicMock()
+            if cmd[0] == "git" and cmd[1] == "fetch":
+                result.returncode = 0
+                return result
+            if cmd[0] == "git" and cmd[1] == "rev-parse":
+                result.returncode = 0
+                result.stdout = "newsha5678"
+                return result
+            if cmd[0] == "git" and cmd[1] == "branch":
+                result.returncode = 0
+                result.stdout = (
+                    "  dreighto/reused-branch  aaa1111 "
+                    "[origin/dreighto/reused-branch: gone] feat: reused\n"
+                    "* main  5ce79f2 [origin/main] latest\n"
+                )
+                return result
+            if cmd[0] == "gh":
+                result.returncode = 0
+                result.stdout = json.dumps(pr_data)
+                return result
+            result.returncode = 1
+            return result
+
+        return side_effect
+
+    @patch("prune_merged_branches.subprocess.run")
+    def test_skips_branch_with_diverged_tip(self, mock_run):
+        mock_run.side_effect = self._make_run_side_effect()
+
+        actions = mod.prune(dry_run=False, cwd="/fake")
+
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0]["action"], "skipped")
+        self.assertIn("diverged", actions[0]["reason"])
+
+
+class TestVerifyPrMergedGhMissing(unittest.TestCase):
+    def test_returns_none_when_gh_not_installed(self):
+        with patch("prune_merged_branches.subprocess.run", side_effect=FileNotFoundError("gh")):
+            result = mod.verify_pr_merged("dreighto/some-branch", "Dreighto/project-miru")
+
+        self.assertIsNone(result)
 
 
 class TestPruneNoCandidates(unittest.TestCase):
