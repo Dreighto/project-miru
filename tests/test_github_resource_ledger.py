@@ -255,6 +255,15 @@ class ReapFindStaleTest(unittest.TestCase):
         stale = self.mod.find_stale_pending(entries, ttl_seconds=7200, now=self._now())
         self.assertEqual(len(stale), 0)
 
+    def test_failed_entry_allows_retry(self) -> None:
+        entries = [
+            _valid_entry(ts=self._ts(3), status="pending"),
+            _valid_entry(ts=self._ts(2.5), status="failed"),
+        ]
+        stale = self.mod.find_stale_pending(entries, ttl_seconds=7200, now=self._now())
+        self.assertEqual(len(stale), 1)
+        self.assertEqual(stale[0]["status"], "failed")
+
     def test_exactly_at_ttl_not_stale(self) -> None:
         entries = [_valid_entry(ts=self._ts(2.0), status="pending")]
         stale = self.mod.find_stale_pending(entries, ttl_seconds=7200, now=self._now())
@@ -269,11 +278,10 @@ class ReapFindStaleTest(unittest.TestCase):
         stale = self.mod.find_stale_pending([], ttl_seconds=7200, now=self._now())
         self.assertEqual(stale, [])
 
-    def test_no_pending_entries(self) -> None:
+    def test_terminal_statuses_not_retried(self) -> None:
         entries = [
-            _valid_entry(ts=self._ts(5), status="committed"),
-            _valid_entry(ts=self._ts(5), status="compensated"),
-            _valid_entry(ts=self._ts(5), status="failed"),
+            _valid_entry(ts=self._ts(5), status="committed", trace_id="t1"),
+            _valid_entry(ts=self._ts(5), status="compensated", trace_id="t2"),
         ]
         stale = self.mod.find_stale_pending(entries, ttl_seconds=7200, now=self._now())
         self.assertEqual(stale, [])

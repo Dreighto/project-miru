@@ -62,10 +62,11 @@ def _operation_key(entry: dict) -> tuple[str, str, str, str]:
 def find_stale_pending(
     entries: list[dict], ttl_seconds: float, now: datetime | None = None
 ) -> list[dict]:
-    """Return pending entries whose ts is older than ttl_seconds.
+    """Return retryable entries whose ts is older than ttl_seconds.
 
     Only returns entries that are still the latest record for their operation —
-    if a later compensated/failed row exists, the pending entry is skipped.
+    if a later compensated row exists, the pending entry is skipped.
+    Failed entries are retryable (transient failures should not suppress retry).
     """
     if now is None:
         now = datetime.now(UTC)
@@ -77,7 +78,7 @@ def find_stale_pending(
 
     stale = []
     for entry in latest_by_op.values():
-        if entry.get("status") != "pending":
+        if entry.get("status") not in ("pending", "failed"):
             continue
         ts_str = entry.get("ts")
         if not ts_str:
@@ -204,7 +205,8 @@ def reap(
                 continue
             if not exists:
                 print(
-                    f"[reap] branch '{resource_id}' not found on remote, skipping", file=sys.stderr
+                    f"[reap] branch '{resource_id}' already gone, marking compensated",
+                    file=sys.stderr,
                 )
                 _append_compensation_row(ledger_path, entry, "compensated")
                 continue
@@ -225,7 +227,10 @@ def reap(
                 )
                 continue
             if not is_open:
-                print(f"[reap] PR '{resource_id}' not open, skipping", file=sys.stderr)
+                print(
+                    f"[reap] PR '{resource_id}' already closed, marking compensated",
+                    file=sys.stderr,
+                )
                 _append_compensation_row(ledger_path, entry, "compensated")
                 continue
             success = _close_pr(resource_id)
