@@ -130,6 +130,7 @@ def _delete_branch(branch_name: str) -> bool:
         capture_output=True,
         text=True,
         timeout=15,
+        check=False,
     )
     return result.returncode == 0
 
@@ -147,6 +148,7 @@ def _close_pr(resource_id: str) -> bool:
         capture_output=True,
         text=True,
         timeout=15,
+        check=False,
     )
     return result.returncode == 0
 
