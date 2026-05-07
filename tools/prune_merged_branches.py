@@ -202,7 +202,20 @@ def prune(
         cwd = _repo_root()
 
     print("[prune] fetching and pruning remote refs...", file=sys.stderr)
-    _git_fetch_prune(cwd)
+    if not _git_fetch_prune(cwd):
+        print(
+            "[prune] git fetch --prune failed; aborting to avoid stale state",
+            file=sys.stderr,
+        )
+        return [
+            {
+                "branch": None,
+                "action": "failed",
+                "pr_number": None,
+                "pr_title": None,
+                "reason": "git fetch --prune origin failed",
+            }
+        ]
 
     branches = list_local_branches(cwd)
     candidates = find_candidates(branches)
