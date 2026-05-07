@@ -290,8 +290,12 @@ class TestEmptyDescription(unittest.TestCase):
 class TestReturnShape(unittest.TestCase):
     """Every result must have exactly the four documented keys."""
 
-    def _check_shape(self, title, description=""):
+    def _check_shape(self, title, description="") -> None:
         result = classify_ticket(title=title, description=description)
+        self.assertEqual(
+            set(result.keys()),
+            {"should_split", "complexity", "signals", "suggested_splits"},
+        )
         self.assertIsInstance(result["should_split"], bool)
         self.assertIn(result["complexity"], ("low", "medium", "high"))
         self.assertIsInstance(result["signals"], list)

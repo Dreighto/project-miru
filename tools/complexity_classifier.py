@@ -83,7 +83,7 @@ _SCOPE_PATS: list[str] = [
     r"\bredesign\b",
     r"\brework\b",
     r"\bcomprehensive\b",
-    r"\bend.to.end\b",
+    r"\bend[\s-]+to[\s-]+end\b",
 ]
 
 # ---------------------------------------------------------------------------
