@@ -239,13 +239,21 @@ class ReapFindStaleTest(unittest.TestCase):
 
     def test_identifies_stale_pending(self) -> None:
         entries = [
-            _valid_entry(ts=self._ts(3), status="pending"),  # stale
-            _valid_entry(ts=self._ts(1), status="pending"),  # fresh
-            _valid_entry(ts=self._ts(3), status="compensated"),  # not pending
+            _valid_entry(ts=self._ts(3), status="pending", trace_id="stale-op"),  # stale
+            _valid_entry(ts=self._ts(1), status="pending", trace_id="fresh-op"),  # fresh
+            _valid_entry(ts=self._ts(3), status="compensated", trace_id="done-op"),  # not pending
         ]
         stale = self.mod.find_stale_pending(entries, ttl_seconds=7200, now=self._now())
         self.assertEqual(len(stale), 1)
-        self.assertEqual(stale[0]["ts"], self._ts(3))
+        self.assertEqual(stale[0]["trace_id"], "stale-op")
+
+    def test_compensated_entry_suppresses_stale_pending(self) -> None:
+        entries = [
+            _valid_entry(ts=self._ts(3), status="pending"),
+            _valid_entry(ts=self._ts(0.5), status="compensated"),
+        ]
+        stale = self.mod.find_stale_pending(entries, ttl_seconds=7200, now=self._now())
+        self.assertEqual(len(stale), 0)
 
     def test_exactly_at_ttl_not_stale(self) -> None:
         entries = [_valid_entry(ts=self._ts(2.0), status="pending")]

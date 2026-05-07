@@ -50,15 +50,33 @@ def load_ledger(ledger_path: str) -> list[dict]:
     return entries
 
 
+def _operation_key(entry: dict) -> tuple[str, str, str, str]:
+    return (
+        str(entry.get("trace_id", "")),
+        str(entry.get("resource_type", "")),
+        str(entry.get("resource_id", "")),
+        str(entry.get("intent", "")),
+    )
+
+
 def find_stale_pending(
     entries: list[dict], ttl_seconds: float, now: datetime | None = None
 ) -> list[dict]:
-    """Return pending entries whose ts is older than ttl_seconds."""
+    """Return pending entries whose ts is older than ttl_seconds.
+
+    Only returns entries that are still the latest record for their operation —
+    if a later compensated/failed row exists, the pending entry is skipped.
+    """
     if now is None:
         now = datetime.now(UTC)
 
-    stale = []
+    latest_by_op: dict[tuple[str, str, str, str], dict] = {}
     for entry in entries:
+        key = _operation_key(entry)
+        latest_by_op[key] = entry
+
+    stale = []
+    for entry in latest_by_op.values():
         if entry.get("status") != "pending":
             continue
         ts_str = entry.get("ts")
@@ -69,32 +87,40 @@ def find_stale_pending(
         except ValueError:
             print(f"[reap] warning: unparseable ts '{ts_str}', skipping", file=sys.stderr)
             continue
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
         age = (now - ts).total_seconds()
         if age > ttl_seconds:
             stale.append(entry)
     return stale
 
 
-def _branch_exists_remote(branch_name: str) -> bool:
-    """Return True if the branch exists on the remote (origin)."""
+def _branch_exists_remote(branch_name: str) -> bool | None:
+    """True if branch exists, False if not, None if the check itself failed."""
     result = subprocess.run(
         ["git", "ls-remote", "--heads", "origin", branch_name],
         capture_output=True,
         text=True,
         timeout=15,
+        check=False,
     )
+    if result.returncode != 0:
+        return None
     return bool(result.stdout.strip())
 
 
-def _pr_is_open(resource_id: str) -> bool:
-    """Return True if the PR number or branch has an open PR."""
+def _pr_is_open(resource_id: str) -> bool | None:
+    """True if PR is open, False if not, None if the check itself failed."""
     result = subprocess.run(
         ["gh", "pr", "view", resource_id, "--json", "state", "--jq", ".state"],
         capture_output=True,
         text=True,
         timeout=15,
+        check=False,
     )
-    return result.returncode == 0 and result.stdout.strip().upper() == "OPEN"
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip().upper() == "OPEN"
 
 
 def _delete_branch(branch_name: str) -> bool:
@@ -132,6 +158,8 @@ def _append_compensation_row(ledger_path: str, original: dict, outcome_status: s
     line = json.dumps(row, separators=(",", ":"))
     with open(ledger_path, "a", encoding="utf-8") as fh:
         fh.write(line + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())
 
 
 def reap(
@@ -168,6 +196,12 @@ def reap(
         # Execute mode
         if resource_type == "branch":
             exists = _branch_exists_remote(resource_id)
+            if exists is None:
+                print(
+                    f"[reap] could not verify branch '{resource_id}' (command failed), skipping",
+                    file=sys.stderr,
+                )
+                continue
             if not exists:
                 print(
                     f"[reap] branch '{resource_id}' not found on remote, skipping", file=sys.stderr
@@ -184,6 +218,12 @@ def reap(
 
         elif resource_type == "pr":
             is_open = _pr_is_open(resource_id)
+            if is_open is None:
+                print(
+                    f"[reap] could not verify PR '{resource_id}' (command failed), skipping",
+                    file=sys.stderr,
+                )
+                continue
             if not is_open:
                 print(f"[reap] PR '{resource_id}' not open, skipping", file=sys.stderr)
                 _append_compensation_row(ledger_path, entry, "compensated")

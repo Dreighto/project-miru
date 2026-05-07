@@ -55,6 +55,8 @@ def _repo_root() -> str:
 
 
 def validate(data: dict) -> None:
+    if not isinstance(data, dict):
+        raise ValueError("payload must be a JSON object")
     missing = REQUIRED_FIELDS - data.keys()
     if missing:
         raise ValueError(f"missing required fields: {sorted(missing)}")
@@ -79,6 +81,8 @@ def append_entry(data: dict, ledger_path: str) -> None:
     line = json.dumps(data, separators=(",", ":"))
     with open(ledger_path, "a", encoding="utf-8") as fh:
         fh.write(line + "\n")
+        fh.flush()
+        os.fsync(fh.fileno())
 
 
 def main() -> None:
