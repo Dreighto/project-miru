@@ -152,11 +152,15 @@ def _detect_conjunctions(corpus: str) -> tuple[bool, str]:
 
 
 def _detect_scope(corpus: str) -> tuple[bool, str]:
+    seen: set[str] = set()
     hits: list[str] = []
     for pat in _SCOPE_PATS:
         m = re.search(pat, corpus)
         if m:
-            hits.append(m.group(0).strip())
+            term = m.group(0).strip()
+            if term not in seen:
+                seen.add(term)
+                hits.append(term)
     if len(hits) >= 2:
         return True, f"Large-scope keywords: {', '.join(hits[:3])}"
     return False, ""
