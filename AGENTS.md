@@ -240,3 +240,58 @@ If you are genuinely blocked after all of the above, emit `INCONCLUSIVE` with:
 Every premature INCONCLUSIVE costs a full operator loop and breaks the autonomous flow. Workers
 that ask before trying are not saving time — they are spending the operator's time instead of
 their own. Try harder first. The team gets better when workers solve more problems themselves.
+
+---
+
+## WIP Commit Checkpoints — All Workers (set 2026-05-07, PRO-318)
+
+Workers MUST commit in-progress work to the task branch periodically during long-running tasks.
+Git commits are the checkpoint mechanism. If a worker times out or crashes, committed work can be
+recovered by the salvage scanner (`tools/salvage_worktree.py`). Uncommitted work in a dirty tree
+is fragile and often lost.
+
+### When to commit
+
+Commit a WIP checkpoint at each of these moments:
+
+1. **After branch creation and pre-flight pass** -- confirms the workspace is set up correctly.
+2. **After each major implementation phase** -- tests written, source code done, config updated.
+3. **Before any operation expected to take >60 seconds** -- CI wait, Bugbot poll, large test suite.
+4. **Before the final cleanup** -- so a crash during squash/rebase doesn't lose the work.
+
+### Commit message format
+
+```
+WIP: <TICKET-ID> - <phase label>
+```
+
+Examples:
+
+- `WIP: PRO-318 - tests written`
+- `WIP: PRO-318 - implementation complete, pre-commit next`
+- `WIP: PRO-318 - awaiting bugbot`
+
+### Squash before PR
+
+WIP commits are internal checkpoints, not PR history. Before opening a PR:
+
+1. Squash all WIP commits into a single clean commit (or a small series of logical commits).
+2. Write a proper commit message per project conventions.
+3. The WIP prefix must not appear in the final PR commit history.
+
+Use `git rebase -i` (non-interactive: `git reset --soft <base> && git commit`) to squash.
+
+### What NOT to do
+
+- Do not skip WIP commits because "the task is almost done" -- timeouts don't care how close you
+  are to finishing.
+- Do not leave WIP commits in the PR -- they clutter history and signal incomplete work.
+- Do not commit secrets, `.env` files, or `node_modules` in WIP commits. The usual rules apply.
+
+### Why this exists
+
+PRO-312 completed all work (427 lines of code, 24 passing tests) but timed out during `--print`
+mode output buffering. All stdout was lost. The code survived only because an operator manually
+salvaged the dirty worktree. Periodic WIP commits would have made that salvage automatic and
+reliable. The Atomix research paper (arxiv:2602.14849) confirms: periodic checkpointing reduces
+unrecoverable failures from 23% to under 2%.
