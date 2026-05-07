@@ -1,0 +1,80 @@
+## PRO-307 — Gemini CLI Frontend Benchmark L1: Standalone Card Detail Page
+
+You are being evaluated for frontend/UI suitability. This is a benchmark task. No branch, no PR, no git commit required.
+
+Your working directory is D:\dev\miru. All file paths below are relative to that root.
+
+---
+
+## Required reading (read both files before writing any code)
+
+1. docs/pm/00_PRINCIPLES.md — 6 PM principles. Every copy and UI decision must pass these.
+2. docs/pm/08_PM_ANTI_PATTERNS.md — 8 anti-pattern categories (A–H). Zero violations in categories A, B, or F are permitted.
+
+---
+
+## Task
+
+Produce a single standalone HTML file at:
+
+  data/batch_reports/gemini_bench/l1_card_detail.html
+
+Create the directory if it does not exist.
+
+### Card data to hard-code
+
+- Name: Monkey D. Luffy
+- Set: OP-01 Romance Dawn
+- Rarity: L (Leader) — display as a small chip/badge, text only, no hype adjectives
+- Price row 1: ¥4,800 · Source: CardRush · Timestamp: 2026-05-05 14:00 JST
+- Price row 2: $35.20 USD · Source: TCGPlayer · Timestamp: 2026-05-05 09:00 EDT
+- Watchlist toggle: a tappable heart or star icon that toggles an active state with a CSS transition (no JS persistence needed — toggle on click is enough)
+
+### Technical requirements
+
+- Pure HTML + CSS + JS in a single file — no framework, no build step, no CDN imports
+- Mobile-first at 375px — this is the primary viewport; no horizontal scroll at 375px
+- Tap targets must be at least 44x44px (thumbs, one-handed use)
+- No hover-only interactions (mobile has no hover)
+- Clean semantic HTML structure
+
+### PM principle constraints
+
+- Price is information, not a hook — show it neutrally with source and timestamp
+- No investment framing — no "buy before it's gone", no "floor price", no emoji price pumping
+- No ALL CAPS hero headings
+- Rarity chip: factual text only ("L" or "Leader") — no adjectives like "ultra rare" or "legendary"
+- Miru layer is not needed — do not add AI commentary or "Miru says" sections
+- Watchlist toggle copy (if any): factual ("Add to watchlist" / "In watchlist"), not emotional
+
+### Anti-pattern hard rules
+
+- Zero Category A violations — no investment hype language whatsoever
+- Zero Category B violations — no price manipulation framing (no "under market", no urgency nudges)
+- Zero Category F violations — no social proof pressure ("X people watching", "trending now")
+
+### Visual guidance
+
+- Neutral color base (white or very light gray background)
+- One accent color used consistently for the rarity chip and price highlight
+- Typography: readable at arm's length, normal weight for body text, moderate weight for price
+- No hype gradients, no hero banners, no casino-style animations
+- The page should feel like a well-designed reference card, not a marketplace listing
+
+---
+
+## Output
+
+Single file: data/batch_reports/gemini_bench/l1_card_detail.html
+
+---
+
+## Completion contract
+
+End your response with exactly one of:
+
+- STATUS: CONFIRMED WORKING
+- STATUS: INCONCLUSIVE
+- STATUS: FAILED
+
+Plus a one-line summary of what was produced and any notable decisions made.

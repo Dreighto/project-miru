@@ -1,0 +1,162 @@
+## PRO-307 — Gemini CLI Frontend Benchmark L3: PM Storefront Dark-Theme Card Page
+
+You are being evaluated for frontend/UI suitability at Level 3. This is a benchmark task.
+No branch, no PR, no git commit required.
+
+Your working directory is D:\dev\miru. All file paths below are relative to that root.
+
+L1 and L2 used a light neutral theme for scaffolding. L3 evaluates whether you can read
+and replicate the ACTUAL PM Storefront design system — dark theme, CSS custom properties,
+gold accent — as a new standalone page.
+
+---
+
+## Required reading (read all four before writing any code)
+
+1. docs/pm/00_PRINCIPLES.md — 6 PM principles. All copy decisions must pass these.
+2. docs/pm/08_PM_ANTI_PATTERNS.md — Categories A–H. Zero violations in A, B, F.
+3. pm/storefront/src/routes/cards/+page.svelte — source of truth for the real PM UI pattern.
+   Read to understand: layout structure, CSS variables used, design tokens, interaction model.
+4. pm/storefront/src/lib/components/BottomNav.svelte — read for bottom nav pattern and spacing.
+
+Do NOT copy Svelte syntax. Extract the design language only: colors, spacing, component shapes,
+CSS variable names, typography scale. Then implement it in plain HTML/CSS/JS.
+
+---
+
+## Task
+
+Produce a single standalone HTML file at:
+
+  data/batch_reports/gemini_bench/l3_card_page.html
+
+This page should open in a browser and look like it belongs to the PM Storefront app.
+
+---
+
+## Design tokens to extract from the source and implement as CSS custom properties
+
+From reading pm/storefront/src/routes/cards/+page.svelte, the app uses these design tokens.
+Implement them as CSS custom properties in your :root block:
+
+```css
+:root {
+  --color-miru-bg:         #0a0912;   /* page background */
+  --color-miru-surface:    #12101f;   /* card/panel surface */
+  --color-miru-stroke:     rgba(255,255,255,0.07); /* borders */
+  --color-miru-stroke-brand: rgba(244,208,120,0.25); /* gold border */
+  --color-miru-text:       rgba(255,255,255,0.92);
+  --color-miru-muted:      rgba(255,255,255,0.44);
+  --color-miru-muted-2:    rgba(255,255,255,0.26);
+  --color-miru-gold:       #f4d078;
+  --color-leader-red:      #ce1126;
+  --font-display:          'Inter', system-ui, sans-serif;
+  --font-ui:               'Inter', system-ui, sans-serif;
+  --font-mono:             'JetBrains Mono', ui-monospace, monospace;
+  --bottom-nav-height:     58px;
+}
+```
+
+Use these tokens throughout your CSS. No hardcoded hex values except in the :root block.
+
+---
+
+## What to build
+
+A card detail page for Monkey D. Luffy (OP01-001) styled to match the PM Storefront's dark theme.
+
+The page has three sections:
+
+### 1. Fixed top bar (sticky header, same pattern as the real app's detail drawer header)
+- Back button (← arrow icon, 44×44px tap target, gold color on active)
+- Card code + name on the right of the back button
+- Close button (×, top-right)
+
+### 2. Scrollable content area
+- Card image placeholder (aspect-ratio 5/7, rounded corners, dark surface bg,
+  centered monospace card code like the real app does when no image is available)
+- Rarity + set line (small gold monospace badge for rarity, muted text for set)
+- Tab switcher with three tabs: "Details" | "Variants" | "Prices"
+  (pill-style tabs using the real app's pattern: active tab has gold color + subtle
+  background; inactive tabs are muted)
+
+**Details tab content:**
+  - A definition list showing:
+    - Color: Red
+    - Type: Leader
+    - Cost: 5
+    - Power: 5000
+    - Counter: —
+    - Attribute: Strike
+    - Archetype: Straw Hat Crew
+  - Effect text block (dark surface card):
+    "When this card attacks, give 1 of your Leader or Character cards +1000 Power for this battle."
+
+**Variants tab content:**
+  - Two variant cards in a horizontal scroll row:
+    - Base: "OP01-001" · market price $35.20
+    - Alt-Art: "OP01-001 AA" · market price $68.00
+  - Each variant card has the same aspect-ratio 5/7 image placeholder as the main card,
+    a label below, and the price in gold monospace
+
+**Prices tab content:**
+  - Two price rows (styled like the real app's price card):
+    - Row 1: $35.20 · TCGPlayer · Market · Last updated May 5, 2026
+    - Row 2: ¥4,800 · CardRush · In-stock · Last updated May 5, 2026
+  - Source label, price in gold, update time in muted text
+  - No "floor price", no "buy now", no urgency copy — just the numbers and source
+
+### 3. Fixed bottom action bar (same pattern as real app)
+- "♥ Watchlist" toggle button (left half)
+- "Add to Deck" button (right half, disabled/muted)
+- Both full-height with gold-themed active state on Watchlist
+- Bar is sticky at bottom, dark semi-transparent background with blur
+
+---
+
+## Interactions required
+
+- Tab switching: clicking Details / Variants / Prices shows that section, hides others.
+  No animation needed — instant switch is fine.
+- Watchlist toggle: same as L1 — toggles active/inactive state with CSS transition.
+  Active state: gold background + "♥ Watching" text.
+  Inactive state: outline + "♥ Watchlist" text.
+- Back button: no actual navigation (this is a standalone page). Just aria-label it.
+
+---
+
+## Technical requirements
+
+- Pure HTML + CSS + JS in a single file — no framework, no CDN imports
+- Mobile-first at 375px width
+- All tap targets ≥ 44px
+- The page background must be --color-miru-bg, NOT white or light gray
+- Must look dark and correct when opened in a browser at 375px width
+- Bottom nav area must not overlap the action bar (use padding-bottom on content)
+
+---
+
+## PM principle constraints
+
+- "Verified Prices" is acceptable; "Market prices" is acceptable; "Floor price" is NOT
+- Price rows: show value, source, and date — no urgency, no "going fast", no emoji
+- Effect text: reproduce as-is — no editorial additions from you
+- Rarity badge: factual abbreviation (L) in gold monospace — not "super rare" or "LEGEND"
+
+---
+
+## Output
+
+Single file: data/batch_reports/gemini_bench/l3_card_page.html
+
+---
+
+## Completion contract
+
+End your response with exactly one of:
+
+- STATUS: CONFIRMED WORKING
+- STATUS: INCONCLUSIVE
+- STATUS: FAILED
+
+Plus a one-line summary of what was produced and any notable design decisions.

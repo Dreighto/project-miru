@@ -1,0 +1,148 @@
+## PRO-307 — Gemini CLI Frontend Benchmark L2: Data-Driven Watchlist Page
+
+You are being evaluated for frontend/UI suitability at Level 2. This is a benchmark task.
+No branch, no PR, no git commit required.
+
+Your working directory is D:\dev\miru. All file paths below are relative to that root.
+
+L1 context: You already produced a standalone card detail page (l1_card_detail.html) that passed.
+L2 raises the bar: dynamic data rendering, multi-state filtering, and consistent component reuse.
+
+---
+
+## Required reading (read both files before writing any code)
+
+1. docs/pm/00_PRINCIPLES.md — 6 PM principles. Every copy and UI decision must pass these.
+2. docs/pm/08_PM_ANTI_PATTERNS.md — 8 anti-pattern categories. Zero Category A, B, or F violations.
+
+---
+
+## Task
+
+Produce a single standalone HTML file at:
+
+  data/batch_reports/gemini_bench/l2_watchlist.html
+
+### What to build
+
+A **Watchlist page** for a player who is tracking 4 One Piece cards. All data is hard-coded
+in a JS array (no fetch, no API). The page renders the list dynamically from that array.
+
+### Hard-coded card data array
+
+```js
+const WATCHLIST = [
+  {
+    id: "OP01-001",
+    name: "Monkey D. Luffy",
+    set: "OP-01",
+    rarity: "L",
+    prices: [
+      { currency: "JPY", amount: 4800, source: "CardRush", ts: "2026-05-05 14:00 JST" },
+      { currency: "USD", amount: 35.20, source: "TCGPlayer", ts: "2026-05-05 09:00 EDT" }
+    ]
+  },
+  {
+    id: "OP02-013",
+    name: "Nami",
+    set: "OP-02",
+    rarity: "SR",
+    prices: [
+      { currency: "JPY", amount: 1200, source: "CardRush", ts: "2026-05-05 14:00 JST" },
+      { currency: "USD", amount: 9.50, source: "TCGPlayer", ts: "2026-05-05 09:00 EDT" }
+    ]
+  },
+  {
+    id: "OP03-040",
+    name: "Roronoa Zoro",
+    set: "OP-03",
+    rarity: "R",
+    prices: [
+      { currency: "JPY", amount: 650, source: "CardRush", ts: "2026-05-05 14:00 JST" },
+      { currency: "USD", amount: 5.00, source: "TCGPlayer", ts: "2026-05-05 09:00 EDT" }
+    ]
+  },
+  {
+    id: "OP01-120",
+    name: "Shanks",
+    set: "OP-01",
+    rarity: "SP",
+    prices: [
+      { currency: "JPY", amount: 28000, source: "CardRush", ts: "2026-05-05 14:00 JST" }
+    ]
+  }
+];
+```
+
+### Required features
+
+1. **Card list** — render all 4 cards as rows. Each row shows:
+   - Card name + set badge
+   - Rarity chip (text-only, factual: "L", "SR", "R", "SP")
+   - Primary price (JPY if available, else USD)
+   - A remove-from-watchlist button (icon only, no confirmation dialog needed — just toggle off in state)
+
+2. **Currency filter tabs** — three tabs: "All" | "¥ JPY" | "$ USD"
+   - "All" shows both currencies per card
+   - "¥ JPY" shows only JPY rows (hides cards with no JPY price)
+   - "$ USD" shows only USD rows (hides cards with no USD price)
+   - Active tab is visually distinct; transitions on switch
+
+3. **Tap-to-expand** — tapping any card row expands it to show all available price rows (currency,
+   amount, source, timestamp) then collapses on second tap. Only one card can be expanded at a time.
+   Animate the expand/collapse with a CSS transition (not abrupt).
+
+4. **Sort toggle** — a small sort control in the header that cycles: "Price ↑" → "Price ↓" → "Name"
+   Re-renders the list order on each tap. Price sort uses the first available price for each card.
+
+5. **Empty state** — if all cards are removed from watchlist, show a clean empty state:
+   "Your watchlist is empty." No hype, no upsell, no "Discover cards!" CTA.
+
+### Technical requirements
+
+- Pure HTML + CSS + JS in a single file — no framework, no build step, no CDN imports
+- Mobile-first at 375px, no horizontal scroll
+- Tap targets ≥ 44px for all interactive elements
+- Render card list from the WATCHLIST array via JS (not hard-coded HTML rows)
+- No hover-only interactions
+
+### PM principle constraints (from docs/pm/00_PRINCIPLES.md)
+
+- Price is information, not a hook — show values with source and timestamp; no "market" framing
+- No investment language — no "track your investment", no "portfolio value", no "floor"
+- Section header: "Watchlist" — not "My Portfolio" or "Price Tracker"
+- Rarity chips: factual abbreviation only — no "ultra rare" or "secret" adjectives
+- Remove button: aria-label="Remove from watchlist" — factual, not "Delist" or "Dump"
+- Empty state: plain and neutral — no manipulative re-engagement copy
+
+### Anti-pattern hard rules
+
+- Zero Category A violations (no investment hype)
+- Zero Category B violations (no price manipulation framing)
+- Zero Category F violations (no social proof: no "X others watching", no "trending")
+
+### Visual constraints
+
+- Consistent accent color with L1 (use #ce1126 red or choose a different single accent — but be consistent throughout this page)
+- Neutral background, white card surfaces
+- Filter tabs use the accent color for the active state
+- Rarity chips: same neutral chip style as L1 (can use accent for Leader/SP if appropriate)
+- No hype gradients, no casino-style animation, no hero banners
+
+---
+
+## Output
+
+Single file: data/batch_reports/gemini_bench/l2_watchlist.html
+
+---
+
+## Completion contract
+
+End your response with exactly one of:
+
+- STATUS: CONFIRMED WORKING
+- STATUS: INCONCLUSIVE
+- STATUS: FAILED
+
+Plus a one-line summary of what was produced and any notable design decisions.
