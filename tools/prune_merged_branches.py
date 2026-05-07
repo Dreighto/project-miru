@@ -192,7 +192,6 @@ def find_candidates(branches: list[dict]) -> list[dict]:
 def prune(
     repo: str = DEFAULT_REPO,
     dry_run: bool = True,
-    include_untracked: bool = False,
     cwd: str | None = None,
 ) -> list[dict]:
     """Main prune logic.
