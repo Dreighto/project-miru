@@ -219,7 +219,7 @@ If any of those fail: open the PR for operator review, do not self-merge.
 
 - Force-push or destructive git operations (these are hard rules under access progression, not just merge policy)
 
-**Post-merge cleanup — worker responsibility (locked 2026-04-28 per PRO-180):**
+**Post-merge cleanup — worker responsibility (locked 2026-04-28 per PRO-180, updated 2026-05-07):**
 
 Whoever opened the PR is responsible for post-merge cleanup. The operator should NOT be cleaning up branches manually after merging.
 
@@ -227,15 +227,29 @@ After a PR is merged (whether self-merged or operator-merged):
 
 1. The worker (or Claude Chat, if it owned the PR) checks out `main`.
 2. Pulls latest.
-3. Verifies the merged branch shows up under `git branch --merged main` (squash-merges may not — see PRO-157/PRO-159/PRO-160 pattern; safe to delete with `git branch -d` when remote tracking is gone).
-4. Runs `git branch -d <branch-name>` (lowercase `-d`, safe-delete only — never `-D`).
-5. Reports deletion. If anything looks off (branch not merged, working tree unexpectedly dirty, etc.): STOP and report.
+3. Attempts `git branch -d <branch-name>` (lowercase `-d`, safe-delete).
+4. If `-d` fails with "not fully merged" (normal for squash merges): verify via `gh pr list --head <branch-name> --state merged` that a merged PR exists. If verified, use `git branch -D <branch-name>` (uppercase `-D`, force-delete). If no merged PR is found: STOP and report.
+5. Reports deletion. If anything looks off (working tree unexpectedly dirty, etc.): STOP and report.
 
-If operator merges via the GitHub UI and the worker is not present in that session, the next worker that picks up a ticket on `main` is responsible for noticing stale branches in their pre-flight and cleaning them up before cutting a new branch. Pre-flight already requires "branch does NOT exist locally or remotely" — a stale local branch from a merged PR violates that and must be deleted before proceeding.
+**Verified force-delete rule (replaces blanket `-D` prohibition, set 2026-05-07):**
+
+Workers may use `git branch -D` ONLY after verifying via `gh pr list --head <branch> --state merged` that a merged PR exists for that branch. No merged PR = no force-delete. No exceptions. This is necessary because squash merges (our standard merge strategy) make git unable to detect that a branch was merged, causing `-d` to always fail.
+
+**Automated branch cleanup — safety net:**
+
+`tools/prune_merged_branches.py` is the centralized cleanup script. It finds local branches whose remote tracking ref is gone, verifies each via GitHub API, and force-deletes only verified-merged branches. Skips branches checked out in worktrees and protected patterns (main, develop, _parking_\*).
+
+- Dry run: `python tools/prune_merged_branches.py --dry-run`
+- Execute: `python tools/prune_merged_branches.py`
+- JSON output: add `--json-output`
+
+Workers should run this during pre-flight when they notice stale branches accumulating. It catches branches from operator-merged PRs, terminated sessions, and any other gaps in worker cleanup.
+
+If operator merges via the GitHub UI and the worker is not present in that session, the next worker that picks up a ticket on `main` is responsible for noticing stale branches in their pre-flight and running the prune script before cutting a new branch.
 
 Operator should never have to ask a worker to clean up a branch. If you find yourself doing it, that's a discipline violation worth noting.
 
-Source: locked 2026-04-25 after CC shipped 4 clean ticket fixes (PRO-60, PRO-65, PRO-72, PRO-68 + PRO-73) with consistent pre-flight discipline. Post-merge cleanup rule added 2026-04-28 per PRO-180 retro.
+Source: locked 2026-04-25 after CC shipped 4 clean ticket fixes (PRO-60, PRO-65, PRO-72, PRO-68 + PRO-73) with consistent pre-flight discipline. Post-merge cleanup rule added 2026-04-28 per PRO-180 retro. Verified force-delete and prune script added 2026-05-07 after 28 stale branches accumulated from squash-merge cleanup failures.
 
 **Return-to-main — Hard Rule (locked 2026-04-30):**
 
