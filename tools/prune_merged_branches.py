@@ -55,13 +55,13 @@ def _git_fetch_prune(cwd: str) -> bool:
     return result.returncode == 0
 
 
-def list_local_branches(cwd: str) -> list[dict]:
-    """Return local branches with tracking status.
+def list_local_branches(cwd: str) -> list[dict] | None:
+    """Return local branches with tracking status, or None on failure.
 
     Each entry: {name, in_worktree, remote_gone, tracking}
     """
     result = subprocess.run(
-        ["git", "branch", "-vv"],
+        ["git", "branch", "-vv", "--no-color"],
         capture_output=True,
         text=True,
         cwd=cwd,
@@ -69,7 +69,7 @@ def list_local_branches(cwd: str) -> list[dict]:
         check=False,
     )
     if result.returncode != 0:
-        return []
+        return None
 
     branches = []
     for line in result.stdout.splitlines():
@@ -218,6 +218,21 @@ def prune(
         ]
 
     branches = list_local_branches(cwd)
+    if branches is None:
+        print(
+            "[prune] git branch -vv failed; aborting",
+            file=sys.stderr,
+        )
+        return [
+            {
+                "branch": None,
+                "action": "failed",
+                "pr_number": None,
+                "pr_title": None,
+                "reason": "git branch -vv failed",
+            }
+        ]
+
     candidates = find_candidates(branches)
 
     if not candidates:

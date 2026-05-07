@@ -340,6 +340,29 @@ class TestVerifyPrMergedGhMissing(unittest.TestCase):
         self.assertIsNone(result)
 
 
+class TestPruneBranchListFailure(unittest.TestCase):
+    @patch("prune_merged_branches.subprocess.run")
+    def test_aborts_when_branch_list_fails(self, mock_run):
+        def side_effect(cmd, **kwargs):
+            result = MagicMock()
+            if cmd[0] == "git" and cmd[1] == "fetch":
+                result.returncode = 0
+                return result
+            if cmd[0] == "git" and cmd[1] == "branch":
+                result.returncode = 128
+                return result
+            result.returncode = 0
+            return result
+
+        mock_run.side_effect = side_effect
+
+        actions = mod.prune(dry_run=False, cwd="/fake")
+
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0]["action"], "failed")
+        self.assertIn("branch", actions[0]["reason"])
+
+
 class TestPruneFetchFailure(unittest.TestCase):
     @patch("prune_merged_branches.subprocess.run")
     def test_aborts_when_fetch_prune_fails(self, mock_run):
