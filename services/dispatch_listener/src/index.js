@@ -19,7 +19,7 @@ const {
 } = require('./receipt');
 const { writeDlqEntry } = require('./dlq');
 const { spawnWorker } = require('./spawn');
-const { leaseSlot, releaseSlot, getLeaseByTraceId } = require('./worktree');
+const { leaseSlot, updateLeasePid, releaseSlot, getLeaseByTraceId } = require('./worktree');
 const { writeMcpConfig } = require('./mcp_config');
 
 const PORT = 19100;
@@ -394,6 +394,8 @@ app.post(
       }
       return res.status(500).json({ error: 'spawn_failed', reason: err.message });
     }
+
+    updateLeasePid(slotPath, result.pid);
 
     res.status(202).json({
       trace_id: traceId,

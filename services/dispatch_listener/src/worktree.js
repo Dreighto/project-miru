@@ -5,6 +5,10 @@ const path = require('path');
 
 const log = require('./log');
 
+// Leases older than this with pid: null are stale — the listener crashed or
+// the spawn never completed. Configurable so tests can inject a short TTL.
+const STALE_NULL_PID_MS = Number(process.env.WORKTREE_STALE_NULL_PID_MS) || 30 * 60 * 1000;
+
 const WORKTREE_SLOTS = [
   process.env.WORKTREE_SLOT_1 || 'D:\\dev\\miru-w1',
   process.env.WORKTREE_SLOT_2 || 'D:\\dev\\miru-w2',
@@ -51,11 +55,28 @@ function _loadFromDisk() {
     parsed = {};
   }
   let cleared = 0;
+  const now = Date.now();
   for (const slot of WORKTREE_SLOTS) {
     const entry = parsed[slot];
-    if (entry && entry.pid && pidIsAlive(entry.pid)) {
+    if (!entry) continue;
+
+    if (entry.pid === null) {
+      // Lease was written before the spawn completed. Keep it if recent — the
+      // process may still be starting. Clear it if older than STALE_NULL_PID_MS.
+      const leasedAt = entry.leased_at ? new Date(entry.leased_at).getTime() : 0;
+      if (now - leasedAt > STALE_NULL_PID_MS) {
+        cleared += 1;
+        log.info('worktree_lease_cleared_stale_null_pid', {
+          slot,
+          trace_id: entry.trace_id || null,
+          leased_at: entry.leased_at || null,
+        });
+      } else {
+        leases.set(slot, entry);
+      }
+    } else if (pidIsAlive(entry.pid)) {
       leases.set(slot, entry);
-    } else if (entry) {
+    } else {
       cleared += 1;
       log.info('worktree_lease_cleared_dead_pid', {
         slot,
@@ -95,32 +116,50 @@ function leaseSlot(traceId, worker) {
         trace_id: traceId,
         worker,
         leased_at: new Date().toISOString(),
-        pid: process.pid,
+        pid: null,
       });
       _flushToDisk();
       return slot;
     }
-    // Defensive: if the cache somehow holds an entry whose pid is gone,
-    // reclaim. This shouldn't happen because spawnWorker calls releaseSlot
-    // on every exit/error, but listener crashes between those points are
-    // exactly the failure mode this ticket addresses.
-    if (existing.pid && !pidIsAlive(existing.pid)) {
-      log.info('worktree_lease_reclaimed_dead', {
+    // Reclaim if: (a) pid is set but the process is dead, or
+    // (b) pid is null and the lease is older than STALE_NULL_PID_MS
+    //     (spawn crashed before updateLeasePid could fire).
+    const reclaimable =
+      (existing.pid && !pidIsAlive(existing.pid)) ||
+      (existing.pid === null &&
+        Date.now() - new Date(existing.leased_at || 0).getTime() > STALE_NULL_PID_MS);
+
+    if (reclaimable) {
+      log.info('worktree_lease_reclaimed', {
         slot,
         prev_trace_id: existing.trace_id,
         prev_pid: existing.pid,
+        reason: existing.pid ? 'dead_pid' : 'stale_null_pid',
       });
       leases.set(slot, {
         trace_id: traceId,
         worker,
         leased_at: new Date().toISOString(),
-        pid: process.pid,
+        pid: null,
       });
       _flushToDisk();
       return slot;
     }
   }
   return null;
+}
+
+// Update the in-memory lease and flush to disk once the child PID is known.
+// Called immediately after spawnWorker returns so pidIsAlive checks use the
+// worker's PID, not the listener's.
+function updateLeasePid(slotPath, pid) {
+  const entry = leases.get(slotPath);
+  if (!entry) {
+    log.warn('worktree_update_pid_no_lease', { slot: slotPath, pid });
+    return;
+  }
+  entry.pid = pid;
+  _flushToDisk();
 }
 
 function releaseSlot(slotPath) {
@@ -143,9 +182,11 @@ _loadFromDisk();
 
 module.exports = {
   leaseSlot,
+  updateLeasePid,
   releaseSlot,
   getLeaseByTraceId,
   WORKTREE_SLOTS,
+  STALE_NULL_PID_MS,
   // Exposed for tests only:
   _loadFromDisk,
   _flushToDisk,
