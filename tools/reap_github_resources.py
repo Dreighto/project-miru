@@ -1,13 +1,3 @@
-"""
-reap_github_resources.py — find stale pending entries in the GitHub resource
-ledger and compensate (delete branches, close PRs).
-
-Usage:
-    python tools/reap_github_resources.py [--ttl-hours 2] [--dry-run|--execute]
-
-Default: --dry-run. Must explicitly pass --execute to take real action.
-"""
-
 import argparse
 import json
 import os
@@ -179,7 +169,7 @@ def reap(
         print("[reap] no stale pending entries found", file=sys.stderr)
         return [], False
 
-    repo_root = os.path.dirname(os.path.dirname(ledger_path))
+    repo_root = _repo_root()
     had_failure = False
 
     for entry in stale:
