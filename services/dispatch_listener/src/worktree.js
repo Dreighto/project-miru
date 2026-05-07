@@ -121,15 +121,20 @@ function leaseSlot(traceId, worker) {
       _flushToDisk();
       return slot;
     }
-    // Defensive: if the cache somehow holds an entry whose pid is gone,
-    // reclaim. This shouldn't happen because spawnWorker calls releaseSlot
-    // on every exit/error, but listener crashes between those points are
-    // exactly the failure mode this ticket addresses.
-    if (existing.pid && !pidIsAlive(existing.pid)) {
-      log.info('worktree_lease_reclaimed_dead', {
+    // Reclaim if: (a) pid is set but the process is dead, or
+    // (b) pid is null and the lease is older than STALE_NULL_PID_MS
+    //     (spawn crashed before updateLeasePid could fire).
+    const reclaimable =
+      (existing.pid && !pidIsAlive(existing.pid)) ||
+      (existing.pid === null &&
+        Date.now() - new Date(existing.leased_at || 0).getTime() > STALE_NULL_PID_MS);
+
+    if (reclaimable) {
+      log.info('worktree_lease_reclaimed', {
         slot,
         prev_trace_id: existing.trace_id,
         prev_pid: existing.pid,
+        reason: existing.pid ? 'dead_pid' : 'stale_null_pid',
       });
       leases.set(slot, {
         trace_id: traceId,

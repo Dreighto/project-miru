@@ -153,6 +153,29 @@ test('_loadFromDisk() clears stale pid:null leases and keeps recent ones', () =>
   }
 });
 
+// ---- Test 4: leaseSlot() reclaims stale null-pid leases at runtime ----
+
+test('leaseSlot() reclaims a stale null-pid lease (Bugbot P1 fix)', () => {
+  _leases.clear();
+
+  // Simulate a lease that was written but never got updateLeasePid —
+  // e.g. spawn crashed. Set leased_at to well past the TTL.
+  const staleTs = new Date(Date.now() - (STALE_NULL_PID_MS + 5000)).toISOString();
+  _leases.set(TMP_SLOT, {
+    trace_id: 'orphan-trace',
+    worker: 'claude',
+    leased_at: staleTs,
+    pid: null,
+  });
+
+  // leaseSlot should reclaim the stale slot instead of returning null.
+  const slot = leaseSlot('reclaim-trace', 'claude');
+  assert.strictEqual(slot, TMP_SLOT, 'stale null-pid slot must be reclaimed at runtime');
+  assert.strictEqual(_leases.get(slot).trace_id, 'reclaim-trace');
+  assert.strictEqual(_leases.get(slot).pid, null, 'new lease starts with pid null');
+  _leases.clear();
+});
+
 // ---- Summary ----
 
 console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
