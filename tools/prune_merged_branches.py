@@ -284,6 +284,21 @@ def prune(
 
         pr_head = pr.get("headRefOid")
         local_tip = _local_branch_tip(branch, cwd)
+        if pr_head and not local_tip:
+            actions.append(
+                {
+                    "branch": branch,
+                    "action": "failed",
+                    "pr_number": pr["number"],
+                    "pr_title": pr["title"],
+                    "reason": "failed to resolve local branch tip",
+                }
+            )
+            print(
+                f"  FAIL  {branch} — could not resolve local tip",
+                file=sys.stderr,
+            )
+            continue
         if pr_head and local_tip and local_tip != pr_head:
             actions.append(
                 {

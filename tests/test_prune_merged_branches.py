@@ -336,6 +336,57 @@ class TestPruneDivergedTip(unittest.TestCase):
         self.assertIn("diverged", actions[0]["reason"])
 
 
+class TestPruneTipLookupFailure(unittest.TestCase):
+    def _make_run_side_effect(self):
+        tip_sha = "abc1234567890"
+        pr_data = [
+            {
+                "number": 80,
+                "title": "Some PR",
+                "mergedAt": "2026-05-07T00:00:00Z",
+                "headRefOid": tip_sha,
+            }
+        ]
+
+        def side_effect(cmd, **kwargs):
+            result = MagicMock()
+            if cmd[0] == "git" and cmd[1] == "fetch":
+                result.returncode = 0
+                return result
+            if cmd[0] == "git" and cmd[1] == "rev-parse":
+                result.returncode = 128
+                result.stdout = ""
+                return result
+            if cmd[0] == "git" and cmd[1] == "branch":
+                result.returncode = 0
+                result.stdout = (
+                    "  dreighto/tip-fail  aaa1111 "
+                    "[origin/dreighto/tip-fail: gone] feat: tip\n"
+                    "* main  5ce79f2 [origin/main] latest\n"
+                )
+                return result
+            if cmd[0] == "gh":
+                result.returncode = 0
+                result.stdout = json.dumps(pr_data)
+                return result
+            result.returncode = 1
+            return result
+
+        return side_effect
+
+    @patch("prune_merged_branches.subprocess.run")
+    def test_fails_closed_when_tip_unresolvable(self, mock_run):
+        mock_run.side_effect = self._make_run_side_effect()
+
+        actions = mod.prune(dry_run=False, cwd="/fake")
+
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0]["action"], "failed")
+        self.assertIn("local branch tip", actions[0]["reason"])
+        deleted = [a for a in actions if a["action"] == "deleted"]
+        self.assertEqual(len(deleted), 0)
+
+
 class TestVerifyPrMergedGhMissing(unittest.TestCase):
     def test_returns_error_when_gh_not_installed(self):
         with patch(
