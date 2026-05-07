@@ -66,6 +66,29 @@ function readTail(filePath, maxBytes) {
   }
 }
 
+// PRO-316: run `python tools/clean_worktree.py` before spawning to remove
+// known-safe gitignored artifacts (test-results/, playwright-report/, etc.)
+// that would fail the worker's worktree cleanliness gate.
+function cleanWorktree(cwd, traceId) {
+  try {
+    const output = execSync('python tools/clean_worktree.py', {
+      cwd,
+      timeout: 15000,
+      encoding: 'utf8',
+      windowsHide: true,
+    });
+    log.info('worktree_auto_clean', {
+      trace_id: traceId,
+      output: (output || '').trim().slice(0, 500),
+    });
+    return { ok: true };
+  } catch (err) {
+    const stderr = String(err.stderr || err.message || '').trim();
+    log.warn('worktree_auto_clean_failed', { trace_id: traceId, stderr: stderr.slice(0, 500) });
+    return { ok: false, error: stderr.slice(0, 300) };
+  }
+}
+
 // PRO-233: run `cmd /c <binary> --version` before the real spawn to confirm
 // the binary is reachable in this process's environment. Synchronous on
 // purpose — the caller is already committed to spawning; this probe adds at
@@ -135,6 +158,9 @@ function spawnWorker({
 
   const probe = probeWorkerBinary(binary, cwd);
   log.info('spawn_version_probe', { trace_id: traceId, binary_path: binary, ...probe });
+
+  // PRO-316: auto-clean gitignored artifacts before worker starts.
+  cleanWorktree(cwd, traceId);
 
   // Prompt is written to a temp file and the file is opened as a read-only
   // file descriptor passed directly to the child as stdio[0]. This sidesteps
