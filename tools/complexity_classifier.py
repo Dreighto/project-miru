@@ -246,6 +246,7 @@ def classify_ticket(title: str, description: str = "") -> ClassificationResult:
             signals          -- Human-readable description of each detected signal.
             suggested_splits -- Proposed split groupings (empty when should_split is False).
     """
+    description = description or ""
     corpus = _corpus(title, description)
 
     # Each entry: (name, weight, description_str)

@@ -11,9 +11,12 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO_ROOT / "tools"))
-
-from complexity_classifier import classify_ticket  # noqa: E402
+_ORIG_SYS_PATH = list(sys.path)
+try:
+    sys.path.insert(0, str(REPO_ROOT / "tools"))
+    from complexity_classifier import classify_ticket
+finally:
+    sys.path[:] = _ORIG_SYS_PATH
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -321,6 +324,10 @@ class TestReturnShape(unittest.TestCase):
         result = classify_ticket(**_FX_SIMPLE)
         self.assertFalse(result["should_split"])
         self.assertEqual(result["suggested_splits"], [])
+
+    def test_none_description_does_not_crash(self):
+        result = classify_ticket(title="Fix something", description=None)
+        self.assertIn(result["complexity"], ("low", "medium", "high"))
 
 
 if __name__ == "__main__":
