@@ -62,11 +62,9 @@ def _operation_key(entry: dict) -> tuple[str, str, str, str]:
 def find_stale_pending(
     entries: list[dict], ttl_seconds: float, now: datetime | None = None
 ) -> list[dict]:
-    """Return retryable entries whose ts is older than ttl_seconds.
+    """Deduplicates by operation key; returns pending/failed entries past TTL.
 
-    Only returns entries that are still the latest record for their operation —
-    if a later compensated row exists, the pending entry is skipped.
-    Failed entries are retryable (transient failures should not suppress retry).
+    Compensated rows suppress re-processing. Failed entries are retryable.
     """
     if now is None:
         now = datetime.now(UTC)
@@ -96,12 +94,12 @@ def find_stale_pending(
     return stale
 
 
-def _branch_exists_remote(branch_name: str) -> bool | None:
-    """True if branch exists, False if not, None if the check itself failed."""
+def _branch_exists_remote(branch_name: str, cwd: str | None = None) -> bool | None:
     result = subprocess.run(
         ["git", "ls-remote", "--heads", "origin", branch_name],
         capture_output=True,
         text=True,
+        cwd=cwd,
         timeout=15,
         check=False,
     )
@@ -110,12 +108,12 @@ def _branch_exists_remote(branch_name: str) -> bool | None:
     return bool(result.stdout.strip())
 
 
-def _pr_is_open(resource_id: str) -> bool | None:
-    """True if PR is open, False if not, None if the check itself failed."""
+def _pr_is_open(resource_id: str, cwd: str | None = None) -> bool | None:
     result = subprocess.run(
         ["gh", "pr", "view", resource_id, "--json", "state", "--jq", ".state"],
         capture_output=True,
         text=True,
+        cwd=cwd,
         timeout=15,
         check=False,
     )
@@ -124,18 +122,19 @@ def _pr_is_open(resource_id: str) -> bool | None:
     return result.stdout.strip().upper() == "OPEN"
 
 
-def _delete_branch(branch_name: str) -> bool:
+def _delete_branch(branch_name: str, cwd: str | None = None) -> bool:
     result = subprocess.run(
         ["git", "push", "origin", "--delete", branch_name],
         capture_output=True,
         text=True,
+        cwd=cwd,
         timeout=15,
         check=False,
     )
     return result.returncode == 0
 
 
-def _close_pr(resource_id: str) -> bool:
+def _close_pr(resource_id: str, cwd: str | None = None) -> bool:
     result = subprocess.run(
         [
             "gh",
@@ -147,6 +146,7 @@ def _close_pr(resource_id: str) -> bool:
         ],
         capture_output=True,
         text=True,
+        cwd=cwd,
         timeout=15,
         check=False,
     )
@@ -154,7 +154,6 @@ def _close_pr(resource_id: str) -> bool:
 
 
 def _append_compensation_row(ledger_path: str, original: dict, outcome_status: str) -> None:
-    """Append a compensated or failed row derived from original."""
     row = dict(original)
     row["status"] = outcome_status
     row["ts"] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -170,18 +169,18 @@ def reap(
     ttl_hours: float = 2.0,
     dry_run: bool = True,
     now: datetime | None = None,
-) -> list[dict]:
-    """
-    Main reap logic. Returns list of stale entries found.
-    In dry_run mode: no mutations, no git/gh calls.
-    """
+) -> tuple[list[dict], bool]:
+    """Returns (stale_entries, had_failure)."""
     entries = load_ledger(ledger_path)
     ttl_seconds = ttl_hours * 3600
     stale = find_stale_pending(entries, ttl_seconds, now=now)
 
     if not stale:
         print("[reap] no stale pending entries found", file=sys.stderr)
-        return []
+        return [], False
+
+    repo_root = os.path.dirname(os.path.dirname(ledger_path))
+    had_failure = False
 
     for entry in stale:
         resource_type = entry.get("resource_type")
@@ -198,12 +197,13 @@ def reap(
 
         # Execute mode
         if resource_type == "branch":
-            exists = _branch_exists_remote(resource_id)
+            exists = _branch_exists_remote(resource_id, cwd=repo_root)
             if exists is None:
                 print(
                     f"[reap] could not verify branch '{resource_id}' (command failed), skipping",
                     file=sys.stderr,
                 )
+                had_failure = True
                 continue
             if not exists:
                 print(
@@ -212,8 +212,10 @@ def reap(
                 )
                 _append_compensation_row(ledger_path, entry, "compensated")
                 continue
-            success = _delete_branch(resource_id)
+            success = _delete_branch(resource_id, cwd=repo_root)
             outcome = "compensated" if success else "failed"
+            if not success:
+                had_failure = True
             print(
                 f"[reap] delete branch '{resource_id}': {'OK' if success else 'FAILED'}",
                 file=sys.stderr,
@@ -221,12 +223,13 @@ def reap(
             _append_compensation_row(ledger_path, entry, outcome)
 
         elif resource_type == "pr":
-            is_open = _pr_is_open(resource_id)
+            is_open = _pr_is_open(resource_id, cwd=repo_root)
             if is_open is None:
                 print(
                     f"[reap] could not verify PR '{resource_id}' (command failed), skipping",
                     file=sys.stderr,
                 )
+                had_failure = True
                 continue
             if not is_open:
                 print(
@@ -235,8 +238,10 @@ def reap(
                 )
                 _append_compensation_row(ledger_path, entry, "compensated")
                 continue
-            success = _close_pr(resource_id)
+            success = _close_pr(resource_id, cwd=repo_root)
             outcome = "compensated" if success else "failed"
+            if not success:
+                had_failure = True
             print(
                 f"[reap] close PR '{resource_id}': {'OK' if success else 'FAILED'}",
                 file=sys.stderr,
@@ -246,7 +251,7 @@ def reap(
         else:
             print(f"[reap] unknown resource_type '{resource_type}', skipping", file=sys.stderr)
 
-    return stale
+    return stale, had_failure
 
 
 def main() -> None:
@@ -279,7 +284,7 @@ def main() -> None:
     mode_label = "DRY-RUN" if args.dry_run else "EXECUTE"
     print(f"[reap] mode={mode_label} ttl={args.ttl_hours}h ledger={ledger_path}", file=sys.stderr)
 
-    stale = reap(ledger_path, ttl_hours=args.ttl_hours, dry_run=args.dry_run)
+    stale, had_failure = reap(ledger_path, ttl_hours=args.ttl_hours, dry_run=args.dry_run)
 
     if stale:
         print(f"[reap] {len(stale)} stale entries found", file=sys.stderr)
@@ -288,7 +293,7 @@ def main() -> None:
                 f"  {e.get('resource_type')} {e.get('resource_id')} ts={e.get('ts')}",
                 file=sys.stderr,
             )
-    sys.exit(0)
+    sys.exit(1 if had_failure else 0)
 
 
 if __name__ == "__main__":

@@ -339,7 +339,7 @@ class ReapDryRunTest(unittest.TestCase):
         self._seed_ledger(entries)
         initial_count = self._line_count()
 
-        stale = self.mod.reap(
+        stale, had_failure = self.mod.reap(
             self.ledger_path,
             ttl_hours=2.0,
             dry_run=True,
@@ -347,6 +347,7 @@ class ReapDryRunTest(unittest.TestCase):
         )
 
         self.assertEqual(len(stale), 2)
+        self.assertFalse(had_failure)
         self.assertEqual(self._line_count(), initial_count, "dry-run must not append rows")
 
     def test_dry_run_returns_stale_entries(self) -> None:
@@ -356,7 +357,7 @@ class ReapDryRunTest(unittest.TestCase):
         ]
         self._seed_ledger(entries)
 
-        stale = self.mod.reap(
+        stale, _ = self.mod.reap(
             self.ledger_path,
             ttl_hours=2.0,
             dry_run=True,
@@ -367,13 +368,14 @@ class ReapDryRunTest(unittest.TestCase):
         self.assertEqual(stale[0]["resource_id"], "r-old")
 
     def test_dry_run_on_empty_ledger(self) -> None:
-        stale = self.mod.reap(
+        stale, had_failure = self.mod.reap(
             self.ledger_path,
             ttl_hours=2.0,
             dry_run=True,
             now=self._now(),
         )
         self.assertEqual(stale, [])
+        self.assertFalse(had_failure)
 
     def test_ttl_hours_parameter_respected(self) -> None:
         entries = [
@@ -382,11 +384,13 @@ class ReapDryRunTest(unittest.TestCase):
         self._seed_ledger(entries)
 
         # 1-hour TTL: not stale
-        stale_1h = self.mod.reap(self.ledger_path, ttl_hours=1.0, dry_run=True, now=self._now())
+        stale_1h, _ = self.mod.reap(self.ledger_path, ttl_hours=1.0, dry_run=True, now=self._now())
         self.assertEqual(len(stale_1h), 0)
 
         # 0.25-hour (15 min) TTL: stale
-        stale_15m = self.mod.reap(self.ledger_path, ttl_hours=0.25, dry_run=True, now=self._now())
+        stale_15m, _ = self.mod.reap(
+            self.ledger_path, ttl_hours=0.25, dry_run=True, now=self._now()
+        )
         self.assertEqual(len(stale_15m), 1)
 
 
