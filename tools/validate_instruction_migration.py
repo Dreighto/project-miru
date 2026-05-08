@@ -82,8 +82,11 @@ def _paragraphs(path: Path) -> list[str]:
         block = block.strip()
         if not block:
             continue
-        # Skip pure headers (single-line ##/### lines) and `---` dividers.
-        if re.match(r"^#+\s", block) and "\n" not in block:
+        # Skip pure headers (single-line ##/### lines, with or without trailing
+        # text) and `---` dividers. Bare `#` lines (no following space) are
+        # treated as header markers too — they appear as comment dividers in
+        # legacy framework headers and carry no rule content.
+        if re.match(r"^#+(\s|$)", block) and "\n" not in block:
             continue
         if re.match(r"^---+$", block):
             continue
