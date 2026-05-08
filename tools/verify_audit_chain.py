@@ -3,13 +3,14 @@
 Usage:
     python tools/verify_audit_chain.py            # human-readable summary
     python tools/verify_audit_chain.py --json     # machine-readable
-    python tools/verify_audit_chain.py --strict   # exit 1 if any chained file is broken
+    python tools/verify_audit_chain.py --strict   # exit 1 for broken chains AND legacy-only/missing files
 
 Exit codes:
-    0 — every file with chained rows verifies; legacy prefixes are tolerated.
-    1 — at least one file has a broken chain (only when --strict is set, or
-        when a chained row fails verification — silent legacy-only files
-        always exit 0 because they predate the chain).
+    0 — default mode: every file with chained rows verifies; legacy prefixes
+        and missing files are tolerated.
+    1 — a chained row failed verification, OR (with --strict) at least one
+        target file is legacy-only or missing. Use --strict in rollout/CI
+        gates where you want to catch chain-not-yet-enabled cases.
     2 — script error (path resolution failed, etc).
 """
 
@@ -36,14 +37,20 @@ AUDIT_FILES: tuple[str, ...] = (
 
 
 def _repo_root() -> Path:
-    """Return the main repo root, works from any linked worktree."""
+    """Return the active worktree root.
+
+    Uses ``git rev-parse --show-toplevel`` so the verifier reads the data/
+    files of the CURRENT worktree, not the primary checkout. The earlier
+    --git-common-dir variant pointed at the shared .git directory and
+    resolved to the primary checkout, which would silently report success
+    while the active worktree's audit logs were broken or different.
+    """
     import subprocess
 
     here = Path(__file__).resolve().parent
     try:
-        # Non-zero exit is handled manually below; fallback to parent-dir heuristic if git fails
         result = subprocess.run(
-            ["git", "rev-parse", "--git-common-dir"],
+            ["git", "rev-parse", "--show-toplevel"],
             capture_output=True,
             text=True,
             cwd=str(here),
@@ -51,8 +58,9 @@ def _repo_root() -> Path:
             check=False,
         )
         if result.returncode == 0:
-            common_dir = (here / result.stdout.strip()).resolve()
-            return common_dir.parent
+            toplevel = result.stdout.strip()
+            if toplevel:
+                return Path(toplevel).resolve()
     except Exception:
         pass
     return here.parent
