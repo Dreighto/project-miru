@@ -81,9 +81,25 @@ class TestNoMcpToolWritesCardCatalog(unittest.TestCase):
         Only actual sqlite3.connect calls, connect_catalog() invocations, and
         pm.db imports are violations.
         """
+        # Fail fast if the gateway scan target is wrong. If GATEWAY_DIR is
+        # missing or empty, rglob returns nothing and the test silently goes
+        # green without scanning anything — a regression-detection blind spot.
+        self.assertTrue(
+            GATEWAY_DIR.is_dir(),
+            f"GATEWAY_DIR does not exist: {GATEWAY_DIR}. "
+            "The fault-injection scan cannot prove the protection holds.",
+        )
+        scanned = list(GATEWAY_DIR.rglob("*.py"))
+        self.assertGreater(
+            len(scanned),
+            0,
+            f"GATEWAY_DIR has no .py files: {GATEWAY_DIR}. "
+            "Test cannot prove the protection holds against an empty directory.",
+        )
+
         compiled = [re.compile(p, re.IGNORECASE) for p in self._FORBIDDEN_PATTERNS]
         violators: list[tuple[str, str]] = []
-        for py_file in sorted(GATEWAY_DIR.rglob("*.py")):
+        for py_file in sorted(scanned):
             content = py_file.read_text(encoding="utf-8")
             for pattern in compiled:
                 if pattern.search(content):
@@ -163,7 +179,9 @@ class TestMemoryToolsRejectsDestructiveSql(unittest.TestCase):
         self.McpError = stdio_mcp.McpError
 
     def _expect_rejected(self, sql: str, msg: str) -> None:
-        with self.assertRaises(self.McpError, msg=f"write_query did NOT reject: {sql!r}"):
+        # Include the case-specific msg so the failure message names which
+        # rule the SQL was supposed to violate.
+        with self.assertRaises(self.McpError, msg=f"{msg}. write_query did NOT reject: {sql!r}"):
             self.memory_tools.write_query(sql)
 
     def test_rejects_drop_table(self) -> None:
@@ -245,8 +263,20 @@ class TestMemoryToolsAcceptsLegitimateWrites(unittest.TestCase):
     def _expect_passes_deny_check(self, sql: str) -> None:
         """The deny-token / lead-token check must pass. The call may still
         raise ``McpError`` from a later stage (no configured DB in tests),
-        but the error MUST NOT be ``forbidden_keyword`` or ``dml_only``.
+        but the error MUST NOT be ``forbidden_keyword`` or ``dml_only``,
+        AND it MUST be one of the expected later-stage errors so that a
+        future code change accidentally introducing a new deny-class
+        doesn't slip through this helper.
         """
+        # Errors that legitimately surface AFTER the deny check (when the
+        # write_query body proceeds because the SQL is allowed). All come
+        # from db resolution or the underlying sqlite3 connection.
+        allowed_downstream_errors = (
+            "memory_tools: not configured",
+            "db_not_found",
+            "invalid_db_path",
+            "sqlite_error",
+        )
         try:
             self.memory_tools.write_query(sql)
         except self.McpError as exc:
@@ -261,7 +291,13 @@ class TestMemoryToolsAcceptsLegitimateWrites(unittest.TestCase):
                 payload,
                 f"legit SQL was rejected as dml_only: {sql!r}",
             )
-            # Any other error (e.g. memory_tools not configured) is fine.
+            self.assertTrue(
+                any(marker in payload for marker in allowed_downstream_errors),
+                f"legit SQL produced an unexpected error class: {payload!r}. "
+                f"If write_query gained a new pre-DB-resolution gate, add the "
+                f"new error marker to allowed_downstream_errors or to the deny "
+                f"checks if it should reject.",
+            )
         # No exception is also fine — we don't need to actually run the SQL.
 
     def test_insert_passes_deny_check(self) -> None:
