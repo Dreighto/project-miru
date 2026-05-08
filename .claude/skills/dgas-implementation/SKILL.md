@@ -35,6 +35,7 @@ Otherwise prompt-enforce, not code-enforce. Push back to the operator if the tic
 Run the phases in order. Don't skip a phase. If a phase fails, escalate per the rules at the bottom — don't paper over a failed phase to keep moving.
 
 **Heartbeat contract**: Emit heartbeats throughout the session using `tools/emit_heartbeat.py`. Requirements:
+
 - Emit a heartbeat at regular intervals (configurable cadence, default every major step).
 - Emit a heartbeat on each phase transition (Phase 1→2, 2→3, 3→4, 4→5).
 - Emit a special "stall" heartbeat when progress stalls (blocked, waiting, unclear direction).
