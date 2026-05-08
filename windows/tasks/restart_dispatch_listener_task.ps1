@@ -110,8 +110,14 @@ do {
 } while ((Get-Date) -lt $deadline)
 
 if ($isListening) {
-    $newPid = (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue |
-        Select-Object -First 1).OwningProcess
+    $newEntry = Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if (-not $newEntry) {
+        Write-Log "ERROR: Port $port probe raced -- no listener entry after detection"
+        Write-Log "=== MiruRestartDispatcher END (failed) ==="
+        exit 1
+    }
+    $newPid = [int]$newEntry.OwningProcess
     $newProc = Get-Process -Id $newPid -ErrorAction SilentlyContinue
     $newProcName = if ($newProc) { $newProc.ProcessName } else { "<gone>" }
     if (-not $newProc -or $newProcName -ne "node") {
