@@ -184,7 +184,11 @@ class TestGitleaksConfigPresent(unittest.TestCase):
         self.assertIn("docs/archive/", content)
 
 
-@unittest.skipUnless(_gitleaks_available(), "gitleaks binary not on PATH")
+def _git_available() -> bool:
+    return shutil.which("git") is not None
+
+
+@unittest.skipUnless(_gitleaks_available() and _git_available(), "gitleaks or git not on PATH")
 class TestGitleaksHookIntegration(unittest.TestCase):
     """Mirrors the actual pre-commit hook invocation:
     `gitleaks git --pre-commit --redact --staged --verbose`. Initializes a
@@ -192,6 +196,9 @@ class TestGitleaksHookIntegration(unittest.TestCase):
     fires. Without this, the `detect --no-git` tests above only verify the
     rule set, not the production wiring.
     """
+
+    # Cap on every git subprocess so a hung command doesn't stall the suite.
+    _GIT_TIMEOUT_SECONDS = 30
 
     def setUp(self) -> None:
         self.tmp_root = Path(tempfile.mkdtemp(prefix="miru_gitleaks_hook_"))
@@ -204,14 +211,24 @@ class TestGitleaksHookIntegration(unittest.TestCase):
             ["git", "config", "user.name", "Test"],
             ["git", "config", "commit.gpgsign", "false"],
         ):
-            subprocess.run(cmd, cwd=str(self.tmp_root), check=True, capture_output=True)
+            subprocess.run(
+                cmd,
+                cwd=str(self.tmp_root),
+                check=True,
+                capture_output=True,
+                timeout=self._GIT_TIMEOUT_SECONDS,
+            )
 
     def _stage(self, path: str, content: str) -> None:
         target = self.tmp_root / path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
         subprocess.run(
-            ["git", "add", path], cwd=str(self.tmp_root), check=True, capture_output=True
+            ["git", "add", path],
+            cwd=str(self.tmp_root),
+            check=True,
+            capture_output=True,
+            timeout=self._GIT_TIMEOUT_SECONDS,
         )
 
     def test_hook_mode_catches_planted_secret(self) -> None:
