@@ -36,7 +36,7 @@ function readTailRaw(filePath, maxBytes) {
 
 function scanStdoutForStatus(stdoutTail) {
   if (!stdoutTail) return null;
-  if (/STATUS:\s*CONFIRMED[\s_]WORKING/i.test(stdoutTail)) return 'CONFIRMED_WORKING';
+  if (/STATUS:\s*\bCONFIRMED[\s_]WORKING\b/i.test(stdoutTail)) return 'CONFIRMED_WORKING';
   if (/\bCONFIRMED_WORKING\b/i.test(stdoutTail)) return 'CONFIRMED_WORKING';
   return null;
 }
