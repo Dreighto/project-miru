@@ -170,8 +170,35 @@ def _remote_addr(scope) -> str | None:
 
 
 def _is_local_origin(scope) -> bool:
+    """Return True iff scope.client originates from loopback.
+
+    Handles three forms of "local":
+        * Literal strings 127.0.0.1, ::1, "localhost".
+        * IPv4 loopback range (parsed via ipaddress).
+        * IPv4-mapped IPv6 loopback (e.g. ``::ffff:127.0.0.1``) which some
+          ASGI servers present when listening on a dual-stack socket.
+          Without this, a legitimate local request via the IPv6 mapped
+          form would be rejected.
+
+    Anything that doesn't parse as a recognised loopback form is treated
+    as remote — fail-closed.
+    """
+    import ipaddress
+
     host = _remote_addr(scope)
-    return host in _LOCAL_HOSTS
+    if host is None:
+        return False
+    if host in _LOCAL_HOSTS:
+        return True
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    if addr.is_loopback:
+        return True
+    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
+        return addr.ipv4_mapped.is_loopback
+    return False
 
 
 async def _send_full_operator_local_only(scope, send) -> None:

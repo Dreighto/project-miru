@@ -119,6 +119,37 @@ class TestFullOperatorLocalhostBind(unittest.TestCase):
         self.assertEqual(app.profile_seen, "full_operator")
         self.assertEqual(messages, [{"type": "test.app_called"}])
 
+    def test_full_operator_from_ipv4_mapped_ipv6_loopback_proceeds(self):
+        """ASGI servers on dual-stack sockets sometimes present loopback as
+        ``::ffff:127.0.0.1``. That is still local; the gate must accept it.
+        Without IPv4-mapped IPv6 normalisation this would 403 a legit local
+        request."""
+        app, messages = _run_middleware(
+            _http_scope(
+                host="::ffff:127.0.0.1",
+                headers=[_header("x-miru-tool-profile", "full_operator")],
+            )
+        )
+
+        self.assertTrue(app.called)
+        self.assertEqual(app.profile_seen, "full_operator")
+        self.assertEqual(messages, [{"type": "test.app_called"}])
+
+    def test_full_operator_from_ipv4_mapped_remote_rejected(self):
+        """Dual-stack mapped form must NOT be a backdoor: a non-loopback
+        IPv4-mapped IPv6 address (e.g. ::ffff:10.0.0.5) still gets rejected."""
+        app, messages = _run_middleware(
+            _http_scope(
+                host="::ffff:10.0.0.5",
+                headers=[_header("x-miru-tool-profile", "full_operator")],
+            )
+        )
+
+        self.assertFalse(app.called, "remote IPv4-mapped IPv6 must NOT bypass localhost gate")
+        # 403 response sent
+        statuses = [m.get("status") for m in messages if m.get("type") == "http.response.start"]
+        self.assertEqual(statuses, [403])
+
     def test_stdio_like_non_http_scope_bypasses_localhost_check(self):
         app, messages = _run_middleware({"type": "lifespan", "client": ("10.0.0.5", 54321)})
 
