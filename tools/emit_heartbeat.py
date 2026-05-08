@@ -24,6 +24,12 @@ import os
 import subprocess
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
+
+# Hash-chain library lives next to this script in tools/. Make it importable
+# regardless of invocation mode.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from audit_chain import append_chained
 
 
 def _repo_root() -> str:
@@ -73,11 +79,9 @@ def emit(
     env_trace = os.environ.get("MIRU_TRACE_ID", "").strip()
     if env_trace:
         row["trace_id"] = env_trace
-    line = json.dumps(row, separators=(",", ":"))
-    os.makedirs(os.path.dirname(HEARTBEAT_LOG), exist_ok=True)
-    with open(HEARTBEAT_LOG, "a", encoding="utf-8") as fh:
-        fh.write(line + "\n")
-    print(f"[heartbeat] {line}", file=sys.stderr)
+    # DGAS Tier 2 #6 Part B: chain every heartbeat row.
+    append_chained(Path(HEARTBEAT_LOG), row)
+    print(f"[heartbeat] {json.dumps(row, separators=(',', ':'))}", file=sys.stderr)
 
 
 def main() -> None:

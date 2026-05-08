@@ -28,6 +28,12 @@ import json
 import os
 import subprocess
 import sys
+from pathlib import Path
+
+# Hash-chain library lives next to this script in tools/. Make it importable
+# regardless of invocation mode.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from audit_chain import append_chained
 
 REQUIRED_FIELDS = {"ts", "trace_id", "resource_type", "resource_id", "intent", "status"}
 VALID_RESOURCE_TYPES = {"branch", "pr"}
@@ -77,12 +83,10 @@ def validate(data: dict) -> None:
 
 def append_entry(data: dict, ledger_path: str) -> None:
     validate(data)
-    os.makedirs(os.path.dirname(ledger_path), exist_ok=True)
-    line = json.dumps(data, separators=(",", ":"))
-    with open(ledger_path, "a", encoding="utf-8") as fh:
-        fh.write(line + "\n")
-        fh.flush()
-        os.fsync(fh.fileno())
+    # DGAS Tier 2 #6 Part B: chain every ledger row. fsync=True because this
+    # ledger tracks external GitHub-side resources — losing a row means an
+    # orphan branch/PR with no compensation record.
+    append_chained(Path(ledger_path), data, fsync=True)
 
 
 def main() -> None:

@@ -46,6 +46,13 @@ import os
 import re
 import subprocess
 import sys
+from pathlib import Path
+
+# Hash-chain library lives next to this script in tools/. Make it importable
+# regardless of how this helper is invoked (python tools/emit_completion.py,
+# python -m tools.emit_completion, etc.).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from audit_chain import append_chained
 
 # Trace_id format from dispatch listener spawn.js:
 #   {worker}-{ticket_id}-{uuid}-{uuid}, e.g. cc-PRO-276-eaa0a242-326360d3
@@ -102,6 +109,14 @@ def main() -> None:
         print(f"[emit_completion] error: invalid JSON — {e}", file=sys.stderr)
         sys.exit(1)
 
+    if not isinstance(data, dict):
+        print(
+            f"[emit_completion] error: top-level JSON must be an object, "
+            f"got {type(data).__name__}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     # If MIRU_TRACE_ID is set in the worker env (set by dispatch_listener spawn.js):
     # 1. Fill the marker's `trace_id` field if missing — bridges marker → dispatch.
     # 2. Auto-fill `ticket_id` if the marker submitted null/missing AND the trace
@@ -119,14 +134,13 @@ def main() -> None:
             if inferred:
                 data["ticket_id"] = inferred
 
-    log_path = os.path.join(_repo_root(), "data", "cc_completion_log.jsonl")
-    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    log_path = Path(_repo_root()) / "data" / "cc_completion_log.jsonl"
+    # DGAS Tier 2 #6 Part B: chain every new row. Existing legacy rows at the
+    # head of the file remain untouched; the first chained row anchors with
+    # prev_hash=None and every subsequent row links back. See tools/audit_chain.py.
+    row_hash = append_chained(log_path, data)
 
-    line = json.dumps(data, separators=(",", ":"))
-    with open(log_path, "a", encoding="utf-8") as fh:
-        fh.write(line + "\n")
-
-    print(f"[emit_completion] written to {log_path}", file=sys.stderr)
+    print(f"[emit_completion] written to {log_path} (row_hash={row_hash[:12]}…)", file=sys.stderr)
 
 
 if __name__ == "__main__":
