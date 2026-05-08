@@ -86,6 +86,7 @@ def _default_path(filename: str) -> str:
 # Quality extraction (inline — mirrors hermes_extract_test_quality.py)
 # ---------------------------------------------------------------------------
 
+# No end-anchor: CLAUDE.md allows trailing context like "34/34 tests pass" or "7/8 (1 flaky)"
 _NN_PATTERN = re.compile(r"^\s*(\d+)\s*/\s*(\d+)")
 
 
@@ -246,13 +247,17 @@ def load_completion_log(path: str) -> dict[str, dict[str, Any]]:
     if not os.path.exists(path):
         return latest
     with open(path, encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
+        for lineno, raw_line in enumerate(fh, 1):
+            line = raw_line.strip()
             if not line:
                 continue
             try:
                 row = json.loads(line)
             except json.JSONDecodeError:
+                print(
+                    f"[hermes_apprentice] warning: bad JSON on line {lineno} of {path}",
+                    file=sys.stderr,
+                )
                 continue
             ticket = row.get("ticket_id")
             if not ticket:
@@ -270,13 +275,17 @@ def load_vp_ops_supervision(path: str) -> dict[str, dict[str, Any]]:
     if not os.path.exists(path):
         return latest
     with open(path, encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
+        for lineno, raw_line in enumerate(fh, 1):
+            line = raw_line.strip()
             if not line:
                 continue
             try:
                 row = json.loads(line)
             except json.JSONDecodeError:
+                print(
+                    f"[hermes_apprentice] warning: bad JSON on line {lineno} of {path}",
+                    file=sys.stderr,
+                )
                 continue
             ticket = row.get("ticket_id")
             if not ticket:
