@@ -1,0 +1,241 @@
+{
+  "schema_version": "v1",
+  "signal_rules": [
+    {
+      "name": "dispatch_listener",
+      "keywords": [
+        "\\bdispatch",
+        "\\blistener",
+        "\\bspawn",
+        "\\bworktree"
+      ],
+      "files": [
+        "services/dispatch_listener/src/index.js",
+        "services/dispatch_listener/src/spawn.js",
+        "services/dispatch_listener/src/worktree.js",
+        "services/dispatch_listener/src/receipt.js",
+        "services/dispatch_listener/src/allowlist.js"
+      ],
+      "tools": [
+        "tools/orchestrator/stall_detector.py",
+        "tools/orchestrator/recovery_router.py"
+      ],
+      "services": [
+        "services/dispatch_listener/"
+      ]
+    },
+    {
+      "name": "n8n_workflows",
+      "keywords": [
+        "\\bn8n\\b",
+        "\\bworkflow",
+        "\\bwatcher\\b.*workflow",
+        "\\brouter\\b"
+      ],
+      "files": [],
+      "tools": [],
+      "services": [
+        "docker/n8n/workflows/"
+      ],
+      "extra_note": "Adopted lesson: test JS as it lives in workflow JSON (PRO-189)."
+    },
+    {
+      "name": "miru_ai",
+      "keywords": [
+        "\\bmiru.ai\\b",
+        "\\bmiru_ai\\b",
+        "\\bollama\\b",
+        "\\bcard.?lookup"
+      ],
+      "files": [
+        "miru_ai/core/",
+        "miru_ai/workers/"
+      ],
+      "tools": [
+        "tools/miru_ai.py"
+      ],
+      "services": [
+        "miru_ai/"
+      ]
+    },
+    {
+      "name": "pm_storefront",
+      "keywords": [
+        "\\bstorefront\\b",
+        "\\bpm\\b.*dashboard",
+        "\\bcard.?browse"
+      ],
+      "files": [
+        "pm/storefront/",
+        "pm/templates/"
+      ],
+      "tools": [],
+      "services": [
+        "pm/"
+      ]
+    },
+    {
+      "name": "mcp_gateway",
+      "keywords": [
+        "\\bgateway\\b",
+        "\\bmcp\\b.*tool",
+        "\\btool.?profile"
+      ],
+      "files": [
+        "tools/miru_mcp_gateway/server.py",
+        "tools/miru_mcp_gateway/profiles.py",
+        "tools/miru_mcp_gateway/config.py"
+      ],
+      "tools": [],
+      "services": [
+        "tools/miru_mcp_gateway/"
+      ]
+    },
+    {
+      "name": "gatekeeper",
+      "keywords": [
+        "\\bgatekeeper\\b",
+        "\\bgovernance\\b",
+        "\\bfrontmatter\\b"
+      ],
+      "files": [
+        "gatekeeper/core.py",
+        "gatekeeper/frontmatter.py",
+        "gatekeeper/forwarder.py"
+      ],
+      "tools": [],
+      "services": [
+        "gatekeeper/"
+      ]
+    },
+    {
+      "name": "linear_tools",
+      "keywords": [
+        "\\blinear\\b.*ticket",
+        "\\blinear\\b.*api",
+        "\\bboard.?hygiene"
+      ],
+      "files": [],
+      "tools": [
+        "tools/sub_ticket_creator.py",
+        "tools/parent_watcher.py",
+        "tools/complexity_classifier.py"
+      ],
+      "services": []
+    },
+    {
+      "name": "card_catalog",
+      "keywords": [
+        "\\bcard.?catalog\\b",
+        "\\bcatalog\\b.*db",
+        "\\bingestion\\b"
+      ],
+      "files": [
+        "miru_ai/ingestion/"
+      ],
+      "tools": [],
+      "services": [
+        "miru_ai/ingestion/"
+      ],
+      "read_only_files": [
+        "data/card_catalog.db"
+      ]
+    },
+    {
+      "name": "hygiene_tooling",
+      "keywords": [
+        "\\bhygiene\\b",
+        "\\blint\\b",
+        "\\bformat\\b",
+        "\\bpre.?commit"
+      ],
+      "files": [
+        ".pre-commit-config.yaml",
+        "pyproject.toml",
+        ".github/workflows/hygiene.yml"
+      ],
+      "tools": [
+        "tools/check_worktree_clean.py"
+      ],
+      "services": []
+    },
+    {
+      "name": "completion_system",
+      "keywords": [
+        "\\bcompletion.?marker",
+        "\\bcompletion.?log",
+        "\\bheartbeat"
+      ],
+      "files": [
+        "data/cc_completion_log.jsonl",
+        "data/cc_heartbeat_log.jsonl"
+      ],
+      "tools": [
+        "tools/emit_completion.py",
+        "tools/emit_heartbeat.py"
+      ],
+      "services": []
+    },
+    {
+      "name": "memory_system",
+      "keywords": [
+        "\\bmemory\\b.*system",
+        "\\bmiru.?memory\\b",
+        "\\bsqlite\\b.*memory"
+      ],
+      "files": [],
+      "tools": [
+        "tools/miru_mcp_gateway/server.py"
+      ],
+      "services": []
+    },
+    {
+      "name": "telegram_ops",
+      "keywords": [
+        "\\btelegram\\b",
+        "\\bcallback\\b.*handler",
+        "\\bw7\\b"
+      ],
+      "files": [],
+      "tools": [],
+      "services": [
+        "docker/n8n/workflows/"
+      ]
+    },
+    {
+      "name": "windows_ops",
+      "keywords": [
+        "\\bscheduled.?task",
+        "\\bwindows\\b.*service",
+        "\\bnssm\\b",
+        "\\bwatchdog\\b"
+      ],
+      "files": [
+        "windows/startup_all.ps1"
+      ],
+      "tools": [],
+      "services": [
+        "windows/"
+      ]
+    }
+  ],
+  "global_dont_touch": [
+    ".env",
+    ".mcp.json",
+    "data/card_catalog.db",
+    "data/miru_memory.db",
+    "card_catalog.db"
+  ],
+  "global_read_only": [
+    "data/card_catalog.db",
+    "data/cc_completion_log.jsonl",
+    "data/cc_heartbeat_log.jsonl",
+    "data/routing_history.jsonl",
+    "data/pending_callbacks.jsonl",
+    "data/dispatch_dlq.jsonl",
+    "data/agent_decisions.jsonl",
+    "data/github_resource_ledger.jsonl",
+    "data/drift_scanner_log.jsonl",
+    "data/vp_ops_supervision.jsonl"
+  ]
+}
