@@ -150,7 +150,7 @@ def run(since: str | None = None, dry_run: bool = False) -> int:
 
     if not os.path.exists(log_path):
         print(f"[hermes_quality] error: {log_path} not found", file=sys.stderr)
-        return 0
+        return -1
 
     rows: list[str] = []
     tier_counts: dict[str, int] = {}
@@ -198,12 +198,44 @@ def run(since: str | None = None, dry_run: bool = False) -> int:
                 print(r)
     else:
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
-        with open(out_path, "a", encoding="utf-8") as fh:
-            for r in rows:
-                fh.write(r + "\n")
+        # Dedup against existing labels to make re-runs idempotent.
+        # Key: (ticket_id, completion_timestamp, raw_test_evidence).
+        existing_keys: set[tuple[str, str, str]] = set()
+        if os.path.exists(out_path):
+            with open(out_path, encoding="utf-8") as fh:
+                for existing_line in fh:
+                    existing_line = existing_line.strip()
+                    if not existing_line:
+                        continue
+                    try:
+                        obj = json.loads(existing_line)
+                        key = (
+                            obj.get("ticket_id", ""),
+                            obj.get("completion_timestamp", ""),
+                            obj.get("raw_test_evidence", ""),
+                        )
+                        existing_keys.add(key)
+                    except json.JSONDecodeError:
+                        continue
+        new_rows = []
+        for r in rows:
+            obj = json.loads(r)
+            key = (
+                obj.get("ticket_id", ""),
+                obj.get("completion_timestamp", ""),
+                obj.get("raw_test_evidence", ""),
+            )
+            if key not in existing_keys:
+                new_rows.append(r)
+                existing_keys.add(key)
+        if new_rows:
+            with open(out_path, "a", encoding="utf-8") as fh:
+                for r in new_rows:
+                    fh.write(r + "\n")
 
+    written = len(new_rows) if not dry_run else len(rows)
     print(
-        f"[hermes_quality] {len(rows)} entries processed. Tiers: {json.dumps(tier_counts)}",
+        f"[hermes_quality] {len(rows)} entries processed, {written} new. Tiers: {json.dumps(tier_counts)}",
         file=sys.stderr,
     )
     return len(rows)
@@ -218,7 +250,9 @@ def main() -> None:
     )
     p.add_argument("--dry-run", action="store_true", help="Print to stdout instead of appending")
     args = p.parse_args()
-    run(since=args.since, dry_run=args.dry_run)
+    result = run(since=args.since, dry_run=args.dry_run)
+    if result < 0:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

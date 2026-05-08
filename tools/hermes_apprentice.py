@@ -575,8 +575,13 @@ def main() -> None:
     output_path = args.output or _default_path("hermes_learning_cases.jsonl")
     api_key = os.environ.get("LINEAR_API_KEY", "").strip() or None
 
-    for path, label in [(routing_path, "routing_history"), (callbacks_path, "callbacks")]:
-        if not os.path.exists(path):
+    for path, label in [
+        (routing_path, "routing_history"),
+        (callbacks_path, "callbacks"),
+        (args.completion_log, "completion_log"),
+        (args.supervision, "supervision"),
+    ]:
+        if path and not os.path.exists(path):
             print(f"[hermes_apprentice] error: {label} file not found: {path}", file=sys.stderr)
             sys.exit(1)
 
