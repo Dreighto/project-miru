@@ -68,6 +68,19 @@ repos:
         files: \.jsonl$
         pass_filenames: true
 
+      # DGAS Tier 2 #8: pre-push gate that refuses force-push or branch-delete
+      # on protected branches (main, master, release/*). Defense-in-depth
+      # alongside the GitHub branch protection ruleset — local rejection
+      # before the network call. Bypass with `git push --no-verify` only for
+      # emergency hotfixes (log the bypass in the commit message).
+      - id: safe-git-push
+        name: DGAS safe-git-push (refuse force-push/delete on protected branches)
+        entry: python tools/check_safe_git_push.py
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
+
       # Pytest pre-push hook intentionally omitted per operator ruling 2026-04-25.
       # CI (`.github/workflows/hygiene.yml`) runs pytest authoritatively on every PR.
       # Local pre-push pytest will be re-enabled once the test suite debt is cleared
