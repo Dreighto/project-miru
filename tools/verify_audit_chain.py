@@ -7,9 +7,10 @@ Usage:
 
 Exit codes:
     0 — default mode: every file with chained rows verifies; legacy prefixes
-        and missing files are tolerated.
-    1 — a chained row failed verification, OR (with --strict) at least one
-        target file is legacy-only or missing. Use --strict in rollout/CI
+        and missing files are tolerated. In ``--strict`` mode: every target
+        file exists and has at least one chained row that verified OK.
+    1 — a chained row failed verification, OR (with ``--strict``) at least one
+        target file is legacy-only or missing. Use ``--strict`` in rollout/CI
         gates where you want to catch chain-not-yet-enabled cases.
     2 — script error (path resolution failed, etc).
 """
@@ -137,12 +138,19 @@ def main() -> int:
             }
         )
 
+    # Effective pass/fail. In strict mode, legacy-only/missing files cause failure;
+    # this is the same condition the exit-code logic below uses, so reporting
+    # stays consistent with the process return code.
+    effective_ok = overall_ok and not (args.strict and any_legacy_only)
+
     if args.json:
         print(
             json.dumps(
                 {
-                    "ok": overall_ok,
+                    "ok": effective_ok,
+                    "strict": args.strict,
                     "any_chained_broken": any_chained_broken,
+                    "any_legacy_only": any_legacy_only,
                     "files": summaries,
                 },
                 indent=2,
@@ -167,9 +175,11 @@ def main() -> int:
                 print(f"         line {s['broken_at_line']}: {s['error']}")
             if s.get("parse_error_count"):
                 print(f"         parse_error_count={s['parse_error_count']}")
-        print(f"\nOverall: {'OK' if overall_ok else 'BROKEN'}")
+        print(f"\nOverall: {'OK' if effective_ok else 'BROKEN'}")
         if any_chained_broken:
             print("WARNING: at least one chained row failed verification.")
+        if args.strict and any_legacy_only and not any_chained_broken:
+            print("WARNING (--strict): at least one file is legacy-only or missing.")
 
     if any_chained_broken:
         return 1
