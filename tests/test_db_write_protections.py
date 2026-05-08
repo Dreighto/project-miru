@@ -178,11 +178,36 @@ class TestMemoryToolsRejectsDestructiveSql(unittest.TestCase):
 
         self.McpError = stdio_mcp.McpError
 
+    # Error markers raised by the deny-stage gates in memory_tools.write_query
+    # (forbidden_keyword, dml_only lead-token check, read_only branch in
+    # read_query, plus the size/empty pre-checks). If write_query rejects with
+    # any of these, the deny stage fired. If it rejects with a downstream
+    # marker (db_not_found, sqlite_error, etc.) the destructive SQL slipped
+    # past the gate — that's a regression we MUST catch.
+    _DENY_STAGE_MARKERS = (
+        "forbidden_keyword",
+        "dml_only",
+        "read_only",
+        "sql_too_long",
+        "empty_sql",
+    )
+
     def _expect_rejected(self, sql: str, msg: str) -> None:
         # Include the case-specific msg so the failure message names which
         # rule the SQL was supposed to violate.
-        with self.assertRaises(self.McpError, msg=f"{msg}. write_query did NOT reject: {sql!r}"):
+        with self.assertRaises(
+            self.McpError, msg=f"{msg}. write_query did NOT reject: {sql!r}"
+        ) as ctx:
             self.memory_tools.write_query(sql)
+        payload = str(ctx.exception)
+        self.assertTrue(
+            any(marker in payload for marker in self._DENY_STAGE_MARKERS),
+            f"{msg}. write_query DID raise McpError but the error payload "
+            f"did not name a deny-stage marker. SQL: {sql!r}. Payload: "
+            f"{payload!r}. If the rejection came from db_resolution / "
+            f"sqlite_error / db_not_found, the destructive SQL reached the "
+            f"DB layer — the deny stage failed to fire.",
+        )
 
     def test_rejects_drop_table(self) -> None:
         self._expect_rejected("DROP TABLE foo", "DROP must be denied")
