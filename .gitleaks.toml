@@ -1,0 +1,61 @@
+# Project Miru — Gitleaks configuration
+#
+# Runs as the pre-commit hook defined in .pre-commit-config.yaml. Catches
+# hardcoded secrets before they reach a commit. Pre-commit + GitHub Push
+# Protection (server-side) form the layered defense per DGAS Tier 1 #4.
+#
+# This file extends Gitleaks' default ruleset (700+ secret patterns) and
+# adds a Project Miru-specific allowlist for known-safe paths and example
+# tokens documented in research material.
+
+[extend]
+useDefault = true
+
+# Allowlist applies globally. Paths use Go regex syntax (anchored to the
+# repo root). Anything matching here is excluded from scanning.
+[allowlist]
+description = "Project Miru — known-safe paths and example tokens"
+
+paths = [
+    # Research and synthesis dumps that may quote example tokens or API
+    # patterns from third-party docs (AWS docs use AKIAIOSFODNN7EXAMPLE
+    # in their examples, etc.). These are reference material, not code.
+    '''data/peer_reviews/.*''',
+    '''research/.*''',
+
+    # Pre-split snapshots of CLAUDE.md and AGENTS.md preserved for rollback.
+    # Frozen content — no live secrets ever land here.
+    '''docs/archive/.*''',
+
+    # Test fixtures and the gitignored temp directory.
+    '''tests/_tmp/.*''',
+    '''tests/.*fixtures/.*''',
+
+    # The .env.example template ships empty values (KEY=) and is the
+    # documented way to communicate what env vars exist. Matching the
+    # filename pattern prevents false-positive entropy hits on the
+    # placeholder lines.
+    '''\.env\.example$''',
+]
+
+# Regex allowlist — known-safe values that may appear in code, docs, or
+# tests. These are documentation examples, not real credentials.
+regexes = [
+    # AWS canonical example keys from the AWS CLI / SDK docs.
+    '''AKIAIOSFODNN7EXAMPLE''',
+    '''wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY''',
+
+    # Anthropic / OpenAI example placeholders that may show up in research
+    # dumps quoting their public docs.
+    '''sk-ant-example-[A-Za-z0-9-]+''',
+    '''sk-proj-example-[A-Za-z0-9-]+''',
+]
+
+# Stop words — exact tokens to ignore. Useful for unique placeholder
+# strings that appear in templates or example configs.
+stopwords = [
+    "EXAMPLE",
+    "PLACEHOLDER",
+    "REPLACE_ME",
+    "YOUR_TOKEN_HERE",
+]
