@@ -572,18 +572,36 @@ def main() -> None:
 
     routing_path = args.routing_history or _default_path("routing_history.jsonl")
     callbacks_path = args.callbacks or _default_path("pending_callbacks.jsonl")
+    completion_log_path = args.completion_log or _default_path("cc_completion_log.jsonl")
+    supervision_path = args.supervision or _default_path("vp_ops_supervision.jsonl")
     output_path = args.output or _default_path("hermes_learning_cases.jsonl")
     api_key = os.environ.get("LINEAR_API_KEY", "").strip() or None
 
+    # Required files — hard fail if missing
     for path, label in [
         (routing_path, "routing_history"),
         (callbacks_path, "callbacks"),
-        (args.completion_log, "completion_log"),
-        (args.supervision, "supervision"),
     ]:
-        if path and not os.path.exists(path):
+        if not os.path.exists(path):
             print(f"[hermes_apprentice] error: {label} file not found: {path}", file=sys.stderr)
             sys.exit(1)
+
+    # Optional enrichment files — hard fail only for user-supplied overrides,
+    # warn for defaults (these may not exist yet in new environments)
+    for path, label, was_overridden in [
+        (completion_log_path, "completion_log", args.completion_log is not None),
+        (supervision_path, "supervision", args.supervision is not None),
+    ]:
+        if not os.path.exists(path):
+            if was_overridden:
+                print(f"[hermes_apprentice] error: {label} file not found: {path}", file=sys.stderr)
+                sys.exit(1)
+            else:
+                print(
+                    f"[hermes_apprentice] warning: {label} not found at {path}"
+                    " — work_outcome/verification enrichment will be empty",
+                    file=sys.stderr,
+                )
 
     count = run(
         routing_history_path=routing_path,
@@ -594,8 +612,8 @@ def main() -> None:
         overrides_only=args.overrides_only,
         dry_run=args.dry_run,
         linear_api_key=api_key,
-        completion_log_path=args.completion_log,
-        supervision_path=args.supervision,
+        completion_log_path=completion_log_path,
+        supervision_path=supervision_path,
     )
 
     if count == 0:
