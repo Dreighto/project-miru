@@ -62,7 +62,7 @@ If you're implementing the work directly:
 
 ### Phase 3 — Implement (one branch, one PR, no detours)
 
-1. Cut a branch from clean main using the project's branch-prefix convention. The current prefix is `dreighto/` (matching the GitHub account that owns the repo); confirm by running `git for-each-ref --format='%(refname:short)' refs/remotes/origin/ | head` and matching the dominant pattern. Example: `git checkout -b dreighto/<ticket-slug>` after a `git fetch origin` if you're in a sibling worktree. Do NOT `git checkout main` first if you're in a worktree.
+1. Cut a branch from clean `origin/main` using the project's branch-prefix convention. The current prefix is `dreighto/` (matching the GitHub account that owns the repo); confirm by running `git for-each-ref --format='%(refname:short)' refs/remotes/origin/ | head` and matching the dominant pattern. The base point MUST be `origin/main` explicitly — don't trust the current HEAD: `git fetch origin && git checkout -b dreighto/<ticket-slug> origin/main`. Do NOT `git checkout main` first if you're in a worktree.
 2. Make the change. Match existing style. Pre-commit will reformat — let it. Don't fight ruff-format.
 3. Add the tests in the same commit as the implementation. Don't ship an enforcement gate without a fault-injection test that proves the gate fires when expected and doesn't fire when not.
 4. WIP commit at each major phase per `.miru/overlays/workflow-git.md` (tests written, implementation done, pre-commit running, awaiting review). Squash before opening the PR.
@@ -83,7 +83,7 @@ For DGAS work, verification means more than "tests pass." It means:
 2. PR tier evaluation per `.miru/overlays/workflow-git.md`. Most DGAS tickets are CC-merge or operator-merge. If the change touches a governance file (gateway profiles, .miru/overlays/, pre-commit config), it's operator-merge by default.
 3. Wait for CodeRabbit and Bugbot. Address every actionable finding. Stale findings (already fixed in earlier commits) — call them out in the PR conversation but don't re-fix. New valid findings — push a follow-up commit.
 4. After merge: return to main, pull, delete the branch with verified force-delete (`gh pr list --head <branch> --state merged` then `git branch -D <branch>` only if a merged PR exists).
-5. Emit the completion marker via `tools/emit_completion.py`. test_evidence format MUST be `passed/total` or `ci_only:` or `no_tests` — never freetext narrative.
+5. Emit the completion marker via `tools/emit_completion.py`. Always include a non-null `ticket_id` (use the actual ticket identifier, never `null` or a placeholder). If the marker carries a `handoff` object, write it as the LAST action of the session — emitting a marker before the work is fully done leaves a stale handoff that the next worker reads before the actual state stabilizes. `test_evidence` format MUST be `passed/total` or `ci_only:` or `no_tests` — never freetext narrative.
 
 ## Common pitfalls (don't repeat these)
 
