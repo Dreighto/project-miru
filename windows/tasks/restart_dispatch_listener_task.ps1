@@ -34,11 +34,19 @@ Write-Log "repo_root=$repoRoot"
 Write-Log "Stopping MiruDispatchListener task..."
 try {
     Stop-ScheduledTask -TaskName "MiruDispatchListener" -ErrorAction SilentlyContinue
+    $stopDeadline = (Get-Date).AddSeconds(15)
+    do {
+        $taskState = (Get-ScheduledTask -TaskName "MiruDispatchListener" -ErrorAction SilentlyContinue).State
+        if ($taskState -ne "Running") { break }
+        Start-Sleep -Milliseconds 500
+    } while ((Get-Date) -lt $stopDeadline)
+    if ($taskState -eq "Running") {
+        Write-Log "WARNING: MiruDispatchListener did not stop within 15s"
+    }
     Write-Log "Task stopped (or was not running)"
 } catch {
     Write-Log "WARNING: Stop-ScheduledTask failed: $($_.Exception.Message)"
 }
-Start-Sleep -Seconds 1
 
 # -- Kill anything on port 19100 (the orphaned Node child) --
 Write-Log "Checking for existing listener on port $port..."
@@ -53,7 +61,13 @@ if ($listenerPids.Count -eq 0) {
     Write-Log "No process found on port $port"
 } else {
     foreach ($p in $listenerPids) {
-        Write-Log "Stopping PID $p on port $port"
+        $proc = Get-Process -Id $p -ErrorAction SilentlyContinue
+        if (-not $proc -or $proc.ProcessName -ne "node") {
+            Write-Log "ERROR: Unexpected process '$($proc.ProcessName)' (PID=$p) owns port $port -- refusing to kill"
+            Write-Log "=== MiruRestartDispatcher END (failed) ==="
+            exit 1
+        }
+        Write-Log "Stopping node PID $p on port $port"
         try {
             Stop-Process -Id $p -Force -ErrorAction Stop
             Write-Log "Stopped PID $p"
@@ -97,6 +111,12 @@ do {
 if ($isListening) {
     $newPid = (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue |
         Select-Object -First 1).OwningProcess
+    $newProc = Get-Process -Id $newPid -ErrorAction SilentlyContinue
+    if (-not $newProc -or $newProc.ProcessName -ne "node") {
+        Write-Log "ERROR: Unexpected process '$($newProc.ProcessName)' (PID=$newPid) on port $port after restart"
+        Write-Log "=== MiruRestartDispatcher END (failed) ==="
+        exit 1
+    }
     Write-Log "Dispatch listener is listening on port $port (PID=$newPid) -- restart SUCCESS"
     Write-Log "=== MiruRestartDispatcher END (success) ==="
     exit 0

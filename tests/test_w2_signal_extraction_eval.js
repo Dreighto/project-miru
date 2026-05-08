@@ -127,5 +127,25 @@ test('Directory refs in do-not-modify lines are excluded', () => {
   );
 });
 
+// surface_keywords should not pick up keywords from do-not-modify lines
+test('Keywords in do-not-modify lines are excluded from surface_keywords', () => {
+  const result = runExtractor(
+    'Fix the endpoint handler.\n\nDo NOT modify: migration scripts or schema files'
+  );
+  const kws = result.json.extracted_signals.surface_keywords;
+  assert.ok(kws.includes('endpoint'), 'should include endpoint from main description');
+  assert.ok(!kws.includes('migration'), 'should exclude migration from do-not-modify line');
+  assert.ok(!kws.includes('schema'), 'should exclude schema from do-not-modify line');
+});
+
+// issue_description returned to downstream nodes should be sanitized
+test('issue_description is sanitized for downstream nodes', () => {
+  const result = runExtractor('Fix the bug.\n\nDo NOT modify: tools/miru_mcp_gateway/profiles.py');
+  assert.ok(
+    !result.json.issue_description.includes('Do NOT modify'),
+    'issue_description should not contain do-not-modify lines'
+  );
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
