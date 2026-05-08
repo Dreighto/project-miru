@@ -174,6 +174,104 @@ class TestForwardTransition:
         assert _is_forward_transition("Todo", "Todo") is False
 
 
+class TestForwardTransitionEdgeCases:
+    # --- Group 1: Unknown state names ---
+
+    def test_unknown_proposed_state_returns_false(self):
+        assert _is_forward_transition("Todo", "UnknownState") is False
+
+    def test_both_unknown_states_returns_false(self):
+        assert _is_forward_transition("UnknownA", "UnknownB") is False
+
+    def test_unknown_current_state_with_known_proposed_returns_true(self):
+        # Unknown current gets rank -1 (default), which is below every valid rank.
+        # The implementation treats this as "any move forward from unknown is forward".
+        assert _is_forward_transition("UnknownState", "Backlog") is True
+        assert _is_forward_transition("UnknownState", "Done") is True
+
+    # --- Group 2: Same state → not strictly forward ---
+
+    def test_same_state_backlog(self):
+        assert _is_forward_transition("Backlog", "Backlog") is False
+
+    def test_same_state_todo(self):
+        assert _is_forward_transition("Todo", "Todo") is False
+
+    def test_same_state_in_progress(self):
+        assert _is_forward_transition("In Progress", "In Progress") is False
+
+    def test_same_state_in_review(self):
+        assert _is_forward_transition("In Review", "In Review") is False
+
+    def test_same_state_done(self):
+        assert _is_forward_transition("Done", "Done") is False
+
+    def test_same_state_canceled(self):
+        assert _is_forward_transition("Canceled", "Canceled") is False
+
+    # --- Group 3: Every valid forward pair ---
+
+    def test_backlog_to_todo_is_forward(self):
+        assert _is_forward_transition("Backlog", "Todo") is True
+
+    def test_todo_to_in_progress_is_forward(self):
+        assert _is_forward_transition("Todo", "In Progress") is True
+
+    def test_in_progress_to_in_review_is_forward(self):
+        assert _is_forward_transition("In Progress", "In Review") is True
+
+    def test_in_review_to_done_is_forward(self):
+        assert _is_forward_transition("In Review", "Done") is True
+
+    # --- Group 4: Backward transitions ---
+
+    def test_done_to_in_progress_is_backward(self):
+        assert _is_forward_transition("Done", "In Progress") is False
+
+    def test_in_review_to_todo_is_backward(self):
+        assert _is_forward_transition("In Review", "Todo") is False
+
+    def test_in_progress_to_backlog_is_backward(self):
+        assert _is_forward_transition("In Progress", "Backlog") is False
+
+    def test_done_to_backlog_is_backward(self):
+        assert _is_forward_transition("Done", "Backlog") is False
+
+    # --- Group 5: Canceled transitions ---
+    # Canceled has rank 5 (highest), so any non-canceled state → Canceled is forward.
+    # Canceled → any non-canceled state is backward.
+
+    def test_backlog_to_canceled_is_forward(self):
+        assert _is_forward_transition("Backlog", "Canceled") is True
+
+    def test_todo_to_canceled_is_forward(self):
+        assert _is_forward_transition("Todo", "Canceled") is True
+
+    def test_in_progress_to_canceled_is_forward(self):
+        assert _is_forward_transition("In Progress", "Canceled") is True
+
+    def test_in_review_to_canceled_is_forward(self):
+        assert _is_forward_transition("In Review", "Canceled") is True
+
+    def test_done_to_canceled_is_forward(self):
+        assert _is_forward_transition("Done", "Canceled") is True
+
+    def test_canceled_to_done_is_backward(self):
+        assert _is_forward_transition("Canceled", "Done") is False
+
+    def test_canceled_to_in_review_is_backward(self):
+        assert _is_forward_transition("Canceled", "In Review") is False
+
+    def test_canceled_to_in_progress_is_backward(self):
+        assert _is_forward_transition("Canceled", "In Progress") is False
+
+    def test_canceled_to_todo_is_backward(self):
+        assert _is_forward_transition("Canceled", "Todo") is False
+
+    def test_canceled_to_backlog_is_backward(self):
+        assert _is_forward_transition("Canceled", "Backlog") is False
+
+
 class TestScanParents:
     @patch("tools.parent_watcher._linear_gql")
     def test_returns_actions_for_actionable_parents(self, mock_gql):
