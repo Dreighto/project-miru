@@ -28,6 +28,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -79,6 +80,86 @@ def _repo_root() -> str:
 
 def _default_path(filename: str) -> str:
     return os.path.join(_repo_root(), "data", filename)
+
+
+# ---------------------------------------------------------------------------
+# Quality extraction (inline — mirrors hermes_extract_test_quality.py)
+# ---------------------------------------------------------------------------
+
+# No end-anchor: CLAUDE.md allows trailing context like "34/34 tests pass" or "7/8 (1 flaky)"
+_NN_PATTERN = re.compile(r"^\s*(\d+)\s*/\s*(\d+)")
+
+
+def _parse_test_evidence(raw: str) -> dict[str, Any]:
+    """Extract structured quality data from test_evidence string."""
+    if not raw or raw.strip().lower() in ("", "null"):
+        return {
+            "test_passed": None,
+            "test_total": None,
+            "test_pass_rate": None,
+            "evidence_tier": "freetext",
+        }
+
+    raw = raw.strip()
+    m = _NN_PATTERN.match(raw)
+    if m:
+        passed, total = int(m.group(1)), int(m.group(2))
+        if total > 0 and passed <= total:
+            return {
+                "test_passed": passed,
+                "test_total": total,
+                "test_pass_rate": round(passed / total, 4),
+                "evidence_tier": "nn_regex",
+            }
+        # Nonsensical ratio (passed > total, e.g. ticket ref) — fall through
+
+    lower = raw.lower()
+    if raw.startswith("ci_only:") or any(
+        kw in lower
+        for kw in (
+            "pre-commit",
+            "hygiene",
+            "bugbot",
+            "ci pass",
+            "ci green",
+            "green",
+            "lint",
+            "eslint",
+            "ruff",
+        )
+    ):
+        return {
+            "test_passed": None,
+            "test_total": None,
+            "test_pass_rate": None,
+            "evidence_tier": "ci_binary",
+        }
+
+    if raw == "no_tests" or any(
+        kw in lower
+        for kw in (
+            "no test",
+            "no_test",
+            "behavioral",
+            "rule only",
+            "n/a",
+            "not applicable",
+            "no code change",
+        )
+    ):
+        return {
+            "test_passed": None,
+            "test_total": None,
+            "test_pass_rate": None,
+            "evidence_tier": "no_tests",
+        }
+
+    return {
+        "test_passed": None,
+        "test_total": None,
+        "test_pass_rate": None,
+        "evidence_tier": "freetext",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -160,6 +241,62 @@ def load_pending_callbacks(path: str) -> tuple[dict[str, list[dict]], dict[str, 
     return intent_map, decided_map
 
 
+def load_completion_log(path: str) -> dict[str, dict[str, Any]]:
+    """Load cc_completion_log.jsonl, keyed by ticket_id (last entry wins)."""
+    latest: dict[str, dict[str, Any]] = {}
+    if not os.path.exists(path):
+        return latest
+    with open(path, encoding="utf-8") as fh:
+        for lineno, raw_line in enumerate(fh, 1):
+            line = raw_line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                print(
+                    f"[hermes_apprentice] warning: bad JSON on line {lineno} of {path}",
+                    file=sys.stderr,
+                )
+                continue
+            ticket = row.get("ticket_id")
+            if not ticket:
+                continue
+            ts = row.get("timestamp", "")
+            existing = latest.get(ticket)
+            if existing is None or ts > existing.get("timestamp", ""):
+                latest[ticket] = row
+    return latest
+
+
+def load_vp_ops_supervision(path: str) -> dict[str, dict[str, Any]]:
+    """Load vp_ops_supervision.jsonl, keyed by ticket_id (last entry wins)."""
+    latest: dict[str, dict[str, Any]] = {}
+    if not os.path.exists(path):
+        return latest
+    with open(path, encoding="utf-8") as fh:
+        for lineno, raw_line in enumerate(fh, 1):
+            line = raw_line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                print(
+                    f"[hermes_apprentice] warning: bad JSON on line {lineno} of {path}",
+                    file=sys.stderr,
+                )
+                continue
+            ticket = row.get("ticket_id")
+            if not ticket:
+                continue
+            ts = row.get("ts", "")
+            existing = latest.get(ticket)
+            if existing is None or ts > existing.get("ts", ""):
+                latest[ticket] = row
+    return latest
+
+
 # ---------------------------------------------------------------------------
 # Learning case construction
 # ---------------------------------------------------------------------------
@@ -201,6 +338,8 @@ def build_case(
     intent_rows: list[dict],
     decided_row: dict | None,
     ticket_description: str | None = None,
+    completion_row: dict | None = None,
+    vp_ops_row: dict | None = None,
 ) -> dict:
     """Build one learning case dict from joined rows."""
     ticket = rh_row.get("task_identifier") or rh_row.get("task_id") or "unknown"
@@ -230,6 +369,33 @@ def build_case(
     if matching_intent is None and intent_rows:
         matching_intent = intent_rows[-1]  # latest by insertion order
 
+    # Work outcome — from cc_completion_log.jsonl
+    work_outcome: dict | None = None
+    if completion_row is not None:
+        te_raw = completion_row.get("test_evidence", "")
+        te_parsed = _parse_test_evidence(te_raw)
+        work_outcome = {
+            "status": completion_row.get("status"),
+            "timestamp": completion_row.get("timestamp"),
+            "test_passed": te_parsed["test_passed"],
+            "test_total": te_parsed["test_total"],
+            "test_pass_rate": te_parsed["test_pass_rate"],
+            "evidence_tier": te_parsed["evidence_tier"],
+            "pr_number": completion_row.get("pr_number"),
+            "files_touched": completion_row.get("files_touched") or [],
+        }
+
+    # VP Ops verdict — from vp_ops_supervision.jsonl
+    verification: dict | None = None
+    if vp_ops_row is not None:
+        verification = {
+            "verdict": vp_ops_row.get("verdict"),
+            "ts": vp_ops_row.get("ts"),
+            "flags": vp_ops_row.get("flags") or [],
+            "test_pass_rate": (vp_ops_row.get("checks") or {}).get("test_pass_rate"),
+            "test_evidence_tier": (vp_ops_row.get("checks") or {}).get("test_evidence_tier"),
+        }
+
     return {
         "case_id": _case_id(ticket, trace_id),
         "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
@@ -248,6 +414,8 @@ def build_case(
             "operator_override_flag": rh_row.get("operator_override_flag", False),
         },
         "operator_decision": operator_decision,
+        "work_outcome": work_outcome,
+        "verification": verification,
         "learning_signal": signal,
         "delta": {
             "was_override": signal == "override",
@@ -312,6 +480,8 @@ def run(
     overrides_only: bool = False,
     dry_run: bool = False,
     linear_api_key: str | None = None,
+    completion_log_path: str | None = None,
+    supervision_path: str | None = None,
 ) -> int:
     """Run the differential analysis and write learning cases.
 
@@ -319,6 +489,12 @@ def run(
     """
     rh_map = load_routing_history(routing_history_path)
     intent_map, decided_map = load_pending_callbacks(callbacks_path)
+
+    # Load work-outcome and verification data (new joins)
+    cl_path = completion_log_path or _default_path("cc_completion_log.jsonl")
+    sv_path = supervision_path or _default_path("vp_ops_supervision.jsonl")
+    completion_map = load_completion_log(cl_path)
+    vp_ops_map = load_vp_ops_supervision(sv_path)
 
     cases_written = 0
     output_lines: list[str] = []
@@ -333,8 +509,16 @@ def run(
 
         intent_rows = intent_map.get(ticket, [])
         decided_row = decided_map.get(ticket)
+        completion_row = completion_map.get(ticket)
+        vp_ops_row = vp_ops_map.get(ticket)
 
-        case = build_case(rh_row, intent_rows, decided_row)
+        case = build_case(
+            rh_row,
+            intent_rows,
+            decided_row,
+            completion_row=completion_row,
+            vp_ops_row=vp_ops_row,
+        )
         signal = case["learning_signal"]
 
         if overrides_only and signal not in ("override", "triage"):
@@ -386,6 +570,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--output", metavar="PATH", help="Override output file path")
     p.add_argument("--routing-history", metavar="PATH", help="Override routing_history.jsonl path")
     p.add_argument("--callbacks", metavar="PATH", help="Override pending_callbacks.jsonl path")
+    p.add_argument("--completion-log", metavar="PATH", help="Override cc_completion_log.jsonl path")
+    p.add_argument("--supervision", metavar="PATH", help="Override vp_ops_supervision.jsonl path")
     return p
 
 
@@ -395,13 +581,36 @@ def main() -> None:
 
     routing_path = args.routing_history or _default_path("routing_history.jsonl")
     callbacks_path = args.callbacks or _default_path("pending_callbacks.jsonl")
+    completion_log_path = args.completion_log or _default_path("cc_completion_log.jsonl")
+    supervision_path = args.supervision or _default_path("vp_ops_supervision.jsonl")
     output_path = args.output or _default_path("hermes_learning_cases.jsonl")
     api_key = os.environ.get("LINEAR_API_KEY", "").strip() or None
 
-    for path, label in [(routing_path, "routing_history"), (callbacks_path, "callbacks")]:
+    # Required files — hard fail if missing
+    for path, label in [
+        (routing_path, "routing_history"),
+        (callbacks_path, "callbacks"),
+    ]:
         if not os.path.exists(path):
             print(f"[hermes_apprentice] error: {label} file not found: {path}", file=sys.stderr)
             sys.exit(1)
+
+    # Optional enrichment files — hard fail only for user-supplied overrides,
+    # warn for defaults (these may not exist yet in new environments)
+    for path, label, was_overridden in [
+        (completion_log_path, "completion_log", args.completion_log is not None),
+        (supervision_path, "supervision", args.supervision is not None),
+    ]:
+        if not os.path.exists(path):
+            if was_overridden:
+                print(f"[hermes_apprentice] error: {label} file not found: {path}", file=sys.stderr)
+                sys.exit(1)
+            else:
+                print(
+                    f"[hermes_apprentice] warning: {label} not found at {path}"
+                    " — work_outcome/verification enrichment will be empty",
+                    file=sys.stderr,
+                )
 
     count = run(
         routing_history_path=routing_path,
@@ -412,6 +621,8 @@ def main() -> None:
         overrides_only=args.overrides_only,
         dry_run=args.dry_run,
         linear_api_key=api_key,
+        completion_log_path=completion_log_path,
+        supervision_path=supervision_path,
     )
 
     if count == 0:
