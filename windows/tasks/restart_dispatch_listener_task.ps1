@@ -36,7 +36,8 @@ try {
     Stop-ScheduledTask -TaskName "MiruDispatchListener" -ErrorAction SilentlyContinue
     $stopDeadline = (Get-Date).AddSeconds(15)
     do {
-        $taskState = (Get-ScheduledTask -TaskName "MiruDispatchListener" -ErrorAction SilentlyContinue).State
+        $task = Get-ScheduledTask -TaskName "MiruDispatchListener" -ErrorAction SilentlyContinue
+        $taskState = if ($task) { $task.State } else { "NotFound" }
         if ($taskState -ne "Running") { break }
         Start-Sleep -Milliseconds 500
     } while ((Get-Date) -lt $stopDeadline)
