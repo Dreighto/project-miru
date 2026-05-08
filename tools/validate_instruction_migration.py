@@ -45,9 +45,15 @@ SHORT_PARAGRAPH_THRESHOLD = 0
 
 
 def _normalize(text: str) -> str:
-    """Normalize a paragraph for comparison: collapse whitespace, lowercase, strip markdown emphasis."""
+    """Normalize a paragraph for comparison: collapse whitespace, lowercase, strip markdown emphasis.
+
+    Strips `*` and backticks (markdown bold/italic/code), but preserves
+    underscores. Underscores are commonly part of identifiers
+    (`task_identifier`, `MIRU_TOOL_PROFILE`); stripping them would conflate
+    semantically distinct content and weaken duplicate detection.
+    """
     text = re.sub(r"\s+", " ", text).strip().lower()
-    text = re.sub(r"[*_`]", "", text)
+    text = re.sub(r"[*`]", "", text)
     return text
 
 
@@ -175,11 +181,13 @@ def check_manifest() -> list[str]:
     ) -> None:
         """Verify a declared manifest path is an in-repo regular file.
 
-        Catches: missing files, paths that point to directories, paths that
-        escape the repo, and (when expected_stem is set) entries where the
-        manifest key does not match the file's stem.
+        Catches: missing/blank paths, files that don't exist, paths that
+        point to directories, paths that escape the repo, and (when
+        expected_stem is set) entries where the manifest key does not match
+        the file's stem.
         """
         if not path_value:
+            issues.append(f"manifest {label} entry has missing or blank path: {key}")
             return
         full = (REPO_ROOT / path_value).resolve()
         # Repo containment check — reject paths escaping REPO_ROOT
