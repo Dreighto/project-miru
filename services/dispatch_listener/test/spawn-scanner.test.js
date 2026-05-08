@@ -42,3 +42,8 @@ test('handles extra whitespace between STATUS: and CONFIRMED', () => {
   const stdout = 'STATUS:  CONFIRMED WORKING';
   assert.equal(scanStdoutForStatus(stdout), 'CONFIRMED_WORKING');
 });
+
+test('detects lowercase standalone confirmed_working', () => {
+  const stdout = 'result: confirmed_working';
+  assert.equal(scanStdoutForStatus(stdout), 'CONFIRMED_WORKING');
+});
