@@ -20,10 +20,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+
+_NN_PATTERN = re.compile(r"(\d+)\s*/\s*(\d+)")
 
 # ---------------------------------------------------------------------------
 # Repo root resolution (same pattern as emit_completion.py)
@@ -156,6 +159,49 @@ def _check_handoff_entry_points(repo_root: Path, marker: dict) -> tuple[bool, li
     return len(flags) == 0, flags
 
 
+def _check_test_evidence(marker: dict) -> tuple[float | None, str, list[str]]:
+    """Parse test_evidence and return (pass_rate, tier, flags).
+
+    Thresholds (from brief):
+      >= 0.90 → green (no flag)
+      0.50-0.89 → soft warning
+      < 0.50 → FLAGGED
+    """
+    te = (marker.get("test_evidence") or "").strip()
+    if not te:
+        return None, "missing", []
+
+    # N/N regex — highest confidence
+    m = _NN_PATTERN.search(te)
+    if m:
+        passed, total = int(m.group(1)), int(m.group(2))
+        rate = passed / total if total > 0 else 0.0
+        flags = []
+        if rate < 0.50:
+            flags.append(f"test pass rate critically low: {passed}/{total} ({rate:.0%})")
+        elif rate < 0.90:
+            flags.append(
+                f"test pass rate below threshold: {passed}/{total} ({rate:.0%}) — review recommended"
+            )
+        return round(rate, 4), "nn_regex", flags
+
+    # ci_only or legacy CI keywords
+    lower = te.lower()
+    if te.startswith("ci_only:") or any(
+        kw in lower for kw in ("pre-commit", "hygiene", "ci pass", "ci green", "bugbot")
+    ):
+        return None, "ci_binary", []
+
+    # no_tests
+    if te == "no_tests" or any(
+        kw in lower for kw in ("no test", "no_test", "behavioral", "rule only")
+    ):
+        return None, "no_tests", []
+
+    # Freetext — not parseable, soft warning
+    return None, "freetext", [f"test_evidence is freetext (not machine-parseable): {te[:80]}"]
+
+
 # ---------------------------------------------------------------------------
 # Main verification logic
 # ---------------------------------------------------------------------------
@@ -198,6 +244,12 @@ def verify(ticket_id: str) -> dict:
     handoff_ok, handoff_flags = _check_handoff_entry_points(repo_root, marker or {})
     checks["handoff_entry_points_exist"] = handoff_ok
     flags.extend(handoff_flags)
+
+    # 6. Test evidence quality (PRO-312 — Hermes quality signal)
+    test_pass_rate, test_tier, test_flags = _check_test_evidence(marker or {})
+    checks["test_pass_rate"] = test_pass_rate
+    checks["test_evidence_tier"] = test_tier
+    flags.extend(test_flags)
 
     verdict = "VERIFIED" if not flags else "FLAGGED"
 
