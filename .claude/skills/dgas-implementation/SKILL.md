@@ -34,6 +34,12 @@ Otherwise prompt-enforce, not code-enforce. Push back to the operator if the tic
 
 Run the phases in order. Don't skip a phase. If a phase fails, escalate per the rules at the bottom — don't paper over a failed phase to keep moving.
 
+**Heartbeat contract**: Emit heartbeats throughout the session using `tools/emit_heartbeat.py`. Requirements:
+- Emit a heartbeat at regular intervals (configurable cadence, default every major step).
+- Emit a heartbeat on each phase transition (Phase 1→2, 2→3, 3→4, 4→5).
+- Emit a special "stall" heartbeat when progress stalls (blocked, waiting, unclear direction).
+- Include a fault-injection test that verifies heartbeat cadence and stall signals are produced and that `tools/emit_heartbeat.py` is invoked as part of the worker run.
+
 ### Phase 1 — Pre-investigate (read before write)
 
 Goal: lock the design with real file:line references, not guesses.
@@ -63,10 +69,12 @@ If you're implementing the work directly:
 ### Phase 3 — Implement (one branch, one PR, no detours)
 
 1. Cut a branch from clean `origin/main` using the project's branch-prefix convention. The current prefix is `dreighto/` (matching the GitHub account that owns the repo); confirm by running `git for-each-ref --format='%(refname:short)' refs/remotes/origin/ | head` and matching the dominant pattern. The base point MUST be `origin/main` explicitly — don't trust the current HEAD: `git fetch origin && git checkout -b dreighto/<ticket-slug> origin/main`. Do NOT `git checkout main` first if you're in a worktree.
-2. Make the change. Match existing style. Pre-commit will reformat — let it. Don't fight ruff-format.
-3. Add the tests in the same commit as the implementation. Don't ship an enforcement gate without a fault-injection test that proves the gate fires when expected and doesn't fire when not.
-4. WIP commit at each major phase per `.miru/overlays/workflow-git.md` (tests written, implementation done, pre-commit running, awaiting review). Squash before opening the PR.
-5. Run `python -m pre_commit run --files <files>` and confirm green before opening the PR.
+2. Emit a heartbeat on phase transition (Phase 2→3).
+3. Make the change. Match existing style. Pre-commit will reformat — let it. Don't fight ruff-format.
+4. Add the tests in the same commit as the implementation. Don't ship an enforcement gate without a fault-injection test that proves the gate fires when expected and doesn't fire when not.
+5. WIP commit at each major phase per `.miru/overlays/workflow-git.md` (tests written, implementation done, pre-commit running, awaiting review). Squash before opening the PR.
+6. Run `python -m pre_commit run --files <files>` and confirm green before opening the PR.
+7. Emit a heartbeat on phase transition (Phase 3→4).
 
 ### Phase 4 — Verify (don't ship a gate you haven't proven works)
 
@@ -76,6 +84,8 @@ For DGAS work, verification means more than "tests pass." It means:
 2. **The happy path still works.** A test confirms legitimate use is not broken. For the gateway localhost bind, that means STDIO traffic and 127.0.0.1 HTTP both still work.
 3. **The validator pass.** If a related validator exists (`tools/validate_instruction_migration.py`, `vp_ops_verify_ticket`), run it. If you broke it, you broke something.
 4. **Edge cases enumerated.** For each gate, list what could go wrong: missing field, malformed input, IPv6 vs IPv4, transport layer differences, race conditions. Confirm each is either handled or documented as out of scope.
+5. **Heartbeat verification.** Ensure the fault-injection test verifies that heartbeats are emitted (cadence and stall signals) and that `tools/emit_heartbeat.py` is invoked during the worker run.
+6. Emit a heartbeat on phase transition (Phase 4→5).
 
 ### Phase 5 — Ship (PR, review, merge, cleanup)
 
@@ -83,7 +93,11 @@ For DGAS work, verification means more than "tests pass." It means:
 2. PR tier evaluation per `.miru/overlays/workflow-git.md`. Most DGAS tickets are CC-merge or operator-merge. If the change touches a governance file (gateway profiles, .miru/overlays/, pre-commit config), it's operator-merge by default.
 3. Wait for CodeRabbit and Bugbot. Address every actionable finding. Stale findings (already fixed in earlier commits) — call them out in the PR conversation but don't re-fix. New valid findings — push a follow-up commit.
 4. After merge: return to main, pull, delete the branch with verified force-delete (`gh pr list --head <branch> --state merged` then `git branch -D <branch>` only if a merged PR exists).
-5. Emit the completion marker via `tools/emit_completion.py`. Always include a non-null `ticket_id` (use the actual ticket identifier, never `null` or a placeholder). If the marker carries a `handoff` object, write it as the LAST action of the session — emitting a marker before the work is fully done leaves a stale handoff that the next worker reads before the actual state stabilizes. `test_evidence` format MUST be `passed/total` or `ci_only:` or `no_tests` — never freetext narrative.
+5. Emit the completion marker via `tools/emit_completion.py`. Requirements:
+   - Always include a non-null `ticket_id` (use the actual ticket identifier, never `null` or a placeholder).
+   - `test_evidence` format MUST be one of: `passed/total` (e.g., `5/5`), `ci_only:` (followed by CI run reference), or `no_tests` — never freetext narrative. This ensures downstream parsers and drift tooling can reliably validate the marker.
+   - If the marker carries a `handoff` object, it MUST include all canonical fields: `next_worker`, `ticket_id`, `context`, `entry_points`, `watch_out_for`, and `blocked_on`. The `ticket_id` field within the handoff MUST be non-null.
+   - The `handoff` object MUST be written as the LAST action of the session — emitting a marker before the work is fully done leaves a stale handoff that the next worker reads before the actual state stabilizes.
 
 ## Common pitfalls (don't repeat these)
 
