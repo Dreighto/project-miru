@@ -664,10 +664,10 @@ This is how Claude Chat verifies completion without the operator manually relayi
 - `linear_state_after` (string or null) — final Linear ticket state (e.g. "In Review", "Done").
 - `deploy_actions` (array of strings) — short descriptions of any deploys, redeploys, or service restarts ("w7 redeployed via deploy-workflow.ps1, active state preserved").
 - `test_evidence` (string) — structured test result. **Format rules (enforced — Hermes and VP Ops parse this field):**
-  - If tests were run, write `passed/total` where `total` is ALL applicable tests for the ticket's scope (not just the ones the worker chose to run). Example: `"34/34 tests pass"`, `"7/8 fixtures pass (1 flaky, see notes)"`.
+  - If tests were run, write `passed/total` where `total` is ALL applicable tests for the ticket's scope (not just the ones the worker chose to run), optionally followed by brief context. Examples: `"34/34 tests pass"`, `"7/8 (1 flaky, see notes)"`. The machine-parseable ratio must appear first; the regex `(\d+)\s*/\s*(\d+)` extracts it.
   - If only CI/lint checks apply (no unit or integration tests), write `"ci_only: pre-commit green, hygiene CI pass"`.
   - If no tests apply (behavioral rule, doc-only, config change), write `"no_tests"`.
-  - Never write freetext narrative. The field must be machine-parseable by regex `(\d+)\s*/\s*(\d+)` or match `ci_only:` or `no_tests` exactly.
+  - Never write freetext narrative without a leading `passed/total`, `ci_only:`, or `no_tests` prefix. The field must be machine-parseable.
 - `follow_up_tickets_filed` (array of strings) — Linear ticket IDs filed during this work for out-of-scope items.
 - `notes` (string) — anything Claude Chat needs to know that doesn't fit above. Empty string if none.
 - `handoff` (object or null) — structured brief for the next worker when a continuation is expected. Null if no handoff needed. Schema:

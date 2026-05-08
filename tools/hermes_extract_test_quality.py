@@ -26,8 +26,8 @@ import sys
 from datetime import UTC, datetime
 
 _NN_PATTERN = re.compile(r"(\d+)\s*/\s*(\d+)")
-_CI_PATTERN = re.compile(r"^ci_only:", re.IGNORECASE)
-_NO_TESTS = re.compile(r"^no_tests$", re.IGNORECASE)
+_CI_PATTERN = re.compile(r"^ci_only:")
+_NO_TESTS = re.compile(r"^no_tests$")
 
 # Legacy patterns that predate the enforced format
 _LEGACY_CI_KEYWORDS = frozenset(
