@@ -36,9 +36,9 @@ _APPROVED_RESTARTS: dict[str, dict[str, Any]] = {
         "script": str(_REPO_ROOT / "windows" / "restart_miru_ai.ps1"),
     },
     "dispatch_listener": {
-        "label": "Dispatch Listener (MiruDispatchListener scheduled task)",
-        "mode": "scheduled_task",
-        "task_name": "MiruDispatchListener",
+        "label": "Dispatch Listener (port 19100)",
+        "mode": "script",
+        "script": str(_REPO_ROOT / "windows" / "tasks" / "restart_dispatch_listener_task.ps1"),
     },
     "mcp_gateway": {
         "label": "MCP Gateway (port 18766)",
