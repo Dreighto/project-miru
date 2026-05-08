@@ -43,14 +43,22 @@ def _find_gitleaks() -> str | None:
         return on_path
 
     # pre-commit caches its golang environments under one of these roots,
-    # depending on the OS and pre-commit version.
-    cache_roots = [
-        Path.home() / ".cache" / "pre-commit",
-        Path(os.environ.get("LOCALAPPDATA", "")) / "pre-commit",
-        Path(os.environ.get("PRE_COMMIT_HOME", "")),
-    ]
-    for root in cache_roots:
-        if not root or not root.exists():
+    # depending on the OS and pre-commit version. Each candidate must be a
+    # real directory before we recursively scan it — never default-fall back
+    # to CWD or a repo-root path, which would walk an enormous tree.
+    candidates: list[Path] = []
+    pre_commit_home = os.environ.get("PRE_COMMIT_HOME", "").strip()
+    if pre_commit_home:
+        candidates.append(Path(pre_commit_home))
+    home_cache = Path.home() / ".cache" / "pre-commit"
+    if home_cache.exists():
+        candidates.append(home_cache)
+    local_appdata = os.environ.get("LOCALAPPDATA", "").strip()
+    if local_appdata:
+        candidates.append(Path(local_appdata) / "pre-commit")
+
+    for root in candidates:
+        if not root.exists() or not root.is_dir():
             continue
         for candidate in root.rglob("gitleaks*"):
             if candidate.is_file() and candidate.name in ("gitleaks", "gitleaks.exe"):
@@ -63,9 +71,17 @@ def _gitleaks_available() -> bool:
 
 
 def _run_gitleaks(target_dir: Path) -> int:
-    """Run gitleaks against a directory. Returns the exit code.
+    """Run gitleaks against a directory in `detect --no-git` mode.
 
+    This is a rule-set verification — it scans every file in the target dir
+    against the active config (our .gitleaks.toml plus the default ruleset).
     Exit code 0 = no leaks. Exit code 1 = leaks found.
+
+    Note: the production pre-commit hook actually runs gitleaks in
+    `git --pre-commit --staged` mode. The detect-mode test verifies the same
+    rules but on arbitrary content, which is what fault injection requires
+    (we plant a secret and confirm the rule fires). The git-mode behavior
+    is verified by the separate `TestGitleaksHookIntegration` class below.
     """
     binary = _find_gitleaks()
     if binary is None:
@@ -78,6 +94,32 @@ def _run_gitleaks(target_dir: Path) -> int:
         capture_output=True,
         text=True,
         timeout=60,
+    )
+    return proc.returncode
+
+
+def _run_gitleaks_pre_commit(repo_dir: Path) -> int:
+    """Run gitleaks in the same mode as the pre-commit hook.
+
+    The production hook (per gitleaks/.pre-commit-hooks.yaml) runs
+    `gitleaks git --pre-commit --redact --staged --verbose`. This helper
+    matches that invocation against a real git repo with staged changes,
+    so the integration test covers what the hook actually does.
+
+    Exit code 0 = no leaks. Exit code 1 = leaks found.
+    """
+    binary = _find_gitleaks()
+    if binary is None:
+        raise unittest.SkipTest("gitleaks binary not available")
+    config_args: list[str] = []
+    if GITLEAKS_CONFIG.exists():
+        config_args = ["--config", str(GITLEAKS_CONFIG)]
+    proc = subprocess.run(
+        [binary, "git", "--pre-commit", "--redact", "--staged", *config_args],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        cwd=str(repo_dir),
     )
     return proc.returncode
 
@@ -140,6 +182,57 @@ class TestGitleaksConfigPresent(unittest.TestCase):
         content = GITLEAKS_CONFIG.read_text(encoding="utf-8")
         self.assertIn("data/peer_reviews/", content)
         self.assertIn("docs/archive/", content)
+
+
+@unittest.skipUnless(_gitleaks_available(), "gitleaks binary not on PATH")
+class TestGitleaksHookIntegration(unittest.TestCase):
+    """Mirrors the actual pre-commit hook invocation:
+    `gitleaks git --pre-commit --redact --staged --verbose`. Initializes a
+    minimal git repo, stages a planted secret, and verifies the hook command
+    fires. Without this, the `detect --no-git` tests above only verify the
+    rule set, not the production wiring.
+    """
+
+    def setUp(self) -> None:
+        self.tmp_root = Path(tempfile.mkdtemp(prefix="miru_gitleaks_hook_"))
+        self.addCleanup(shutil.rmtree, self.tmp_root, ignore_errors=True)
+        # Initialize a minimal git repo. quiet stderr because git on Windows
+        # is chatty about init.defaultBranch.
+        for cmd in (
+            ["git", "init", "-q"],
+            ["git", "config", "user.email", "test@example.invalid"],
+            ["git", "config", "user.name", "Test"],
+            ["git", "config", "commit.gpgsign", "false"],
+        ):
+            subprocess.run(cmd, cwd=str(self.tmp_root), check=True, capture_output=True)
+
+    def _stage(self, path: str, content: str) -> None:
+        target = self.tmp_root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
+        subprocess.run(
+            ["git", "add", path], cwd=str(self.tmp_root), check=True, capture_output=True
+        )
+
+    def test_hook_mode_catches_planted_secret(self) -> None:
+        """Fault injection in the actual hook mode: stage a file containing
+        a real-shaped AWS key and confirm `gitleaks git --pre-commit --staged`
+        exits non-zero."""
+        self._stage("leaked.py", f'AWS_ACCESS_KEY_ID = "{PLANTED_AWS_KEY}"\n')
+        self.assertEqual(
+            _run_gitleaks_pre_commit(self.tmp_root),
+            1,
+            "gitleaks hook mode did NOT catch a staged AWS key — production gate is broken",
+        )
+
+    def test_hook_mode_passes_clean_staged_changes(self) -> None:
+        """Happy path: a benign staged change must NOT trigger the gate."""
+        self._stage("README.md", "# Clean change, no secrets\n")
+        self.assertEqual(
+            _run_gitleaks_pre_commit(self.tmp_root),
+            0,
+            "gitleaks hook mode fired on a clean staged change — false positive",
+        )
 
 
 class TestPreCommitConfigHasGitleaks(unittest.TestCase):
