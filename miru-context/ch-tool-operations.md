@@ -3,6 +3,8 @@
 > Boot context for Claude Chat. Read this on every session start.
 > For multi-tool composition patterns, load `docs/ch_operations/CH_PLAYBOOK.md` on demand.
 
+**Canon definition:** "Canon" means **Notion pages** and **memory DB** — the persistent truth surfaces. Repo files are repo files, not canon. When verifying or updating canon, that means Notion and the `miru_memory` DB.
+
 ---
 
 ## Capability Index
