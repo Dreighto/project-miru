@@ -16,7 +16,7 @@ Every file created must go in the correct location. These rules are non-negotiab
 - `miru_ai/` — ALL code for the Miru AI service (port 18765): Python modules, workers, templates, static, tools, migrations
 - `pm/` — ALL code for the PM Dashboard (port 18080): app.py, templates, static
 - `gatekeeper/` — Local Governance Gatekeeper: dispatch validation core, frontmatter parser, forwarder (relocated from dispatcher/ in PRO-306)
-- `dispatcher/` — **DELETED** (PRO-303). Legacy Task Dispatcher removed. Only `data/jobs.db` remains locally (gitignored archive).
+- `dispatcher/` — **DELETED** (PRO-303). Legacy Task Dispatcher removed. Only `data/jobs.db` remains locally (gitignored archive). Do not place new files here.
 - `shared/` — Only utilities imported by 2+ services. Not a dumping ground.
 - `windows/` — Windows operational scripts (.ps1, .cmd) for service management ONLY. No Python service code here.
 

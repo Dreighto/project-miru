@@ -38,7 +38,10 @@ REFERENCE_DIR = REPO_ROOT / ".miru" / "reference"
 MANIFEST_PATH = REPO_ROOT / ".miru" / "instruction_manifest.json"
 
 EXPECTED_VERSION = "MIRU-INSTRUCTIONS-v2"
-SHORT_PARAGRAPH_THRESHOLD = 30  # paragraphs shorter than this are skipped (headers, dividers)
+# Set to 0 to count all non-structural paragraphs (rely on header/divider filters
+# instead of length). Raise this only if you need to suppress short bolded prefixes
+# that aren't really rules.
+SHORT_PARAGRAPH_THRESHOLD = 0
 
 
 def _normalize(text: str) -> str:
@@ -49,32 +52,36 @@ def _normalize(text: str) -> str:
 
 
 def _paragraphs(path: Path) -> list[str]:
-    """Split a markdown file into substantive paragraphs (skip headers, dividers, code fences)."""
+    """Split a markdown file into substantive paragraphs.
+
+    Code fences are extracted as their own paragraphs (so rule templates inside
+    fenced blocks are part of the coverage check). Headers and `---` dividers
+    are skipped because they carry no binding rule content.
+    """
     if not path.exists():
         return []
     content = path.read_text(encoding="utf-8")
-    # Strip code fences first to avoid splitting inside them
-    code_blocks = []
 
-    def _stash(match: re.Match) -> str:
-        code_blocks.append(match.group(0))
-        return f"\n___CODE_BLOCK_{len(code_blocks) - 1}___\n"
+    # Extract fenced code blocks as their own paragraphs, then remove them from
+    # the prose stream so we can split prose paragraphs cleanly.
+    paragraphs: list[str] = []
+    fence_re = re.compile(r"```[\s\S]*?```", re.MULTILINE)
+    for match in fence_re.finditer(content):
+        block = match.group(0).strip()
+        if block:
+            paragraphs.append(block)
+    content_without_fences = fence_re.sub("\n\n", content)
 
-    content = re.sub(r"```[\s\S]*?```", _stash, content)
-
-    paragraphs = []
-    for block in re.split(r"\n\s*\n", content):
+    for block in re.split(r"\n\s*\n", content_without_fences):
         block = block.strip()
         if not block:
             continue
-        # Skip pure headers, dividers, single-line markers
+        # Skip pure headers (single-line ##/### lines) and `---` dividers.
         if re.match(r"^#+\s", block) and "\n" not in block:
             continue
         if re.match(r"^---+$", block):
             continue
-        if block.startswith("___CODE_BLOCK_"):
-            continue
-        if len(block) < SHORT_PARAGRAPH_THRESHOLD:
+        if SHORT_PARAGRAPH_THRESHOLD and len(block) < SHORT_PARAGRAPH_THRESHOLD:
             continue
         paragraphs.append(block)
     return paragraphs
@@ -94,33 +101,49 @@ def _all_destination_files() -> list[Path]:
 def check_coverage() -> tuple[list[str], dict[str, list[str]]]:
     """For each paragraph in the archive, find which destination(s) contain it.
 
+    Also flags any paragraph that appears in 2+ destination files, regardless
+    of whether it existed in the archive. This catches duplicates introduced
+    after the migration as well as ones that survived from the archive.
+
     Returns (missing_hashes, duplicate_locations).
-    missing_hashes: paragraph hashes that don't appear in any destination
-    duplicate_locations: paragraph hash -> list of destination paths (when > 1)
+    missing_hashes: archive paragraph hashes that don't appear in any destination
+    duplicate_locations: paragraph hash -> sorted list of destination paths (when > 1)
     """
     archive_files = sorted(ARCHIVE_DIR.glob("*PRE_SPLIT*.md"))
+    if not archive_files:
+        raise FileNotFoundError(
+            "No archive files matching docs/archive/*PRE_SPLIT*.md found."
+            " Coverage validation cannot proceed without source snapshots."
+        )
+
     archive_paragraphs: dict[str, str] = {}  # hash -> first 80 chars
     for f in archive_files:
         for p in _paragraphs(f):
             archive_paragraphs[_hash_paragraph(p)] = p[:80].replace("\n", " ")
 
-    # Map hash -> set of unique destination files. A paragraph repeated within
-    # the same file (e.g. a recurring boilerplate) is not a duplicate; only a
+    # Map hash -> set of unique destination files, plus a preview snippet.
+    # A paragraph repeated within the same file is not a duplicate; only a
     # paragraph appearing in TWO different destination files is.
-    destination_index: dict[str, set[str]] = {}
+    destination_locations: dict[str, set[str]] = {}
+    destination_previews: dict[str, str] = {}
     for dest in _all_destination_files():
         rel = str(dest.relative_to(REPO_ROOT))
         for p in _paragraphs(dest):
             h = _hash_paragraph(p)
-            destination_index.setdefault(h, set()).add(rel)
+            destination_locations.setdefault(h, set()).add(rel)
+            destination_previews.setdefault(h, p[:80].replace("\n", " "))
 
     missing: list[str] = []
-    duplicates: dict[str, list[str]] = {}
     for h, preview in archive_paragraphs.items():
-        locations = destination_index.get(h, set())
-        if not locations:
+        if not destination_locations.get(h):
             missing.append(f"{h}: {preview}")
-        elif len(locations) > 1:
+
+    # Cross-destination duplicates: any hash appearing in 2+ files (whether
+    # from archive or not).
+    duplicates: dict[str, list[str]] = {}
+    for h, locations in destination_locations.items():
+        if len(locations) > 1:
+            preview = archive_paragraphs.get(h, destination_previews.get(h, "(no preview)"))
             duplicates[f"{h}: {preview}"] = sorted(locations)
 
     return missing, duplicates
@@ -147,6 +170,12 @@ def check_manifest() -> list[str]:
     if only_on_disk:
         issues.append(f"overlays on disk but not in manifest: {sorted(only_on_disk)}")
 
+    # Verify each declared `path` value actually points to a file on disk.
+    for key, entry in manifest.get("overlays", {}).items():
+        path_value = (entry or {}).get("path", "")
+        if path_value and not (REPO_ROOT / path_value).exists():
+            issues.append(f"manifest overlay path missing on disk: {key} -> {path_value}")
+
     declared_ref = set(manifest.get("reference", {}).keys())
     on_disk_ref = {p.stem for p in REFERENCE_DIR.glob("*.md")}
     only_declared = declared_ref - on_disk_ref
@@ -155,6 +184,22 @@ def check_manifest() -> list[str]:
         issues.append(f"reference in manifest but not on disk: {sorted(only_declared)}")
     if only_on_disk:
         issues.append(f"reference on disk but not in manifest: {sorted(only_on_disk)}")
+
+    for key, entry in manifest.get("reference", {}).items():
+        path_value = (entry or {}).get("path", "")
+        if path_value and not (REPO_ROOT / path_value).exists():
+            issues.append(f"manifest reference path missing on disk: {key} -> {path_value}")
+
+    # Core, baseline, and archive paths
+    core_path = (manifest.get("core") or {}).get("path", "")
+    if core_path and not (REPO_ROOT / core_path).exists():
+        issues.append(f"manifest core path missing on disk: {core_path}")
+    baseline_path = (manifest.get("baseline") or {}).get("path", "")
+    if baseline_path and not (REPO_ROOT / baseline_path).exists():
+        issues.append(f"manifest baseline path missing on disk: {baseline_path}")
+    for key, archive_path in (manifest.get("archive") or {}).items():
+        if archive_path and not (REPO_ROOT / archive_path).exists():
+            issues.append(f"manifest archive path missing on disk: {key} -> {archive_path}")
 
     return issues
 

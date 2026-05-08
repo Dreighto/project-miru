@@ -75,21 +75,28 @@ The following moved without text changes (validator should match):
 
 After this migration, running:
 
-```
+```bash
 python tools/validate_instruction_migration.py
 ```
 
 is expected to report:
 
-- **Missing: ~37 paragraphs** — all matching the rewrites above. Each is documented in this file.
-- **Duplicates: 0** — no paragraph appears in more than one destination.
-- **Manifest issues: 0** — every overlay/reference declared and on disk.
+- **Missing: ~40 paragraphs** — ~37 intentional rewrites documented in the
+  sections above, plus a few short artifacts: a bare `#` comment line from the
+  old AGENTS.md framework header and a couple of short paragraphs surfaced by
+  lowering the paragraph-length threshold (per CodeRabbit P2 to maximize
+  coverage detection).
+- **Duplicates: 0** — no paragraph appears in more than one destination file
+  (cross-destination check, not just archive-anchored).
+- **Manifest issues: 0** — every overlay/reference declared and on disk; every
+  declared `path` value verified to point to a real file.
 - **Version stamp issues: 0** — every file carries `MIRU-INSTRUCTIONS-v2`.
 
-Run with `--allow-missing=40` to accept the documented rewrites:
+Run with `--allow-missing=45` to accept the documented rewrites and short
+artifacts (small headroom so trivial archive edits do not trip the gate):
 
-```
-python tools/validate_instruction_migration.py --allow-missing=40
+```bash
+python tools/validate_instruction_migration.py --allow-missing=45
 ```
 
 ---
