@@ -62,8 +62,9 @@ if ($listenerPids.Count -eq 0) {
 } else {
     foreach ($p in $listenerPids) {
         $proc = Get-Process -Id $p -ErrorAction SilentlyContinue
-        if (-not $proc -or $proc.ProcessName -ne "node") {
-            Write-Log "ERROR: Unexpected process '$($proc.ProcessName)' (PID=$p) owns port $port -- refusing to kill"
+        $procName = if ($proc) { $proc.ProcessName } else { "<gone>" }
+        if (-not $proc -or $procName -ne "node") {
+            Write-Log "ERROR: Unexpected process '$procName' (PID=$p) owns port $port -- refusing to kill"
             Write-Log "=== MiruRestartDispatcher END (failed) ==="
             exit 1
         }
@@ -112,8 +113,9 @@ if ($isListening) {
     $newPid = (Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue |
         Select-Object -First 1).OwningProcess
     $newProc = Get-Process -Id $newPid -ErrorAction SilentlyContinue
-    if (-not $newProc -or $newProc.ProcessName -ne "node") {
-        Write-Log "ERROR: Unexpected process '$($newProc.ProcessName)' (PID=$newPid) on port $port after restart"
+    $newProcName = if ($newProc) { $newProc.ProcessName } else { "<gone>" }
+    if (-not $newProc -or $newProcName -ne "node") {
+        Write-Log "ERROR: Unexpected process '$newProcName' (PID=$newPid) on port $port after restart"
         Write-Log "=== MiruRestartDispatcher END (failed) ==="
         exit 1
     }
