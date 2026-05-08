@@ -5,6 +5,11 @@
 # Legacy files (those not touched by the current PR) are NOT subject to retroactive
 # enforcement — hooks fire on changed files only, by pre-commit's default behavior.
 
+# Install both pre-commit and pre-push hook stages by default. Without this,
+# `pre-commit install` only wires up .git/hooks/pre-commit and the
+# safe-git-push gate (DGAS Tier 2 #8) is silently skipped on `git push`.
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -67,6 +72,19 @@ repos:
         language: system
         files: \.jsonl$
         pass_filenames: true
+
+      # DGAS Tier 2 #8: pre-push gate that refuses force-push or branch-delete
+      # on protected branches (main, master, release/*). Defense-in-depth
+      # alongside the GitHub branch protection ruleset — local rejection
+      # before the network call. Bypass with `git push --no-verify` only for
+      # emergency hotfixes (log the bypass in the commit message).
+      - id: safe-git-push
+        name: DGAS safe-git-push (refuse force-push/delete on protected branches)
+        entry: python tools/check_safe_git_push.py
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
+        always_run: true
 
       # Pytest pre-push hook intentionally omitted per operator ruling 2026-04-25.
       # CI (`.github/workflows/hygiene.yml`) runs pytest authoritatively on every PR.
