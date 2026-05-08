@@ -114,7 +114,18 @@ def _parse_test_evidence(raw: str) -> dict[str, Any]:
 
     lower = raw.lower()
     if raw.startswith("ci_only:") or any(
-        kw in lower for kw in ("pre-commit", "hygiene", "bugbot", "ci pass")
+        kw in lower
+        for kw in (
+            "pre-commit",
+            "hygiene",
+            "bugbot",
+            "ci pass",
+            "ci green",
+            "green",
+            "lint",
+            "eslint",
+            "ruff",
+        )
     ):
         return {
             "test_passed": None,
@@ -124,7 +135,16 @@ def _parse_test_evidence(raw: str) -> dict[str, Any]:
         }
 
     if raw == "no_tests" or any(
-        kw in lower for kw in ("no test", "no_test", "behavioral", "rule only")
+        kw in lower
+        for kw in (
+            "no test",
+            "no_test",
+            "behavioral",
+            "rule only",
+            "n/a",
+            "not applicable",
+            "no code change",
+        )
     ):
         return {
             "test_passed": None,

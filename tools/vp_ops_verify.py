@@ -191,13 +191,33 @@ def _check_test_evidence(marker: dict) -> tuple[float | None, str, list[str]]:
     # ci_only or legacy CI keywords
     lower = te.lower()
     if te.startswith("ci_only:") or any(
-        kw in lower for kw in ("pre-commit", "hygiene", "ci pass", "ci green", "bugbot")
+        kw in lower
+        for kw in (
+            "pre-commit",
+            "hygiene",
+            "ci pass",
+            "ci green",
+            "bugbot",
+            "green",
+            "lint",
+            "eslint",
+            "ruff",
+        )
     ):
         return None, "ci_binary", []
 
     # no_tests
     if te == "no_tests" or any(
-        kw in lower for kw in ("no test", "no_test", "behavioral", "rule only")
+        kw in lower
+        for kw in (
+            "no test",
+            "no_test",
+            "behavioral",
+            "rule only",
+            "n/a",
+            "not applicable",
+            "no code change",
+        )
     ):
         return None, "no_tests", []
 
