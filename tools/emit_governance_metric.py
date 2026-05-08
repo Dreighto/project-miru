@@ -74,8 +74,8 @@ _GATE_REGISTRY: frozenset[str] = frozenset(
         "safe_git_push",  # pre-push protection on main/master/release (PR #129)
         "governance_change",  # tools/check_governance_change.py (PR #130)
         "audit_anchor",  # tools/emit_audit_anchor.py (PR #133)
+        "localhost_bind",  # full_operator HTTP requires 127.0.0.1/::1 origin
         # Future gates (placeholders; meta-test allows uncommented entries):
-        # "localhost_bind",      # Codex's WIP localhost bind
         # "git_execution_wrap",  # Tier 2 #8 follow-up (force-push CLI wrap)
     }
 )

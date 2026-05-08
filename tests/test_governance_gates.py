@@ -64,6 +64,11 @@ _GATE_FAULT_INJECTION_TESTS: dict[str, tuple[str, str]] = {
         # Tampering with a legacy row breaks file_sha256 in subsequent anchors
         "test_post_anchor_tamper_breaks_file_sha256",
     ),
+    "localhost_bind": (
+        "tests/test_full_operator_localhost_bind.py",
+        # full_operator from non-local IPv4 must be rejected with 403
+        "test_full_operator_header_from_remote_ipv4_rejected",
+    ),
 }
 
 

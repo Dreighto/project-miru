@@ -33,6 +33,7 @@ Path-stripped mode:
 
 from __future__ import annotations
 
+import json
 import sys
 import traceback
 from pathlib import Path
@@ -153,6 +154,45 @@ class _RootAlias:
 
 from miru_mcp_gateway._context import current_profile, current_trace_id
 
+_LOCAL_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
+
+
+def _remote_addr(scope) -> str | None:
+    client = scope.get("client")
+    if not client:
+        return None
+    if not isinstance(client, list | tuple) or len(client) < 1:
+        return None
+    host = client[0]
+    if not isinstance(host, str):
+        return None
+    return host
+
+
+def _is_local_origin(scope) -> bool:
+    host = _remote_addr(scope)
+    return host in _LOCAL_HOSTS
+
+
+async def _send_full_operator_local_only(scope, send) -> None:
+    remote_addr = _remote_addr(scope)
+    if remote_addr is not None:
+        remote_addr = gw_redact.redact(remote_addr)
+    payload = {
+        "error": "full_operator_local_only",
+        "message": "full_operator requires a local origin (127.0.0.1 or ::1)",
+        "remote_addr": remote_addr,
+    }
+    body = json.dumps(payload).encode("utf-8")
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 403,
+            "headers": [(b"content-type", b"application/json")],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
+
 
 class _ProfileExtractor:
     """ASGI middleware that reads X-Miru-Tool-Profile from HTTP headers."""
@@ -171,6 +211,9 @@ class _ProfileExtractor:
                     profile = value.decode("utf-8") if isinstance(value, bytes) else value
                 elif lower == b"x-miru-trace-id":
                     trace_id = value.decode("utf-8") if isinstance(value, bytes) else value
+            if profile == "full_operator" and not _is_local_origin(scope):
+                await _send_full_operator_local_only(scope, send)
+                return
             tok_p = current_profile.set(profile)
             tok_t = current_trace_id.set(trace_id)
             try:
