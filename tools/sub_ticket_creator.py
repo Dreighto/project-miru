@@ -141,6 +141,10 @@ def create_sub_tickets(
     parent_desc = parent.get("description") or ""
     team_id = parent["team"]["id"]
     project_id = parent.get("project", {}).get("id") if parent.get("project") else None
+    if not project_id:
+        raise ValueError(
+            f"Parent ticket {parent_ticket_id!r} has no project; sub-tickets require a projectId"
+        )
     priority = parent.get("priority")
     label_ids = _filter_labels(parent.get("labels", {}).get("nodes", []))
 
@@ -148,9 +152,15 @@ def create_sub_tickets(
     errors: list[str] = []
 
     for split in splits:
-        title = f"{parent_title} — {split['label']}"
-        if len(title) > 200:
-            title = title[:197] + "..."
+        separator = " — "
+        label = split["label"]
+        max_parent = 200 - len(separator) - len(label) - 3
+        if max_parent < 10:
+            title = f"{parent_title[:50]}...{separator}{label}"[:200]
+        elif len(parent_title) > max_parent:
+            title = f"{parent_title[:max_parent]}...{separator}{label}"
+        else:
+            title = f"{parent_title}{separator}{label}"
 
         sub_desc = _build_sub_description(split, parent_desc)
 
@@ -160,8 +170,7 @@ def create_sub_tickets(
             "teamId": team_id,
             "parentId": parent_uuid,
         }
-        if project_id:
-            inp["projectId"] = project_id
+        inp["projectId"] = project_id
         if priority is not None:
             inp["priority"] = priority
         if label_ids:

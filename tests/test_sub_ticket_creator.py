@@ -220,7 +220,7 @@ class TestCreateSubTickets:
         assert result == ["PRO-102"]
 
     @patch("tools.sub_ticket_creator._linear_gql")
-    def test_title_truncation(self, mock_gql):
+    def test_title_truncation_preserves_label(self, mock_gql):
         long_parent = dict(PARENT_ISSUE)
         long_parent["title"] = "A" * 200
 
@@ -238,24 +238,17 @@ class TestCreateSubTickets:
         create_call = mock_gql.call_args_list[1]
         title = create_call[0][1]["input"]["title"]
         assert len(title) <= 200
+        assert "dispatch_listener work" in title
 
     @patch("tools.sub_ticket_creator._linear_gql")
-    def test_no_project_on_parent(self, mock_gql):
+    def test_no_project_on_parent_raises(self, mock_gql):
         parent_no_project = dict(PARENT_ISSUE)
         parent_no_project["project"] = None
 
-        mock_gql.side_effect = [
-            {"issue": parent_no_project},
-            CREATED_ISSUE_A,
-            CREATED_ISSUE_B,
-            COMMENT_SUCCESS,
-        ]
+        mock_gql.return_value = {"issue": parent_no_project}
 
-        result = create_sub_tickets("PRO-100", CLASSIFICATION_SPLIT)
-        assert result == ["PRO-101", "PRO-102"]
-
-        create_call = mock_gql.call_args_list[1]
-        assert "projectId" not in create_call[0][1]["input"]
+        with pytest.raises(ValueError, match="no project"):
+            create_sub_tickets("PRO-100", CLASSIFICATION_SPLIT)
 
     @patch("tools.sub_ticket_creator._linear_gql")
     def test_comment_posted_on_parent(self, mock_gql):
