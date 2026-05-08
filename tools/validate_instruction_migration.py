@@ -170,11 +170,40 @@ def check_manifest() -> list[str]:
     if only_on_disk:
         issues.append(f"overlays on disk but not in manifest: {sorted(only_on_disk)}")
 
-    # Verify each declared `path` value actually points to a file on disk.
+    def _check_path(
+        label: str, key: str, path_value: str, expected_stem: str | None = None
+    ) -> None:
+        """Verify a declared manifest path is an in-repo regular file.
+
+        Catches: missing files, paths that point to directories, paths that
+        escape the repo, and (when expected_stem is set) entries where the
+        manifest key does not match the file's stem.
+        """
+        if not path_value:
+            return
+        full = (REPO_ROOT / path_value).resolve()
+        # Repo containment check — reject paths escaping REPO_ROOT
+        try:
+            full.relative_to(REPO_ROOT.resolve())
+        except ValueError:
+            issues.append(f"manifest {label} path escapes repo: {key} -> {path_value}")
+            return
+        if not full.exists():
+            issues.append(f"manifest {label} path missing on disk: {key} -> {path_value}")
+            return
+        if not full.is_file():
+            issues.append(f"manifest {label} path is not a regular file: {key} -> {path_value}")
+            return
+        if expected_stem is not None and full.stem != expected_stem:
+            issues.append(
+                f"manifest {label} key/path mismatch: key '{key}' but file stem"
+                f" is '{full.stem}' ({path_value})"
+            )
+
+    # Verify each declared `path` value actually points to an in-repo file
+    # whose stem matches the manifest key (catches stale or mistyped entries).
     for key, entry in manifest.get("overlays", {}).items():
-        path_value = (entry or {}).get("path", "")
-        if path_value and not (REPO_ROOT / path_value).exists():
-            issues.append(f"manifest overlay path missing on disk: {key} -> {path_value}")
+        _check_path("overlay", key, (entry or {}).get("path", ""), expected_stem=key)
 
     declared_ref = set(manifest.get("reference", {}).keys())
     on_disk_ref = {p.stem for p in REFERENCE_DIR.glob("*.md")}
@@ -186,20 +215,13 @@ def check_manifest() -> list[str]:
         issues.append(f"reference on disk but not in manifest: {sorted(only_on_disk)}")
 
     for key, entry in manifest.get("reference", {}).items():
-        path_value = (entry or {}).get("path", "")
-        if path_value and not (REPO_ROOT / path_value).exists():
-            issues.append(f"manifest reference path missing on disk: {key} -> {path_value}")
+        _check_path("reference", key, (entry or {}).get("path", ""), expected_stem=key)
 
-    # Core, baseline, and archive paths
-    core_path = (manifest.get("core") or {}).get("path", "")
-    if core_path and not (REPO_ROOT / core_path).exists():
-        issues.append(f"manifest core path missing on disk: {core_path}")
-    baseline_path = (manifest.get("baseline") or {}).get("path", "")
-    if baseline_path and not (REPO_ROOT / baseline_path).exists():
-        issues.append(f"manifest baseline path missing on disk: {baseline_path}")
+    # Core, baseline, and archive paths (no expected stem — keys are conceptual labels)
+    _check_path("core", "core", (manifest.get("core") or {}).get("path", ""))
+    _check_path("baseline", "baseline", (manifest.get("baseline") or {}).get("path", ""))
     for key, archive_path in (manifest.get("archive") or {}).items():
-        if archive_path and not (REPO_ROOT / archive_path).exists():
-            issues.append(f"manifest archive path missing on disk: {key} -> {archive_path}")
+        _check_path("archive", key, archive_path)
 
     return issues
 

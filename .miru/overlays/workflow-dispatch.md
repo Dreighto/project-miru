@@ -60,13 +60,16 @@ reversible, make it and note it. If it's irreversible or external, ask first.
 
 ### When to send a Telegram and wait for the operator
 
+These are operations that can proceed but require operator approval first.
+**Hard prohibitions** (e.g. "never write to `card_catalog.db`", "CC must never modify `.mcp.json`") are listed in CLAUDE.md core and worker role files — they are NOT in this list because they can never proceed, with or without approval.
+
 Ask before acting if **any** of these apply:
 
 - **Infrastructure** — new port assignment, new service, new external API integration, new scheduled task
-- **Schema or data model** — any change to card_catalog.db, routing_history.jsonl schema, or append-only file structure
+- **Schema or data-model changes** — proposed modifications to `card_catalog.db` schema, `routing_history.jsonl` schema, or append-only file structure (direct writes to `card_catalog.db` and edits to append-only files are forbidden, not escalatable — see core rules)
 - **Scope expansion** — completing the ticket would require touching files outside the original scope, or adds capability not in the spec
-- **Security** — anything touching auth, secrets, credentials, or access control
-- **Irreversible ops** — force-push, drop table, delete branch with unmerged work, clear production data
+- **Security** — anything touching auth, secrets, credentials, or access control (where the operation is permitted at all — secrets handling has hard prohibitions in core)
+- **Irreversible ops** — force-push to non-protected branches, drop table, delete branch with unmerged work, clear production data (force-push to `main` is a hard prohibition, not escalatable)
 - **Strategy** — "should we build X or Y?" where the operator's product judgment is the input, not engineering reasoning
 - **Repeated failure** — same worker, same ticket, failed more than twice
 

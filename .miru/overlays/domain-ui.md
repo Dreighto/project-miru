@@ -18,7 +18,7 @@ upfront.
 
 The repo has two craft-guide libraries at:
 
-- `docs/ui_ux/` — universal frontend craft (applies to any Miru surface: PM, Dispatcher, Dev Review Hub, future work)
+- `docs/ui_ux/` — universal frontend craft (applies to any Miru surface: PM, Dev Review Hub, future work)
 - `docs/pm/` — PM-specific craft (only applies to `pm/storefront/` work; layers on top of ui_ux)
 
 Do not load the full library. Load on demand.
