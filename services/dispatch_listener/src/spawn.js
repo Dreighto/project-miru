@@ -433,6 +433,8 @@ function spawnWorker({
     const stderrTail = readTail(stderrPath, STDERR_TAIL_BYTES);
     const stdoutTail = readTailRaw(stdoutPath, STDOUT_SCAN_BYTES);
 
+    // --print buffers all stdout until clean exit; a killed process flushes nothing.
+    // Timeout → FAILED is intentional — no stdout data to scan.
     let status;
     if (timedOut) {
       status = 'FAILED';
