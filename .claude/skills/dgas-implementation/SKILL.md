@@ -34,12 +34,13 @@ Otherwise prompt-enforce, not code-enforce. Push back to the operator if the tic
 
 Run the phases in order. Don't skip a phase. If a phase fails, escalate per the rules at the bottom — don't paper over a failed phase to keep moving.
 
-**Heartbeat contract**: Emit heartbeats throughout the session using `tools/emit_heartbeat.py`. Requirements:
+**Heartbeat contract**: Emit heartbeats throughout the session using `tools/emit_heartbeat.py`. Cadence and schema are pinned by PRO-180 (CLAUDE.md "Heartbeat emission" section). Requirements:
 
-- Emit a heartbeat at regular intervals (configurable cadence, default every major step).
-- Emit a heartbeat on each phase transition (Phase 1→2, 2→3, 3→4, 4→5).
-- Emit a special "stall" heartbeat when progress stalls (blocked, waiting, unclear direction).
-- Include a fault-injection test that verifies heartbeat cadence and stall signals are produced and that `tools/emit_heartbeat.py` is invoked as part of the worker run.
+- Emit at the start of each major phase, before any operation expected to take >60 s (CI wait, Bugbot wait), and on significant state changes (branch cut, PR opened). Cadence floor: ~60–120 s during continuous work; phase boundaries are hard emit points regardless of clock.
+- Emit on each phase transition (Phase 1→2, 2→3, 3→4, 4→5).
+- Emit a stall heartbeat (`stall_signal` populated) when progress stalls — `awaiting_external: bugbot`, `deny_rule_hit: <rule>`, `ambiguous_spec_question_pending`, etc. Null otherwise.
+- Required schema fields per row (PRO-180): `ts` (ISO 8601 UTC with `Z`), `worker_id`, `ticket_id`, `status` (`IN_PROGRESS` only — terminal states go in `cc_completion_log.jsonl`), `step` (e.g. `pre_flight`, `writing_tests`, `running_pre_commit`, `opening_pr`, `awaiting_bugbot`, `post_merge_cleanup`), `branch` (or null), `last_file_written` (or null), `stall_signal` (or null), `outputs` (array of artifact paths).
+- Include a fault-injection test that verifies `tools/emit_heartbeat.py` is invoked, that emitted rows carry every required field, and that a stall scenario produces a row with a non-null `stall_signal`.
 
 ### Phase 1 — Pre-investigate (read before write)
 
@@ -85,7 +86,7 @@ For DGAS work, verification means more than "tests pass." It means:
 2. **The happy path still works.** A test confirms legitimate use is not broken. For the gateway localhost bind, that means STDIO traffic and 127.0.0.1 HTTP both still work.
 3. **The validator pass.** If a related validator exists (`tools/validate_instruction_migration.py`, `vp_ops_verify_ticket`), run it. If you broke it, you broke something.
 4. **Edge cases enumerated.** For each gate, list what could go wrong: missing field, malformed input, IPv6 vs IPv4, transport layer differences, race conditions. Confirm each is either handled or documented as out of scope.
-5. **Heartbeat verification.** Ensure the fault-injection test verifies that heartbeats are emitted (cadence and stall signals) and that `tools/emit_heartbeat.py` is invoked during the worker run.
+5. **Heartbeat verification.** Ensure the fault-injection test verifies that heartbeats are emitted via `tools/emit_heartbeat.py`, that each row carries the full PRO-180 schema (`ts`, `worker_id`, `ticket_id`, `status`, `step`, `branch`, `last_file_written`, `stall_signal`, `outputs`), and that a forced stall scenario produces a row with a non-null `stall_signal`. Schema-level assertions catch silent regressions where heartbeats keep firing but stop carrying the fields the orchestrator depends on.
 6. Emit a heartbeat on phase transition (Phase 4→5).
 
 ### Phase 5 — Ship (PR, review, merge, cleanup)
