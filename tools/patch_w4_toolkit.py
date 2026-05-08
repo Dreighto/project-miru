@@ -10,11 +10,12 @@ WORKFLOW_PATH = Path("docker/n8n/workflows/w4-dispatch-button-handler.json")
 
 TOOLKIT_JS = r"""
 // --- Toolkit packing (PRO-324) ---
+const fs = require('fs');
 let toolkitBlock = '';
 try {
   const rulesRaw = fs.readFileSync('/miru-data/config/toolkit_signal_rules.json', 'utf8');
   const rulesDoc = JSON.parse(rulesRaw);
-  const labelsList = (prior.labels || []).map(l => typeof l === 'string' ? l : (l.name || ''));
+  const labelsList = (prior.current_label_names || []);
   const combinedText = (title + ' ' + description + ' ' + labelsList.join(' ')).toLowerCase();
 
   const matchedFiles = [];
