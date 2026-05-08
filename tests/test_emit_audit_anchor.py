@@ -60,6 +60,39 @@ class TestSnapshotFile(unittest.TestCase):
         self.assertFalse(snap["chain_ok"])
         self.assertIn("path_traversal_rejected", snap["error"])
 
+    def test_concurrent_write_during_snapshot_is_detected(self) -> None:
+        """Fault injection: a write that races a snapshot must be detected.
+
+        We patch validate_chain to mutate the file every time it's called,
+        simulating a concurrent appender. Both stability check attempts will
+        see size/mtime change, so the snapshot returns the race sentinel
+        rather than mixing pre/post-append metrics into one anchor row.
+        """
+        path = self.tmp / "data" / "racy.jsonl"
+        path.parent.mkdir(parents=True)
+        path.write_text(
+            json.dumps({"timestamp": "2026-01-01", "ticket_id": "OLD"}) + "\n",
+            encoding="utf-8",
+        )
+
+        original_validate = anchor_mod.validate_chain
+        call_count = {"n": 0}
+
+        def racy_validate(p: Path):
+            call_count["n"] += 1
+            # Append between the pre-stat and the post-stat so size/mtime change.
+            with p.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps({"appended_during_snapshot": call_count["n"]}) + "\n")
+            return original_validate(p)
+
+        with mock.patch.object(anchor_mod, "validate_chain", side_effect=racy_validate):
+            snap = anchor_mod.snapshot_file("data/racy.jsonl", self.tmp)
+
+        self.assertFalse(snap["chain_ok"])
+        self.assertEqual(snap["error"], "file_modified_during_snapshot")
+        # Bounded retry: we tried at least twice before surfacing the race.
+        self.assertGreaterEqual(call_count["n"], 2)
+
     def test_legacy_only_file_records_no_last_chained(self) -> None:
         path = self.tmp / "data" / "legacy.jsonl"
         path.parent.mkdir(parents=True)

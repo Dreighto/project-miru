@@ -184,22 +184,46 @@ def snapshot_file(rel_path: str, repo_root: Path) -> dict[str, Any]:
             "chain_ok": True,  # vacuously true: nothing to validate
             "error": None,
         }
+    # Snapshot stability check: file_size, file_sha256, validate_chain, and
+    # last_chained_row_hash are collected in separate passes. If a worker
+    # appends a row mid-snapshot, the anchor row would mix metrics from
+    # different file versions (e.g. file_sha256 wouldn't match the row
+    # counts). We re-stat after every read pass and only accept the snapshot
+    # when size+mtime were stable across all reads. Bounded retry (2 attempts);
+    # if the file keeps changing, we surface the race rather than write a
+    # corrupted anchor.
     try:
-        size = full.stat().st_size
-        sha = _file_sha256(full)
-        chain = validate_chain(full)
-        last_hash = _last_chained_row_hash(full) if chain.ok else None
+        for _attempt in range(2):
+            before = full.stat()
+            sha = _file_sha256(full)
+            chain = validate_chain(full)
+            last_hash = _last_chained_row_hash(full) if chain.ok else None
+            after = full.stat()
+            if before.st_size == after.st_size and before.st_mtime_ns == after.st_mtime_ns:
+                return {
+                    "path": rel_path,
+                    "exists": True,
+                    "file_size": after.st_size,
+                    "file_sha256": sha,
+                    "total_rows": chain.total_rows,
+                    "chained_rows": chain.chained_rows,
+                    "legacy_prefix_rows": chain.legacy_prefix_rows,
+                    "last_chained_row_hash": last_hash,
+                    "chain_ok": chain.ok,
+                    "error": chain.error,
+                }
+        # Two attempts both raced — surface the race.
         return {
             "path": rel_path,
             "exists": True,
-            "file_size": size,
-            "file_sha256": sha,
-            "total_rows": chain.total_rows,
-            "chained_rows": chain.chained_rows,
-            "legacy_prefix_rows": chain.legacy_prefix_rows,
-            "last_chained_row_hash": last_hash,
-            "chain_ok": chain.ok,
-            "error": chain.error,
+            "file_size": None,
+            "file_sha256": None,
+            "total_rows": 0,
+            "chained_rows": 0,
+            "legacy_prefix_rows": 0,
+            "last_chained_row_hash": None,
+            "chain_ok": False,
+            "error": "file_modified_during_snapshot",
         }
     except OSError as exc:
         return {
