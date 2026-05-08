@@ -130,9 +130,47 @@ def _last_chained_row_hash(path: Path) -> str | None:
     return last_chained
 
 
+def _resolve_within_repo(rel_path: str, repo_root: Path) -> Path:
+    """Resolve ``rel_path`` against ``repo_root`` and refuse to leave the repo.
+
+    With ``--files``, callers can pass arbitrary path strings. Unrestricted,
+    an absolute path or a ``..`` segment would let the anchor snapshot files
+    outside the repo (and write their sha256 into the audit ledger), which
+    is a small but real information-disclosure surface.
+
+    The check normalises both sides via ``Path.resolve`` so symlinks and
+    case-folded segments still resolve to a single canonical form on
+    Windows and POSIX.
+    """
+    repo_root_abs = repo_root.resolve()
+    candidate = (repo_root_abs / rel_path).resolve()
+    try:
+        candidate.relative_to(repo_root_abs)
+    except ValueError as exc:
+        raise ValueError(
+            f"path {rel_path!r} resolves outside repo root {repo_root_abs!s}; "
+            f"--files arguments must stay within the repo"
+        ) from exc
+    return candidate
+
+
 def snapshot_file(rel_path: str, repo_root: Path) -> dict[str, Any]:
     """Return the per-file dict for one audit log."""
-    full = repo_root / rel_path
+    try:
+        full = _resolve_within_repo(rel_path, repo_root)
+    except ValueError as exc:
+        return {
+            "path": rel_path,
+            "exists": False,
+            "file_size": 0,
+            "file_sha256": None,
+            "total_rows": 0,
+            "chained_rows": 0,
+            "legacy_prefix_rows": 0,
+            "last_chained_row_hash": None,
+            "chain_ok": False,
+            "error": f"path_traversal_rejected: {exc}",
+        }
     if not full.exists():
         return {
             "path": rel_path,

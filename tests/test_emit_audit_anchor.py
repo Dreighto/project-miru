@@ -43,6 +43,23 @@ class TestSnapshotFile(unittest.TestCase):
         self.assertIsNone(snap["file_sha256"])
         self.assertTrue(snap["chain_ok"], "missing files don't break the anchor")
 
+    def test_path_outside_repo_root_is_rejected(self) -> None:
+        """Fault injection: --files with a `..` segment must NOT escape repo."""
+        snap = anchor_mod.snapshot_file("../../etc/passwd", self.tmp)
+        self.assertFalse(snap["chain_ok"])
+        self.assertIsNotNone(snap["error"])
+        self.assertIn("path_traversal_rejected", snap["error"])
+        self.assertIsNone(snap["file_sha256"])
+
+    def test_absolute_path_outside_repo_is_rejected(self) -> None:
+        """Fault injection: an absolute path outside repo_root must be refused."""
+        # Use a path that's guaranteed to exist on every platform we run on
+        # but is outside our tmp repo_root.
+        outside = Path(tempfile.gettempdir()) / "anchor_absolute_outside.txt"
+        snap = anchor_mod.snapshot_file(str(outside), self.tmp)
+        self.assertFalse(snap["chain_ok"])
+        self.assertIn("path_traversal_rejected", snap["error"])
+
     def test_legacy_only_file_records_no_last_chained(self) -> None:
         path = self.tmp / "data" / "legacy.jsonl"
         path.parent.mkdir(parents=True)
