@@ -286,23 +286,28 @@ class TestEmitHelpersInvokableViaCLI(unittest.TestCase):
     chaining wiring. This catches stupid breakage like broken imports."""
 
     def test_emit_heartbeat_cli_runs(self) -> None:
+        """End-to-end: invoke the actual CLI parser path, not just emit().
+        This catches argparse regressions, broken imports, and __main__
+        breakage that direct-emit smoke tests miss."""
         with tempfile.TemporaryDirectory() as td:
             log_path = Path(td) / "data" / "cc_heartbeat_log.jsonl"
             env = {
                 **__import__("os").environ,
                 "PYTHONPATH": str(TOOLS_DIR),
             }
-            # Run the CLI in a subprocess but redirect HEARTBEAT_LOG via a
-            # tiny wrapper so we don't pollute the real audit log.
+            # Wrapper redirects HEARTBEAT_LOG to a tmp file, then invokes
+            # main() via sys.argv so argparse runs end-to-end. This way a
+            # regression in --worker-id parsing or main() flow control
+            # actually fails the test.
             wrapper = (
                 f"import sys; sys.path.insert(0, {str(TOOLS_DIR)!r});"
                 f"import emit_heartbeat;"
                 f"emit_heartbeat.HEARTBEAT_LOG={str(log_path)!r};"
-                f"emit_heartbeat.emit("
-                f"  worker_id='cc',"
-                f"  ticket_id='PRO-X',"
-                f"  step='cli_smoke',"
-                f")"
+                f"sys.argv=['emit_heartbeat.py',"
+                f" '--worker-id', 'cc',"
+                f" '--ticket-id', 'PRO-X',"
+                f" '--step', 'cli_smoke'];"
+                f"emit_heartbeat.main()"
             )
             result = subprocess.run(
                 [sys.executable, "-c", wrapper],

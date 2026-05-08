@@ -109,6 +109,14 @@ def main() -> None:
         print(f"[emit_completion] error: invalid JSON — {e}", file=sys.stderr)
         sys.exit(1)
 
+    if not isinstance(data, dict):
+        print(
+            f"[emit_completion] error: top-level JSON must be an object, "
+            f"got {type(data).__name__}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     # If MIRU_TRACE_ID is set in the worker env (set by dispatch_listener spawn.js):
     # 1. Fill the marker's `trace_id` field if missing — bridges marker → dispatch.
     # 2. Auto-fill `ticket_id` if the marker submitted null/missing AND the trace
