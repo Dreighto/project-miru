@@ -264,17 +264,44 @@ def _format_context_block(
     return "\n".join(sections)
 
 
+def export_rules_json() -> str:
+    import json
+
+    export = {
+        "schema_version": "v1",
+        "signal_rules": _SIGNAL_RULES,
+        "global_dont_touch": GLOBAL_DONT_TOUCH,
+        "global_read_only": GLOBAL_READ_ONLY,
+    }
+    return json.dumps(export, indent=2)
+
+
 def main() -> None:
     import argparse
     import json
 
     parser = argparse.ArgumentParser(description="Pack task-aware context for a dispatch prompt.")
-    parser.add_argument("title", help="Ticket title")
+    parser.add_argument("title", nargs="?", help="Ticket title")
     parser.add_argument("--description", default="", help="Ticket description")
     parser.add_argument("--labels", default="", help="Comma-separated labels")
     parser.add_argument("--dirs", default="", help="Comma-separated service directories")
     parser.add_argument("--json", action="store_true", dest="json_output", help="JSON output")
+    parser.add_argument(
+        "--export-rules",
+        metavar="PATH",
+        help="Export signal rules to JSON file for n8n container use",
+    )
     args = parser.parse_args()
+
+    if args.export_rules:
+        import pathlib
+
+        pathlib.Path(args.export_rules).write_text(export_rules_json(), encoding="utf-8")
+        print(f"Exported rules to {args.export_rules}")
+        return
+
+    if not args.title:
+        parser.error("title is required unless --export-rules is used")
 
     labels = [lbl.strip() for lbl in args.labels.split(",") if lbl.strip()]
     dirs = [d.strip() for d in args.dirs.split(",") if d.strip()]
