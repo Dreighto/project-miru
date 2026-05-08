@@ -50,6 +50,17 @@ repos:
         files: \.(js|jsx|ts|tsx)$
         exclude: ^docker/n8n/workflows/
 
+  # DGAS Tier 1: pre-commit secret scanning. Catches AWS keys, GitHub PATs,
+  # API tokens, private keys, and high-entropy strings before they reach
+  # any commit. Allowlist for known-safe paths (research dumps, archive
+  # snapshots, test fixtures) lives in .gitleaks.toml. See
+  # data/peer_reviews/2026-05-08_dgas_three_way_synthesis.md item #4.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+        stages: [pre-commit]
+
   - repo: local
     hooks:
       - id: n8n-workflow-schema
