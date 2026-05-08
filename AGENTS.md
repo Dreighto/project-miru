@@ -1,16 +1,9 @@
 # AGENTS.md — Project Miru Worker Baseline
 
-# Framework source: Dreighto/worker-framework | docs/worker-framework/AGENTS.md
-
-# Last synced: 2026-05-06
-
-#
-
-# Universal rules (Operator Communication Standard, PR Review Sequence, Return-to-main,
-
-# Try Harder Discipline, Merge Policy, Completion Contract) are maintained in the
-
-# framework and embedded here. Miru-specific rules follow the universal sections.
+```text
+Architecture: MIRU-INSTRUCTIONS-v2
+Last synced: 2026-05-08
+```
 
 This file is the shared worker baseline for Project Miru. Workers read this on every dispatch.
 Worker-specific rule files (CLAUDE.md, GEMINI.md, CURSOR.md, etc.) layer on top of this baseline.
@@ -18,6 +11,21 @@ Worker-specific rule files (CLAUDE.md, GEMINI.md, CURSOR.md, etc.) layer on top 
 **Read `miru-context/team-charter.md` on every dispatch.** It describes who this team is,
 what the standard is, and how we work together. The rules in this file tell you what to do.
 The charter tells you why it matters and what kind of worker you are expected to be.
+
+This file holds the universal communication rules every worker needs. Rules
+that govern git, completion, dispatch, or domain-specific work moved to
+`.miru/overlays/` and `.miru/reference/`. See the Discovery Index in
+`CLAUDE.md` for the routing table.
+
+---
+
+## Copy-paste content for manual routing — Hard Rule (set 2026-05-03)
+
+Any content the operator will copy-paste to another thread or LLM — Claude Chat (CH), ChatGPT (GPT), Gemini (GMI), Perplexity (PXY), Cursor, or any manual-routing target — **MUST be wrapped in a fenced code block.** This includes thread handoffs, peer-LLM briefing blocks, paste-ready research questions, worker dispatch prompts, and any structured content intended for manual transfer between agents.
+
+**Why:** the operator runs a manual multi-LLM routing workflow as a core part of how the system is built. Code blocks survive the trip — no rich-text artifacts, no auto-link rewrites (`CLAUDE.md` → `[CLAUDE.md](http://CLAUDE.md)`), no markdown nesting eating structure. If unsure whether content is for paste, default to code block. Applies to ALL workers (CC, CH, Codex, Cursor, Gemini), not just Claude Chat.
+
+Full rationale: `miru-context/operator-profile.md` "Copy-paste content — Hard Rule".
 
 ---
 
@@ -32,7 +40,7 @@ translation work — which defeats the purpose of having autonomous workers.
 
 ### Required format for all operator-facing outputs
 
-```
+```text
 What happened:      [one sentence, no jargon]
 Does it work:       [Yes / No / Partially — plus one plain-English reason]
 What you need to do: [specific action, or "Nothing — it's done"]
@@ -74,122 +82,24 @@ system faster. Workers that bury the status in word vomit make it slower.
 
 ---
 
-## Automated PR Review Completion Sequence (all workers + CH, locked 2026-05-04)
+## Worker Roles — Quick Reference
 
-This contract applies to ALL workers (CC, Codex, Cursor, Gemini, Copilot, Windsurf) and Claude
-Chat when it owns a PR. Supersedes the previous CC-only Bugbot contract (PRO-212).
+Two workers carry persistent roles; everything else operates per-task.
 
-Before declaring `CONFIRMED_WORKING` on any PR, the worker (or CH if it owns the PR) MUST:
+- **Claude Chat (CH)** — Lead Architect. Architecture decisions, planning, worker prompt authoring, Notion read AND write (default writer), session continuity. Owns consultant packet content (Perplexity, ChatGPT, Gemini), new Notion page structure, and cross-session synthesis entries.
+- **Claude Code (CC) — VP Ops** — Execution steward and supervisory layer. Primary Python execution worker — complex multi-file refactoring, test writing, verification scripts. Owns system stability, worker verification (`vp_ops_verify_ticket`), and post-ticket canon maintenance. Has standing Notion write authority for factual/maintenance updates (see `.miru/overlays/domain-ops.md`). Handles surgical edits to CH's surfaces when operator authorizes or when edit volume is impractical in chat.
 
-### Step 1 — Wait for all automated reviewers to complete
+**File ownership:**
 
-Poll `gh pr checks <number> --watch` or `GET /repos/{owner}/{repo}/commits/{sha}/check-runs`
-until all automated reviewers reach a terminal state:
+- CC owns: Python backend files, test scripts, verification scripts.
+- CH owns by default: CLAUDE.md, AGENTS.md, GEMINI.md, CURSOR.md, CODEX.md, COPILOT.md, all worker prompts. CC may edit these when the operator explicitly authorizes it for that task.
 
-- **CodeRabbit** — AI code review
-- **Bugbot** (chatgpt-codex-connector) — automated bug detection
-- **CI hygiene** — lint, format, schema validation
+**Must never:**
 
-**Timeout:** if any reviewer has not completed after **10 minutes**, stop polling. Surface the
-timeout in the completion report and proceed with whatever findings exist.
-
-### Step 2 — Read every finding
-
-Read all review comments via `gh api repos/{owner}/{repo}/pulls/{number}/comments` and
-`gh api repos/{owner}/{repo}/pulls/{number}/reviews`. Categorize each finding:
-
-**Actionable:** Code bugs, missing fields that break downstream consumers, false-positive keyword
-matches, test gaps the adopted lesson requires (PRO-189 boundary-crossing tests), permission
-contradictions (e.g. telling a read-only worker to write), and any finding rated P1/P2 or flagged
-as a potential issue.
-
-**Not actionable:** Style preferences that conflict with project conventions, docstring coverage
-warnings (project convention: no docstrings unless non-obvious), and suggestions to add features
-beyond the PR scope.
-
-### Step 3 — Fix valid findings
-
-Push a follow-up commit addressing each actionable issue. For each finding, either fix it or
-explain in a commit message why it's not applicable.
-
-### Step 4 — Re-run and poll
-
-After pushing fixes, wait for the next review cycle to complete. Repeat Steps 2–4 until no new
-actionable findings remain.
-
-### Step 5 — Confirm green and declare terminal state
-
-All status checks must show pass/success before declaring done. `CHANGES_REQUESTED` from an
-automated reviewer with no remaining actionable comments is acceptable only if all specific
-findings have been addressed in commits.
-
-Append the `cc_completion_log.jsonl` marker and report `CONFIRMED_WORKING` (or the appropriate
-terminal state) to the operator.
-
-### Scope
-
-- **Applies to:** every PR any worker or CH opens, starting 2026-05-04.
-- A PR with unaddressed P1 findings that gets merged is a discipline violation.
-
----
-
-## gh CLI Auth Bootstrap
-
-`gh` CLI auth is required for CC to open PRs from its bash terminal. Without it, all automated PR
-creation fails with "gh-not-authenticated". This step must be performed on any fresh ROOM setup
-and after any GitHub PAT rotation.
-
-### Command
-
-```bash
-echo "$ROOM_TOKEN_OPERATOR" | gh auth login --with-token
-```
-
-`ROOM_TOKEN_OPERATOR` is the operator-level PAT stored in `D:\dev\miru\.env`. Do not echo the
-token value into logs or chat. Dispatched workers authenticate via `GH_TOKEN` (injected by
-`spawn.js`) and do not need to run this command.
-
-### When this is needed
-
-- Fresh ROOM node setup (new machine or re-imaged OS)
-- After rotating the `ROOM_TOKEN_OPERATOR` PAT in `.env`
-- After a `gh auth logout` or credential cache invalidation
-- If CC reports "gh-not-authenticated" during a PR creation step
-
-### How to verify
-
-```bash
-gh auth status
-```
-
-Expected output includes `Logged in to github.com` and the account name. If it shows
-`You are not logged in`, repeat the bootstrap command above.
-
-### History
-
-CC hit "gh-not-authenticated" on 2026-04-25 during PRO-76 and PRO-77, blocking automated PR
-creation both times. Fixed by operator running `gh auth login` manually (PRO-78).
-
----
-
-## Return-to-main — Hard Rule (all workers, locked 2026-04-30)
-
-Every task session ends on `main` with a clean working tree. This applies to every worker.
-
-**After a task completes (CONFIRMED_WORKING):**
-
-1. Complete post-merge cleanup (see worker-specific rule file for steps).
-2. Run `git checkout main && git pull origin main`.
-3. Confirm `git status` shows no staged or unstaged tracked changes.
-4. Sign off. Do not leave the session on a feature branch.
-
-**After a task ends without a merge (INCONCLUSIVE, FAILED, interrupted):**
-
-1. On the task branch: stash in-progress work (`git stash push -m "<ticket>-wip"`) or make a WIP commit so nothing is lost.
-2. Run `git checkout main`.
-3. Confirm clean state, then sign off.
-
-**Why this is a hard rule:** A worker that ends on a feature branch leaves the repo in an ambiguous state. The next session — by the same worker or a different one — starts blind to the checked-out branch and may cut a new task branch from the wrong base, or accidentally stage work from a prior task into a new PR. This failure mode occurred in PRO-214 cleanup and required operator intervention.
+- CC must never touch HTML/CSS/JS templates.
+- CC must never modify `.mcp.json` or any MCP config files.
+- CC must never write to `card_catalog.db`.
+- CH must never execute code directly on the server.
 
 ---
 
@@ -240,58 +150,3 @@ If you are genuinely blocked after all of the above, emit `INCONCLUSIVE` with:
 Every premature INCONCLUSIVE costs a full operator loop and breaks the autonomous flow. Workers
 that ask before trying are not saving time — they are spending the operator's time instead of
 their own. Try harder first. The team gets better when workers solve more problems themselves.
-
----
-
-## WIP Commit Checkpoints — All Workers (set 2026-05-07, PRO-318)
-
-Workers MUST commit in-progress work to the task branch periodically during long-running tasks.
-Git commits are the checkpoint mechanism. If a worker times out or crashes, committed work can be
-recovered by the salvage scanner (`tools/salvage_worktree.py`). Uncommitted work in a dirty tree
-is fragile and often lost.
-
-### When to commit
-
-Commit a WIP checkpoint at each of these moments:
-
-1. **After branch creation and pre-flight pass** -- confirms the workspace is set up correctly.
-2. **After each major implementation phase** -- tests written, source code done, config updated.
-3. **Before any operation expected to take >60 seconds** -- CI wait, Bugbot poll, large test suite.
-4. **Before the final cleanup** -- so a crash during squash/rebase doesn't lose the work.
-
-### Commit message format
-
-```
-WIP: <TICKET-ID> - <phase label>
-```
-
-Examples:
-
-- `WIP: PRO-318 - tests written`
-- `WIP: PRO-318 - implementation complete, pre-commit next`
-- `WIP: PRO-318 - awaiting bugbot`
-
-### Squash before PR
-
-WIP commits are internal checkpoints, not PR history. Before opening a PR:
-
-1. Squash all WIP commits into a single clean commit (or a small series of logical commits).
-2. Write a proper commit message per project conventions.
-3. The WIP prefix must not appear in the final PR commit history.
-
-Use `git rebase -i` (non-interactive: `git reset --soft <base> && git commit`) to squash.
-
-### What NOT to do
-
-- Do not skip WIP commits because "the task is almost done" -- timeouts don't care how close you
-  are to finishing.
-- Do not leave WIP commits in the PR -- they clutter history and signal incomplete work.
-- Do not commit secrets, `.env` files, or `node_modules` in WIP commits. The usual rules apply.
-
-### Why this exists
-
-PRO-312 completed all work (427 lines of code, 24 passing tests) but timed out during `--print`
-mode output buffering. All stdout was lost. The code survived only because an operator manually
-salvaged the dirty worktree. Periodic WIP commits would have made that salvage automatic and
-reliable. The Atomix research paper (arxiv:2602.14849) confirms: periodic checkpointing reduces
-unrecoverable failures from 23% to under 2%.
