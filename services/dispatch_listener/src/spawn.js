@@ -10,6 +10,36 @@ const { writeTerminalReceipt } = require('./receipt');
 const { writeDlqEntry } = require('./dlq');
 
 const STDERR_TAIL_BYTES = 4096;
+const STDOUT_SCAN_BYTES = 8192;
+
+// Scan stdout tail for terminal status markers emitted by workers.
+// Workers print "STATUS: CONFIRMED WORKING" or "CONFIRMED_WORKING" in stdout.
+// Returns 'CONFIRMED_WORKING' if found, null otherwise.
+function readTailRaw(filePath, maxBytes) {
+  try {
+    const stat = fs.statSync(filePath);
+    const size = stat.size;
+    if (size === 0) return '';
+    const start = Math.max(0, size - maxBytes);
+    const fd = fs.openSync(filePath, 'r');
+    try {
+      const buf = Buffer.alloc(size - start);
+      fs.readSync(fd, buf, 0, buf.length, start);
+      return buf.toString('utf8');
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch (_e) {
+    return '';
+  }
+}
+
+function scanStdoutForStatus(stdoutTail) {
+  if (!stdoutTail) return null;
+  if (/STATUS:\s*\bCONFIRMED[\s_]WORKING\b/i.test(stdoutTail)) return 'CONFIRMED_WORKING';
+  if (/\bCONFIRMED_WORKING\b/i.test(stdoutTail)) return 'CONFIRMED_WORKING';
+  return null;
+}
 
 function killProcessTree(child) {
   if (!child || !child.pid) return;
@@ -401,12 +431,13 @@ function spawnWorker({
     const completedAt = new Date().toISOString();
     const exitCode = code !== null ? code : -1;
     const stderrTail = readTail(stderrPath, STDERR_TAIL_BYTES);
+    const stdoutTail = readTailRaw(stdoutPath, STDOUT_SCAN_BYTES);
 
     let status;
     if (timedOut) {
       status = 'FAILED';
     } else if (exitCode === 0) {
-      status = 'INCONCLUSIVE';
+      status = scanStdoutForStatus(stdoutTail) || 'INCONCLUSIVE';
     } else {
       status = 'FAILED';
     }
@@ -457,4 +488,4 @@ function spawnWorker({
   return { pid: child.pid, startedAt };
 }
 
-module.exports = { spawnWorker, readTail };
+module.exports = { spawnWorker, readTail, readTailRaw, scanStdoutForStatus };
