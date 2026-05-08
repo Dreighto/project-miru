@@ -137,6 +137,20 @@ class TestTamperDetection(unittest.TestCase):
         result = audit_chain.validate_chain(self.path)
         self.assertFalse(result.ok)
 
+    def test_deleting_head_row_breaks_chain(self) -> None:
+        """Fault injection: delete the FIRST chained row. The new head row's
+        prev_hash points at the deleted predecessor (non-None), which now
+        violates the 'first chained row must anchor to None' invariant."""
+
+        def mutate(rows):
+            return [rows[1], rows[2]]  # head row removed
+
+        self._rewrite_lines(mutate)
+        result = audit_chain.validate_chain(self.path)
+        self.assertFalse(result.ok)
+        self.assertEqual(result.broken_at_line, 0)
+        self.assertIn("first chained row must declare prev_hash=None", result.error or "")
+
 
 class TestLegacyPrefix(unittest.TestCase):
     def setUp(self) -> None:
@@ -206,6 +220,24 @@ class TestParseTolerance(unittest.TestCase):
         audit_chain.append_chained(self.path, {"event": "c"})
         result = audit_chain.validate_chain(self.path)
         self.assertEqual(len(result.parse_errors), 1)
+        self.assertEqual(result.chained_rows, 2)
+        self.assertTrue(result.ok)
+
+    def test_non_object_json_line_is_recorded_not_raised(self) -> None:
+        """A parseable JSON line that is NOT an object (a bare array, scalar,
+        or boolean) is recorded as a parse error and skipped. Without the
+        isinstance(obj, dict) guard, calling .get() on these would crash."""
+        audit_chain.append_chained(self.path, {"event": "a"})
+        with self.path.open("a", encoding="utf-8") as fh:
+            fh.write("[]\n")  # parseable JSON, but not an object
+            fh.write('"just a string"\n')
+            fh.write("42\n")
+            fh.write("true\n")
+        audit_chain.append_chained(self.path, {"event": "b"})
+        result = audit_chain.validate_chain(self.path)
+        # Four non-object lines recorded as parse errors.
+        self.assertEqual(len(result.parse_errors), 4)
+        # Two real chained rows still verify.
         self.assertEqual(result.chained_rows, 2)
         self.assertTrue(result.ok)
 

@@ -83,6 +83,7 @@ def main() -> int:
     summaries: list[dict[str, object]] = []
     overall_ok = True
     any_chained_broken = False
+    any_legacy_only = False
 
     for path in targets:
         rel = str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
@@ -98,10 +99,15 @@ def main() -> int:
                     "note": "file does not exist (gitignored or not yet created)",
                 }
             )
+            # A missing file is treated as legacy-only for --strict purposes —
+            # the gate isn't established yet for this stream.
+            any_legacy_only = True
             continue
 
         result = validate_chain(path)
         chained_broken = bool(result.chained_rows and not result.ok)
+        if result.chained_rows == 0:
+            any_legacy_only = True
         if chained_broken:
             any_chained_broken = True
         if not result.ok:
@@ -157,7 +163,7 @@ def main() -> int:
 
     if any_chained_broken:
         return 1
-    if args.strict and not overall_ok:
+    if args.strict and (not overall_ok or any_legacy_only):
         return 1
     return 0
 

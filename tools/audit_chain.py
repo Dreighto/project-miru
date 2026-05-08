@@ -64,13 +64,46 @@ def _hash_body(body: dict[str, Any]) -> str:
     return hashlib.sha256(_canonical(body).encode("utf-8")).hexdigest()
 
 
+def _scan_tail_for_last_chained(data: bytes) -> tuple[bool, str | None]:
+    """Walk a byte buffer (assumed to contain whole lines) backwards.
+
+    Returns ``(found, value)``:
+        * ``(True, hash_str)`` if the last parseable JSON object in the
+          buffer carries a row_hash.
+        * ``(True, None)`` if the last parseable JSON object is a legacy
+          row (no row_hash) — caller starts a fresh chain link.
+        * ``(False, None)`` if no parseable JSON object was found in the
+          buffer at all (caller should re-read with a larger window).
+    """
+    text = data.decode("utf-8", errors="replace")
+    for raw in reversed(text.splitlines()):
+        line = raw.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(obj, dict):
+            # Parseable but not a JSON object (array, scalar) — skip; do
+            # not treat it as a chain decision.
+            continue
+        rh = obj.get(CHAIN_FIELD_HASH)
+        if isinstance(rh, str) and rh:
+            return True, rh
+        return True, None
+    return False, None
+
+
 def _read_last_chained(path: Path) -> str | None:
     """Return the row_hash of the last chained row in ``path``, or None.
 
-    Only the last few KB are read so this stays cheap on large logs. If the
-    tail of the file is a legacy row (no ``row_hash``) the function returns
-    None, which signals to ``append_chained`` that a new chain link should
-    start with ``prev_hash = null``.
+    Reads a 64 KiB tail window first because that's enough for any
+    realistic JSONL row. If a single tail row exceeds 64 KiB (rare but
+    possible for verbose audit entries), falls back to reading the whole
+    file rather than returning None — a silent None would cause
+    ``append_chained`` to start a new chain link incorrectly and break
+    every subsequent verification.
     """
     if not path.exists() or path.stat().st_size == 0:
         return None
@@ -82,21 +115,23 @@ def _read_last_chained(path: Path) -> str | None:
             data = fh.read()
     except OSError:
         return None
-    text = data.decode("utf-8", errors="replace")
-    for raw in reversed(text.splitlines()):
-        line = raw.strip()
-        if not line:
-            continue
-        try:
-            obj = json.loads(line)
-        except ValueError:
-            continue
-        rh = obj.get(CHAIN_FIELD_HASH)
-        if isinstance(rh, str) and rh:
-            return rh
-        # Last parseable row is a legacy row — chain head starts here.
+
+    found, value = _scan_tail_for_last_chained(data)
+    if found:
+        return value
+
+    # Tail window did not contain a complete parseable JSON object. Fall
+    # back to reading the whole file. Skip if we already read the whole
+    # thing on the first pass (chunk == size).
+    if chunk >= size:
         return None
-    return None
+    try:
+        with path.open("rb") as fh:
+            data = fh.read()
+    except OSError:
+        return None
+    _, value = _scan_tail_for_last_chained(data)
+    return value
 
 
 def append_chained(path: Path, row: dict[str, Any]) -> str:
@@ -148,6 +183,9 @@ def validate_chain(path: Path) -> ChainResult:
             except ValueError as exc:
                 result.parse_errors.append((idx, str(exc)))
                 continue
+            if not isinstance(obj, dict):
+                result.parse_errors.append((idx, "parsed JSON value is not an object"))
+                continue
             result.total_rows += 1
 
             rh = obj.get(CHAIN_FIELD_HASH)
@@ -173,9 +211,20 @@ def validate_chain(path: Path) -> ChainResult:
 
             declared_prev = body.get(CHAIN_FIELD_PREV)
             if first_chained:
-                # First chained row may declare prev_hash = None (fresh chain
-                # after legacy prefix) or any value (continuing across log
-                # rotation). We don't enforce a predecessor for the first.
+                # The first chained row in any data/*.jsonl file MUST anchor
+                # to prev_hash=None. Allowing any value here would let an
+                # attacker delete the head row without breaking the chain.
+                # Our 9 data/*.jsonl files do not rotate (rotation is a
+                # gateway-audit concern), so the simple anchor invariant
+                # applies uniformly.
+                if declared_prev is not None:
+                    result.ok = False
+                    result.broken_at_line = idx
+                    result.error = (
+                        f"line {idx}: first chained row must declare prev_hash=None "
+                        f"(declared {declared_prev!r}). Likely the head row was deleted."
+                    )
+                    return result
                 first_chained = False
             else:
                 if declared_prev != prev_hash:
