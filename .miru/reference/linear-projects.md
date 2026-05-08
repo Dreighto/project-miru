@@ -35,4 +35,9 @@ The behavioral rule that every ticket MUST include a `projectId` lives in
 
 **Never use** the legacy "Project Miru" catch-all (`7c2b40d5-058a-457d-84c7-d57d6bf3f281`). Always pick the specific project above. If unsure: default to Miru Orchestration / Autonomy for internal system work, or Docs / Canon / Process for rule/doc changes.
 
-Set 2026-05-04. Root cause: tickets were created without `projectId` and landed at team level, making them unfindable by project.
+**New project creation:** If a ticket genuinely does not fit any existing project, create a new Linear project for it — but only when the mismatch is real, not just adjacent. The bar is high: forcing a ticket into the wrong project is worse than having many projects, but creating a project for one ticket is wasteful. If unsure, ask the operator.
+
+**Timeline:**
+
+- **2026-05-04** — projectId requirement set. Root cause: tickets were created without `projectId` and landed at team level, making them unfindable by project.
+- **2026-05-07** — "New project creation" rule above added by operator.
