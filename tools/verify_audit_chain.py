@@ -41,12 +41,14 @@ def _repo_root() -> Path:
 
     here = Path(__file__).resolve().parent
     try:
+        # Non-zero exit is handled manually below; fallback to parent-dir heuristic if git fails
         result = subprocess.run(
             ["git", "rev-parse", "--git-common-dir"],
             capture_output=True,
             text=True,
             cwd=str(here),
             timeout=5,
+            check=False,
         )
         if result.returncode == 0:
             common_dir = (here / result.stdout.strip()).resolve()
