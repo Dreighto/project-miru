@@ -1,6 +1,6 @@
 # Reference — Database Rules
 
-```
+```text
 Reference: database-rules
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: reading or proposing changes to card_catalog.db.

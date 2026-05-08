@@ -1,6 +1,6 @@
 # Reference — Restart Procedures
 
-```
+```text
 Reference: restart-procedures
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: restarting a service.

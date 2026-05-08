@@ -32,7 +32,7 @@ translation work — which defeats the purpose of having autonomous workers.
 
 ### Required format for all operator-facing outputs
 
-```
+```text
 What happened:      [one sentence, no jargon]
 Does it work:       [Yes / No / Partially — plus one plain-English reason]
 What you need to do: [specific action, or "Nothing — it's done"]
@@ -261,7 +261,7 @@ Commit a WIP checkpoint at each of these moments:
 
 ### Commit message format
 
-```
+```text
 WIP: <TICKET-ID> - <phase label>
 ```
 

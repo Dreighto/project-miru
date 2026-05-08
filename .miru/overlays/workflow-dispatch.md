@@ -1,6 +1,6 @@
 # Overlay — workflow-dispatch
 
-```
+```text
 Overlay: workflow-dispatch
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: orchestrating dispatch, configuring gateway profiles, working on W2 routing, or creating Linear tickets.

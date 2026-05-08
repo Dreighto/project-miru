@@ -1,6 +1,6 @@
 # Reference — Ports and Services
 
-```
+```text
 Reference: ports-and-services
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: you need a port number or service mapping.

@@ -1,6 +1,6 @@
 # Overlay — workflow-completion
 
-```
+```text
 Overlay: workflow-completion
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: reaching a terminal task state, emitting heartbeats, or signalling a stall.

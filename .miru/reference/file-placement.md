@@ -1,6 +1,6 @@
 # Reference — File Placement
 
-```
+```text
 Reference: file-placement
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: creating a new file and unsure where it goes.
@@ -42,5 +42,5 @@ Every file created must go in the correct location. These rules are non-negotiab
 - Never write \*.log files to repo root or data/ root — always use `logs/`
 - Never write \*.db files to repo root — always use `data/`
 - Never write \*.png screenshots to repo root — use `archive/screenshots/`
-- If a file belongs to miru_ai, pm, or dispatcher — it lives in that service directory, nowhere else
+- If a file belongs to miru_ai, pm, or gatekeeper — it lives in that service directory, nowhere else
 - Never create files in `data/startup-logs/` — that path is deprecated; use `logs/`

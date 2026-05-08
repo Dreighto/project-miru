@@ -1,6 +1,6 @@
 # Overlay — adopted-lessons
 
-```
+```text
 Overlay: adopted-lessons
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: doing a non-trivial code change (more than typo or lint).

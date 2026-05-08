@@ -1,6 +1,6 @@
 # Overlay — domain-ops
 
-```
+```text
 Overlay: domain-ops
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: touching scheduled tasks, services, Notion (read or write), or MCP tool config.

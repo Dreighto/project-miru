@@ -1,6 +1,6 @@
 # Instruction Migration — Rewrite Audit
 
-```
+```text
 Architecture: MIRU-INSTRUCTIONS-v2
 Created: 2026-05-08
 Purpose: track paragraphs that were intentionally rewritten during migration.

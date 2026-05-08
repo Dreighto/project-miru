@@ -1,6 +1,6 @@
 # AGENTS.md — Project Miru Worker Baseline
 
-```
+```text
 Architecture: MIRU-INSTRUCTIONS-v2
 Last synced: 2026-05-08
 ```
@@ -40,7 +40,7 @@ translation work — which defeats the purpose of having autonomous workers.
 
 ### Required format for all operator-facing outputs
 
-```
+```text
 What happened:      [one sentence, no jargon]
 Does it work:       [Yes / No / Partially — plus one plain-English reason]
 What you need to do: [specific action, or "Nothing — it's done"]

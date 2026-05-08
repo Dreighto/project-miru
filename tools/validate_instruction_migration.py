@@ -104,20 +104,24 @@ def check_coverage() -> tuple[list[str], dict[str, list[str]]]:
         for p in _paragraphs(f):
             archive_paragraphs[_hash_paragraph(p)] = p[:80].replace("\n", " ")
 
-    destination_index: dict[str, list[str]] = {}
+    # Map hash -> set of unique destination files. A paragraph repeated within
+    # the same file (e.g. a recurring boilerplate) is not a duplicate; only a
+    # paragraph appearing in TWO different destination files is.
+    destination_index: dict[str, set[str]] = {}
     for dest in _all_destination_files():
+        rel = str(dest.relative_to(REPO_ROOT))
         for p in _paragraphs(dest):
             h = _hash_paragraph(p)
-            destination_index.setdefault(h, []).append(str(dest.relative_to(REPO_ROOT)))
+            destination_index.setdefault(h, set()).add(rel)
 
     missing: list[str] = []
     duplicates: dict[str, list[str]] = {}
     for h, preview in archive_paragraphs.items():
-        locations = destination_index.get(h, [])
+        locations = destination_index.get(h, set())
         if not locations:
             missing.append(f"{h}: {preview}")
         elif len(locations) > 1:
-            duplicates[f"{h}: {preview}"] = locations
+            duplicates[f"{h}: {preview}"] = sorted(locations)
 
     return missing, duplicates
 

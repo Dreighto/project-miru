@@ -1,6 +1,6 @@
 # Reference — Linear Projects
 
-```
+```text
 Reference: linear-projects
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: creating a Linear ticket and you need a projectId.

@@ -1,6 +1,6 @@
 # Overlay — domain-ui
 
-```
+```text
 Overlay: domain-ui
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: touching frontend code (pm/, miru_ai/static/, templates), or building any user-facing UI.

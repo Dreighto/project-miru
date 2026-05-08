@@ -1,6 +1,6 @@
 # Project Miru — Worker Core
 
-```
+```text
 Instruction Architecture Version: MIRU-INSTRUCTIONS-v2
 Effective: 2026-05-08
 If your loaded instructions do not show this version stamp, STOP and reload your boot context.
@@ -38,7 +38,7 @@ other rule below assumes you obey this one.
 
 Before any dispatched task, run:
 
-```
+```bash
 python tools/check_kill_switch.py
 ```
 
@@ -52,7 +52,7 @@ This gate cannot be skipped. The script resolves the main repo via
 
 After the kill switch passes, run:
 
-```
+```bash
 python tools/check_worktree_clean.py
 ```
 
@@ -72,7 +72,7 @@ file currently open in another worker's session.
 Nine files in `data/` are strictly append-only. Never edit, truncate, sort,
 deduplicate, or read-modify-write. Only `fs.appendFileSync` (or shell `>>`).
 
-```
+```text
 data/cc_completion_log.jsonl       data/routing_history.jsonl
 data/pending_callbacks.jsonl       data/dispatch_dlq.jsonl
 data/cc_heartbeat_log.jsonl        data/vp_ops_supervision.jsonl

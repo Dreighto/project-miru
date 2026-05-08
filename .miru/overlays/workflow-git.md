@@ -1,6 +1,6 @@
 # Overlay — workflow-git
 
-```
+```text
 Overlay: workflow-git
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: committing, opening a PR, merging a PR, or running pre-PR hygiene.
@@ -52,7 +52,7 @@ Small, obviously-correct changes that carry no meaningful risk of breakage may b
 
 Before staging any files, evaluate which tier applies to this change. Do not default to opening a PR. Direct-to-main and CC-merge are valid and preferred when the change qualifies.
 
-```
+```text
 1. Does ANY file match the direct-to-main list above?
    → Commit direct to main. No PR, no Bugbot wait.
 
@@ -245,7 +245,7 @@ Commit a WIP checkpoint at each of these moments:
 
 ### Commit message format
 
-```
+```text
 WIP: <TICKET-ID> - <phase label>
 ```
 

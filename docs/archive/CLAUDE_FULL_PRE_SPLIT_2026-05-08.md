@@ -29,7 +29,7 @@ Full rule and rationale: `miru-context/operator-profile.md` "Copy-paste content 
 
 Before starting any dispatched task, run:
 
-```
+```bash
 python tools/check_kill_switch.py
 ```
 
@@ -46,7 +46,7 @@ See `miru-context/kill-switch.md` for the full contract.
 
 After the kill switch passes, run:
 
-```
+```bash
 python tools/check_worktree_clean.py
 ```
 
@@ -188,7 +188,7 @@ Small, obviously-correct changes that carry no meaningful risk of breakage may b
 
 Before staging any files, evaluate which tier applies to this change. Do not default to opening a PR. Direct-to-main and CC-merge are valid and preferred when the change qualifies.
 
-```
+```text
 1. Does ANY file match the direct-to-main list above?
    → Commit direct to main. No PR, no Bugbot wait.
 
