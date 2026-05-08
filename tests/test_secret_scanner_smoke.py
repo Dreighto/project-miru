@@ -115,7 +115,10 @@ def _run_gitleaks_pre_commit(repo_dir: Path) -> int:
     if GITLEAKS_CONFIG.exists():
         config_args = ["--config", str(GITLEAKS_CONFIG)]
     proc = subprocess.run(
-        [binary, "git", "--pre-commit", "--redact", "--staged", *config_args],
+        # Match the production hook args verbatim (gitleaks/.pre-commit-hooks.yaml
+        # default: `gitleaks git --pre-commit --redact --staged --verbose`). If
+        # this drifts, the integration test stops covering what the hook runs.
+        [binary, "git", "--pre-commit", "--redact", "--staged", "--verbose", *config_args],
         capture_output=True,
         text=True,
         timeout=60,
