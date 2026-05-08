@@ -73,6 +73,14 @@ class TestPackToolkitSignals:
         ctx = pack_toolkit("Update PM storefront card grid")
         assert "pm/" in ctx["service_boundaries"]
 
+    def test_memory_system_keyword(self):
+        ctx = pack_toolkit("Investigate sqlite memory system regression")
+        assert any("miru_mcp_gateway/server.py" in t for t in ctx["relevant_tools"])
+
+    def test_telegram_keyword(self):
+        ctx = pack_toolkit("Fix telegram callback handler timeout")
+        assert "docker/n8n/workflows/" in ctx["service_boundaries"]
+
     def test_no_signals_returns_minimal(self):
         ctx = pack_toolkit("Generic improvement task")
         assert ctx["relevant_files"] == []
