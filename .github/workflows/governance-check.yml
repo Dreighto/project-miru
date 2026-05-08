@@ -1,0 +1,51 @@
+name: Governance Change Gate
+
+# DGAS Tier 2 #9: when a PR touches any file in the governance file registry
+# (gateway profiles, .miru/overlays, .pre-commit-config.yaml, validator
+# scripts, etc.), the PR body MUST contain GOVERNANCE_CHANGE_APPROVED=true
+# and a markdown section explaining what the change permits.
+#
+# This is the deterministic check. CODEOWNERS provides the auto-review path
+# (operator gets pinged); this workflow blocks the merge when the PR body is
+# missing the explicit opt-in.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  governance-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compute changed files (PR base..HEAD)
+        id: diff
+        run: |
+          # Use the PR base ref provided by the event payload, fall back to
+          # origin/main. Output written to changed.txt for the script.
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          echo "base=${base}"
+          echo "head=${head}"
+          git diff --name-only "${base}" "${head}" > changed.txt
+          echo "changed file count: $(wc -l < changed.txt)"
+
+      - name: Run governance-check
+        env:
+          MIRU_GOV_PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python tools/check_governance_change.py --changed-files @changed.txt

@@ -1,0 +1,33 @@
+# CODEOWNERS — DGAS Tier 2 #9 governance file registry
+#
+# When a PR touches any path on this list, GitHub auto-requests a review from
+# @Dreighto (operator). Combined with the repo's branch protection ruleset
+# (which requires PR review before merging to main), this means governance
+# changes cannot land without operator acknowledgment.
+#
+# Defense-in-depth alongside tools/check_governance_change.py — the script
+# enforces PR description opt-in; CODEOWNERS enforces who reviews.
+
+# Gateway profile + dispatch validation
+/tools/miru_mcp_gateway/profiles.py @Dreighto
+/gatekeeper/                        @Dreighto
+
+# Instruction architecture overlays + reference data
+/.miru/overlays/                    @Dreighto
+/.miru/reference/                   @Dreighto
+/.miru/instruction_manifest.json    @Dreighto
+
+# Pre-commit configuration (hygiene gate definition)
+/.pre-commit-config.yaml            @Dreighto
+
+# Validator + check scripts (the gates themselves)
+/tools/check_*.py                   @Dreighto
+/tools/validate_*.py                @Dreighto
+
+# Ingress classifier rule set
+/data/config/w2_profile_rules.json  @Dreighto
+
+# Governance check itself (recursive protection)
+/tools/check_governance_change.py   @Dreighto
+/.github/workflows/governance-check.yml @Dreighto
+/.github/CODEOWNERS                 @Dreighto
