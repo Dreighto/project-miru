@@ -307,6 +307,20 @@ class TestScanParents:
         actions = scan_parents(TEAM_ID)
         assert actions == []
 
+    @patch("tools.parent_watcher._linear_gql")
+    def test_pagination_warning_when_has_next_page(self, mock_gql, capsys):
+        mock_gql.return_value = {
+            "issues": {
+                "nodes": [],
+                "pageInfo": {"hasNextPage": True},
+            }
+        }
+
+        scan_parents(TEAM_ID)
+        captured = capsys.readouterr()
+        assert "WARNING" in captured.err
+        assert "pagination" in captured.err
+
 
 class TestExecuteActions:
     @patch("tools.parent_watcher._linear_gql")
