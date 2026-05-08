@@ -86,17 +86,20 @@ def classify_test_evidence(raw: str) -> dict:
 
     raw_stripped = raw.strip()
 
-    # Tier 1: N/N regex — highest confidence
+    # Tier 1: N/N regex — highest confidence, validate passed <= total to reject
+    # false matches like ticket refs "PRO-117/112" which parse as 117/112.
     m = _NN_PATTERN.search(raw_stripped)
     if m:
         passed, total = int(m.group(1)), int(m.group(2))
-        rate = passed / total if total > 0 else 0.0
-        return {
-            "test_passed": passed,
-            "test_total": total,
-            "test_pass_rate": round(rate, 4),
-            "evidence_tier": "nn_regex",
-        }
+        if total > 0 and passed <= total:
+            rate = passed / total
+            return {
+                "test_passed": passed,
+                "test_total": total,
+                "test_pass_rate": round(rate, 4),
+                "evidence_tier": "nn_regex",
+            }
+        # Nonsensical ratio (passed > total, e.g. ticket ref) — fall through
 
     # Tier 2: ci_only (new format) or legacy CI keywords
     if _CI_PATTERN.match(raw_stripped):

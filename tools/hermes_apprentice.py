@@ -103,12 +103,14 @@ def _parse_test_evidence(raw: str) -> dict[str, Any]:
     m = _NN_PATTERN.search(raw)
     if m:
         passed, total = int(m.group(1)), int(m.group(2))
-        return {
-            "test_passed": passed,
-            "test_total": total,
-            "test_pass_rate": round(passed / total, 4) if total > 0 else 0.0,
-            "evidence_tier": "nn_regex",
-        }
+        if total > 0 and passed <= total:
+            return {
+                "test_passed": passed,
+                "test_total": total,
+                "test_pass_rate": round(passed / total, 4),
+                "evidence_tier": "nn_regex",
+            }
+        # Nonsensical ratio (passed > total, e.g. ticket ref) — fall through
 
     lower = raw.lower()
     if raw.startswith("ci_only:") or any(

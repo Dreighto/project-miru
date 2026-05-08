@@ -171,19 +171,22 @@ def _check_test_evidence(marker: dict) -> tuple[float | None, str, list[str]]:
     if not te:
         return None, "missing", []
 
-    # N/N regex — highest confidence
+    # N/N regex — highest confidence, but validate passed <= total to reject
+    # false matches like ticket refs "PRO-117/112" which parse as 117/112.
     m = _NN_PATTERN.search(te)
     if m:
         passed, total = int(m.group(1)), int(m.group(2))
-        rate = passed / total if total > 0 else 0.0
-        flags = []
-        if rate < 0.50:
-            flags.append(f"test pass rate critically low: {passed}/{total} ({rate:.0%})")
-        elif rate < 0.90:
-            flags.append(
-                f"test pass rate below threshold: {passed}/{total} ({rate:.0%}) — review recommended"
-            )
-        return round(rate, 4), "nn_regex", flags
+        if total > 0 and passed <= total:
+            rate = passed / total
+            flags = []
+            if rate < 0.50:
+                flags.append(f"test pass rate critically low: {passed}/{total} ({rate:.0%})")
+            elif rate < 0.90:
+                flags.append(
+                    f"test pass rate below threshold: {passed}/{total} ({rate:.0%}) — review recommended"
+                )
+            return round(rate, 4), "nn_regex", flags
+        # Nonsensical ratio (passed > total) — fall through to other tiers
 
     # ci_only or legacy CI keywords
     lower = te.lower()
