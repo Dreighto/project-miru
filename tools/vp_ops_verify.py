@@ -26,7 +26,7 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-_NN_PATTERN = re.compile(r"(\d+)\s*/\s*(\d+)")
+_NN_PATTERN = re.compile(r"^\s*(\d+)\s*/\s*(\d+)")
 
 # ---------------------------------------------------------------------------
 # Repo root resolution (same pattern as emit_completion.py)
@@ -159,33 +159,41 @@ def _check_handoff_entry_points(repo_root: Path, marker: dict) -> tuple[bool, li
     return len(flags) == 0, flags
 
 
-def _check_test_evidence(marker: dict) -> tuple[float | None, str, list[str]]:
-    """Parse test_evidence and return (pass_rate, tier, flags).
+def _check_test_evidence(
+    marker: dict,
+) -> tuple[float | None, str, list[str], list[str]]:
+    """Parse test_evidence and return (pass_rate, tier, flags, warnings).
+
+    flags = hard failures that set verdict to FLAGGED.
+    warnings = soft issues recorded but don't block verification.
 
     Thresholds (from brief):
-      >= 0.90 → green (no flag)
-      0.50-0.89 → soft warning
-      < 0.50 → FLAGGED
+      >= 0.90 → green (no flag, no warning)
+      0.50-0.89 → soft warning only
+      < 0.50 → hard flag (FLAGGED)
     """
     te = (marker.get("test_evidence") or "").strip()
     if not te:
-        return None, "missing", []
+        # Missing test_evidence: warn but don't hard-fail (legacy entries predate
+        # the enforced format). New entries are required to have it per CLAUDE.md.
+        return None, "missing", [], ["test_evidence field is missing or empty"]
 
     # N/N regex — highest confidence, but validate passed <= total to reject
     # false matches like ticket refs "PRO-117/112" which parse as 117/112.
-    m = _NN_PATTERN.search(te)
+    m = _NN_PATTERN.match(te)
     if m:
         passed, total = int(m.group(1)), int(m.group(2))
         if total > 0 and passed <= total:
             rate = passed / total
-            flags = []
+            flags: list[str] = []
+            warnings: list[str] = []
             if rate < 0.50:
                 flags.append(f"test pass rate critically low: {passed}/{total} ({rate:.0%})")
             elif rate < 0.90:
-                flags.append(
+                warnings.append(
                     f"test pass rate below threshold: {passed}/{total} ({rate:.0%}) — review recommended"
                 )
-            return round(rate, 4), "nn_regex", flags
+            return round(rate, 4), "nn_regex", flags, warnings
         # Nonsensical ratio (passed > total) — fall through to other tiers
 
     # ci_only or legacy CI keywords
@@ -204,7 +212,7 @@ def _check_test_evidence(marker: dict) -> tuple[float | None, str, list[str]]:
             "ruff",
         )
     ):
-        return None, "ci_binary", []
+        return None, "ci_binary", [], []
 
     # no_tests
     if te == "no_tests" or any(
@@ -219,10 +227,10 @@ def _check_test_evidence(marker: dict) -> tuple[float | None, str, list[str]]:
             "no code change",
         )
     ):
-        return None, "no_tests", []
+        return None, "no_tests", [], []
 
-    # Freetext — not parseable, soft warning
-    return None, "freetext", [f"test_evidence is freetext (not machine-parseable): {te[:80]}"]
+    # Freetext — not parseable, soft warning (don't hard-fail)
+    return None, "freetext", [], [f"test_evidence is freetext (not machine-parseable): {te[:80]}"]
 
 
 # ---------------------------------------------------------------------------
@@ -269,9 +277,10 @@ def verify(ticket_id: str) -> dict:
     flags.extend(handoff_flags)
 
     # 6. Test evidence quality (PRO-312 — Hermes quality signal)
-    test_pass_rate, test_tier, test_flags = _check_test_evidence(marker or {})
+    test_pass_rate, test_tier, test_flags, test_warnings = _check_test_evidence(marker or {})
     checks["test_pass_rate"] = test_pass_rate
     checks["test_evidence_tier"] = test_tier
+    checks["test_evidence_warnings"] = test_warnings
     flags.extend(test_flags)
 
     verdict = "VERIFIED" if not flags else "FLAGGED"

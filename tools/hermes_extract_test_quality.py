@@ -25,7 +25,7 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 
-_NN_PATTERN = re.compile(r"(\d+)\s*/\s*(\d+)")
+_NN_PATTERN = re.compile(r"^\s*(\d+)\s*/\s*(\d+)")
 _CI_PATTERN = re.compile(r"^ci_only:")
 _NO_TESTS = re.compile(r"^no_tests$")
 
@@ -88,7 +88,7 @@ def classify_test_evidence(raw: str) -> dict:
 
     # Tier 1: N/N regex — highest confidence, validate passed <= total to reject
     # false matches like ticket refs "PRO-117/112" which parse as 117/112.
-    m = _NN_PATTERN.search(raw_stripped)
+    m = _NN_PATTERN.match(raw_stripped)
     if m:
         passed, total = int(m.group(1)), int(m.group(2))
         if total > 0 and passed <= total:

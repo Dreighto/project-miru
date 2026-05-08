@@ -86,7 +86,7 @@ def _default_path(filename: str) -> str:
 # Quality extraction (inline — mirrors hermes_extract_test_quality.py)
 # ---------------------------------------------------------------------------
 
-_NN_PATTERN = re.compile(r"(\d+)\s*/\s*(\d+)")
+_NN_PATTERN = re.compile(r"^\s*(\d+)\s*/\s*(\d+)")
 
 
 def _parse_test_evidence(raw: str) -> dict[str, Any]:
@@ -100,7 +100,7 @@ def _parse_test_evidence(raw: str) -> dict[str, Any]:
         }
 
     raw = raw.strip()
-    m = _NN_PATTERN.search(raw)
+    m = _NN_PATTERN.match(raw)
     if m:
         passed, total = int(m.group(1)), int(m.group(2))
         if total > 0 and passed <= total:
