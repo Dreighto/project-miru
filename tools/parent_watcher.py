@@ -70,14 +70,14 @@ query($teamId: String!) {
       team: { id: { eq: $teamId } }
       children: { length: { gt: 0 } }
     }
-    first: 100
+    first: 250
   ) {
     nodes {
       id
       identifier
       title
       state { name }
-      children {
+      children(first: 250) {
         nodes {
           id
           identifier
@@ -86,6 +86,7 @@ query($teamId: String!) {
         }
       }
     }
+    pageInfo { hasNextPage }
   }
 }
 """
@@ -238,7 +239,16 @@ def _get_state_id(team_id: str, state_name: str) -> str:
 
 def scan_parents(team_id: str) -> list[ParentAction]:
     data = _linear_gql(_QUERY_PARENTS_WITH_CHILDREN, {"teamId": team_id})
-    parents = data.get("issues", {}).get("nodes", [])
+    issues_data = data.get("issues", {})
+    parents = issues_data.get("nodes", [])
+
+    if issues_data.get("pageInfo", {}).get("hasNextPage"):
+        import sys
+
+        print(
+            "[parent_watcher] WARNING: more than 250 parent tickets exist; pagination needed",
+            file=sys.stderr,
+        )
 
     actions: list[ParentAction] = []
     for parent in parents:
