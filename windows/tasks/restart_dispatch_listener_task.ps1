@@ -1,8 +1,10 @@
 # restart_dispatch_listener_task.ps1
 # Called by the "MiruRestartDispatcher" scheduled task (or directly by
 # restart_tools.py via service_restart).
-# Runs as SYSTEM -- kills the Node process on port 19100, then re-triggers
-# the MiruDispatchListener task which owns the wrapper + respawn loop.
+# Runs as NAS\NAS Interactive/Limited (not SYSTEM) so it can be triggered
+# from non-elevated shells without UAC. See register_restart_tasks.ps1.
+# Kills the Node process on port 19100, then re-triggers the
+# MiruDispatchListener task which owns the wrapper + respawn loop.
 # Logs to logs\dispatch_listener_restart.log.
 
 Set-StrictMode -Version Latest
