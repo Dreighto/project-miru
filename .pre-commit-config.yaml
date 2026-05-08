@@ -5,6 +5,11 @@
 # Legacy files (those not touched by the current PR) are NOT subject to retroactive
 # enforcement — hooks fire on changed files only, by pre-commit's default behavior.
 
+# Install both pre-commit and pre-push hook stages by default. Without this,
+# `pre-commit install` only wires up .git/hooks/pre-commit and the
+# safe-git-push gate (DGAS Tier 2 #8) is silently skipped on `git push`.
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
