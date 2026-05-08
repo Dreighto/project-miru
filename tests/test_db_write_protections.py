@@ -62,15 +62,15 @@ class TestNoMcpToolWritesCardCatalog(unittest.TestCase):
     # care about is: does any module open a write connection to it, or pull
     # in PM's connect_catalog helper?
     _FORBIDDEN_PATTERNS: tuple[str, ...] = (
-        # Opening a sqlite3 connection that targets card_catalog
+        # Opening a sqlite3 connection that names the file directly
         r"sqlite3\.connect\([^)]*card_catalog",
+        # Opening sqlite via PM's catalog path constant (sqlite3.connect(CATALOG_DB_PATH))
+        r"sqlite3\.connect\(\s*CATALOG_DB_PATH\b",
         # Calling PM's connect_catalog() helper
         r"\bconnect_catalog\s*\(",
         # Importing from pm.db (any pm.db symbol could lead to a write path)
         r"from\s+pm\.db\s+import",
         r"import\s+pm\.db\b",
-        # Directly using PM's CATALOG_DB_PATH constant for connection
-        r"CATALOG_DB_PATH\s*[)\]]?\s*\.\s*(?:open|connect)",
     )
 
     def test_no_gateway_module_opens_card_catalog(self) -> None:
@@ -83,7 +83,7 @@ class TestNoMcpToolWritesCardCatalog(unittest.TestCase):
         """
         compiled = [re.compile(p, re.IGNORECASE) for p in self._FORBIDDEN_PATTERNS]
         violators: list[tuple[str, str]] = []
-        for py_file in sorted(GATEWAY_DIR.glob("*.py")):
+        for py_file in sorted(GATEWAY_DIR.rglob("*.py")):
             content = py_file.read_text(encoding="utf-8")
             for pattern in compiled:
                 if pattern.search(content):
