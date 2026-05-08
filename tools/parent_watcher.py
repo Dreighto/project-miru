@@ -18,6 +18,25 @@ try:
 except ImportError:
     requests = None  # type: ignore[assignment]
 
+
+def _load_env_fallback() -> None:
+    if os.environ.get("LINEAR_API_KEY"):
+        return
+    env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+    try:
+        with open(env_path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("LINEAR_API_KEY="):
+                    val = line.split("=", 1)[1].strip().strip("'\"")
+                    os.environ["LINEAR_API_KEY"] = val
+                    return
+    except FileNotFoundError:
+        pass
+
+
+_load_env_fallback()
+
 _LINEAR_API = "https://api.linear.app/graphql"
 _HTTP_TIMEOUT_S = 15
 
@@ -64,7 +83,7 @@ def _linear_gql(query: str, variables: dict[str, Any]) -> dict[str, Any]:
 
 
 _QUERY_PARENTS_WITH_CHILDREN = """
-query($teamId: String!) {
+query($teamId: ID!) {
   issues(
     filter: {
       team: { id: { eq: $teamId } }
@@ -92,7 +111,7 @@ query($teamId: String!) {
 """
 
 _QUERY_WORKFLOW_STATES = """
-query($teamId: String!) {
+query($teamId: ID!) {
   workflowStates(filter: { team: { id: { eq: $teamId } } }) {
     nodes { id name type }
   }
