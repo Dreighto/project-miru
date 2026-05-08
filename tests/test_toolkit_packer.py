@@ -115,9 +115,11 @@ class TestDontTouchAndReadOnly:
         for item in GLOBAL_DONT_TOUCH:
             assert item in ctx["dont_touch"]
 
-    def test_env_file_in_dont_touch(self):
+    def test_critical_dont_touch_entries_pinned(self):
         ctx = pack_toolkit("Any task")
         assert ".env" in ctx["dont_touch"]
+        assert ".mcp.json" in ctx["dont_touch"]
+        assert "data/card_catalog.db" in ctx["dont_touch"]
 
     def test_global_read_only_always_present(self):
         ctx = pack_toolkit("Any task")
