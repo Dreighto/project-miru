@@ -1,0 +1,131 @@
+{
+  "architecture_version": "MIRU-INSTRUCTIONS-v2",
+  "effective": "2026-05-08",
+  "core": {
+    "path": "CLAUDE.md",
+    "always_loaded": true,
+    "owner": "operator + Claude Code",
+    "last_reviewed": "2026-05-08",
+    "contains": [
+      "fail_closed_directive",
+      "repo_boundary",
+      "kill_switch_gate",
+      "worktree_cleanliness_gate",
+      "no_overlap",
+      "append_only_data_files",
+      "completion_terminal_states",
+      "return_to_main",
+      "claude_code_role",
+      "discovery_index"
+    ]
+  },
+  "baseline": {
+    "path": "AGENTS.md",
+    "always_loaded": true,
+    "owner": "framework",
+    "last_reviewed": "2026-05-08",
+    "contains": [
+      "operator_communication_standard",
+      "copy_paste_code_blocks",
+      "try_harder_discipline"
+    ]
+  },
+  "overlays": {
+    "workflow-git": {
+      "path": ".miru/overlays/workflow-git.md",
+      "triggers": ["git", "commit", "pr", "merge", "branch", "hygiene", "bugbot"],
+      "contains": [
+        "pr_merge_policy",
+        "post_merge_cleanup",
+        "verified_force_delete",
+        "automated_branch_cleanup",
+        "hygiene_gate",
+        "automated_pr_review_sequence",
+        "gh_cli_auth_bootstrap",
+        "wip_commit_checkpoints"
+      ],
+      "load_when": "the worker will commit, open a PR, merge a PR, or run pre-PR hygiene"
+    },
+    "workflow-completion": {
+      "path": ".miru/overlays/workflow-completion.md",
+      "triggers": ["completion", "terminal", "marker", "heartbeat", "stall", "inconclusive", "failed", "confirmed_working"],
+      "contains": [
+        "completion_marker_schema",
+        "test_evidence_format",
+        "handoff_schema",
+        "heartbeat_emission",
+        "stall_classification"
+      ],
+      "load_when": "the worker is reaching a terminal task state or emitting heartbeats during a long task"
+    },
+    "workflow-dispatch": {
+      "path": ".miru/overlays/workflow-dispatch.md",
+      "triggers": ["dispatch", "orchestrate", "gateway", "profile", "classifier", "linear", "ticket"],
+      "contains": [
+        "linear_projectid_requirement",
+        "ch_decision_authority",
+        "telegram_escalation_rules",
+        "gateway_tool_profile_enforcement",
+        "ingress_classifier",
+        "orchestrator_modules"
+      ],
+      "load_when": "the worker is orchestrating a dispatch, configuring gateway profiles, working on W2 routing, or creating a Linear ticket"
+    },
+    "domain-ui": {
+      "path": ".miru/overlays/domain-ui.md",
+      "triggers": ["ui", "frontend", "pm/", "miru_ai/static", "templates", "svelte", "css", "html"],
+      "contains": [
+        "craft_guides_trigger_list",
+        "pm_specific_triggers",
+        "soft_triggers",
+        "skip_for_list"
+      ],
+      "load_when": "the worker is touching frontend code or building any user-facing UI"
+    },
+    "domain-ops": {
+      "path": ".miru/overlays/domain-ops.md",
+      "triggers": ["scheduled_task", "windows_task", "service", "notion", "mcp", "scheduled"],
+      "contains": [
+        "notion_read_write_rules",
+        "mcp_tool_usage_rules",
+        "scheduled_tasks_no_focus_stealing"
+      ],
+      "load_when": "the worker is touching Windows scheduled tasks, services, Notion (read or write), or MCP tool config"
+    },
+    "adopted-lessons": {
+      "path": ".miru/overlays/adopted-lessons.md",
+      "triggers": ["non_trivial_change", "workflow_json", "design_in_ticket"],
+      "contains": [
+        "test_js_as_in_workflow_json",
+        "lock_design_in_linear_ticket"
+      ],
+      "load_when": "the worker is doing a non-trivial code change (more than typo or lint)"
+    }
+  },
+  "reference": {
+    "ports-and-services": {
+      "path": ".miru/reference/ports-and-services.md",
+      "fetch_when": "you need a port number or service mapping"
+    },
+    "linear-projects": {
+      "path": ".miru/reference/linear-projects.md",
+      "fetch_when": "creating a Linear ticket and you need a projectId"
+    },
+    "file-placement": {
+      "path": ".miru/reference/file-placement.md",
+      "fetch_when": "creating a new file and unsure where it goes"
+    },
+    "database-rules": {
+      "path": ".miru/reference/database-rules.md",
+      "fetch_when": "reading or proposing changes to card_catalog.db"
+    },
+    "restart-procedures": {
+      "path": ".miru/reference/restart-procedures.md",
+      "fetch_when": "restarting a service"
+    }
+  },
+  "archive": {
+    "claude_md_pre_split": "docs/archive/CLAUDE_FULL_PRE_SPLIT_2026-05-08.md",
+    "agents_md_pre_split": "docs/archive/AGENTS_PRE_SPLIT_2026-05-08.md"
+  }
+}

@@ -1,48 +1,54 @@
-# Claude Chat + Claude Code — Project Miru
+# Project Miru — Worker Core
 
-## Copy-paste content for manual routing — Hard Rule
+```
+Instruction Architecture Version: MIRU-INSTRUCTIONS-v2
+Effective: 2026-05-08
+If your loaded instructions do not show this version stamp, STOP and reload your boot context.
+```
 
-Any content the operator will copy-paste to another thread or LLM — Claude Chat (CH), ChatGPT (GPT), Gemini (GMI), Perplexity (PXY), Cursor, or any manual-routing target — **MUST be wrapped in a fenced code block.** This includes thread handoffs, peer-LLM briefing blocks, paste-ready research questions, worker dispatch prompts, and any structured content intended for manual transfer between agents.
+This file is the always-loaded core. It contains the rules that, if violated,
+cause data loss, security breach, or service outage. Everything else is in
+overlays (loaded by task type) or reference files (fetched on demand). The
+discovery index at the bottom tells you when to load each.
 
-**Why:** the operator runs a manual multi-LLM routing workflow as a core part of how the system is built. Code blocks survive the trip — no rich-text artifacts, no auto-link rewrites (`CLAUDE.md` → `[CLAUDE.md](http://CLAUDE.md)`), no markdown nesting eating structure. If unsure whether content is for paste, default to code block. Set 2026-05-03 by operator. Applies to ALL workers (CC, CH, Codex, Cursor, Gemini), not just Claude Chat.
+Read `AGENTS.md` for universal communication rules (Operator Communication
+Standard, Try Harder Discipline). Read `miru-context/team-charter.md` on every
+dispatch.
 
-Full rule and rationale: `miru-context/operator-profile.md` "Copy-paste content — Hard Rule".
+---
 
-## Ports — Permanent Reference
+## Fail-Closed Directive
 
-- 18080 = Project Miru UI — ACTIVE
-- 18765 = Miru AI — ACTIVE
-- 8080 = RESERVED — do not touch
-- 8765 = NEVER TOUCH under any circumstances
-- 11434 = Ollama — local dependency, not Miru-owned
+When you are not sure: **STOP and ask the operator**. Do not guess. Do not
+silently improvise. Do not proceed with an irreversible action on a hunch.
+Asking costs minutes; a wrong autonomous action can cost a revert, lost data,
+or operator trust. This is the single most important rule in this file — every
+other rule below assumes you obey this one.
 
-## Repo Boundary — Hard Rule
+---
 
-- Canonical repo: `Dreighto/project-miru`. Local checkouts live under `D:\dev\miru*`.
-- Worktrees: each worker may have its own Git worktree under a sibling path (e.g. `D:\dev\miru-cursor`, `D:\dev\miru-codex`). All worktrees share the same repo, same branches, same canon. Operating inside any of them counts as operating within the repo.
-- The boundary rule applies to the **repo**, not the working directory path. A worker in its own worktree is in scope for normal work.
-- Never access, modify, or read files outside `D:\dev\miru*` worktrees without explicit operator authorization.
-- If a task requires leaving the repo: STOP. Explain what you need to do and why. Wait for operator decision before proceeding.
-- Worktree pre-flight: `main` is checked out in CC's worktree at `D:\dev\miru`. Git refuses to check out `main` a second time in another worktree, which is correct behavior. Workers in sibling worktrees should `git fetch origin` then cut their branch from `origin/main` directly: `git checkout -b <branch> origin/main`. Do NOT try to `git checkout main` first.
+## Repo Boundary
 
-## Kill Switch — Pre-flight Gate
+- Canonical repo: `Dreighto/project-miru`. Local checkouts under `D:\dev\miru*`.
+- Worktrees (e.g. `D:\dev\miru-w1`, `D:\dev\miru-cursor`) are in scope.
+- Never read, modify, or write files outside `D:\dev\miru*` without explicit operator authorization.
+- If a task requires leaving the repo: STOP and ask.
 
-Before starting any dispatched task, run:
+## Pre-Flight Gate 1 — Kill Switch
+
+Before any dispatched task, run:
 
 ```
 python tools/check_kill_switch.py
 ```
 
-- **Exit code 1** (prints `KILL_SWITCH_ACTIVE`) → emit `STATUS: ESCALATE: HUMAN-REQUIRED` and stop immediately. Do not create a branch, do not read task files, do not modify anything. Report: "Kill switch active — data/system_halt is present. Autonomous work paused."
-- **Exit code 0** (prints `CLEAR`) → proceed normally through the rest of pre-flight.
+- Exit code 1 (`KILL_SWITCH_ACTIVE`): emit `STATUS: ESCALATE: HUMAN-REQUIRED` and stop. Do not branch, do not read task files, do not modify anything.
+- Exit code 0 (`CLEAR`): proceed to gate 2.
 
-The script resolves the main repo root via `git rev-parse --git-common-dir` so it works correctly from any worktree. Do NOT check `data/system_halt` as a relative path — from a sibling worktree that resolves to the wrong directory.
+This gate cannot be skipped. The script resolves the main repo via
+`git rev-parse --git-common-dir` so it works from any worktree.
 
-This check runs before branch creation, before reading any task files, before every other pre-flight step. It cannot be skipped.
-
-See `miru-context/kill-switch.md` for the full contract.
-
-## Worktree Cleanliness Gate — Pre-flight (step 2, immediately after kill switch)
+## Pre-Flight Gate 2 — Worktree Cleanliness
 
 After the kill switch passes, run:
 
@@ -50,677 +56,86 @@ After the kill switch passes, run:
 python tools/check_worktree_clean.py
 ```
 
-- **Exit code 1** (prints `DIRTY: ...`) → emit `STATUS: ESCALATE: HUMAN-REQUIRED` and stop immediately. Do not create a branch. Report the dirty files listed in stderr.
-- **Exit code 0** (prints `CLEAN`) → proceed normally.
+- Exit code 1 (`DIRTY`): emit `STATUS: ESCALATE: HUMAN-REQUIRED` and stop. Report dirty files.
+- Exit code 0 (`CLEAN`): proceed.
 
-The script checks for staged/unstaged changes to tracked files. Untracked files in `data/`, `logs/`, and `tests/_tmp/` are ignored (they're always present and gitignored). The script uses `os.getcwd()` so it must be run from the worktree root — i.e. `python tools/check_worktree_clean.py` from `D:\dev\miru-w1`, not `python D:\dev\miru\tools\check_worktree_clean.py`.
+Run from the worktree root (uses `os.getcwd()`).
 
-**Why this matters:** If a previous dispatch violated the return-to-main rule and left uncommitted changes in a slot, the next worker dispatched to that slot would start in a dirty tree and risk staging the wrong files into a new PR. This gate catches the violation early.
+## No Overlap
 
-## No Overlap Rule
+Before starting work, check what is being worked on. If another worker is
+actively touching the same file or feature: STOP and report. Never modify a
+file currently open in another worker's session.
 
-- Before starting any task, check what is currently being worked on
-- If another worker is actively working on the same file or feature: STOP. Report the conflict to the operator. Do not proceed until the operator decides.
-- Never modify a file that is currently open and being edited by another worker
+## Append-Only Data Files
 
-## Linear — Ticket Routing — Hard Rule
-
-Every Linear ticket created by any worker (CC, CH, Codex, Cursor) **MUST include a `projectId`**. Never create a ticket at team level only — tickets without a project are invisible to the project-based workflow and will be lost.
-
-The `linear_projects` table in the miru_memory DB is the authoritative source. Quick reference below.
-
-**Team: Project Miru (key: PRO, team_id: f9d6193c-4572-40a9-b834-c408439f1aa1)**
-
-| Project                       | ID                                     | Route tickets here for                                        |
-| ----------------------------- | -------------------------------------- | ------------------------------------------------------------- |
-| PM Storefront                 | `ff3233bb-a958-484b-9009-b19a6a5063a5` | Storefront UI, card browsing, user-facing PM features         |
-| Miru Orchestration / Autonomy | `2ba0133d-6f39-41a6-9846-9566e7c895ec` | Worker dispatch, orchestration, autonomy rules, routing logic |
-| Tooling / MCP Gateway         | `cb5c362c-c1f4-4f55-b119-578fa017ca7d` | MCP server config, gateway, tool permissions                  |
-| Automation / Integrations     | `d0701b07-d4c6-4f18-a72a-3e4e817b50f5` | n8n workflows, Telegram bots, alerts, watchdogs               |
-| Memory / Context System       | `b94573e3-be3b-4c2a-8022-8fbf87e8581f` | Memory files, context boot, session continuity                |
-| Docs / Canon / Process        | `9816755f-1bec-40c6-8c8b-17a2be9a688e` | CLAUDE.md, AGENTS.md, operating docs, process rules           |
-| Research / Experiments        | `ebe8640f-e79e-4b88-b450-c6fe0e3d3d28` | Spikes, evals, benchmarks, proofs of concept                  |
-
-**Team: NASDOOM (key: NAS, team_id: aaddbe1a-a8a2-48fe-bebf-4adb34d67618)**
-
-| Project           | ID                                     | Route tickets here for                                  |
-| ----------------- | -------------------------------------- | ------------------------------------------------------- |
-| NASDOOM Dashboard | `db48a3f5-73e7-4289-bbcc-0732028f5041` | NAS dashboard UI, SvelteKit, Plex/Sonarr/Radarr/SABnzbd |
-
-**Never use** the legacy "Project Miru" catch-all (`7c2b40d5-058a-457d-84c7-d57d6bf3f281`). Always pick the specific project above. If unsure: default to Miru Orchestration / Autonomy for internal system work, or Docs / Canon / Process for rule/doc changes.
-
-Set 2026-05-04. Root cause: tickets were created without `projectId` and landed at team level, making them unfindable by project.
-
-## Notion — Read/Write Rules
-
-- ALL workers may READ Notion to understand the current job, active tasks, and system state
-- Claude Chat is the default Notion writer for architectural decisions, new page structure, consultant packet content, and cross-session synthesis
-- **Claude Code (VP Ops) has standing write authority** for the following Notion tasks — no per-task operator authorization required:
-  - Post-ticket canon updates after verifying completed work (factual corrections, tool lists, port/service status)
-  - Worker Operating Baseline syncs when CLAUDE.md or AGENTS.md changes
-  - Work Log anchor entries after a sprint
-  - Reference/spec pages (e.g. ROOM hardware spec, schema references)
-  - Any Notion update where CC already holds the full context from a just-verified ticket
-- All other workers may write to Notion only when the operator explicitly authorizes a specific task
-- Use Notion reads to avoid overlapping with in-progress work
-
-## Adopted Lessons — Hard Rules
-
-Lessons promoted from Provisional to Adopted via the Lesson Promotion Discipline (Notion canon, 2026-04-28). These are battle-tested patterns that prevent specific failure modes we've already hit.
-
-### Test the JS as it lives in the workflow JSON (PRO-189 retro, adopted 2026-04-28)
-
-When testing JavaScript embedded in workflow JSON files (e.g. `docker/n8n/workflows/*.json`), the test MUST:
-
-1. Load the JSON file from disk via `fs.readFileSync` and `JSON.parse`.
-2. Extract the `jsCode` string from the relevant node.
-3. Eval it as JS via `new Function(jsCode)` or `vm.Script(jsCode)` to confirm it parses without `SyntaxError`.
-4. Exercise the algorithm against that loaded code path — NOT a clean extracted copy of the algorithm.
-
-**Why this is a hard rule:** PRO-160 shipped with two latent bugs (SyntaxError from a literal newline inside a string literal, and a missing `$getWorkflowStaticData('global')` call). PRO-160's tests passed because they imported a clean copy of the diff function and exercised it directly. The deploy-time mangling and the embedded-newline bug both happened at the boundary between "JS source in the JSON file" and "JS that n8n actually runs," and the tests were structurally unable to see across that boundary. The watcher crashed on every poll for 12 minutes in production before being deactivated.
-
-PRO-189 added the boundary-crossing test, which catches both bug classes and any future deploy-pipeline mangling.
-
-**Applies to:** any change to a workflow JSON file under `docker/n8n/workflows/` that touches a `jsCode` field.
-
-### Lock design in the Linear ticket description, not in the prompt wrapper (PRO-180 retro, adopted 2026-04-28)
-
-When dispatching a non-trivial worker task, the design specification belongs in the Linear ticket description. The prompt wrapper handles execution mechanics (model, reasoning level, pre-flight, completion contract) and points back at the ticket for the design.
-
-**What goes in the Linear ticket:**
-
-- Schema, rules, scope.
-- Don't-touch list.
-- Done-when criteria.
-- Provisional flag and promotion criteria if applicable.
-- Investigation steps if the bug isn't fully understood yet.
-
-**What stays in the prompt wrapper:**
-
-- Worker selection (model, reasoning level).
-- Pre-flight checks (branch hygiene, working tree state).
-- Completion contract format.
-- Escalation rules.
-- Post-merge cleanup steps.
-
-**Why this is a hard rule:** the design survives if the worker session restarts mid-task or if anyone else picks up the ticket later. The prompt wrapper does not — it's ephemeral. Putting the design in the ticket also makes ticket-only dispatch viable (operator taps Telegram dispatch button without Claude Chat drafting an elaborated prompt first), which is critical for autonomy.
-
-PRO-180 shipped cleanly via ticket-only dispatch in 3 minutes. The Linear ticket description carried the full design; CC executed three coordinated edits across three files without needing my prompt wrapper.
-
-**Applies to:** any worker dispatch that's more than a one-line change. Trivial fixes (typos, lint) don't need a locked design.
-
-## PR Merge Policy — CC self-merges low-risk PRs
-
-CC may self-merge PRs that fall in the low-risk column below. Operator reviews and merges anything in the high-risk column.
-
-**No PR needed — commit direct to main:**
-
-Small, obviously-correct changes that carry no meaningful risk of breakage may be committed directly to main without opening a PR. Bugbot and CI do not need to run on these.
-
-- Version bumps in CI config (e.g. `node-version`, action runner pins) — one-liners
-- Typo or wording fixes in worker rule files (CLAUDE.md, AGENTS.md, etc.) — no logic change
-- Completion log entries (`data/cc_completion_log.jsonl` appends)
-- Lint / format-only auto-fixes with no logic change
-
-**CC merges (fixes):**
-
-- Single-file edits to existing files
-- Single-workflow JSON changes
-- Bug fixes following a known canon-lesson pattern
-- Config changes (.env, docker-compose env vars)
-- Test fixtures, log rotation, hygiene tasks
-- Lint / format / comment-only changes
-- Worker rule file additions or substantive edits (CLAUDE.md, AGENTS.md, CURSOR.md, etc.) — new rules, not typos
-- PRs that reference one Linear ticket
-- Bugbot not required — skip Bugbot wait for PRs in this column
-
-**Operator merges (changes):**
-
-- New files or new directories
-- Multi-workflow changes
-- Schema or data model changes
-- Anything touching `card_catalog.db` or its schema
-- Anything that changes `routing_history.jsonl` schema
-- Infrastructure (gateway, MCPs, port assignments)
-- First implementation of something new (e.g. W3 build)
-
-**Mandatory pre-commit decision — workers must run this before every commit:**
-
-Before staging any files, evaluate which tier applies to this change. Do not default to opening a PR. Direct-to-main and CC-merge are valid and preferred when the change qualifies.
+Nine files in `data/` are strictly append-only. Never edit, truncate, sort,
+deduplicate, or read-modify-write. Only `fs.appendFileSync` (or shell `>>`).
 
 ```
-1. Does ANY file match the direct-to-main list above?
-   → Commit direct to main. No PR, no Bugbot wait.
-
-2. Do ALL files match the CC-merge list?
-   → Open PR, CC self-merges after CONFIRMED WORKING.
-
-3. Does ANY file match the operator-merge list?
-   → Open PR, ping operator via Claude Chat. Do not merge.
-
-4. Unsure?
-   → Treat as operator-merge (fail-closed). Open PR, ping operator.
+data/cc_completion_log.jsonl       data/routing_history.jsonl
+data/pending_callbacks.jsonl       data/dispatch_dlq.jsonl
+data/cc_heartbeat_log.jsonl        data/vp_ops_supervision.jsonl
+data/drift_scanner_log.jsonl       data/agent_decisions.jsonl
+data/github_resource_ledger.jsonl
 ```
 
-Workers that skip this evaluation and default to opening a PR for direct-to-main changes are wasting operator attention. Workers that skip this and commit infrastructure changes direct to main are in violation.
+Use the helper scripts (`tools/emit_completion.py`, `tools/emit_heartbeat.py`)
+— do not hand-roll the append. Pre-commit hooks exclude these from
+`trailing-whitespace` and `end-of-file-fixer`. The invariant is enforced by
+`tests/test_jsonl_append_only_invariant.py`.
 
-**Principle:** CC merges fixes. Operator merges changes. Fix = restore expected behavior of something that already exists. Change = add capability or alter the contract. When unsure, default to opening the PR for operator review (fail-closed). The cost of waiting for an operator review is minutes; the cost of a wrong self-merge is a revert plus context loss.
+## Completion Contract — Terminal States
 
-**Hard requirements before CC self-merges:**
+Every task ends with exactly one of:
 
-1. PR is in the CC-merge column above (CC must explicitly check)
-2. CC's own completion contract reports CONFIRMED WORKING (not INCONCLUSIVE)
-3. Branch was cut clean from main (no concern braiding)
-4. Bugbot: not required for CC-merge column — do not wait for it
+- `STATUS: CONFIRMED WORKING`
+- `STATUS: INCONCLUSIVE`
+- `STATUS: FAILED`
 
-If any of those fail: open the PR for operator review, do not self-merge.
+Plus a one-line summary. The full marker schema, heartbeat emission, and stall
+classification rules live in `.miru/overlays/workflow-completion.md` — load it
+before declaring a terminal state.
 
-**Never self-merge:**
-
-- Force-push or destructive git operations (these are hard rules under access progression, not just merge policy)
-
-**Post-merge cleanup — worker responsibility (locked 2026-04-28 per PRO-180, updated 2026-05-07):**
-
-Whoever opened the PR is responsible for post-merge cleanup. The operator should NOT be cleaning up branches manually after merging.
-
-After a PR is merged (whether self-merged or operator-merged):
-
-1. The worker (or Claude Chat, if it owned the PR) checks out `main`.
-2. Pulls latest.
-3. Attempts `git branch -d <branch-name>` (lowercase `-d`, safe-delete).
-4. If `-d` fails with "not fully merged" (normal for squash merges): verify via `gh pr list --head <branch-name> --state merged` that a merged PR exists. If verified, use `git branch -D <branch-name>` (uppercase `-D`, force-delete). If no merged PR is found: STOP and report.
-5. Reports deletion. If anything looks off (working tree unexpectedly dirty, etc.): STOP and report.
-
-**Verified force-delete rule (replaces blanket `-D` prohibition, set 2026-05-07):**
-
-Workers may use `git branch -D` ONLY after verifying via `gh pr list --head <branch> --state merged` that a merged PR exists for that branch. No merged PR = no force-delete. No exceptions. This is necessary because squash merges (our standard merge strategy) make git unable to detect that a branch was merged, causing `-d` to always fail.
-
-**Automated branch cleanup — safety net:**
-
-`tools/prune_merged_branches.py` is the centralized cleanup script. It finds local branches whose remote tracking ref is gone, verifies each via GitHub API, and force-deletes only verified-merged branches. Skips branches checked out in worktrees and protected patterns (main, develop, _parking_\*).
-
-- Dry run: `python tools/prune_merged_branches.py --dry-run`
-- Execute: `python tools/prune_merged_branches.py`
-- JSON output: add `--json-output`
-
-Workers should run this during pre-flight when they notice stale branches accumulating. It catches branches from operator-merged PRs, terminated sessions, and any other gaps in worker cleanup.
-
-If operator merges via the GitHub UI and the worker is not present in that session, the next worker that picks up a ticket on `main` is responsible for noticing stale branches in their pre-flight and running the prune script before cutting a new branch.
-
-Operator should never have to ask a worker to clean up a branch. If you find yourself doing it, that's a discipline violation worth noting.
-
-Source: locked 2026-04-25 after CC shipped 4 clean ticket fixes (PRO-60, PRO-65, PRO-72, PRO-68 + PRO-73) with consistent pre-flight discipline. Post-merge cleanup rule added 2026-04-28 per PRO-180 retro. Verified force-delete and prune script added 2026-05-07 after 28 stale branches accumulated from squash-merge cleanup failures.
-
-**Return-to-main — Hard Rule (locked 2026-04-30):**
+## Return-to-Main
 
 Every task session ends on `main` with a clean working tree. No exceptions.
 
-- After post-merge cleanup (steps 1–5 above): confirm `git branch --show-current` is `main` and `git status` shows no staged or unstaged tracked changes before signing off.
-- If a task ends without a merge (INCONCLUSIVE, FAILED, or mid-session interruption): stash or WIP-commit any in-progress work on the task branch, then `git checkout main` before ending the session.
-- A worker that ends a session on a feature branch — even with a clean working tree — is in violation. The next session starts blind to which branch is checked out and will cut work from the wrong base.
+- After CONFIRMED_WORKING (post-merge cleanup done): `git checkout main && git pull && git status` clean → sign off.
+- After INCONCLUSIVE / FAILED / interrupt: stash or WIP-commit on the task branch, then `git checkout main` before sign-off.
 
-This rule was added after PRO-214 cleanup required operator intervention to restore a clean `main` state.
+A worker that ends on a feature branch leaves the next session blind to which
+branch is checked out — that worker is in violation.
 
-## Append-only data files — Hard Rule
+## Worker Role — Claude Code (VP Ops)
 
-Nine files in `data/` are strictly append-only. Never edit, never truncate, never sort, never deduplicate, never read-modify-write. Only `fs.appendFileSync` (or the equivalent strict-append shell `>>`) is allowed.
-
-- `data/cc_completion_log.jsonl` — completion markers (tracked)
-- `data/routing_history.jsonl` — W2 routing decisions (gitignored)
-- `data/pending_callbacks.jsonl` — Telegram callback ledger (gitignored)
-- `data/dispatch_dlq.jsonl` — dispatch dead-letter queue (gitignored)
-- `data/cc_heartbeat_log.jsonl` — worker heartbeat / liveness signal (gitignored)
-- `data/vp_ops_supervision.jsonl` — VP Ops verification records (gitignored)
-- `data/drift_scanner_log.jsonl` — daily Linear↔completion-marker drift scan results (gitignored)
-- `data/agent_decisions.jsonl` — Phase 2 Judgment Trail / agent decision records, calibration corpus (gitignored)
-- `data/github_resource_ledger.jsonl` — intent-before-action ledger for branch/PR lifecycle (gitignored, PRO-320)
-
-Pre-commit hooks `trailing-whitespace` and `end-of-file-fixer` exclude `^data/.*\.jsonl$` so they cannot rewrite these files structurally (locked 2026-04-28 per PRO-159). If you find yourself wanting to weaken that exclude or add a hook that read-modify-writes any of these: STOP, escalate to operator. The append-only invariant is enforced by `tests/test_jsonl_append_only_invariant.py` — that test failing means the contract is breaking.
-
-Full root-cause history and rationale: `docs/n8n/WORKFLOW_MAP.md` (PRO-159 entry).
-
-## MCP Tool Usage Rules
-
-- Use MCP tools when they genuinely help the task
-- Always use sequential-thinking MCP for complex multi-step tasks before executing — think first
-- Always use sqlite-ro-snapshot MCP to read card data before writing any intelligence pipeline code
-- Use perplexity MCP for research tasks only
-- Use notion MCP to read current job state
-- Use git MCP to check what files are currently changed before starting work
-- Never use a tool just because it is available — only use it if it helps this specific task
-- Never write to the database through any MCP tool
-- `git_commit_and_push` (PRO-187) is for Claude Chat / orchestrator-scoped commits only. It may commit allowlisted canon/docs/skills files after hygiene, but must not be used for worker code changes, workflow JSON, DB files, append-only JSONL files, force-push, branch creation, rebase, reset, merge, cherry-pick, amend, or `--no-verify`.
-
-## Gateway Tool Profile Enforcement (Phase 3 — Subagent Isolation)
-
-Dispatched workers connect to the MCP Gateway via a `.mcp.json` generated in their worktree at dispatch time. Each worker runs under a tool profile set by the `MIRU_TOOL_PROFILE` environment variable, passed to the gateway as the `X-Miru-Tool-Profile` HTTP header.
-
-**Profiles (deny-all default):**
-
-| Profile           | Purpose                                              | Restricted from                                                                     |
-| ----------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `drift_executor`  | Routine drift scans. Read-everything, write-nothing. | telegram, dispatch, restart, vp_ops, linear_write, n8n_write, docs_write, git_write |
-| `reviewer`        | Peer review. Same as drift_executor.                 | (same as drift_executor)                                                            |
-| `standard_worker` | Ticket-executing subagents.                          | telegram, dispatch, restart, vp_ops                                                 |
-| `vp_ops`          | VP Ops verification.                                 | telegram, dispatch, restart                                                         |
-| `full_operator`   | Operator's direct session (default when no header).  | (unrestricted)                                                                      |
-
-**Enforcement state:** Controlled by `MIRU_PROFILE_ENFORCEMENT_ENABLED` env var. When off (default), profiles are extracted and logged but not enforced (audit mode). When on, denied tool calls raise `McpError -32003`.
-
-**Key rules:**
-
-- Unknown profile strings get `drift_executor` restrictions (most conservative)
-- No header = `full_operator` (backward-compatible for operator's direct session)
-- Tool Access and Canon Authority are SEPARATE gates — no profile grants canon-write authority
-- Denials are logged to `logs/mcp_gateway_reads.jsonl` with `result: "profile_denied"`
-- Profile definitions live in `tools/miru_mcp_gateway/profiles.py`
-
-## Ingress Classifier (Phase 4 — Automatic Profile Assignment)
-
-The W2 router automatically classifies tasks and assigns a tool profile before dispatch. The classifier node `w2008a-assign-profile` runs after risk classification (w2008) and before the confidence branch (w2009).
-
-**Task modes and profile mapping:**
-
-| Mode      | Profile           | When assigned                                                              |
-| --------- | ----------------- | -------------------------------------------------------------------------- |
-| routine   | `drift_executor`  | Keywords: audit, read-only, repo scan, schema read, second opinion, etc.   |
-| judgment  | `standard_worker` | Task types: Bug, Feature, Improvement, chore, design (default for unknown) |
-| ambiguous | `reviewer`        | Keywords: unclear, investigate, figure out, explore options, etc.          |
-| blocked   | (no dispatch)     | Keywords: blocked, waiting on, depends on                                  |
-
-**Classification tiers:**
-
-1. **Tier 1 — Keywords** take precedence. Surface keywords from the ticket are checked against rule lists.
-2. **Tier 2 — Task type** fallback. If no keyword match, task_type determines the mode.
-3. **Safety override:** High-risk tasks never get `drift_executor` — bumped to `judgment/standard_worker`.
-
-**Classification rules** are externalized in `data/config/w2_profile_rules.json` and loaded at execution time. Tunable without workflow redeployment.
-
-**Operator override:** The Telegram proposal message shows the suggested profile. A Profile button lets the operator override the profile before approving. Profile overrides are recorded as `profile_override` rows in `pending_callbacks.jsonl`.
-
-**Plan-only mode:** Ambiguous tasks dispatched with `reviewer` profile get plan-only instructions injected into the prompt. The worker produces a plan in its completion output (the operator posts it) — no branches, PRs, or file modifications.
-
-**Audit trail:** `routing_history.jsonl` records `suggested_profile`, `final_profile`, `task_mode`, and `profile_rationale` for every routing decision.
-
-**Key rules:**
-
-- `vp_ops` and `full_operator` are never classifier-assigned — those are operator-only
-- Manual dispatches (operator labels ticket directly in Linear) default to `standard_worker`
-- Profiles are NOT canon-authority grants — Tool Access and Canon Authority remain separate gates
-- Profile definitions still live in `tools/miru_mcp_gateway/profiles.py` (Phase 3, unchanged)
-
-## Database Rules
-
-- card_catalog.db is the live database — never write to it directly from a worker session
-- sqlite-ro-snapshot is the only approved DB access path for reads
-- All schema changes must be proposed to Claude Chat first and approved by the operator before execution
-- sqlite3 is available system-wide at C:\tools\sqlite3\sqlite3.exe
-
-## Scheduled Tasks — Hard Rule (no focus stealing)
-
-Any new Windows scheduled task or background service that runs periodically or at startup **MUST be completely non-interactive**. The operator works on this machine and any window that appears or steals focus is unacceptable.
-
-**Mandatory approach (in order of preference):**
-
-1. **Run as SYSTEM** (`/RU "SYSTEM" /RP ""` via schtasks, or `LogonType: ServiceAccount` in Task Scheduler). Session 0 is physically isolated from the user desktop — no windows, no focus stealing possible. Use this for any task that only needs network access, file I/O, or Python scripts. Use the `data/config/python_path.txt` mechanism for Python tasks (written by the FIX_TASK_SESSIONS_RUN_AS_ADMIN.bat setup script).
-
-2. **VBS wrapper with SW_HIDE** if SYSTEM is not viable (e.g. task needs a user-mounted drive like G:\, or a WinGet/NVM tool installed in user profile). Use `WshShell.Run "...", 0, False` — this properly sets `STARTF_USESHOWWINDOW | SW_HIDE` at process creation. VBS wrappers live in `windows/tasks/run_<name>.vbs`.
-
-**Never do these:**
-
-- Never create a task with `LogonType: Interactive` and a bare `powershell.exe` or `python.exe` command without a wrapper — even with `-WindowStyle Hidden`, a new process in the interactive session can briefly steal focus on Windows 11.
-- Never use `Win32_Process.Create` (WMI) to launch hidden processes — it does not reliably suppress the window.
-- Never register a new task in `startup_all.ps1` with `LogonType: Interactive` without adding it to the FIX_TASK_SESSIONS_RUN_AS_ADMIN.bat setup script.
-
-**Exception documentation:** If a task must stay Interactive (e.g. needs user-mounted Google Drive), document the exception inline in the script with a comment explaining why SYSTEM cannot be used.
-
-Set 2026-05-05 by operator. Root cause: periodic tasks (MiruServiceWatchdog 2 min, MiruStallRecovery 3 min, MiruSentinel 20 min, MiruN8nWatchdog 15 min) ran Interactive and repeatedly stole focus while operator was typing.
-
-## Restart Rules
-
-- PM (18080): `powershell -ExecutionPolicy Bypass -File windows\restart_pm.ps1`
-- Miru AI (18765): `powershell -ExecutionPolicy Bypass -File windows\restart_miru_ai.ps1`
-- Never use nssm restart directly
-- Never create alternate restart scripts
-
-## File Placement — Hard Rules
-
-Every file created must go in the correct location. These rules are non-negotiable.
-
-### Service boundaries — files belong to their service
-
-- `miru_ai/` — ALL code for the Miru AI service (port 18765): Python modules, workers, templates, static, tools, migrations
-- `pm/` — ALL code for the PM Dashboard (port 18080): app.py, templates, static
-- `gatekeeper/` — Local Governance Gatekeeper: dispatch validation core, frontmatter parser, forwarder (relocated from dispatcher/ in PRO-306)
-- `dispatcher/` — **DELETED** (PRO-303). Legacy Task Dispatcher removed. Only `data/jobs.db` remains locally (gitignored archive).
-- `shared/` — Only utilities imported by 2+ services. Not a dumping ground.
-- `windows/` — Windows operational scripts (.ps1, .cmd) for service management ONLY. No Python service code here.
-
-### Where new files go
-
-- New Python module for miru_ai → `miru_ai/` (appropriate subfolder: core/, workers/, governance/, ingestion/)
-- New Python module for pm → `pm/`
-- Standalone data/AI utility scripts → `tools/`
-- Test files → `tests/`
-- Documentation → `docs/`
-- Config JSON → `config/` (exception: `data/config/` for runtime config loaded inside Docker via bind-mount, e.g. `w2_profile_rules.json`)
-- Batch run outputs, reports, audit CSVs → `data/batch_reports/`
-- Official snapshots → `data/snapshots/`
-- DB overlay/correction files → `data/overlays/`
-- Runtime logs → `logs/` (gitignored — never commit logs)
-- Test temp artifacts → `tests/_tmp/` (gitignored)
-- Debug screenshots → `archive/screenshots/`
-
-### NEVER do these
-
-- Never create service code (.py, .html, .css, .js) at repo root
-- Never create temp, scratch, or debug files at repo root
-- Never write \*.log files to repo root or data/ root — always use `logs/`
-- Never write \*.db files to repo root — always use `data/`
-- Never write \*.png screenshots to repo root — use `archive/screenshots/`
-- If a file belongs to miru_ai, pm, or dispatcher — it lives in that service directory, nowhere else
-- Never create files in `data/startup-logs/` — that path is deprecated; use `logs/`
+- Owns: Python backend files, tests, verification scripts, post-ticket canon maintenance, `vp_ops_verify_ticket`.
+- Standing Notion write authority for factual/maintenance updates (see `.miru/overlays/domain-ops.md`).
+- Never touches: HTML/CSS/JS templates, `.mcp.json`, `card_catalog.db`.
 
 ---
 
-## Autonomous Operations — Claude Chat Decision Authority
+## Discovery Index
 
-Claude Chat is the lead orchestrator. The default operating mode is **decide → act → report**.
-Asking the operator is the exception, not the norm. When in doubt: if the decision is local and
-reversible, make it and note it. If it's irreversible or external, ask first.
+Load the matching overlay **before** starting work that triggers it. Fetch a
+reference file when you need the specific fact.
 
-### Decisions Claude Chat makes without asking
+### Overlays — `.miru/overlays/`
 
-**Routing and dispatch:**
+- **`workflow-git.md`** — LOAD IF committing, opening, or merging a PR. Contains: merge policy decision tree, hygiene gate, automated PR review sequence, gh auth, WIP commits, post-merge cleanup.
+- **`workflow-completion.md`** — LOAD IF reaching a terminal task state. Contains: completion marker schema, heartbeat emission, stall classification.
+- **`workflow-dispatch.md`** — LOAD IF orchestrating dispatch, gateway profiles, or W2 routing. Contains: CH decision authority, gateway profile enforcement, ingress classifier, orchestrator modules, Linear `projectId` requirement.
+- **`domain-ui.md`** — LOAD IF touching frontend code (`pm/`, `miru_ai/static/`, templates). Contains: craft guide trigger list (when to read `docs/ui_ux/` and `docs/pm/` files).
+- **`domain-ops.md`** — LOAD IF touching scheduled tasks, services, Notion writes, or MCP config. Contains: scheduled-task focus rule, MCP usage rules, Notion read/write rules.
+- **`adopted-lessons.md`** — LOAD IF doing a non-trivial code change (more than typo or lint). Contains: workflow JSON test rule, design-in-Linear-ticket rule.
 
-- Which worker to assign a ticket to (use worker-roster.md and the ticket's nature as inputs)
-- Whether to run workers in parallel or sequentially (based on file overlap and dependency check)
-- Which Ollama model to use for a routing or analysis step (use model assignment table in worker-roster.md)
-- Whether to retry a failed dispatch (1 retry max per ticket per worker, then escalate)
+### Reference — `.miru/reference/`
 
-**Ticket lifecycle:**
+- **`ports-and-services.md`** — FETCH IF you need a port number or service mapping.
+- **`linear-projects.md`** — FETCH IF creating a Linear ticket. Contains the `projectId` table.
+- **`file-placement.md`** — FETCH IF creating a new file and unsure where it goes. Contains the NEVER-do list.
+- **`database-rules.md`** — FETCH IF reading or proposing changes to `card_catalog.db`.
+- **`restart-procedures.md`** — FETCH IF restarting a service.
 
-- Moving a Linear ticket to In Progress when a worker is dispatched
-- Moving to In Review when a PR is opened
-- Moving to Done when the completion marker is confirmed and PR merged
-- Filing follow-up Linear tickets for out-of-scope findings discovered during a task
-
-**Execution judgment:**
-
-- Filling minor spec gaps that don't affect architecture or external contracts — note the fill in the completion report
-- Choosing PR title, description, and branch name
-- Whether a PR qualifies for CC self-merge (apply the merge policy table in this file)
-- Post-merge cleanup: branch deletion, return-to-main
-- Ordering tasks within a sprint when priorities are clear from ticket state
-
-**Ops:**
-
-- Re-dispatching a stalled worker within the recovery_router.py auto-retry budget
-- Reading any log, completion marker, or state file to assess system health before a dispatch
-
-### When to send a Telegram and wait for the operator
-
-Ask before acting if **any** of these apply:
-
-- **Infrastructure** — new port assignment, new service, new external API integration, new scheduled task
-- **Schema or data model** — any change to card_catalog.db, routing_history.jsonl schema, or append-only file structure
-- **Scope expansion** — completing the ticket would require touching files outside the original scope, or adds capability not in the spec
-- **Security** — anything touching auth, secrets, credentials, or access control
-- **Irreversible ops** — force-push, drop table, delete branch with unmerged work, clear production data
-- **Strategy** — "should we build X or Y?" where the operator's product judgment is the input, not engineering reasoning
-- **Repeated failure** — same worker, same ticket, failed more than twice
-
-### Minimal escalation format
-
-When escalating to the operator via Telegram, state exactly one decision needed — not a status
-update, not a list of options to consider. The operator should be able to reply in one word or
-tap a button. If you need more than one decision, send one message per decision.
-
----
-
-## Worker-specific: Claude Chat + Claude Code
-
-### Role
-
-- **Claude Chat:** Lead Architect. Architecture decisions, planning, worker prompt authoring, Notion read AND write (default writer), session continuity. Owns consultant packet content (Perplexity, ChatGPT, Gemini), new Notion page structure, and cross-session synthesis entries.
-- **Claude Code (VP Ops):** Execution steward and supervisory layer. Primary Python execution worker — complex multi-file refactoring, test writing, verification scripts. Owns system stability, worker verification (vp_ops_verify_ticket), and post-ticket canon maintenance. Has standing Notion write authority for factual/maintenance updates (see Notion Read/Write Rules above). Handles surgical edits to Claude Chat's surfaces when operator authorizes or when edit volume is impractical in chat.
-
-### File ownership
-
-- Claude Code owns: Python backend files, test scripts, verification scripts
-- Claude Chat owns by default: CLAUDE.md, GEMINI.md, CURSOR.md, CODEX.md, COPILOT.md, all worker prompts — Claude Code may edit these when the operator explicitly authorizes it for that task
-
-### Must never
-
-- Claude Code must never touch HTML/CSS/JS templates
-- Claude Code must never modify .mcp.json or any MCP config files
-- Claude Code must never write to card_catalog.db
-- Claude Chat must never execute code directly on the server
-
-## Completion Contract
-
-> For Claude Code's supervisory responsibilities surrounding these terminal states — what
-> "done" means, the stewardship checklist, and verification methods — see **miru-context/job-stewardship.md**.
-
-Every task must end with exactly one of:
-
-- STATUS: CONFIRMED WORKING
-- STATUS: INCONCLUSIVE
-- STATUS: FAILED
-
-Plus a summary of what changed and what did not.
-
-### Automated PR review completion sequence — Hard Rule (all workers + CH)
-
-Before declaring `CONFIRMED_WORKING` on any PR, the worker (or CH if it owns the PR) MUST:
-
-1. **Wait for all automated reviewers** to complete — CodeRabbit, Bugbot (chatgpt-codex-connector), and CI hygiene checks.
-2. **Read every finding** — PR comments, inline review comments, and check-run annotations.
-3. **Fix valid findings** — push a follow-up commit addressing each actionable issue. For each finding, either fix it or explain in a commit message why it's not applicable.
-4. **Re-run and poll** — after pushing fixes, wait for the next review cycle to complete. Repeat steps 2–4 until no new actionable findings remain.
-5. **Confirm green** — all status checks must show pass/success before declaring done. `CHANGES_REQUESTED` from an automated reviewer with no remaining actionable comments is acceptable only if all specific findings have been addressed in commits.
-
-**What counts as actionable:** Code bugs, missing fields that break downstream consumers, false-positive keyword matches, test gaps the adopted lesson requires (PRO-189 boundary-crossing tests), permission contradictions (e.g. telling a read-only worker to write), and any finding rated P1/P2 or flagged as a potential issue.
-
-**What does NOT count:** Style preferences that conflict with project conventions, docstring coverage warnings (project convention: no docstrings unless non-obvious), and suggestions to add features beyond the PR scope.
-
-**Applies to:** CC, CH, Cursor, Codex, Gemini — any worker or orchestrator that opens a PR. This is not optional. A PR with unaddressed P1 findings that gets merged is a discipline violation.
-
-Set 2026-05-04 by operator. Replaces the previous CC-only Bugbot rule.
-
-### Stall classification (PROVISIONAL — promote to adopted after first validated use)
-
-Terminal states (above) cover task completion. Workers also signal stall conditions during a task using the four classes below. Sourced from Augment Code's published multi-agent failure taxonomy (PRO-178); flagged provisional until a real stall-recovery event in this project validates the schema.
-
-| Class                     | Worker emits                                                                                                                                                                                                                                                                                                                 | Orchestrator response                                                                                                                             |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Transient**             | Heartbeat lapse past TTL (PRO-180) with no error and no terminal state. No worker emit required — orchestrator infers from heartbeat staleness.                                                                                                                                                                              | Auto-unstick: branch hygiene, rebase-on-main, missing env key the orchestrator controls, ambiguous spec covered by locked design.                 |
-| **Ambiguous spec**        | `STATUS: INCONCLUSIVE` plus one specific question. Worker MUST have completed the Try Harder Discipline (AGENTS.md) first — canon check, repo search, alternative attempt. Question format: "I tried X (failed because Z). I tried Y (failed because Z). Should I do A or B?" Not acceptable: "I'm not sure how to proceed." | Orchestrator checks the locked design (Linear ticket description). If covered → answer via Linear comment. If not covered → escalate to operator. |
-| **Dependency starvation** | `STATUS: BLOCKED_ON: <ticket_id>` (e.g. `BLOCKED_ON: PRO-180`). Worker stops, does not retry.                                                                                                                                                                                                                                | Orchestrator reroutes, resequences, or marks task as waiting. Not a stall — expected behavior in parallel-worker setups.                          |
-| **Human-required**        | `STATUS: ESCALATE: <category>` where category is one of `SECURITY`, `SCOPE_EXPANSION`, `DESIGN_CHANGE`, `IRREVERSIBLE_OP`, `REPEATED_FAILURE`.                                                                                                                                                                               | Orchestrator writes Linear comment, pings operator via Telegram, parks task.                                                                      |
-
-Rules:
-
-- Existing terminal states (CONFIRMED_WORKING / INCONCLUSIVE / FAILED) are unchanged. The new states (BLOCKED_ON, ESCALATE) are non-terminal stall signals — task continues once the block clears or operator decides.
-- For `INCONCLUSIVE` with an ambiguous-spec question: the question must be answerable in one Linear comment. If the worker needs more than one back-and-forth, escalate instead.
-- For `ESCALATE`: the category determines orchestrator behavior. `SECURITY` and `IRREVERSIBLE_OP` always go to operator immediately. `SCOPE_EXPANSION` may be filed as a follow-up Linear ticket and the in-scope work continued. `DESIGN_CHANGE` always goes to operator. `REPEATED_FAILURE` (same worker stalling on same task >2 times) always goes to operator.
-- `routing_decisions.outcome` enum (success / failure / partial / deferred / legacy) is sufficient — these stall signals are mid-task states, not terminal outcomes, so the existing outcome enum doesn't need expansion.
-
-Promotion criteria: first validated stall-recovery event in this project (orchestrator correctly classifies a real worker stall, takes the matching action, and the recovery succeeds) → promote section to "adopted" via the Lesson Promotion Discipline (Notion canon, 2026-04-28).
-
-### Hygiene gate (locked 2026-04-25 per PRO-107)
-
-Tasks involving code changes are not complete until lint + format + schema validation pass locally before PR creation. Worker MUST run `pre-commit run` (default scope: staged files) and confirm green before opening a PR. Local hygiene gate runs lint, format, and schema validation. Pytest is enforced via CI on every PR (`.github/workflows/hygiene.yml`). Local pytest will be re-enabled once the test suite is clean — see PRO-109.
-
-If hygiene fails:
-
-- Fix the issues if they're in scope of the current task.
-- If issues are pre-existing or out of scope: STOP, report the failures to operator, do NOT push a PR with known lint failures hoping CI will catch them.
-
-Bypass policy: `git commit --no-verify` is allowed only for emergency hotfixes. The bypass MUST be logged in the commit message (`HYGIENE BYPASS: <reason>`) and reported to operator. Legacy files (those not touched by the current PR) are not subject to retroactive lint enforcement. Hooks fire on changed files only.
-
-### Heartbeat emission (PROVISIONAL — promote after first validated stall-recovery use)
-
-Workers emit a heartbeat row to `data/cc_heartbeat_log.jsonl` during long-running tasks so the orchestrator can detect stalls without operator intervention. The file is append-only (gitignored) — same hard rules as the other five append-only files. Use `tools/emit_heartbeat.py` to write rows; do not hand-roll the append logic per-task.
-
-**Schema (one JSON object per line):**
-
-```jsonl
-{
-  "ts": "2026-04-28T08:12:00Z",
-  "worker_id": "claude-code-1",
-  "ticket_id": "PRO-XXX",
-  "status": "IN_PROGRESS",
-  "step": "running_pre_commit",
-  "branch": "dreighto/pro-xxx-...",
-  "last_file_written": "tests/test_x.py",
-  "stall_signal": null,
-  "outputs": []
-}
-```
-
-Field definitions:
-
-- `ts` (ISO 8601 UTC with `Z`) — heartbeat emit time.
-- `worker_id` (string) — stable per-worker identifier (e.g. `claude-code-1`).
-- `ticket_id` (string) — Linear ticket the worker is on.
-- `status` (enum) — `IN_PROGRESS` only. Terminal states go in `cc_completion_log.jsonl`.
-- `step` (string) — short label of current phase (e.g. `pre_flight`, `writing_tests`, `running_pre_commit`, `opening_pr`, `awaiting_bugbot`, `post_merge_cleanup`).
-- `branch` (string or null) — current git branch.
-- `last_file_written` (string or null) — most recently written/staged file.
-- `stall_signal` (string or null) — populated when the worker detects a likely stall (e.g. `"awaiting_external: bugbot"`, `"deny_rule_hit: <rule>"`, `"ambiguous_spec_question_pending"`). Null otherwise.
-- `outputs` (array of strings) — artifact paths produced so far. Used by dependent tickets.
-
-**Emit cadence:** at the start of each major phase, before any operation expected to take >60 s (CI wait, Bugbot wait), and on significant state changes (branch cut, PR opened).
-
-**Stall detection (orchestrator side):** if `now − max(heartbeat.ts for ticket_id) > 5 minutes` AND no terminal marker exists in `cc_completion_log.jsonl`, the worker is considered `STALLED`. Threshold is tunable; 5 min is the starting point. Source: PRO-180 (research-sourced, 2026-04-28).
-
-### Orchestrator-side modules (PRO-187 follow-on, 2026-04-28)
-
-Production worker coordination helpers live under `tools/orchestrator/`. Workers should not create parallel implementations elsewhere.
-
-- `stall_detector.py` reads `data/cc_heartbeat_log.jsonl` and `data/cc_completion_log.jsonl` to emit `StallEvent` rows using the PRO-178 taxonomy.
-- `recovery_router.py` maps stall classes to deterministic recovery actions and forces human escalation for schema, security, scope expansion, or irreversible-operation contexts.
-
-> Note: `task_store.py` (active task state + prompt-hash idempotency) and `worktree_manager.py` (orchestrator-side worktree leases) are described in earlier drafts but not yet implemented. The dispatch listener handles trace_id idempotency directly; worktree leases live in `services/dispatch_listener/src/worktree.js` (in-memory). Tracked in the loop-hardening backlog at `miru-context/loop-hardening-backlog.md` (Ticket B for lease persistence, Ticket C for prompt-hash idempotency).
-
-## Craft Guides — load on demand
-
-The repo has two craft-guide libraries at:
-
-- `docs/ui_ux/` — universal frontend craft (applies to any Miru surface: PM, Dispatcher, Dev Review Hub, future work)
-- `docs/pm/` — PM-specific craft (only applies to `pm/storefront/` work; layers on top of ui_ux)
-
-Do not load the full library. Load on demand.
-
-**Hard triggers — read the matching doc before writing code:**
-
-- Building or changing any mobile / PWA behavior → read `docs/ui_ux/01_MOBILE_PWA.md`
-- Wiring a gesture (swipe, long-press, drag, pinch) → read `docs/ui_ux/02_GESTURES.md` + `docs/pm/05_GESTURES_PM.md` if PM
-- Adding a new screen / modal / sheet → read `docs/ui_ux/03_SUB_PAGE_ARCHITECTURE.md`
-- Building a reusable component (button, input, chip, card tile) → read `docs/ui_ux/04_PRIMITIVES.md` + `docs/pm/02_PM_PRIMITIVES.md` if PM
-- Accessibility work (focus, contrast, ARIA, keyboard, screen reader) → read `docs/ui_ux/05_ACCESSIBILITY.md`
-- Performance work (card grids, images, animation, lists >50 items) → read `docs/ui_ux/06_PERFORMANCE.md`
-- Adding a library / dependency → read `docs/ui_ux/09_TOOLING.md`
-
-**PM-specific hard triggers:**
-
-- Watchlist / meter / pricing UI → read `docs/pm/04_WATCHLIST_AND_METER.md`
-- Tab landing page work (Home, Cards, Deck Builder, Leaders, Profile) → read `docs/pm/01_TAB_LANDINGS.md`
-- Adding any Miru-generated output (insight, suggestion, ambient filter) → read `docs/pm/03_MIRU_LAYER.md`
-- Writing copy for Miru or PM → read `docs/pm/00_PRINCIPLES.md` + `docs/pm/03_MIRU_LAYER.md`
-- Before shipping any new PM feature → run the 10-question gut-check in `docs/pm/08_PM_ANTI_PATTERNS.md`
-
-**Soft triggers — consult if relevant:**
-
-- Visual / styling decision → `docs/pm/06_DESIGN_LANGUAGE.md`
-- Card tile changes → `docs/pm/02_PM_PRIMITIVES.md`
-- Understanding how PM differs from competitors → `docs/pm/07_OPTCG_STUDY.md`
-- Designing a pattern from scratch → `docs/ui_ux/07_COMPETITIVE_STUDY.md`
-- Pre-ship sanity check → `docs/ui_ux/08_ANTI_PATTERNS.md` + `docs/pm/08_PM_ANTI_PATTERNS.md`
-
-**Skip entirely for:**
-typo fixes, one-line style tweaks, bugfixes that don't change interaction model, backend-only work (routes, data, scrapers).
-
-**When craft guides conflict with CLAUDE.md / operator directives:** operator directives win, always. Flag the conflict; don't silently override.
-
-## Completion-marker convention (locked 2026-04-25)
-
-When CC completes a task with `CONFIRMED WORKING` status, CC MUST append one structured row to `data/cc_completion_log.jsonl` immediately before reporting completion to the operator in chat.
-
-This is how Claude Chat verifies completion without the operator manually relaying CC's chat report. The file is append-only — never edit, never truncate.
-
-### Schema (one JSON object per line, no array wrapping)
-
-- `timestamp` (ISO 8601 string, UTC) — when the task completed.
-- `ticket_id` (string) — Linear ticket identifier (e.g. "PRO-80"). Use null if no ticket.
-- `phase` (string or null) — sub-phase label if relevant (e.g. "A").
-- `status` (enum) — `CONFIRMED_WORKING` | `INCONCLUSIVE` | `FAILED`.
-- `summary` (string) — one-line plain-English description of what shipped.
-- `branch` (string or null) — git branch name if applicable.
-- `pr_number` (int or null) — GitHub PR number if applicable.
-- `merge_commit_sha` (string or null) — merge commit SHA if merged.
-- `files_touched` (array of strings) — repo-relative paths edited or created.
-- `linear_state_after` (string or null) — final Linear ticket state (e.g. "In Review", "Done").
-- `deploy_actions` (array of strings) — short descriptions of any deploys, redeploys, or service restarts ("w7 redeployed via deploy-workflow.ps1, active state preserved").
-- `test_evidence` (string) — structured test result. **Format rules (enforced — Hermes and VP Ops parse this field):**
-  - If tests were run, write `passed/total` where `total` is ALL applicable tests for the ticket's scope (not just the ones the worker chose to run), optionally followed by brief context. Examples: `"34/34 tests pass"`, `"7/8 (1 flaky, see notes)"`. The machine-parseable ratio must appear first; the regex `(\d+)\s*/\s*(\d+)` extracts it.
-  - If only CI/lint checks apply (no unit or integration tests), write `"ci_only: pre-commit green, hygiene CI pass"`.
-  - If no tests apply (behavioral rule, doc-only, config change), write `"no_tests"`.
-  - Never write freetext narrative without a leading `passed/total`, `ci_only:`, or `no_tests` prefix. The field must be machine-parseable.
-- `follow_up_tickets_filed` (array of strings) — Linear ticket IDs filed during this work for out-of-scope items.
-- `notes` (string) — anything Claude Chat needs to know that doesn't fit above. Empty string if none.
-- `handoff` (object or null) — structured brief for the next worker when a continuation is expected. Null if no handoff needed. Schema:
-  - `next_worker` (string) — which worker picks this up (e.g. "cursor", "codex", "claude-code").
-  - `ticket_id` (string) — the Linear ticket the next worker is working against.
-  - `context` (string) — plain English paragraph: what was built, what contract it establishes, what the next worker needs to know to start.
-  - `entry_points` (array of strings) — file:line references that are the best starting points (e.g. `"pm/templates/card_detail.html:42"`).
-  - `watch_out_for` (array of strings) — specific gotchas, edge cases, or constraints the next worker should know before touching anything.
-  - `blocked_on` (string or null) — null, or a ticket ID if the next worker can't start until it resolves.
-
-### When to write
-
-Write the row at the moment CC would otherwise produce a `CONFIRMED WORKING` chat report. The chat report still happens (operator visibility is still useful), but the marker is the structured truth Claude Chat reads.
-
-For `INCONCLUSIVE` or `FAILED` outcomes: write the row too, with status set accordingly. `notes` field should explain what blocked or broke. This gives Claude Chat visibility into stalled work.
-
-### When NOT to write
-
-- Mid-task progress updates. The marker is for terminal task state only.
-- Sub-task milestones inside a multi-phase ticket. Wait for the phase to land.
-- Diagnostic-only or read-only work that produces no commit, no merge, no deploy. (CC can still chat-report, just no marker needed.)
-
-### How to write — use the script, not a raw file open
-
-Always write the marker via `tools/emit_completion.py`. This script resolves the
-correct path regardless of which worktree the worker is running in (miru-w1, miru-w2, etc.):
-
-```bash
-python tools/emit_completion.py <<'EOF'
-{"timestamp":"...","ticket_id":"PRO-XXX", ...}
-EOF
-```
-
-Or from Python:
-
-```python
-import json, subprocess
-marker = {"timestamp": "...", "ticket_id": "PRO-XXX", ...}
-subprocess.run(["python", "tools/emit_completion.py"],
-               input=json.dumps(marker), text=True, check=True)
-```
-
-**Never open `data/cc_completion_log.jsonl` directly with a relative path** — from a worktree
-that resolves to the wrong directory and the orchestrator will never see the entry.
-
-### Rules
-
-- Append only. Never read-modify-write the file. Never sort it. Never deduplicate it.
-- One JSON object per line. No trailing commas, no array wrapping.
-- ISO 8601 UTC timestamps with `Z` suffix.
-- If a field is genuinely unknown or not applicable, use `null` (not empty string, not omitted).
-- `tools/emit_completion.py` handles serialisation — pass a dict from Python or a JSON string from shell.
-
-### Verification by Claude Chat
-
-Claude Chat reads this file via Filesystem MCP when the operator says "task done" or asks for completion verification. Claude Chat then cross-checks the marker against GitHub PR state, Linear ticket state, file changes, and (for n8n workflows) deploy state. Discrepancies between the marker and ground truth get flagged for operator review.
+If you cannot tell which overlay applies, see the Fail-Closed Directive at the
+top of this file: stop and ask.
