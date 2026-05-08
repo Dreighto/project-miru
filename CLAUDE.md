@@ -528,6 +528,45 @@ Before declaring `CONFIRMED_WORKING` on any PR, the worker (or CH if it owns the
 
 Set 2026-05-04 by operator. Replaces the previous CC-only Bugbot rule.
 
+### Claude Code implementation quality gate — Hard Rule
+
+Claude Code is expected to write code like an owner, not like a patch generator. For coding
+tasks, CC must perform this gate before opening a PR, self-merging, or reporting
+`CONFIRMED_WORKING`.
+
+**The gate is instinctive. The operator does not need to ask for it.**
+
+1. **Restate the contract privately before coding.** Identify what behavior, schema, workflow,
+   service boundary, or operational invariant the ticket is protecting. If the ticket has
+   done-when criteria, those are the acceptance tests in plain English.
+2. **Trace the existing pattern first.** Read nearby code and prior tests before implementing.
+   Match the local style, helper APIs, error handling, naming, and file placement unless there is
+   a clear reason to improve them.
+3. **Write the code to the real cause.** Do not ship symptom patches when the root cause is visible.
+   If the clean fix is larger than the ticket scope allows, complete the safe in-scope fix and file
+   or name the follow-up explicitly.
+4. **Test at the boundary.** Add or update focused tests for behavior changes. Boundary-crossing
+   paths matter most: workflow JSON as loaded from disk, serialized payloads, CLI/script entry
+   points, service adapters, schema-shaped data, and any place where prior incidents showed tests
+   can exercise a clean copy instead of the production path.
+5. **Run relevant checks locally.** Run the narrow test command for the touched behavior plus
+   `pre-commit run` before PR. If the touched area has an obvious broader suite that is practical
+   to run, run it too.
+6. **Self-review the final diff.** Read the diff like a reviewer before PR. Check for missed call
+   sites, stale names, broken contracts, accidental scope creep, unclear code, brittle tests,
+   missing edge cases, and docs/canon that now disagree with behavior.
+7. **Act on the self-review.** Fix valid findings before PR. If a concern is intentionally left
+   for later, create or name the follow-up and explain why it is out of scope.
+
+The completion report must include:
+
+- What risk or contract CC checked.
+- Which tests/checks ran and whether they passed.
+- Any residual risk or follow-up, or "None" if there is none.
+
+Hygiene-only verification is not enough for coding tasks. A PR can be formatted, lint-clean, and
+still not ready if CC has not tested the behavior and reviewed its own diff.
+
 ### Stall classification (PROVISIONAL — promote to adopted after first validated use)
 
 Terminal states (above) cover task completion. Workers also signal stall conditions during a task using the four classes below. Sourced from Augment Code's published multi-agent failure taxonomy (PRO-178); flagged provisional until a real stall-recovery event in this project validates the schema.

@@ -243,6 +243,50 @@ their own. Try harder first. The team gets better when workers solve more proble
 
 ---
 
+## Code Craft and Self-Review Instinct — All Coding Workers (set 2026-05-08)
+
+Workers that write code are expected to own correctness before a PR exists. The operator should
+not have to ask for tests, edge-case checks, diff review, or a better implementation. Those are
+part of the job.
+
+### Standard
+
+For any task that changes executable code, workflow logic, scripts, config that affects runtime
+behavior, or tests, the worker MUST complete this loop before opening a PR or reporting
+`CONFIRMED_WORKING`:
+
+1. **Understand the contract.** Identify the user-facing behavior, data contract, file boundary,
+   or operational invariant the change is meant to protect. If the ticket gives a done-when list,
+   treat it as the acceptance contract, not as optional guidance.
+2. **Choose the clean implementation.** Prefer the smallest change that satisfies the contract
+   cleanly and matches existing project patterns. Do not stop at the first patch that makes the
+   symptom disappear if the surrounding code shows a better local pattern.
+3. **Test the behavior that matters.** Add or update focused tests when the change affects logic.
+   At minimum, cover the normal path and the edge case most likely to regress. For doc-only or
+   pure copy changes, state that tests do not apply.
+4. **Run the right checks locally.** Run the narrow tests for touched behavior plus the required
+   hygiene gate. If a broader test is clearly relevant and practical, run it too. Do not rely on
+   CI to discover obvious local failures.
+5. **Self-review the diff.** Read the final diff as if reviewing a teammate's PR. Look for missed
+   call sites, stale names, broken contracts, accidental scope expansion, weak tests, and any
+   code that is merely clever instead of clear.
+6. **Fix what the review finds.** A self-review finding is real work, not a note for someone else.
+   Fix valid issues before PR. If a finding is intentionally deferred, file or name the follow-up.
+
+### What "really good" means here
+
+- The worker explains the risk it tested, not just the command it ran.
+- Tests exercise the code path as it runs in the product, especially at boundaries between files,
+  serialized config, workflow JSON, services, and scripts.
+- The implementation removes the actual cause, not only the visible symptom.
+- The diff is boring in the best way: scoped, readable, and easy for the next worker to trust.
+- The completion report says what was checked and what remains risky, if anything.
+
+Skipping this loop is a discipline violation for coding tasks. A PR that passes formatting but
+has not been self-reviewed is not ready.
+
+---
+
 ## WIP Commit Checkpoints — All Workers (set 2026-05-07, PRO-318)
 
 Workers MUST commit in-progress work to the task branch periodically during long-running tasks.
