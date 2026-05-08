@@ -134,7 +134,7 @@ def _read_last_chained(path: Path) -> str | None:
     return value
 
 
-def append_chained(path: Path, row: dict[str, Any]) -> str:
+def append_chained(path: Path, row: dict[str, Any], *, fsync: bool = False) -> str:
     """Append ``row`` to ``path`` with prev_hash + row_hash fields.
 
     ``row`` must not contain ``prev_hash`` or ``row_hash`` keys; they are
@@ -142,9 +142,20 @@ def append_chained(path: Path, row: dict[str, Any]) -> str:
     file is empty or the tail is a legacy row, prev_hash is set to None and
     a new chain link starts.
 
+    Args:
+        path: target JSONL file (created if absent).
+        row: caller-supplied object to chain.
+        fsync: when True, ``os.fsync`` the file descriptor after the write
+            so the row is durable across power loss. Use for ledgers that
+            track external side effects (e.g. github_resource_ledger.jsonl)
+            where losing the row would orphan a real-world resource. Default
+            False — most audit logs accept page-cache durability.
+
     Returns the row_hash that was written, so callers can chain follow-up
     work in the same session if needed.
     """
+    import os as _os
+
     body = {k: v for k, v in row.items() if k not in (CHAIN_FIELD_PREV, CHAIN_FIELD_HASH)}
     body[CHAIN_FIELD_PREV] = _read_last_chained(path)
     row_hash = _hash_body(body)
@@ -153,6 +164,9 @@ def append_chained(path: Path, row: dict[str, Any]) -> str:
     line = json.dumps(final, separators=(",", ":"), ensure_ascii=False) + "\n"
     with path.open("a", encoding="utf-8") as fh:
         fh.write(line)
+        if fsync:
+            fh.flush()
+            _os.fsync(fh.fileno())
     return row_hash
 
 

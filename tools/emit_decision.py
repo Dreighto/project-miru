@@ -43,6 +43,11 @@ import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
+# Hash-chain library lives next to this script in tools/. Make it importable
+# regardless of invocation mode.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from audit_chain import append_chained
+
 # ---------------------------------------------------------------------------
 # Path resolution (worktree-safe; mirrors tools/emit_completion.py:74-90).
 # ---------------------------------------------------------------------------
@@ -578,11 +583,8 @@ def emit(record, *, log_path=None):
         log_path = _default_log_path()
     log_path = Path(log_path)
 
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    line = json.dumps(record, separators=(",", ":"), ensure_ascii=False)
-    with open(log_path, "a", encoding="utf-8") as fh:
-        fh.write(line + "\n")
-
+    # DGAS Tier 2 #6 Part B: chain every decision row.
+    append_chained(log_path, record)
     return record
 
 
