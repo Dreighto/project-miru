@@ -140,7 +140,7 @@ Replace it with risk-based batching. The matrix below works alongside the existi
 - Security boundary changes — auth gates, profile permissions, MCP gateway entry middleware (`tools/miru_mcp_gateway/server.py` `_is_local_origin`, `_ProfileExtractor`, related)
 - Customer-facing behavior — anything users (or the claude.ai connector) can observe
 - Data migrations — schema changes, large data rewrites, anything irreversible
-- Cross-service orchestration changes that must land together (n8n + dispatcher + listener) — split each side, ship them in dependency order
+- Cross-service orchestration changes spanning multiple services (n8n + dispatcher + listener) — each service's changes in its own atomic PR, ship in dependency order
 
 **Bundling requirements (when allowed):**
 
