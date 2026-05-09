@@ -2,7 +2,7 @@
 
 ```text
 Instruction Architecture Version: MIRU-INSTRUCTIONS-v2
-Effective: 2026-05-08
+Effective: 2026-05-09
 If your loaded instructions do not show this version stamp, STOP and reload your boot context.
 ```
 
@@ -92,8 +92,12 @@ Every task ends with exactly one of:
 - `STATUS: CONFIRMED WORKING`
 - `STATUS: INCONCLUSIVE`
 - `STATUS: FAILED`
+- `STATUS: ESCALATE: <category>` — non-terminal stall signal; categories: `HUMAN-REQUIRED`, `SECURITY`, `SCOPE_EXPANSION`, `DESIGN_CHANGE`, `IRREVERSIBLE_OP`, `REPEATED_FAILURE`
 
-Plus a one-line summary. The full marker schema, heartbeat emission, and stall
+Plus a one-line summary that is **never empty** (an empty INCONCLUSIVE summary
+is treated as a worker failure and bounced — see adopted-lessons "Required
+clauses in every dispatch_worker prompt"). The full marker schema, ESCALATE
+diagnostic-block capture (PRO-335), heartbeat emission, and stall
 classification rules live in `.miru/overlays/workflow-completion.md` — load it
 before declaring a terminal state.
 
@@ -107,11 +111,21 @@ Every task session ends on `main` with a clean working tree. No exceptions.
 A worker that ends on a feature branch leaves the next session blind to which
 branch is checked out — that worker is in violation.
 
-## Worker Role — Claude Code (VP Ops)
+## Worker Role — Claude Code (VP Ops, acting canon owner while CH offline)
 
 - Owns: Python backend files, tests, verification scripts, post-ticket canon maintenance, `vp_ops_verify_ticket`.
+- Acting canon owner while CH offline (2026-05-07 onward): full edit authority on CLAUDE.md, AGENTS.md, .miru/overlays/, .miru/reference/, miru-context/. Authority returns to CH when CH is back in the loop.
 - Standing Notion write authority for factual/maintenance updates (see `.miru/overlays/domain-ops.md`).
+- Restarts services autonomously (gateway, dispatch_listener, PM, Miru AI) — don't ask operator for routine restarts. See `.miru/reference/restart-procedures.md` for the dispatch_listener Session 0 caveat (PRO-336 will close the gap permanently).
+- Files Linear loop tickets directly via `linear_create_issue` (not file-then-paste; that pattern is for benched workers like Codex).
 - Never touches: HTML/CSS/JS templates, `.mcp.json`, `card_catalog.db`.
+
+## Active loop workers + roles
+
+- **CC (Claude Code)** — primary worker + acting orchestrator (this file's audience).
+- **Gemini CLI** — secondary loop worker, alternative-approach implementations, second-opinion peer review.
+- **Hermes (Qwen-via-Ollama)** — shadow predictor at worker spawn time (PRO-329 Stage 1 shipped 2026-05-09). Logs predicted route alongside actual dispatch for evaluation. Does not yet hold routing authority.
+- **Cursor / CH / Codex** — operator-driven or benched. Not in the auto-dispatch loop. See `miru-context/team-charter.md` for full roster + status.
 
 ---
 

@@ -4,7 +4,7 @@
 Overlay: workflow-git
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: committing, opening a PR, merging a PR, or running pre-PR hygiene.
-Last reviewed: 2026-05-08
+Last reviewed: 2026-05-09
 ```
 
 This overlay carries the rules that govern git operations: PR merge policy,
@@ -202,9 +202,9 @@ Bypass policy: `git commit --no-verify` is allowed only for emergency hotfixes. 
 
 ---
 
-## Automated PR Review Completion Sequence (all workers + CH, locked 2026-05-04)
+## Automated PR Review Completion Sequence (all workers, locked 2026-05-04)
 
-This contract applies to ALL workers (CC, Codex, Cursor, Gemini, Copilot, Windsurf) and Claude Chat when it owns a PR. Supersedes the previous CC-only Bugbot contract (PRO-212).
+This contract applies to ALL workers that open PRs in this repo (CC, Gemini, plus CH when it returns; benched workers like Codex/Cursor/Copilot/Windsurf still follow it on the rare occasions they ship). Supersedes the previous CC-only Bugbot contract (PRO-212).
 
 Before declaring `CONFIRMED_WORKING` on any PR, the worker (or CH if it owns the PR) MUST:
 

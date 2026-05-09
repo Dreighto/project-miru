@@ -4,18 +4,21 @@
 Overlay: workflow-dispatch
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: orchestrating dispatch, configuring gateway profiles, working on W2 routing, or creating Linear tickets.
-Last reviewed: 2026-05-08
+Last reviewed: 2026-05-09
 ```
 
-This overlay carries the rules for orchestration: Claude Chat decision
-authority, gateway tool profile enforcement, ingress classifier behavior,
-orchestrator-side modules, and the Linear `projectId` requirement.
+This overlay carries the rules for orchestration: orchestrator decision
+authority (CC + Hermes shadow predictor while CH offline), gateway tool
+profile enforcement, ingress classifier behavior, orchestrator-side modules,
+and the Linear `projectId` requirement.
 
 ---
 
 ## Linear — Ticket Routing — Hard Rule
 
-Every Linear ticket created by any worker (CC, CH, Codex, Cursor) **MUST include a `projectId`**. Never create a ticket at team level only — tickets without a project are invisible to the project-based workflow and will be lost.
+Every Linear ticket created by any worker (CC, CH, Gemini, Codex, Cursor — anyone) **MUST include a `projectId`**. Never create a ticket at team level only — tickets without a project are invisible to the project-based workflow and will be lost.
+
+**Loop tickets** (work for claude-code or gemini-cli auto-pickup) are filed by **CC directly** via `linear_create_issue` — no operator paste step. Operator-side or benched-worker tickets follow the file-then-paste pattern (operator runs the paste).
 
 The full project ID table is in `.miru/reference/linear-projects.md`. The `linear_projects` table in the miru_memory DB is the authoritative source.
 
@@ -23,13 +26,27 @@ If unsure: default to **Miru Orchestration / Autonomy** for internal system work
 
 ---
 
-## Autonomous Operations — Claude Chat Decision Authority
+## Autonomous Operations — Orchestrator Decision Authority
 
-Claude Chat is the lead orchestrator. The default operating mode is **decide → act → report**.
-Asking the operator is the exception, not the norm. When in doubt: if the decision is local and
-reversible, make it and note it. If it's irreversible or external, ask first.
+```text
+Authority holder while CH offline (set 2026-05-07):
+  - CC (acting orchestrator) for routing, dispatch, ticket lifecycle, execution judgment, ops.
+  - Hermes shadow predictor (Stage 1, PRO-329) logs predictions alongside CC's actual decisions
+    for evaluation. Hermes does not yet hold authority — Stage 2+ takes over routing once the
+    prediction track-record is validated.
+When CH returns: lead orchestrator role returns to CH per pre-2026-05-07 baseline.
+```
 
-### Decisions Claude Chat makes without asking
+The default operating mode is **decide → act → report**. Asking the operator is the exception,
+not the norm. When in doubt: if the decision is local and reversible, make it and note it.
+If it's irreversible or external, ask first.
+
+**Session-level authorization rule (set 2026-05-08):** when the operator says "do what you
+need this session" or equivalent, execute within scope without pausing for individual
+confirmations. Don't re-ask after blanket authorization — that wastes operator time and
+defeats the purpose of granting it.
+
+### Decisions the acting orchestrator (CC, while CH offline) makes without asking
 
 **Routing and dispatch:**
 
@@ -57,6 +74,8 @@ reversible, make it and note it. If it's irreversible or external, ask first.
 
 - Re-dispatching a stalled worker within the recovery_router.py auto-retry budget
 - Reading any log, completion marker, or state file to assess system health before a dispatch
+- **Restarting services autonomously** (gateway, dispatch_listener, PM, Miru AI) — do not ask the operator for routine restarts. Use the registered restart tasks or the documented restart scripts. Operator action is only needed when the process is in Session 0 (see `.miru/reference/restart-procedures.md`).
+- **Auto-dispatching during testing.** While the loop is being validated, CC routes work directly via the `dispatch_worker` MCP tool. Skip the Telegram approval gate for tickets CC files itself. Default `tool_profile=standard_worker` unless the ticket is read-only (use `drift_executor`). Promote back to operator-approval-by-default after the loop is proven stable.
 
 ### When to send a Telegram and wait for the operator
 
