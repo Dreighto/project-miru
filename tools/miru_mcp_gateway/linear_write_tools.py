@@ -104,8 +104,13 @@ def _resolve_label_ids(team_id: str, label_names: list[str]) -> list[str]:
     name_to_id = {n.get("name", "").lower(): n.get("id", "") for n in nodes if n.get("id")}
     result: list[str] = []
     missing: list[str] = []
+    seen: set[str] = set()
     for name in label_names:
-        lid = name_to_id.get(name.lower())
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        lid = name_to_id.get(key)
         if lid:
             result.append(lid)
         else:

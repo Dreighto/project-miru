@@ -46,6 +46,8 @@ class LinearIntakeToolsTests(unittest.TestCase):
     HARNESS = Path(__file__).resolve().parent / "_tmp"
 
     def setUp(self) -> None:
+        prev_cfg = lw._CFG
+        self.addCleanup(setattr, lw, "_CFG", prev_cfg)
         self.HARNESS.mkdir(parents=True, exist_ok=True)
         self.root = self.HARNESS / f"linear_{uuid.uuid4().hex}"
         self.root.mkdir(parents=True, exist_ok=True)
@@ -148,6 +150,35 @@ class LinearIntakeToolsTests(unittest.TestCase):
             lw.linear_create_issue("t", project_id="proj-1", label_names=["bug"])
 
         self.assertEqual(captured_inp.get("labelIds"), ["lbl-1"])
+
+    def test_create_issue_invalid_label_names_raises_mcp_error(self) -> None:
+        """label_names that is not a list of non-empty strings raises McpError."""
+        noop_gql = lambda q, v: {}  # noqa: E731
+        with (
+            patch.object(lw, "_linear_gql", side_effect=noop_gql),
+            self.assertRaises(stdio_mcp.McpError) as ctx,
+        ):
+            # non-list value
+            lw.linear_create_issue("t", project_id="proj-1", label_names="Bug")
+        self.assertIn("label_names", str(ctx.exception))
+
+        with (
+            patch.object(lw, "_linear_gql", side_effect=noop_gql),
+            self.assertRaises(stdio_mcp.McpError) as ctx2,
+        ):
+            # list containing empty string
+            lw.linear_create_issue("t", project_id="proj-1", label_names=["Bug", ""])
+        self.assertIn("label_names", str(ctx2.exception))
+
+    def test_create_issue_blank_initial_state_raises_mcp_error(self) -> None:
+        """initial_state that is blank raises McpError."""
+        noop_gql = lambda q, v: {}  # noqa: E731
+        with (
+            patch.object(lw, "_linear_gql", side_effect=noop_gql),
+            self.assertRaises(stdio_mcp.McpError) as ctx,
+        ):
+            lw.linear_create_issue("t", project_id="proj-1", initial_state="   ")
+        self.assertIn("initial_state", str(ctx.exception))
 
     # ------------------------------------------------------------------
     # initial_state resolution
