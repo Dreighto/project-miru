@@ -31,10 +31,20 @@ from miru_mcp_gateway import redact as _redact  # noqa: E402
 _APPROVED_WORKERS = frozenset({"claude-code", "gemini"})
 # "extended" is the semantic alias for --effort max; direct effort values also accepted.
 _APPROVED_THINKING_LEVELS = frozenset({"extended", "none", "low", "medium", "high", "xhigh", "max"})
-# Multi-repo dispatch (added 2026-05-09 for LOS team). Must match the keys in
-# services/dispatch_listener/src/worktree.js WORKTREE_POOLS. The listener also
-# validates this server-side; the duplicate here gives a fast client-side fail
-# with a clear message instead of a 400 from the listener.
+# Multi-repo dispatch (added 2026-05-09 for LOS team).
+#
+# DUPLICATION WARNING: this set MUST match the keys of WORKTREE_POOLS in
+# services/dispatch_listener/src/worktree.js. The listener validates server-side,
+# but the duplicate here gives fast client-side fail with a clear message.
+#
+# When adding a new repo:
+#   1. Add the pool to WORKTREE_POOLS in services/dispatch_listener/src/worktree.js
+#   2. Add the same name to _APPROVED_TARGET_REPOS here
+#   3. Init the worktree on disk parked on _parking_<repo>-w<N>
+#   4. Restart the dispatch_listener
+#
+# Parity is enforced by tests/test_dispatch_tools_target_repo_parity.py — that
+# test fails if these two lists diverge. Per CodeRabbit feedback on PR #156.
 _APPROVED_TARGET_REPOS = frozenset({"project-miru", "LogueOS-Console"})
 _DEFAULT_TARGET_REPO = "project-miru"
 _DEFAULT_TIMEOUT_S = 600
