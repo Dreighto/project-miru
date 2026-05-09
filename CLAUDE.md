@@ -145,11 +145,12 @@ reference file when you need the specific fact.
 
 ### Reference — `.miru/reference/`
 
-- **`ports-and-services.md`** — FETCH IF you need a port number or service mapping.
+- **`roadmap.md`** — FETCH IF planning new work, dispatching a major ticket, or onboarding a worker. Contains: current substrate (DGAS), Gatekeeper architecture, Hermes layered stages (0/1/2/3/N), active tickets, near/mid/long-term roadmap, what NOT to do.
+- **`ports-and-services.md`** — FETCH IF you need a port number or service mapping. Includes in-process modules (Gatekeeper, Hermes Stages).
 - **`linear-projects.md`** — FETCH IF creating a Linear ticket. Contains the `projectId` table.
 - **`file-placement.md`** — FETCH IF creating a new file and unsure where it goes. Contains the NEVER-do list.
 - **`database-rules.md`** — FETCH IF reading or proposing changes to `card_catalog.db`.
-- **`restart-procedures.md`** — FETCH IF restarting a service.
+- **`restart-procedures.md`** — FETCH IF restarting a service. Includes the dispatch_listener Session 0 caveat.
 
 If you cannot tell which overlay applies, see the Fail-Closed Directive at the
 top of this file: stop and ask.

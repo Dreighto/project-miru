@@ -170,3 +170,45 @@ Production worker coordination helpers live under `tools/orchestrator/`. Workers
 - `recovery_router.py` maps stall classes to deterministic recovery actions and forces human escalation for schema, security, scope expansion, or irreversible-operation contexts.
 
 > Note: `task_store.py` (active task state + prompt-hash idempotency) and `worktree_manager.py` (orchestrator-side worktree leases) are described in earlier drafts but not yet implemented. The dispatch listener handles trace_id idempotency directly; worktree leases live in `services/dispatch_listener/src/worktree.js` (in-memory). Tracked in the loop-hardening backlog at `miru-context/loop-hardening-backlog.md` (Ticket B for lease persistence, Ticket C for prompt-hash idempotency).
+
+---
+
+## Local Governance Gatekeeper (Hybrid orchestration pivot Phase 1, shipped 2026-05-06)
+
+The dispatcher (formerly Flask UI + WebSocket on port 19000) was reborn as the **Local Governance Gatekeeper** — a Python module that validates conversational dispatches before forwarding HMAC-signed POSTs to `dispatch_listener` on port 19100.
+
+**Code location:**
+
+- `gatekeeper/gatekeeper.py` (760 lines) — the core gate
+- `gatekeeper/frontmatter_parser.py` (173 lines) — HTML-comment YAML frontmatter extractor
+- `gatekeeper/forwarder.py` (238 lines) — HMAC-signed forward to dispatch_listener
+- `tools/miru_mcp_gateway/gatekeeper_tools.py` — MCP tool wrapper exposing `gate_dispatch()`
+- `tools/gatekeeper/bench.py` + `tools/gatekeeper/routing_schema.gbnf` — bench harness + Cursor-built closed-enum grammar
+
+**Locked model:** `DEFAULT_MODEL = qwen2.5:7b` per the 3-model bench (2026-05-06: qwen 7b vs mistral 7b vs qwen 14b). Best balance of speed (p50=27.7s) + correct rejection-vocab usage. Phase 2 prompt engineering can lift qwen 7b's rejection vocab — that's a prompt issue, not a capability issue.
+
+**Where it runs:** in-process inside the MCP Gateway (port 18766). NO dedicated port. Restart the gateway to restart the Gatekeeper.
+
+**Phase 2 (PLANNED, blocked on operator approval):** add `cc_handoff` MCP tool that invokes `gatekeeper.gate_dispatch()` instead of CH calling `dispatch_listener` directly. Run in shadow mode — Gatekeeper validates and logs decisions to `data/agent_decisions.jsonl` for calibration, but does NOT gate dispatch yet.
+
+**Phase 3 (PLANNED, after Phase 2 validated):** remove `dispatch_worker` from CH's tool profile entirely. CH only has `cc_handoff`. Self-serve loophole closes structurally.
+
+See `.miru/reference/roadmap.md` for the full pivot plan + status.
+
+---
+
+## Hermes — layered architecture (separate from the Gatekeeper)
+
+Don't confuse the Gatekeeper (validates + rejects bad dispatches) with Hermes (predicts + eventually routes good ones). Both happen to use Qwen via Ollama, but they're different systems.
+
+| Stage                                          | Status          | Code                                          | What it does                                                                                                                                                                                                           |
+| ---------------------------------------------- | --------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Stage 0** — Apprentice bridge                | DONE (PRO-312)  | `tools/hermes_apprentice.py`                  | Manual-invocation Python script. Joins routing_history + callbacks. Produces `data/hermes_quality_labels.jsonl` (120 rows backfilled). Read-only observer.                                                             |
+| **Stage 1** — Shadow predictor at spawn        | DONE (PRO-329)  | `services/dispatch_listener/src/spawn.js:625` | Calls `qwen2.5:7b` at every worker spawn. Logs predicted route + confidence + risk to `data/hermes_predictions.jsonl` next to actual dispatch. Observation only. ~8-18s latency, fire-and-forget (never blocks spawn). |
+| **Stage 2** — Hermes assumes routing authority | NOT YET STARTED | —                                             | Hermes makes the actual routing decision. CC + operator override remain.                                                                                                                                               |
+| **Stage 3** — Hermes learns from outcomes      | NOT YET STARTED | —                                             | Hermes consumes completion log, refines prediction model. Likely fine-tuning when `hermes_quality_labels.jsonl` reaches ~1000+ rows.                                                                                   |
+| **Stage N** — NousResearch Hermes proper       | INDEFINITE      | —                                             | Replace Qwen substrate with the actual NousResearch fine-tuned model. Hardware-bound.                                                                                                                                  |
+
+A custom model `miru-router:latest` (9 GB) exists locally and is used by the **Gatekeeper** (NOT Hermes) for routing-validation decisions.
+
+See `.miru/reference/roadmap.md` for stage-promotion criteria.
