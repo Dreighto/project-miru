@@ -106,6 +106,14 @@ function readTail(filePath, maxBytes) {
   }
 }
 
+function safeStatSize(filePath) {
+  try {
+    return fs.statSync(filePath).size;
+  } catch (_e) {
+    return 0;
+  }
+}
+
 // PRO-316: run `python tools/clean_worktree.py` before spawning to remove
 // known-safe gitignored artifacts (test-results/, playwright-report/, etc.)
 // that would fail the worker's worktree cleanliness gate.
@@ -420,6 +428,9 @@ function spawnWorker({
       timed_out: false,
       cause: 'spawn_error',
       status: 'FAILED',
+      duration_ms: new Date(completedAt) - new Date(startedAt),
+      stdout_bytes: 0,
+      stderr_bytes: safeStatSize(stderrPath),
     });
     try {
       writeTerminalReceipt({
@@ -488,6 +499,9 @@ function spawnWorker({
       timed_out: timedOut,
       cause: computeTerminalCause(timedOut, exitCode),
       status,
+      duration_ms: new Date(completedAt) - new Date(startedAt),
+      stdout_bytes: safeStatSize(stdoutPath),
+      stderr_bytes: safeStatSize(stderrPath),
     });
 
     try {
