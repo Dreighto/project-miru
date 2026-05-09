@@ -250,3 +250,24 @@ Write-Host "  Start-ScheduledTask -TaskName 'MiruRestartMiruAI'" -ForegroundColo
 Write-Host ""
 Write-Host "IMPORTANT: Reply 'tasks registered' in the Claude Code chat to continue." -ForegroundColor Yellow
 Write-Host ""
+
+# ── dispatch_listener boot path (PRO-336) ────────────────────────────────────
+# The MiruDispatchListener scheduled task (registered by
+# windows\install_dispatch_listener.ps1, NOT by this script) fires at system
+# startup via S4U logon. At boot -- before the operator logs in -- the process
+# lands in Windows Session 0 (the non-interactive service session). A
+# non-elevated worker shell (Claude Code) cannot kill cross-session processes
+# without SeDebugPrivilege, which defeats routine restart operations.
+#
+# PRIMARY boot path (recommended): shell:startup shortcut installed by
+#   windows\install_dispatch_listener_startup_shortcut.ps1
+# This fires at LOGON so dispatch_listener spawns in Session 1+ where
+# non-elevated Stop-Process works without UAC.
+#
+# FALLBACK: MiruDispatchListener scheduled task (still registered). The
+# Session 0 self-check in start_dispatch_listener.ps1 causes it to exit 1
+# immediately if it fires in Session 0, surfacing the regression in the log.
+#
+# After running this script, also run (no elevation needed):
+#   powershell -ExecutionPolicy Bypass -File windows\install_dispatch_listener_startup_shortcut.ps1
+# ─────────────────────────────────────────────────────────────────────────────
