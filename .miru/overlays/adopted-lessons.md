@@ -64,6 +64,7 @@ Every prompt CC writes for a `dispatch_worker` MCP call MUST include both clause
 
 1. **Max 3 review-fix rounds.** "After at most 3 rounds of CodeRabbit/Bugbot fixes, declare a terminal state. If actionable findings still exist after round 3, emit `STATUS: ESCALATE: REPEATED_FAILURE` with a non-empty summary listing what's still outstanding."
 2. **Non-empty summary on INCONCLUSIVE.** "If you cannot complete the work, emit `STATUS: INCONCLUSIVE` with a non-empty summary that names what was tried, why each attempt failed, and one specific question that would unblock you. An empty INCONCLUSIVE summary will be treated as a worker failure and bounced."
+3. **Operator-facing summary format on every output that reaches the operator.** "Begin every operator-facing output (chat reports, completion summaries, escalations) with a one- or two-sentence plain-English summary that states the terminal STATUS and the key outcome. Follow with a single line containing only `---` and then all technical detail (file paths, commit SHAs, test output, JSON). The plain-English summary must be non-empty. This mirrors the Operator Communication Standard in AGENTS.md — codified here so dispatch prompts enforce it explicitly rather than relying on AGENTS.md being loaded mid-task."
 
 **Applies to:** every `dispatch_worker` MCP invocation. Operator-relayed manual prompts (Cursor, Codex) follow the same convention.
 
@@ -132,7 +133,7 @@ The existing `domain-ops.md` "Scheduled Tasks — Hard Rule" optimizes for "no f
 
 When handing a ticket to a sub-worker (operator-relayed or auto-dispatched), the wrapper message MUST contain only:
 
-- The file path or copy-paste block for the ticket.
+- The file path **or** a fenced code block (triple backticks) containing the paste-ready payload. Any paste-ready content MUST be wrapped in a fenced code block — never inline prose, never an indented snippet. This is the same hard rule as "Copy-paste content for manual routing" in `AGENTS.md`.
 - One short line of context (e.g., "Loop ticket — PRO-336, in Miru Orchestration / Autonomy.").
 
 All design context, priority, ordering hints, and "I'd suggest" notes belong **inside the ticket description**, not in the wrapper. Wrapper context is ephemeral and lost on session boundaries; ticket context survives.
