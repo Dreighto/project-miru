@@ -14,7 +14,7 @@ const STDERR_TAIL_BYTES = 4096;
 const STDOUT_SCAN_BYTES = 8192;
 
 // Closed taxonomy of terminal causes. Every spawn ends with exactly one.
-const TERMINAL_CAUSES = ['spawn_error', 'timeout', 'exit_clean', 'exit_nonzero'];
+const TERMINAL_CAUSES = Object.freeze(['spawn_error', 'timeout', 'exit_clean', 'exit_nonzero']);
 
 function computeTerminalCause(timedOut, exitCode) {
   if (timedOut) return 'timeout';
