@@ -256,42 +256,49 @@ function cleanupWorktree(cwd, traceId, _deps) {
     }
 
     if (currentBranch && !currentBranch.startsWith('_parking_') && currentBranch !== 'HEAD') {
-      try {
-        const prListOut = exec(`gh pr list --head ${currentBranch} --state merged --json number`, {
-          cwd,
-          timeout: 15000,
-          encoding: 'utf8',
-          windowsHide: true,
-        }).trim();
-        const prs = JSON.parse(prListOut || '[]');
-        if (Array.isArray(prs) && prs.length > 0) {
-          exec(`git branch -D ${currentBranch}`, {
-            cwd,
-            timeout: 10000,
-            encoding: 'utf8',
-            windowsHide: true,
-          });
-          log.info('worktree_cleanup_branch_deleted', {
-            trace_id: traceId,
-            cwd,
-            branch: currentBranch,
-            pr_count: prs.length,
-          });
-        } else {
-          log.info('worktree_cleanup_branch_retained', {
-            trace_id: traceId,
-            cwd,
-            branch: currentBranch,
-            reason: 'no_merged_pr',
-          });
-        }
-      } catch (branchErr) {
-        log.warn('worktree_cleanup_branch_check_failed', {
+      if (!/^[\w./-]+$/.test(currentBranch)) {
+        log.warn('worktree_cleanup_branch_skipped', {
           trace_id: traceId,
           cwd,
           branch: currentBranch,
-          error: String(branchErr.message || branchErr).slice(0, 200),
+          reason: 'unsafe_branch_name',
         });
+      } else {
+        try {
+          const prListOut = exec(
+            `gh pr list --head ${currentBranch} --state merged --json number`,
+            { cwd, timeout: 15000, encoding: 'utf8', windowsHide: true }
+          ).trim();
+          const prs = JSON.parse(prListOut || '[]');
+          if (Array.isArray(prs) && prs.length > 0) {
+            exec(`git branch -D ${currentBranch}`, {
+              cwd,
+              timeout: 10000,
+              encoding: 'utf8',
+              windowsHide: true,
+            });
+            log.info('worktree_cleanup_branch_deleted', {
+              trace_id: traceId,
+              cwd,
+              branch: currentBranch,
+              pr_count: prs.length,
+            });
+          } else {
+            log.info('worktree_cleanup_branch_retained', {
+              trace_id: traceId,
+              cwd,
+              branch: currentBranch,
+              reason: 'no_merged_pr',
+            });
+          }
+        } catch (branchErr) {
+          log.warn('worktree_cleanup_branch_check_failed', {
+            trace_id: traceId,
+            cwd,
+            branch: currentBranch,
+            error: String(branchErr.message || branchErr).slice(0, 200),
+          });
+        }
       }
     }
 

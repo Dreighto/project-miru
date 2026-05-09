@@ -93,6 +93,31 @@ test('verifyWorktreeParked: refuses when worktree is dirty', () => {
   assert.equal(result.reason, 'dirty_worktree');
 });
 
+test('verifyWorktreeParked: refuses unrecognized worktree path', () => {
+  const mockExec = () => {
+    throw new Error('should not be called');
+  };
+  const result = verifyWorktreeParked('/some/unknown/path', 'trace-unknown', {
+    execSync: mockExec,
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'unrecognized_worktree');
+});
+
+test('verifyWorktreeParked: handles git command failure', () => {
+  const mockExec = () => {
+    throw new Error('git not found');
+  };
+  const result = verifyWorktreeParked('D:\\dev\\miru-w1', 'trace-git-fail', {
+    execSync: mockExec,
+  });
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.reason.startsWith('git_check_failed:'),
+    `expected reason to start with 'git_check_failed:', got: ${result.reason}`
+  );
+});
+
 // --- cleanupWorktree ---
 
 test('cleanupWorktree: skips stash on clean state, checks out parking branch', () => {
