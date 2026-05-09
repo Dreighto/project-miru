@@ -49,6 +49,21 @@ function Write-WrapperLog {
     Add-Content -Path $wrapperLog -Value $line -Encoding UTF8
 }
 
+# Session 0 self-check (PRO-336): at boot, before operator login, Windows
+# S4U-launched scheduled tasks run in Session 0 (the non-interactive service
+# session). A non-elevated worker shell (Claude Code) running in the operator's
+# interactive session (Session 1+) cannot kill cross-session processes without
+# SeDebugPrivilege -- so a Session 0 listener defeats the restart mechanism.
+# If this guard fires, the MiruDispatchListener scheduled task launched us at
+# boot via the old S4U/AtStartup path. Fix: run
+#   windows\install_dispatch_listener_startup_shortcut.ps1
+# then log off and back on so the shell:startup shortcut fires in Session 1+.
+$_currentSessionId = [System.Diagnostics.Process]::GetCurrentProcess().SessionId
+if ($_currentSessionId -eq 0) {
+    Write-WrapperLog "WARN: session_id=0 -- running in Session 0 (non-interactive service session). A non-elevated worker shell cannot Stop-Process this PID. Primary boot path is the shell:startup shortcut. Run windows\install_dispatch_listener_startup_shortcut.ps1 then reboot. Exiting to surface this regression."
+    exit 1
+}
+
 if (-not (Test-Path $entry)) {
     Write-WrapperLog "fatal: entry not found at $entry"
     exit 2
