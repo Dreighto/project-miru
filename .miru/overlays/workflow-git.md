@@ -117,6 +117,78 @@ Source: locked 2026-04-25 after CC shipped 4 clean ticket fixes (PRO-60, PRO-65,
 
 ---
 
+## Bundling Policy — Risk-Based PR Granularity (set 2026-05-09)
+
+The merge tiers above (direct-to-main / CC-merge / operator-merge) decide WHO merges. This section decides WHAT'S IN a single PR — granularity, not authority.
+
+**The default is no longer "one logical change per PR".** That rule was designed for many-author / many-reviewer OSS projects where strangers review each other's code. In a single-operator + AI-worker setup the bottleneck is one human reviewing many AI-authored small commits; PR ceremony per atomic change taxes the reviewer for insurance the architecture doesn't need at this scale.
+
+Replace it with risk-based batching. The matrix below works alongside the existing merge tiers — bundling decides the contents of one PR; merge tier decides who clicks merge.
+
+**Bundle freely (target: 1–3 PRs per focused work session):**
+
+- Scaffolding work — internal infrastructure with no customer-facing surface
+- Cleanup and refactoring with no behavioral change
+- Documentation updates
+- Test-only changes
+- Mechanical changes (rename, move, lint, format) with no logic shift
+- Infrastructure hardening that does NOT touch the gates themselves
+
+**Stay one-per-PR (atomic, never bundled):**
+
+- Anything in the governance file registry. Canonical source of truth: `tools/check_governance_change.py` `GOVERNANCE_PATTERNS`. Current set: `gatekeeper/`, `.miru/overlays/`, `.miru/reference/`, `.miru/instruction_manifest.json`, `.pre-commit-config.yaml`, `tools/check_*.py`, `tools/validate_*.py`, `data/config/w2_profile_rules.json`, `tools/miru_mcp_gateway/profiles.py`, `tools/check_governance_change.py`, `.github/workflows/governance-check.yml`, `.github/CODEOWNERS`. If `GOVERNANCE_PATTERNS` adds new paths, treat those as governance too — the registry is the law; this list is the convenience copy.
+- Security boundary changes — auth gates, profile permissions, MCP gateway entry middleware (`tools/miru_mcp_gateway/server.py` `_is_local_origin`, `_ProfileExtractor`, related)
+- Customer-facing behavior — anything users (or the claude.ai connector) can observe in production. Examples: UI text, API response shapes, n8n workflow execution behavior, connector-visible fields. NOT customer-facing: internal logging format, worker-to-worker communication, code comments, test fixtures.
+- Data migrations — schema changes, large data rewrites, anything irreversible
+- Cross-service orchestration changes spanning multiple services (n8n + dispatcher + listener) — each service's changes in its own atomic PR, ship in dependency order
+
+**Bundling requirements (when allowed):**
+
+A bundled PR MUST include a manifest in the description:
+
+1. Each contained change as a numbered item.
+2. Risk class per item (one of: scaffolding, cleanup, docs, test, mechanical, hardening — matching the "Bundle freely" categories above).
+3. Files touched per item.
+4. Tests run + pass counts.
+5. Per-change rollback notes — which commit (or sub-revert) restores the codebase if just that one item turns out bad.
+
+Use atomic commits inside the branch (one commit per logical item) so individual sub-reverts are clean. Squash-merge keeps `main` history one-PR-per-merge while the PR description's manifest preserves the change list the squash hides.
+
+**The poison-pill rule:**
+
+If even one item in a planned bundle falls under "stay one-per-PR" above, the entire bundle splits. The high-risk item becomes its own atomic PR. The remaining low-risk items can still be bundled. Do NOT smuggle a governance change inside a documentation PR — the per-change audit gates exist precisely to surface gates as gates.
+
+**Hard ceiling:**
+
+Bundled PR maximum: **15 files OR 800 lines of diff (additions + deletions), whichever comes first.** Beyond that, cognitive review load exceeds the bundling savings. Split into multiple bundled PRs.
+
+**Bundling decision (run before opening a PR):**
+
+```text
+1. Does ANY changed file fall in "stay one-per-PR" above?
+   → That item is its own PR (atomic).
+
+2. Are all remaining changed files in "bundle freely" AND total ≤15 files / ≤800 LOC?
+   → Bundle is allowed. Include the manifest in the PR description.
+
+3. Mixed bundle (one-per-PR item + low-risk items)?
+   → Split the high-risk item out (its own PR), then bundle the rest.
+
+4. Bundle exceeds the 15-file / 800-LOC ceiling?
+   → Split into two or more bundled PRs along the most natural seam.
+```
+
+This decision runs alongside the merge-tier decision tree above. Together they produce four shapes:
+
+- **Atomic + CC-merge** — single CC-mergeable change, worker self-merges.
+- **Atomic + operator-merge** — single operator-merge change (governance, infra, etc.), worker opens, operator merges.
+- **Bundle + CC-merge** — multiple CC-mergeable changes in one PR with manifest, worker self-merges.
+- **Bundle + operator-merge** — bundle that includes any operator-merge file (per the merge-tier categories above); worker opens with manifest, operator merges.
+
+**Source:** synthesized 2026-05-09 from independent reviews by GMI (Tier 4 "Milestone Batching" with the 15-file / 800-LOC ceiling and the Functional-State vs System-Governance split) and GPT (risk-based granularity with manifest pattern and "one high-risk item poisons the batch" rule). Trigger: the DGAS sprint shipped 11 single-file PRs in one day; the work was high-velocity, the per-PR ceremony was the slow part. Relay bundles preserved at `data/peer_reviews/2026-05-08_pr_batching_policy_{gmi,gpt}.txt`.
+
+---
+
 ## Hygiene Gate (locked 2026-04-25 per PRO-107)
 
 Tasks involving code changes are not complete until lint + format + schema validation pass locally before PR creation. Worker MUST run `pre-commit run` (default scope: staged files) and confirm green before opening a PR. Local hygiene gate runs lint, format, and schema validation. Pytest is enforced via CI on every PR (`.github/workflows/hygiene.yml`). Local pytest will be re-enabled once the test suite is clean — see PRO-109.
