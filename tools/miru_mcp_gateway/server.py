@@ -172,6 +172,45 @@ def _remote_addr(scope) -> str | None:
 _TAILSCALE_CGNAT_V4 = None  # lazy-initialised in _is_local_origin
 
 
+def _validate_loopback_bind(host: str) -> None:
+    """Fail fast at startup if the gateway is configured to bind a non-loopback
+    interface.
+
+    The trusted-origin checks in ``_is_local_origin`` (specifically the
+    ``Tailscale-Funnel-Request`` header branch) depend on the loopback
+    bind invariant: if the gateway is reachable from a non-Tailscale,
+    non-localhost peer, an attacker can spoof the Funnel header and
+    self-elevate to ``full_operator``.
+
+    Accepted: 127.0.0.1, ::1, "localhost". Rejected: 0.0.0.0, any
+    routable interface address, or anything that fails to parse.
+    """
+    import ipaddress
+
+    if host in _LOCAL_HOSTS:
+        return
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        raise SystemExit(
+            f"FATAL: gateway host {host!r} does not parse as an IP address. "
+            f"The gateway must bind a loopback interface "
+            f"(127.0.0.1, ::1, or 'localhost') because the "
+            f"Tailscale-Funnel-Request header trust assumes loopback-only "
+            f"reachability. Set MIRU_MCP_GATEWAY_HOST=127.0.0.1 in .env."
+        ) from None
+    if not addr.is_loopback:
+        raise SystemExit(
+            f"FATAL: gateway host {host!r} is not a loopback address. "
+            f"The Tailscale-Funnel-Request header trust check in "
+            f"_is_local_origin assumes the gateway is unreachable from "
+            f"any non-localhost, non-Tailscale peer. Binding to a routable "
+            f"interface would let any reachable client spoof the header "
+            f"and self-elevate to full_operator. "
+            f"Set MIRU_MCP_GATEWAY_HOST=127.0.0.1 in .env."
+        )
+
+
 def _has_tailscale_funnel_marker(scope) -> bool:
     """Return True if the request carries Tailscale Funnel's identifying header.
 
@@ -181,19 +220,20 @@ def _has_tailscale_funnel_marker(scope) -> bool:
     headers before forwarding, so an external caller cannot spoof this
     marker.
 
-    Combined with the gateway's loopback-only bind, presence of this
-    header is a reliable signal that the request was authorized by the
-    Tailscale Funnel path-secret at Tailscale's edge.
+    Combined with the gateway's loopback-only bind (enforced at startup
+    by ``_validate_loopback_bind``), presence of this header is a
+    reliable signal that the request was authorized by the Tailscale
+    Funnel path-secret at Tailscale's edge.
+
+    Strict ``?1`` match per Tailscale's Structured Field spec — any
+    other value, including empty or arbitrary strings, is rejected.
     """
     headers = scope.get("headers") or []
     for name, value in headers:
         lower_name = name.lower() if isinstance(name, bytes) else name.encode().lower()
         if lower_name == b"tailscale-funnel-request":
             decoded = value.decode("utf-8") if isinstance(value, bytes) else value
-            # Structured Field boolean-true is "?1"; accept any non-empty
-            # value as a positive marker (Tailscale only sets it on real
-            # Funnel forwards).
-            return bool(decoded.strip())
+            return decoded.strip() == "?1"
     return False
 
 
@@ -429,6 +469,14 @@ def main() -> int:
     inner_app = mcp.http_app(path=cfg.mcp_path, transport="streamable-http")
     profiled_app = _ProfileExtractor(inner_app)
     wrapped_app = _RootAlias(profiled_app)
+
+    # Hard invariant: the Tailscale-Funnel-Request header trust check in
+    # _is_local_origin assumes the gateway is reachable ONLY from the
+    # local Tailscale daemon and from local processes. That assumption
+    # holds iff the bind is loopback. Fail fast if not — running on a
+    # non-loopback interface would let any reachable peer spoof the
+    # header and self-elevate to full_operator.
+    _validate_loopback_bind(cfg.host)
 
     try:
         uvicorn.run(
