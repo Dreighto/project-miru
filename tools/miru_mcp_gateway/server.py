@@ -172,22 +172,54 @@ def _remote_addr(scope) -> str | None:
 _TAILSCALE_CGNAT_V4 = None  # lazy-initialised in _is_local_origin
 
 
+def _has_tailscale_funnel_marker(scope) -> bool:
+    """Return True if the request carries Tailscale Funnel's identifying header.
+
+    Tailscale Funnel injects ``Tailscale-Funnel-Request: ?1`` (Structured
+    Field boolean-true) on every request it forwards from the public
+    internet. Tailscale also strips any client-supplied ``Tailscale-*``
+    headers before forwarding, so an external caller cannot spoof this
+    marker.
+
+    Combined with the gateway's loopback-only bind, presence of this
+    header is a reliable signal that the request was authorized by the
+    Tailscale Funnel path-secret at Tailscale's edge.
+    """
+    headers = scope.get("headers") or []
+    for name, value in headers:
+        lower_name = name.lower() if isinstance(name, bytes) else name.encode().lower()
+        if lower_name == b"tailscale-funnel-request":
+            decoded = value.decode("utf-8") if isinstance(value, bytes) else value
+            # Structured Field boolean-true is "?1"; accept any non-empty
+            # value as a positive marker (Tailscale only sets it on real
+            # Funnel forwards).
+            return bool(decoded.strip())
+    return False
+
+
 def _is_local_origin(scope) -> bool:
-    """Return True iff scope.client is a trusted-peer origin for full_operator.
+    """Return True iff the request is a trusted-peer origin for full_operator.
 
     "Trusted" means one of:
         * Literal strings 127.0.0.1, ::1, "localhost".
         * IPv4 loopback range (parsed via ipaddress).
         * IPv4-mapped IPv6 loopback (e.g. ``::ffff:127.0.0.1``).
         * Tailscale CGNAT range 100.64.0.0/10 (and its IPv4-mapped form).
-          The gateway binds 127.0.0.1 only, so the only way a non-loopback
-          peer reaches us is via the local Tailscale daemon proxying
-          tunneled traffic. The URL-path secret enforced at the Tailscale
-          Funnel edge already authorized that upstream; rejecting CGNAT
-          peers here would lock out claude.ai's web connector with no
-          security gain (the path-secret IS the auth boundary for tunneled
-          traffic, and the loopback-only bind keeps non-tunneled remote
-          peers unreachable).
+          Catches direct tailnet-member requests where the proxy preserves
+          the tailnet peer IP.
+        * Carries the ``Tailscale-Funnel-Request`` header. Tailscale
+          Funnel injects this on every Funnel-forwarded request and strips
+          incoming client copies, so its presence is a reliable signal
+          that the request transited the Funnel (which means the URL-path
+          secret was validated at Tailscale's edge). Without this branch
+          the gate would reject claude.ai (and any other public Funnel
+          client) because Tailscale Funnel preserves the *original* public
+          client IP through to the upstream — so the peer address shows
+          as a public IP, not a CGNAT one.
+
+    The gateway binds 127.0.0.1 only, so an external caller cannot reach
+    us at all without traversing either localhost or Tailscale; both
+    paths are covered above.
 
     Anything else is treated as remote — fail-closed.
     """
@@ -196,6 +228,9 @@ def _is_local_origin(scope) -> bool:
     global _TAILSCALE_CGNAT_V4
     if _TAILSCALE_CGNAT_V4 is None:
         _TAILSCALE_CGNAT_V4 = ipaddress.ip_network("100.64.0.0/10")
+
+    if _has_tailscale_funnel_marker(scope):
+        return True
 
     host = _remote_addr(scope)
     if host is None:
@@ -222,7 +257,10 @@ async def _send_full_operator_local_only(scope, send) -> None:
         remote_addr = gw_redact.redact(remote_addr)
     payload = {
         "error": "full_operator_local_only",
-        "message": "full_operator requires a trusted origin (loopback or tailnet 100.64.0.0/10)",
+        "message": (
+            "full_operator requires a trusted origin "
+            "(loopback, tailnet 100.64.0.0/10, or Tailscale-Funnel-Request header)"
+        ),
         "remote_addr": remote_addr,
     }
     body = json.dumps(payload).encode("utf-8")

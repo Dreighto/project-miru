@@ -197,6 +197,65 @@ class TestFullOperatorLocalhostBind(unittest.TestCase):
         statuses = [m.get("status") for m in messages if m.get("type") == "http.response.start"]
         self.assertEqual(statuses, [403])
 
+    def test_no_header_from_public_ip_with_funnel_marker_proceeds(self):
+        """Tailscale Funnel preserves the original public client IP through
+        to the upstream, so claude.ai requests arrive with public IPs (e.g.
+        160.79.106.x) — outside both loopback and CGNAT. The Funnel injects
+        a ``Tailscale-Funnel-Request`` header that external clients cannot
+        spoof (Tailscale strips client-supplied Tailscale-* headers); its
+        presence is the trust signal for these requests."""
+        app, messages = _run_middleware(
+            _http_scope(
+                host="160.79.106.37",
+                headers=[_header("tailscale-funnel-request", "?1")],
+            )
+        )
+
+        self.assertTrue(app.called)
+        self.assertEqual(app.profile_seen, "full_operator")
+        self.assertEqual(messages, [{"type": "test.app_called"}])
+
+    def test_explicit_full_operator_from_public_ip_with_funnel_marker_proceeds(self):
+        app, messages = _run_middleware(
+            _http_scope(
+                host="34.170.211.100",
+                headers=[
+                    _header("tailscale-funnel-request", "?1"),
+                    _header("x-miru-tool-profile", "full_operator"),
+                ],
+            )
+        )
+
+        self.assertTrue(app.called)
+        self.assertEqual(app.profile_seen, "full_operator")
+        self.assertEqual(messages, [{"type": "test.app_called"}])
+
+    def test_public_ip_without_funnel_marker_still_rejected(self):
+        """Negative control: a public IP without the Funnel header (i.e. a
+        request that did NOT come through Tailscale) is still rejected.
+        The gateway binds loopback so this is unreachable in practice,
+        but the test pins the predicate to prevent regressions if the
+        bind is ever loosened."""
+        app, messages = _run_middleware(_http_scope(host="160.79.106.37"))
+
+        self.assertFalse(app.called)
+        statuses = [m.get("status") for m in messages if m.get("type") == "http.response.start"]
+        self.assertEqual(statuses, [403])
+
+    def test_funnel_marker_with_empty_value_does_not_grant_trust(self):
+        """Empty header value must NOT count as a positive marker — only
+        Tailscale sets a real Structured-Field value."""
+        app, messages = _run_middleware(
+            _http_scope(
+                host="160.79.106.37",
+                headers=[_header("tailscale-funnel-request", "")],
+            )
+        )
+
+        self.assertFalse(app.called)
+        statuses = [m.get("status") for m in messages if m.get("type") == "http.response.start"]
+        self.assertEqual(statuses, [403])
+
     def test_stdio_like_non_http_scope_bypasses_localhost_check(self):
         app, messages = _run_middleware({"type": "lifespan", "client": ("10.0.0.5", 54321)})
 
