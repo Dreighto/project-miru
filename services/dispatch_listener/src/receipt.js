@@ -92,6 +92,13 @@ function writeTerminalReceipt({
   completedAt,
   exitCode,
   stderrTail,
+  // PRO-335: capture the worker's diagnostic block (the text following the
+  // STATUS: line in stdout) so result.json carries actionable signal instead
+  // of an empty string. escalationCategory carries the ESCALATE reason
+  // (e.g. 'HUMAN-REQUIRED', 'SCOPE_EXPANSION') when the worker emitted
+  // STATUS: ESCALATE: <category>; null otherwise.
+  summary,
+  escalationCategory,
 }) {
   if (!TERMINAL_STATES.has(status)) {
     throw new Error(`refusing to write non-terminal status "${status}" via writeTerminalReceipt`);
@@ -108,7 +115,8 @@ function writeTerminalReceipt({
     trace_id: traceId,
     worker,
     status,
-    summary: '',
+    summary: summary || '',
+    escalation_category: escalationCategory || null,
     files_touched: [],
     exit_code: exitCode,
     stderr_tail: stderrTail || '',
