@@ -119,6 +119,181 @@ function cleanWorktree(cwd, traceId) {
   }
 }
 
+// PRO-334: Derive the parking branch name from a worktree path.
+// e.g. "D:\dev\miru-w1" → "_parking_w1", "D:\dev\miru-cursor" → "_parking_cursor"
+function parkingBranchForCwd(cwd) {
+  const name = path.basename(cwd);
+  const m = name.match(/^miru-(.+)$/i);
+  return m ? `_parking_${m[1]}` : null;
+}
+
+// PRO-334: Pre-spawn guard — verify the worktree is on a _parking_* branch and
+// git status is clean. Injectable execSync for testability.
+function verifyWorktreeParked(cwd, traceId, _deps) {
+  const exec = (_deps && _deps.execSync) || execSync;
+  try {
+    const branch = exec('git rev-parse --abbrev-ref HEAD', {
+      cwd,
+      timeout: 10000,
+      encoding: 'utf8',
+      windowsHide: true,
+    }).trim();
+    if (!branch.startsWith('_parking_')) {
+      log.warn('pre_spawn_dirty_refusal', {
+        trace_id: traceId,
+        cwd,
+        reason: 'not_on_parking_branch',
+        branch,
+      });
+      return { ok: false, reason: `not_on_parking_branch:${branch}` };
+    }
+    const statusOut = exec('git status --porcelain', {
+      cwd,
+      timeout: 10000,
+      encoding: 'utf8',
+      windowsHide: true,
+    }).trim();
+    if (statusOut) {
+      log.warn('pre_spawn_dirty_refusal', {
+        trace_id: traceId,
+        cwd,
+        reason: 'dirty_worktree',
+        status_excerpt: statusOut.slice(0, 200),
+      });
+      return { ok: false, reason: 'dirty_worktree' };
+    }
+    return { ok: true };
+  } catch (err) {
+    log.warn('pre_spawn_git_check_failed', {
+      trace_id: traceId,
+      cwd,
+      error: String(err.message || err).slice(0, 200),
+    });
+    return { ok: false, reason: `git_check_failed:${String(err.message || err).slice(0, 100)}` };
+  }
+}
+
+// PRO-334: Post-worker cleanup — stash any uncommitted changes, checkout the
+// parking branch, pull latest, and delete the feature branch only if its PR
+// is already merged. Injectable execSync for testability.
+function cleanupWorktree(cwd, traceId, _deps) {
+  const exec = (_deps && _deps.execSync) || execSync;
+  const parkingBranch = parkingBranchForCwd(cwd);
+  if (!parkingBranch) {
+    log.warn('worktree_park_skip', { trace_id: traceId, cwd, reason: 'unrecognized_worktree' });
+    return;
+  }
+  try {
+    const statusOut = exec('git status --porcelain', {
+      cwd,
+      timeout: 10000,
+      encoding: 'utf8',
+      windowsHide: true,
+    }).trim();
+
+    let currentBranch = null;
+    try {
+      currentBranch = exec('git rev-parse --abbrev-ref HEAD', {
+        cwd,
+        timeout: 10000,
+        encoding: 'utf8',
+        windowsHide: true,
+      }).trim();
+    } catch (_e) {
+      // detached HEAD or unreachable — leave currentBranch null
+    }
+
+    if (statusOut) {
+      try {
+        exec('git stash push -m "dispatch-cleanup"', {
+          cwd,
+          timeout: 15000,
+          encoding: 'utf8',
+          windowsHide: true,
+        });
+        log.info('worktree_cleanup_stashed', { trace_id: traceId, cwd });
+      } catch (stashErr) {
+        log.warn('worktree_cleanup_stash_failed', {
+          trace_id: traceId,
+          cwd,
+          error: String(stashErr.message || stashErr).slice(0, 200),
+        });
+      }
+    }
+
+    exec(`git checkout ${parkingBranch}`, {
+      cwd,
+      timeout: 15000,
+      encoding: 'utf8',
+      windowsHide: true,
+    });
+
+    try {
+      exec(`git pull --ff-only origin ${parkingBranch}`, {
+        cwd,
+        timeout: 20000,
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+    } catch (pullErr) {
+      log.warn('worktree_cleanup_pull_failed', {
+        trace_id: traceId,
+        cwd,
+        branch: parkingBranch,
+        error: String(pullErr.message || pullErr).slice(0, 200),
+      });
+    }
+
+    if (currentBranch && !currentBranch.startsWith('_parking_') && currentBranch !== 'HEAD') {
+      try {
+        const prListOut = exec(`gh pr list --head ${currentBranch} --state merged --json number`, {
+          cwd,
+          timeout: 15000,
+          encoding: 'utf8',
+          windowsHide: true,
+        }).trim();
+        const prs = JSON.parse(prListOut || '[]');
+        if (Array.isArray(prs) && prs.length > 0) {
+          exec(`git branch -D ${currentBranch}`, {
+            cwd,
+            timeout: 10000,
+            encoding: 'utf8',
+            windowsHide: true,
+          });
+          log.info('worktree_cleanup_branch_deleted', {
+            trace_id: traceId,
+            cwd,
+            branch: currentBranch,
+            pr_count: prs.length,
+          });
+        } else {
+          log.info('worktree_cleanup_branch_retained', {
+            trace_id: traceId,
+            cwd,
+            branch: currentBranch,
+            reason: 'no_merged_pr',
+          });
+        }
+      } catch (branchErr) {
+        log.warn('worktree_cleanup_branch_check_failed', {
+          trace_id: traceId,
+          cwd,
+          branch: currentBranch,
+          error: String(branchErr.message || branchErr).slice(0, 200),
+        });
+      }
+    }
+
+    log.info('worktree_parked', { trace_id: traceId, cwd, parking_branch: parkingBranch });
+  } catch (err) {
+    log.warn('worktree_cleanup_failed', {
+      trace_id: traceId,
+      cwd,
+      error: String(err.message || err).slice(0, 300),
+    });
+  }
+}
+
 // PRO-233: run `cmd /c <binary> --version` before the real spawn to confirm
 // the binary is reachable in this process's environment. Synchronous on
 // purpose — the caller is already committed to spawning; this probe adds at
@@ -163,6 +338,13 @@ function spawnWorker({
   }
 
   fs.mkdirSync(traceLogDir, { recursive: true });
+
+  // PRO-334: defense-in-depth — refuse if worktree is not parked or is dirty
+  const parkCheck = verifyWorktreeParked(cwd, traceId);
+  if (!parkCheck.ok) {
+    throw new Error(`pre_spawn_dirty_refusal: ${parkCheck.reason}`);
+  }
+
   const stdoutPath = path.join(traceLogDir, `${traceId}.stdout.log`);
   const stderrPath = path.join(traceLogDir, `${traceId}.stderr.log`);
 
@@ -421,6 +603,7 @@ function spawnWorker({
     } catch (_e) {
       /* best effort */
     }
+    cleanupWorktree(cwd, traceId); // PRO-334
     if (typeof onDone === 'function') onDone();
   });
 
@@ -484,10 +667,19 @@ function spawnWorker({
     } catch (_e) {
       /* best effort */
     }
+    cleanupWorktree(cwd, traceId); // PRO-334
     if (typeof onDone === 'function') onDone();
   });
 
   return { pid: child.pid, startedAt };
 }
 
-module.exports = { spawnWorker, readTail, readTailRaw, scanStdoutForStatus };
+module.exports = {
+  spawnWorker,
+  readTail,
+  readTailRaw,
+  scanStdoutForStatus,
+  parkingBranchForCwd,
+  cleanupWorktree,
+  verifyWorktreeParked,
+};
