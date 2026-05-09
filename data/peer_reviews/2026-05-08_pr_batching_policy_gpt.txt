@@ -1,0 +1,95 @@
+PEER REVIEW REQUEST — ChatGPT
+
+Topic: PR granularity policy for a single-operator + AI-worker codebase
+
+============================================================================
+THE SETUP
+============================================================================
+
+Project Miru is a worker-orchestration codebase. One human operator (me)
+plus rotating AI sub-workers — Claude Code primarily, plus Codex and
+Cursor. Workers run in their own git worktrees, open PRs against `main`,
+and either self-merge (small changes) or wait for operator merge (larger
+or governance-touching changes).
+
+GitHub branch protection requires PRs on `main`. A "governance file
+registry" auto-flags PRs that touch the gates themselves (CODEOWNERS +
+description gate). Force-push and branch-delete on `main` are blocked at
+both server and local layers.
+
+We just finished a one-day infrastructure sprint called DGAS — audit
+chains, governance gates, secret scanning, branch-protection setup, etc.
+Eleven PRs in one day. Most were single-file changes with tests. Each
+went through the full ceremony: branch, push, PR description, CI, merge,
+branch delete.
+
+The work was fast. The ceremony around each PR was the slow part. The
+operator (me) flagged this:
+
+  "PRs aren't being run every single time for every single thing. There
+  shouldn't be any reason for every single job to be sent up for PR if
+  it is stuff like what we are doing. We are still tightening and
+  strengthening this loop and system. We can do a big PR every now and
+  then."
+
+============================================================================
+WHAT I'M ASKING FOR
+============================================================================
+
+I want your independent take — I'm asking the same question to Gemini
+in parallel and will synthesize the two answers myself. Don't pull
+punches; I want a real second opinion, not a hedge.
+
+The core question: when the review bottleneck is a single human
+reviewing AI-authored code, does the OSS rule of "one logical change
+per PR" still apply, or is it the wrong default for this shape of team?
+
+Specific things I want your view on:
+
+1. **The bottleneck argument.** AI workers produce small atomic changes
+   in minutes. The human review/merge loop is the slow step. Granular
+   PRs maximize AI throughput but bottleneck on the human. Bundled PRs
+   reduce ceremony per change but make each review heavier. Where's the
+   right point on that curve for a single-operator setup?
+
+2. **The audit-trail counter-argument.** The DGAS sprint that triggered
+   this conversation was *about* governance and audit integrity. Each
+   PR is a clean audit unit — one revert button, one bisect target, one
+   description, one CODEOWNERS check. Bundling weakens that. Is the
+   audit-trail loss real, or is it ceremony cosplay?
+
+3. **Pre-production vs. production.** This codebase has no paying users.
+   No uptime SLA. The blast radius of a bad merge is "operator's next
+   session." Should the PR policy differ between pre-production
+   scaffolding sprints and post-launch operations? Or is policy-by-mode
+   a worse trap than tight-policy-always?
+
+4. **A hybrid policy.** Something like: "Scaffolding/cleanup PRs may
+   bundle freely (target: 1-3 PRs per session). Governance-file PRs
+   stay one-per-change (the gates need their per-change audit).
+   Customer-facing changes stay one-per-change (revert granularity
+   matters)." Defensible? Or does it create more confusion than it
+   resolves?
+
+5. **What we might be missing.** Failure modes you've seen in similar
+   setups that would change the math. Or a third option I haven't
+   considered (squash-merge of feature branches with multiple commits?
+   stacked PRs? something else?).
+
+Please give a recommendation, not just a list of considerations. If you'd
+phrase a one-paragraph policy I could drop into our workflow-git.md
+overlay, that's the most useful possible output.
+
+============================================================================
+CONTEXT YOU MAY WANT
+============================================================================
+
+Available on request:
+- The current workflow-git.md (defines the three tiers: direct-to-main,
+  CC-merge, operator-merge)
+- The 11 PRs from the sprint with titles + LOC
+- The audit report that surfaced this conversation
+- The DGAS three-way synthesis doc (architecture lock for the gates)
+
+Don't try to read those without asking — they're not attached. The
+question above is self-contained.
