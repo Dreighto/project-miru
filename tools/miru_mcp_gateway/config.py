@@ -26,7 +26,6 @@ without the secret path). Fail closed.
 from __future__ import annotations
 
 import os
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -313,12 +312,6 @@ def load() -> GatewayConfig:
         raise SystemExit(f"FATAL: MIRU_MCP_GATEWAY_PORT not an int: {raw_port}") from exc
 
     host = os.environ.get("MIRU_MCP_GATEWAY_HOST", DEFAULT_HOST)
-    if host not in ("127.0.0.1", "localhost"):
-        print(
-            f"WARNING: gateway host={host} is not loopback. "
-            f"This widens the attack surface beyond the Tailscale Funnel.",
-            file=sys.stderr,
-        )
 
     github_token, github_allowlist = _load_github_settings()
     n8n_api_key, n8n_base_url = _load_n8n_settings()
