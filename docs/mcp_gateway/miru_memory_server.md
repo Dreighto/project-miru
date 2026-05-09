@@ -10,11 +10,14 @@ worktree symlinks pick it up.
 ```jsonc
 "miru_memory": {
   "type": "stdio",
-  "command": "uvx",
+  "command": "powershell.exe",
   "args": [
-    "mcp-server-sqlite",
-    "--db-path",
-    "D:\\dev\\miru\\data\\miru_memory.db"
+    "-NoLogo",
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    "D:\\dev\\miru\\tools\\launch_miru_memory_mcp.ps1"
   ],
   "env": {}
 }
@@ -26,6 +29,12 @@ worktree symlinks pick it up.
   via `uvx`). The PRO-156 ticket originally referenced `@modelcontextprotocol/server-sqlite`
   on npm, which returns 404 — the Python `mcp-server-sqlite` is the correct package and
   matches the same shape as the existing `fetch` server entry (`uvx mcp-server-fetch`).
+- **Launcher wrapper (`tools/launch_miru_memory_mcp.ps1`).** Earlier versions of this
+  entry ran `uvx` directly. After repeated cold-boot failures (PATH propagation lag and
+  orphan SQLite WAL/SHM sidecars left by dirty shutdowns), the entry now invokes a
+  PowerShell launcher that resolves `uvx.exe` via `Get-Command` and checkpoints any
+  orphan WAL/SHM files before launching the server. Same pattern as `notion`, `youtube`,
+  and `magic-ui` entries.
 - **`--readonly` flag is intentionally omitted.** Write access is the default; the
   flag would disable writes only if explicitly set. PRO-156 acceptance requires write
   access (smoke tests #3 and #5 are INSERT and DELETE).
