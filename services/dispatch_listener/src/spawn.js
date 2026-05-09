@@ -176,6 +176,264 @@ function cleanWorktree(cwd, traceId) {
   }
 }
 
+// PRO-334: Derive the parking branch name from a worktree path.
+// e.g. "D:\dev\miru-w1" → "_parking_w1", "D:\dev\miru-cursor" → "_parking_cursor"
+// path.win32.basename is used so Windows-style paths parse correctly on POSIX too.
+// Suffix is lowercased so case-insensitive Windows paths (e.g. "D:\dev\MIRU-W1")
+// canonicalize to the same parking branch name as their lowercase counterpart —
+// without this, verifyWorktreeParked would reject `_parking_w1` as
+// `wrong_parking_branch` if the cwd happened to use uppercase casing.
+function parkingBranchForCwd(cwd) {
+  const name = path.win32.basename(String(cwd));
+  const m = name.match(/^miru-(.+)$/i);
+  return m ? `_parking_${m[1].toLowerCase()}` : null;
+}
+
+// PRO-334: Pre-spawn guard — verify the worktree is on its exact _parking_* branch
+// and git status is clean. Injectable execSync for testability.
+function verifyWorktreeParked(cwd, traceId, _deps) {
+  const exec = (_deps && _deps.execSync) || execSync;
+  const expectedBranch = parkingBranchForCwd(cwd);
+  if (!expectedBranch) {
+    log.warn('pre_spawn_dirty_refusal', {
+      trace_id: traceId,
+      cwd,
+      reason: 'unrecognized_worktree',
+    });
+    return { ok: false, reason: 'unrecognized_worktree' };
+  }
+  try {
+    const branch = exec('git rev-parse --abbrev-ref HEAD', {
+      cwd,
+      timeout: 10000,
+      encoding: 'utf8',
+      windowsHide: true,
+    }).trim();
+    if (branch !== expectedBranch) {
+      log.warn('pre_spawn_dirty_refusal', {
+        trace_id: traceId,
+        cwd,
+        reason: 'wrong_parking_branch',
+        branch,
+        expected_branch: expectedBranch,
+      });
+      return { ok: false, reason: `wrong_parking_branch:${branch}` };
+    }
+    const statusOut = exec('git status --porcelain', {
+      cwd,
+      timeout: 10000,
+      encoding: 'utf8',
+      windowsHide: true,
+    }).trim();
+    if (statusOut) {
+      log.warn('pre_spawn_dirty_refusal', {
+        trace_id: traceId,
+        cwd,
+        reason: 'dirty_worktree',
+        status_excerpt: statusOut.slice(0, 200),
+      });
+      return { ok: false, reason: 'dirty_worktree' };
+    }
+    return { ok: true };
+  } catch (err) {
+    log.warn('pre_spawn_git_check_failed', {
+      trace_id: traceId,
+      cwd,
+      error: String(err.message || err).slice(0, 200),
+    });
+    return { ok: false, reason: `git_check_failed:${String(err.message || err).slice(0, 100)}` };
+  }
+}
+
+// PRO-334: Post-worker cleanup — stash any uncommitted changes, checkout the
+// parking branch, pull latest, and delete the feature branch only if its PR
+// is already merged. Injectable execSync for testability.
+function cleanupWorktree(cwd, traceId, _deps) {
+  const exec = (_deps && _deps.execSync) || execSync;
+  const parkingBranch = parkingBranchForCwd(cwd);
+  if (!parkingBranch) {
+    log.warn('worktree_park_skip', { trace_id: traceId, cwd, reason: 'unrecognized_worktree' });
+    return;
+  }
+  // Defense-in-depth: parkingBranch is derived from cwd (config-controlled)
+  // but it gets shell-interpolated into git checkout / git pull below. Apply
+  // the same regex check we use for currentBranch so an unsafe character in
+  // a misconfigured worktree path can't reach the shell.
+  if (!/^[\w./-]+$/.test(parkingBranch)) {
+    log.warn('worktree_park_skip', {
+      trace_id: traceId,
+      cwd,
+      branch: parkingBranch,
+      reason: 'unsafe_parking_branch_name',
+    });
+    return;
+  }
+  try {
+    const statusOut = exec('git status --porcelain', {
+      cwd,
+      timeout: 10000,
+      encoding: 'utf8',
+      windowsHide: true,
+    }).trim();
+
+    let currentBranch = null;
+    try {
+      currentBranch = exec('git rev-parse --abbrev-ref HEAD', {
+        cwd,
+        timeout: 10000,
+        encoding: 'utf8',
+        windowsHide: true,
+      }).trim();
+    } catch (_e) {
+      // detached HEAD or unreachable — leave currentBranch null
+    }
+
+    if (statusOut) {
+      try {
+        exec('git stash push --include-untracked -m "dispatch-cleanup"', {
+          cwd,
+          timeout: 15000,
+          encoding: 'utf8',
+          windowsHide: true,
+        });
+        log.info('worktree_cleanup_stashed', { trace_id: traceId, cwd });
+      } catch (stashErr) {
+        // Critical (CodeRabbit): if stash fails, abort cleanup. Continuing to
+        // `git checkout` would carry the uncommitted local edits onto the
+        // `_parking_*` branch, recreating the cross-dispatch contamination
+        // this hook exists to prevent.
+        log.error('worktree_cleanup_stash_failed_abort', {
+          trace_id: traceId,
+          cwd,
+          error: String(stashErr.message || stashErr).slice(0, 200),
+        });
+        return;
+      }
+    }
+
+    exec(`git checkout ${parkingBranch}`, {
+      cwd,
+      timeout: 15000,
+      encoding: 'utf8',
+      windowsHide: true,
+    });
+
+    try {
+      exec(`git pull --ff-only origin ${parkingBranch}`, {
+        cwd,
+        timeout: 20000,
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+    } catch (pullErr) {
+      log.warn('worktree_cleanup_pull_failed', {
+        trace_id: traceId,
+        cwd,
+        branch: parkingBranch,
+        error: String(pullErr.message || pullErr).slice(0, 200),
+      });
+    }
+
+    if (currentBranch && !currentBranch.startsWith('_parking_') && currentBranch !== 'HEAD') {
+      if (!/^[\w./-]+$/.test(currentBranch)) {
+        log.warn('worktree_cleanup_branch_skipped', {
+          trace_id: traceId,
+          cwd,
+          branch: currentBranch,
+          reason: 'unsafe_branch_name',
+        });
+      } else {
+        try {
+          // Stricter merged-PR check (Codex P1, two iterations):
+          //   - Request `headRefName`, `mergedAt`, AND `headRepositoryOwner`
+          //     so we can verify the matched PR is in OUR repo (not a fork
+          //     with the same branch name).
+          //   - `gh pr list --head <branch>` matches by branch name only.
+          //     In repos with forks, a fork's PR with the same branch name
+          //     can be returned. Even with `headRefName === currentBranch`,
+          //     fork PRs share the same head ref name as ours.
+          //   - Final guard: filter to PRs where headRefName matches AND
+          //     mergedAt is non-null AND headRepositoryOwner.login matches
+          //     our local origin's owner. Only then is `git branch -D`
+          //     safe.
+          const prListOut = exec(
+            `gh pr list --head ${currentBranch} --state merged ` +
+              `--json number,headRefName,mergedAt,headRepositoryOwner`,
+            { cwd, timeout: 15000, encoding: 'utf8', windowsHide: true }
+          ).trim();
+          const prs = JSON.parse(prListOut || '[]');
+          // Resolve our origin owner from the local origin remote so we
+          // don't hard-code 'Dreighto'. If the owner can't be resolved,
+          // skip the delete (fail-safe — retain branch rather than risk).
+          let originOwner = null;
+          try {
+            const remoteUrl = exec('git config --get remote.origin.url', {
+              cwd,
+              timeout: 5000,
+              encoding: 'utf8',
+              windowsHide: true,
+            }).trim();
+            // Match owner from URLs like:
+            //   https://github.com/Owner/repo.git
+            //   git@github.com:Owner/repo.git
+            const m = remoteUrl.match(/[/:]([^/:]+)\/[^/]+?(\.git)?$/);
+            originOwner = m ? m[1] : null;
+          } catch (_e) {
+            originOwner = null;
+          }
+          const verifiedMerges =
+            Array.isArray(prs) && originOwner
+              ? prs.filter(
+                  (pr) =>
+                    pr &&
+                    pr.headRefName === currentBranch &&
+                    pr.mergedAt &&
+                    pr.headRepositoryOwner &&
+                    pr.headRepositoryOwner.login === originOwner
+                )
+              : [];
+          if (verifiedMerges.length > 0) {
+            exec(`git branch -D ${currentBranch}`, {
+              cwd,
+              timeout: 10000,
+              encoding: 'utf8',
+              windowsHide: true,
+            });
+            log.info('worktree_cleanup_branch_deleted', {
+              trace_id: traceId,
+              cwd,
+              branch: currentBranch,
+              pr_count: verifiedMerges.length,
+            });
+          } else {
+            log.info('worktree_cleanup_branch_retained', {
+              trace_id: traceId,
+              cwd,
+              branch: currentBranch,
+              reason: 'no_merged_pr',
+            });
+          }
+        } catch (branchErr) {
+          log.warn('worktree_cleanup_branch_check_failed', {
+            trace_id: traceId,
+            cwd,
+            branch: currentBranch,
+            error: String(branchErr.message || branchErr).slice(0, 200),
+          });
+        }
+      }
+    }
+
+    log.info('worktree_parked', { trace_id: traceId, cwd, parking_branch: parkingBranch });
+  } catch (err) {
+    log.warn('worktree_cleanup_failed', {
+      trace_id: traceId,
+      cwd,
+      error: String(err.message || err).slice(0, 300),
+    });
+  }
+}
+
 // PRO-233: run `cmd /c <binary> --version` before the real spawn to confirm
 // the binary is reachable in this process's environment. Synchronous on
 // purpose — the caller is already committed to spawning; this probe adds at
@@ -220,6 +478,13 @@ function spawnWorker({
   }
 
   fs.mkdirSync(traceLogDir, { recursive: true });
+
+  // PRO-334: defense-in-depth — refuse if worktree is not parked or is dirty
+  const parkCheck = verifyWorktreeParked(cwd, traceId);
+  if (!parkCheck.ok) {
+    throw new Error(`pre_spawn_dirty_refusal: ${parkCheck.reason}`);
+  }
+
   const stdoutPath = path.join(traceLogDir, `${traceId}.stdout.log`);
   const stderrPath = path.join(traceLogDir, `${traceId}.stderr.log`);
 
@@ -497,6 +762,7 @@ function spawnWorker({
     } catch (_e) {
       /* best effort */
     }
+    cleanupWorktree(cwd, traceId); // PRO-334
     if (typeof onDone === 'function') onDone();
   });
 
@@ -587,6 +853,7 @@ function spawnWorker({
     } catch (_e) {
       /* best effort */
     }
+    cleanupWorktree(cwd, traceId); // PRO-334
     if (typeof onDone === 'function') onDone();
   });
 
@@ -600,4 +867,7 @@ module.exports = {
   scanStdoutForStatus,
   computeTerminalCause,
   TERMINAL_CAUSES,
+  parkingBranchForCwd,
+  cleanupWorktree,
+  verifyWorktreeParked,
 };
