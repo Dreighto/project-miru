@@ -516,8 +516,17 @@ def test_first_field_wins_when_multiple_present(tmp_path: Path):
 
 
 def test_real_repo_runs_without_crashing():
-    """Smoke test against the actual repo. Don't assert pass/fail — just no exceptions."""
-    repo_root = ccf._resolve_repo_root()
+    """Smoke test against the actual repo. Don't assert pass/fail — just no exceptions.
+
+    Per CodeRabbit round-5 feedback on PR #152: _resolve_repo_root now raises
+    RuntimeError (instead of cwd fallback) when CLAUDE.md + AGENTS.md aren't
+    both present. In non-Miru checkouts or partial trees, that's an expected
+    skip — not an error.
+    """
+    try:
+        repo_root = ccf._resolve_repo_root()
+    except RuntimeError as exc:
+        pytest.skip(f"Not in a real Miru repo checkout: {exc}")
     if not (repo_root / "CLAUDE.md").exists():
         pytest.skip("Not in a real Miru repo checkout")
     results = ccf.check_canon_freshness(repo_root, threshold=7, warn_threshold=5)
