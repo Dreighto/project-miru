@@ -60,7 +60,7 @@ PRO-180 shipped cleanly via ticket-only dispatch in 3 minutes. The Linear ticket
 
 ## Required clauses in every dispatch_worker prompt (set 2026-05-08)
 
-Every prompt CC writes for a `dispatch_worker` MCP call MUST include both clauses below. They are workarounds for two recurring loop bugs (empty-INCONCLUSIVE bounce + runaway-fix loop). Once PRO-330 / PRO-335 close the gap fully these may be inlined into the worker rule files; until then they belong in every prompt.
+Every prompt CC writes for a `dispatch_worker` MCP call MUST include both clauses below. They are workarounds for two recurring loop bugs (empty-INCONCLUSIVE bounce + runaway-fix loop). PRO-335 (status pattern + ESCALATE diagnostic capture) shipped 2026-05-09 and closes the empty-summary side of the gap; the prompt-side guards stay until the orchestrator-side enforcement is validated in production.
 
 1. **Max 3 review-fix rounds.** "After at most 3 rounds of CodeRabbit/Bugbot fixes, declare a terminal state. If actionable findings still exist after round 3, emit `STATUS: ESCALATE: REPEATED_FAILURE` with a non-empty summary listing what's still outstanding."
 2. **Non-empty summary on INCONCLUSIVE.** "If you cannot complete the work, emit `STATUS: INCONCLUSIVE` with a non-empty summary that names what was tried, why each attempt failed, and one specific question that would unblock you. An empty INCONCLUSIVE summary will be treated as a worker failure and bounced."
@@ -89,7 +89,7 @@ Any change to MCP gateway entry middleware (`tools/miru_mcp_gateway/server.py` `
 
 ## Worktree contamination prevention (PRO-334, adopted 2026-05-09)
 
-Workers are dispatched into git worktrees (`miru-w1`..`miru-w6`). The dispatch*listener's pre-spawn cleanup MUST verify the target worktree is parked on its `\_parking*<name>`branch and clean before spawning. If a previous worker timed out or crashed and left uncommitted edits or a non-parking branch checkout, **refuse to spawn** and emit a`pre_spawn_dirty_refusal` log line.
+Workers are dispatched into git worktrees (`miru-w1` through `miru-w6`). The `dispatch_listener` pre-spawn cleanup MUST verify the target worktree is parked on its `_parking_<name>` branch and clean before spawning. If a previous worker timed out or crashed and left uncommitted edits or a non-parking branch checkout, **refuse to spawn** and emit a `pre_spawn_dirty_refusal` log line.
 
 **Why:** PRO-330 left dirty state in `miru-w1` after timing out. PRO-332 dispatched into the same worktree minutes later, inherited PRO-330's `dispatcher/` and `services/` edits, and silently merged them into the new ticket's branch. Diagnosing took longer than re-doing both tickets clean. The pre-spawn refusal makes contamination visible and self-clearing instead of silently corrupting downstream work.
 
