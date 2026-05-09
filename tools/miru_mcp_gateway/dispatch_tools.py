@@ -31,6 +31,12 @@ from miru_mcp_gateway import redact as _redact  # noqa: E402
 _APPROVED_WORKERS = frozenset({"claude-code", "gemini"})
 # "extended" is the semantic alias for --effort max; direct effort values also accepted.
 _APPROVED_THINKING_LEVELS = frozenset({"extended", "none", "low", "medium", "high", "xhigh", "max"})
+# Multi-repo dispatch (added 2026-05-09 for LOS team). Must match the keys in
+# services/dispatch_listener/src/worktree.js WORKTREE_POOLS. The listener also
+# validates this server-side; the duplicate here gives a fast client-side fail
+# with a clear message instead of a 400 from the listener.
+_APPROVED_TARGET_REPOS = frozenset({"project-miru", "LogueOS-Console"})
+_DEFAULT_TARGET_REPO = "project-miru"
 _DEFAULT_TIMEOUT_S = 600
 _TIMEOUT_MIN = 1
 _TIMEOUT_MAX = 1800
@@ -91,6 +97,7 @@ def dispatch_worker(
     model: str | None = None,
     thinking_level: str | None = None,
     tool_profile: str | None = None,
+    target_repo: str | None = None,
     ctx: Any = None,
 ) -> str:
     """Trigger an approved worker via the dispatch listener (PRO-235).
@@ -102,6 +109,10 @@ def dispatch_worker(
     ``model``: optional model override (e.g. 'claude-opus-4-7'); claude-code only.
     ``thinking_level``: 'extended' or 'none'; claude-code only (PRO-265).
     ``tool_profile``: Phase 3 subagent isolation profile (e.g. 'drift_executor').
+    ``target_repo``: which worktree pool to lease from (added 2026-05-09 for
+        multi-repo dispatch). One of: 'project-miru' (default) or 'LogueOS-Console'.
+        Workers landing in non-default repos must pass this explicitly. PRO-team
+        tickets stay on 'project-miru'; LOS-team tickets go to 'LogueOS-Console'.
     Returns JSON: ok, trace_id, worker, ticket_id, http_status, listener_response.
     """
     cfg = _CFG
@@ -154,6 +165,19 @@ def dispatch_worker(
                 -32602,
             )
 
+    # target_repo defaults to project-miru for backward compat. If passed,
+    # validate against the client-side allowlist (the listener also validates).
+    if target_repo is None:
+        resolved_target_repo = _DEFAULT_TARGET_REPO
+    else:
+        resolved_target_repo = str(target_repo).strip()
+        if resolved_target_repo not in _APPROVED_TARGET_REPOS:
+            approved = ", ".join(sorted(_APPROVED_TARGET_REPOS))
+            raise stdio_mcp.McpError(
+                f"dispatch_worker: unknown target_repo {target_repo!r}. Approved: {approved}",
+                -32602,
+            )
+
     trace_id = _generate_trace_id(ticket_id)
 
     # Write prompt file — listener reads this synchronously before 202.
@@ -177,6 +201,9 @@ def dispatch_worker(
         body_dict["thinking_level"] = thinking_level
     if tool_profile is not None:
         body_dict["tool_profile"] = tool_profile
+    # Always send target_repo (even when default) so the listener log line
+    # captures the explicit routing decision rather than implying it.
+    body_dict["target_repo"] = resolved_target_repo
 
     body = json.dumps(body_dict, separators=(",", ":")).encode("utf-8")
 
@@ -213,6 +240,7 @@ def dispatch_worker(
             "model": model,
             "thinking_level": thinking_level,
             "tool_profile": tool_profile,
+            "target_repo": resolved_target_repo,
             "http_status": status_code,
             "listener_response": resp_data,
         },

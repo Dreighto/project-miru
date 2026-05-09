@@ -10,7 +10,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const express = require('express');
 
-const { leaseSlot, releaseSlot, WORKTREE_SLOTS } = require('../src/worktree');
+const { leaseSlot, releaseSlot, WORKTREE_POOLS, DEFAULT_TARGET_REPO } = require('../src/worktree');
 
 function makeTestServer() {
   const app = express();
@@ -50,12 +50,18 @@ function post(port, path, body) {
   });
 }
 
-test('returns 503 with no_worktree_available when all slots are leased', async (t) => {
-  const preLeased = WORKTREE_SLOTS.map((_, i) => leaseSlot(`pre-lease-${i}`, 'claude-code'));
+test('returns 503 with no_worktree_available when all slots are leased', async () => {
+  // Pre-lease the default-pool capacity. The dispatch endpoint defaults to
+  // target_repo=project-miru when the payload omits it (this test's payload
+  // is empty), so filling that pool exhausts what /dispatch will try.
+  const defaultPool = WORKTREE_POOLS[DEFAULT_TARGET_REPO];
+  const preLeased = defaultPool.map((_unused, i) => leaseSlot(`pre-lease-${i}`, 'claude-code'));
   assert.ok(preLeased.every(Boolean), 'all pre-leases should succeed');
 
   const server = makeTestServer();
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  await new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', resolve);
+  });
   const { port } = server.address();
 
   try {
@@ -63,20 +69,26 @@ test('returns 503 with no_worktree_available when all slots are leased', async (
     assert.strictEqual(resp.status, 503);
     assert.strictEqual(resp.body.error, 'no_worktree_available');
   } finally {
-    await new Promise((resolve) => server.close(resolve));
+    await new Promise((resolve) => {
+      server.close(resolve);
+    });
     for (const slot of preLeased) releaseSlot(slot);
   }
 });
 
-test('returns 202 when a slot is available', async (t) => {
+test('returns 202 when a slot is available', async () => {
   const server = makeTestServer();
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  await new Promise((resolve) => {
+    server.listen(0, '127.0.0.1', resolve);
+  });
   const { port } = server.address();
 
   try {
     const resp = await post(port, '/dispatch', {});
     assert.strictEqual(resp.status, 202);
   } finally {
-    await new Promise((resolve) => server.close(resolve));
+    await new Promise((resolve) => {
+      server.close(resolve);
+    });
   }
 });
