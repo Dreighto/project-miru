@@ -1,0 +1,64 @@
+name: Canon Freshness Check
+
+# PRO-337: Fail when worker-read canon files go stale.
+# Stale canon = workers operate on wrong assumptions = wasted dispatches.
+# Trigger: 2026-05-09 incident where GPT still believed CH was Router 3 days
+# after that role transitioned. Codified in feedback_canon_refresh_cadence.
+
+on:
+  pull_request:
+    paths:
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - "miru-context/team-charter.md"
+      - ".miru/overlays/**"
+      - ".miru/reference/**"
+      - "tools/check_canon_freshness.py"
+      - ".github/workflows/canon-freshness.yml"
+  push:
+    branches:
+      - main
+  schedule:
+    # Daily at 14:00 UTC (07:00 Pacific). Catches drift even when no PRs are
+    # touching canon — the whole point of the gate.
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+    # Manual trigger for one-off checks.
+
+jobs:
+  canon-freshness:
+    name: Canon freshness gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Run canon freshness check
+        id: check
+        run: |
+          python tools/check_canon_freshness.py
+        env:
+          # 7-day fail threshold matches the canon refresh cadence rule.
+          CANON_FRESHNESS_DAYS: "7"
+          # 5-day warn threshold gives 2 days of advance notice.
+          CANON_FRESHNESS_WARN_DAYS: "5"
+
+      - name: Render JSON for downstream automation
+        if: always()
+        run: |
+          python tools/check_canon_freshness.py --json > canon-freshness.json || true
+          cat canon-freshness.json
+
+      - name: Upload JSON artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canon-freshness-report
+          path: canon-freshness.json
+          retention-days: 30
