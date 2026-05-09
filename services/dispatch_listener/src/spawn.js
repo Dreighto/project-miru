@@ -298,11 +298,16 @@ function cleanupWorktree(cwd, traceId, _deps) {
         });
         log.info('worktree_cleanup_stashed', { trace_id: traceId, cwd });
       } catch (stashErr) {
-        log.warn('worktree_cleanup_stash_failed', {
+        // Critical (CodeRabbit): if stash fails, abort cleanup. Continuing to
+        // `git checkout` would carry the uncommitted local edits onto the
+        // `_parking_*` branch, recreating the cross-dispatch contamination
+        // this hook exists to prevent.
+        log.error('worktree_cleanup_stash_failed_abort', {
           trace_id: traceId,
           cwd,
           error: String(stashErr.message || stashErr).slice(0, 200),
         });
+        return;
       }
     }
 
@@ -339,23 +344,54 @@ function cleanupWorktree(cwd, traceId, _deps) {
         });
       } else {
         try {
-          // Stricter merged-PR check (Codex P1):
-          //   - Request `headRefName` and `mergedAt` so we can verify the
-          //     match is exact and the PR is actually merged (not just
-          //     closed).
-          //   - `gh pr list --head <branch>` matches by branch name only,
-          //     which can collide with unrelated PRs in repos with forks.
-          //     Filtering on `headRefName === currentBranch` AND
-          //     `mergedAt != null` makes the destructive `git branch -D`
-          //     conditional on a verified-exact merged PR for this branch.
+          // Stricter merged-PR check (Codex P1, two iterations):
+          //   - Request `headRefName`, `mergedAt`, AND `headRepositoryOwner`
+          //     so we can verify the matched PR is in OUR repo (not a fork
+          //     with the same branch name).
+          //   - `gh pr list --head <branch>` matches by branch name only.
+          //     In repos with forks, a fork's PR with the same branch name
+          //     can be returned. Even with `headRefName === currentBranch`,
+          //     fork PRs share the same head ref name as ours.
+          //   - Final guard: filter to PRs where headRefName matches AND
+          //     mergedAt is non-null AND headRepositoryOwner.login matches
+          //     our local origin's owner. Only then is `git branch -D`
+          //     safe.
           const prListOut = exec(
-            `gh pr list --head ${currentBranch} --state merged --json number,headRefName,mergedAt`,
+            `gh pr list --head ${currentBranch} --state merged ` +
+              `--json number,headRefName,mergedAt,headRepositoryOwner`,
             { cwd, timeout: 15000, encoding: 'utf8', windowsHide: true }
           ).trim();
           const prs = JSON.parse(prListOut || '[]');
-          const verifiedMerges = Array.isArray(prs)
-            ? prs.filter((pr) => pr && pr.headRefName === currentBranch && pr.mergedAt)
-            : [];
+          // Resolve our origin owner from the local origin remote so we
+          // don't hard-code 'Dreighto'. If the owner can't be resolved,
+          // skip the delete (fail-safe — retain branch rather than risk).
+          let originOwner = null;
+          try {
+            const remoteUrl = exec('git config --get remote.origin.url', {
+              cwd,
+              timeout: 5000,
+              encoding: 'utf8',
+              windowsHide: true,
+            }).trim();
+            // Match owner from URLs like:
+            //   https://github.com/Owner/repo.git
+            //   git@github.com:Owner/repo.git
+            const m = remoteUrl.match(/[/:]([^/:]+)\/[^/]+?(\.git)?$/);
+            originOwner = m ? m[1] : null;
+          } catch (_e) {
+            originOwner = null;
+          }
+          const verifiedMerges =
+            Array.isArray(prs) && originOwner
+              ? prs.filter(
+                  (pr) =>
+                    pr &&
+                    pr.headRefName === currentBranch &&
+                    pr.mergedAt &&
+                    pr.headRepositoryOwner &&
+                    pr.headRepositoryOwner.login === originOwner
+                )
+              : [];
           if (verifiedMerges.length > 0) {
             exec(`git branch -D ${currentBranch}`, {
               cwd,

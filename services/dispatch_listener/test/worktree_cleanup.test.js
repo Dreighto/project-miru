@@ -174,7 +174,7 @@ test('cleanupWorktree: stashes dirty changes before parking', () => {
   );
 });
 
-test('cleanupWorktree: deletes feature branch when PR is merged', () => {
+test('cleanupWorktree: deletes feature branch when PR is merged in our repo', () => {
   const calls = [];
   const mockExec = (cmd) => {
     calls.push(cmd);
@@ -182,9 +182,20 @@ test('cleanupWorktree: deletes feature branch when PR is merged', () => {
     if (cmd.includes('rev-parse --abbrev-ref')) return 'feat/pro-300\n';
     if (cmd.startsWith('git checkout')) return '';
     if (cmd.startsWith('git pull')) return '';
-    // Stricter merged-PR check (Codex P1): require headRefName + mergedAt.
+    if (cmd.includes('git config --get remote.origin.url')) {
+      return 'https://github.com/Dreighto/project-miru.git\n';
+    }
+    // Stricter merged-PR check (Codex P1, two iterations): require
+    // headRefName + mergedAt + headRepositoryOwner.login matching our origin.
     if (cmd.includes('gh pr list')) {
-      return '[{"number":99,"headRefName":"feat/pro-300","mergedAt":"2026-05-09T18:00:00Z"}]';
+      return JSON.stringify([
+        {
+          number: 99,
+          headRefName: 'feat/pro-300',
+          mergedAt: '2026-05-09T18:00:00Z',
+          headRepositoryOwner: { login: 'Dreighto' },
+        },
+      ]);
     }
     if (cmd.includes('git branch -D')) return 'Deleted branch feat/pro-300';
     return '';
@@ -193,6 +204,93 @@ test('cleanupWorktree: deletes feature branch when PR is merged', () => {
   assert.ok(
     calls.some((c) => c.includes('git branch -D feat/pro-300')),
     'should force-delete merged branch'
+  );
+});
+
+test('cleanupWorktree: does NOT delete when matched PR is from a fork (different repo owner)', () => {
+  // Codex P1 round-2: even when headRefName matches AND mergedAt is non-null,
+  // a fork's PR with the same branch name can be returned. The third guard:
+  // headRepositoryOwner.login must equal our local origin's owner.
+  const calls = [];
+  const mockExec = (cmd) => {
+    calls.push(cmd);
+    if (cmd.includes('status --porcelain')) return '';
+    if (cmd.includes('rev-parse --abbrev-ref')) return 'feat/pro-305\n';
+    if (cmd.startsWith('git checkout')) return '';
+    if (cmd.startsWith('git pull')) return '';
+    if (cmd.includes('git config --get remote.origin.url')) {
+      return 'https://github.com/Dreighto/project-miru.git\n';
+    }
+    if (cmd.includes('gh pr list')) {
+      // Same branch name, exact headRefName, but PR is from a fork.
+      return JSON.stringify([
+        {
+          number: 77,
+          headRefName: 'feat/pro-305',
+          mergedAt: '2026-05-09T18:00:00Z',
+          headRepositoryOwner: { login: 'someone-else' },
+        },
+      ]);
+    }
+    return '';
+  };
+  cleanupWorktree('D:\\dev\\miru-w3', 'trace-fork-repo', { execSync: mockExec });
+  assert.ok(
+    !calls.some((c) => c.includes('git branch -D')),
+    'should NOT delete when matched PR is from a fork'
+  );
+});
+
+test('cleanupWorktree: does NOT delete when origin owner cannot be resolved', () => {
+  // Fail-safe: if we can't determine our own origin owner, retain the branch
+  // rather than risk deletion based on an ambiguous match.
+  const calls = [];
+  const mockExec = (cmd) => {
+    calls.push(cmd);
+    if (cmd.includes('status --porcelain')) return '';
+    if (cmd.includes('rev-parse --abbrev-ref')) return 'feat/pro-307\n';
+    if (cmd.startsWith('git checkout')) return '';
+    if (cmd.startsWith('git pull')) return '';
+    if (cmd.includes('git config --get remote.origin.url')) {
+      throw new Error('no origin remote configured');
+    }
+    if (cmd.includes('gh pr list')) {
+      return JSON.stringify([
+        {
+          number: 88,
+          headRefName: 'feat/pro-307',
+          mergedAt: '2026-05-09T18:00:00Z',
+          headRepositoryOwner: { login: 'Dreighto' },
+        },
+      ]);
+    }
+    return '';
+  };
+  cleanupWorktree('D:\\dev\\miru-w3', 'trace-no-origin', { execSync: mockExec });
+  assert.ok(
+    !calls.some((c) => c.includes('git branch -D')),
+    'should NOT delete when origin owner cannot be resolved (fail-safe)'
+  );
+});
+
+test('cleanupWorktree: aborts cleanup if git stash fails (does not checkout)', () => {
+  // Critical (CodeRabbit): if stash fails, cleanup must abort. Continuing to
+  // git checkout would carry uncommitted local edits onto the parking branch,
+  // recreating the cross-dispatch contamination this hook exists to prevent.
+  const calls = [];
+  const mockExec = (cmd) => {
+    calls.push(cmd);
+    if (cmd.includes('status --porcelain')) return ' M dirty.js\n';
+    if (cmd.includes('rev-parse --abbrev-ref')) return 'feat/pro-stashfail\n';
+    if (cmd.includes('git stash push')) {
+      throw new Error('fatal: git stash refused');
+    }
+    return '';
+  };
+  cleanupWorktree('D:\\dev\\miru-w5', 'trace-stash-fail', { execSync: mockExec });
+  assert.ok(
+    !calls.some((c) => c.startsWith('git checkout')),
+    'should NOT proceed to checkout when stash fails'
   );
 });
 
