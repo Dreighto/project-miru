@@ -15,12 +15,12 @@ Last reviewed: 2026-05-09 (PRO-336: shell:startup primary path added)
 
 ## Service restart commands
 
-| Service           | Port  | Preferred command                                                                                                                                                                                                                 |
-| ----------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dispatch Listener | 19100 | **Primary:** `Start-ScheduledTask -TaskName MiruRestartDispatcher` — works when listener is in the interactive session (shell:startup path, PRO-336). **Recovery (Session 0):** see "Dispatch Listener — boot-path caveat" below. |
-| PM Dashboard      | 18080 | `powershell -ExecutionPolicy Bypass -File windows\restart_pm.ps1` (or `Start-ScheduledTask -TaskName MiruRestartPM`)                                                                                                              |
-| Miru AI           | 18765 | `powershell -ExecutionPolicy Bypass -File windows\restart_miru_ai.ps1` (or `Start-ScheduledTask -TaskName MiruRestartMiruAI`)                                                                                                     |
-| MCP Gateway       | 18766 | `Start-ScheduledTask -TaskName MiruRestartMcpGateway`                                                                                                                                                                             |
+| Service           | Port  | Preferred command                                                                                                                                                                                                                              |
+| ----------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dispatch Listener | 19100 | **Primary:** `Start-ScheduledTask -TaskName MiruRestartDispatcher` — works when listener is in the interactive session (shell:startup path, PRO-336). **Recovery (Session 0):** see "Dispatch Listener — Session 0 recovery (FALLBACK)" below. |
+| PM Dashboard      | 18080 | `powershell -ExecutionPolicy Bypass -File windows\restart_pm.ps1` (or `Start-ScheduledTask -TaskName MiruRestartPM`)                                                                                                                           |
+| Miru AI           | 18765 | `powershell -ExecutionPolicy Bypass -File windows\restart_miru_ai.ps1` (or `Start-ScheduledTask -TaskName MiruRestartMiruAI`)                                                                                                                  |
+| MCP Gateway       | 18766 | `Start-ScheduledTask -TaskName MiruRestartMcpGateway`                                                                                                                                                                                          |
 
 ## Dispatch Listener — boot path (PRIMARY, PRO-336)
 
