@@ -121,16 +121,26 @@ function cleanWorktree(cwd, traceId) {
 
 // PRO-334: Derive the parking branch name from a worktree path.
 // e.g. "D:\dev\miru-w1" → "_parking_w1", "D:\dev\miru-cursor" → "_parking_cursor"
+// path.win32.basename is used so Windows-style paths parse correctly on POSIX too.
 function parkingBranchForCwd(cwd) {
-  const name = path.basename(cwd);
+  const name = path.win32.basename(String(cwd));
   const m = name.match(/^miru-(.+)$/i);
   return m ? `_parking_${m[1]}` : null;
 }
 
-// PRO-334: Pre-spawn guard — verify the worktree is on a _parking_* branch and
-// git status is clean. Injectable execSync for testability.
+// PRO-334: Pre-spawn guard — verify the worktree is on its exact _parking_* branch
+// and git status is clean. Injectable execSync for testability.
 function verifyWorktreeParked(cwd, traceId, _deps) {
   const exec = (_deps && _deps.execSync) || execSync;
+  const expectedBranch = parkingBranchForCwd(cwd);
+  if (!expectedBranch) {
+    log.warn('pre_spawn_dirty_refusal', {
+      trace_id: traceId,
+      cwd,
+      reason: 'unrecognized_worktree',
+    });
+    return { ok: false, reason: 'unrecognized_worktree' };
+  }
   try {
     const branch = exec('git rev-parse --abbrev-ref HEAD', {
       cwd,
@@ -138,14 +148,15 @@ function verifyWorktreeParked(cwd, traceId, _deps) {
       encoding: 'utf8',
       windowsHide: true,
     }).trim();
-    if (!branch.startsWith('_parking_')) {
+    if (branch !== expectedBranch) {
       log.warn('pre_spawn_dirty_refusal', {
         trace_id: traceId,
         cwd,
-        reason: 'not_on_parking_branch',
+        reason: 'wrong_parking_branch',
         branch,
+        expected_branch: expectedBranch,
       });
-      return { ok: false, reason: `not_on_parking_branch:${branch}` };
+      return { ok: false, reason: `wrong_parking_branch:${branch}` };
     }
     const statusOut = exec('git status --porcelain', {
       cwd,
@@ -205,7 +216,7 @@ function cleanupWorktree(cwd, traceId, _deps) {
 
     if (statusOut) {
       try {
-        exec('git stash push -m "dispatch-cleanup"', {
+        exec('git stash push --include-untracked -m "dispatch-cleanup"', {
           cwd,
           timeout: 15000,
           encoding: 'utf8',

@@ -37,7 +37,7 @@ test('verifyWorktreeParked: returns ok for parked clean worktree', () => {
   assert.equal(result.ok, true);
 });
 
-test('verifyWorktreeParked: refuses when not on parking branch', () => {
+test('verifyWorktreeParked: refuses when on a non-parking branch', () => {
   const mockExec = (cmd) => {
     if (cmd.includes('rev-parse')) return 'feat/pro-330\n';
     throw new Error(`unexpected cmd: ${cmd}`);
@@ -47,9 +47,37 @@ test('verifyWorktreeParked: refuses when not on parking branch', () => {
   });
   assert.equal(result.ok, false);
   assert.ok(
-    result.reason.includes('not_on_parking_branch'),
-    `expected reason to contain 'not_on_parking_branch', got: ${result.reason}`
+    result.reason.includes('wrong_parking_branch'),
+    `expected reason to contain 'wrong_parking_branch', got: ${result.reason}`
   );
+});
+
+test('verifyWorktreeParked: refuses when on wrong parking branch (slot mismatch)', () => {
+  const mockExec = (cmd) => {
+    if (cmd.includes('rev-parse')) return '_parking_w2\n'; // miru-w1 expects _parking_w1
+    throw new Error(`unexpected cmd: ${cmd}`);
+  };
+  const result = verifyWorktreeParked('D:\\dev\\miru-w1', 'trace-wrong-slot', {
+    execSync: mockExec,
+  });
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.reason.includes('wrong_parking_branch'),
+    `expected reason to contain 'wrong_parking_branch', got: ${result.reason}`
+  );
+});
+
+test('verifyWorktreeParked: refuses when worktree has untracked files', () => {
+  const mockExec = (cmd) => {
+    if (cmd.includes('rev-parse')) return '_parking_w1\n';
+    if (cmd.includes('status --porcelain')) return '?? newfile.js\n';
+    throw new Error(`unexpected cmd: ${cmd}`);
+  };
+  const result = verifyWorktreeParked('D:\\dev\\miru-w1', 'trace-untracked', {
+    execSync: mockExec,
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'dirty_worktree');
 });
 
 test('verifyWorktreeParked: refuses when worktree is dirty', () => {
@@ -104,8 +132,8 @@ test('cleanupWorktree: stashes dirty changes before parking', () => {
   };
   cleanupWorktree('D:\\dev\\miru-w2', 'trace-dirty', { execSync: mockExec });
   assert.ok(
-    calls.some((c) => c.includes('git stash push')),
-    'should stash dirty changes'
+    calls.some((c) => c.includes('git stash push') && c.includes('--include-untracked')),
+    'should stash dirty changes with --include-untracked'
   );
   assert.ok(
     calls.some((c) => c.includes('git checkout _parking_w2')),
