@@ -179,10 +179,14 @@ function cleanWorktree(cwd, traceId) {
 // PRO-334: Derive the parking branch name from a worktree path.
 // e.g. "D:\dev\miru-w1" → "_parking_w1", "D:\dev\miru-cursor" → "_parking_cursor"
 // path.win32.basename is used so Windows-style paths parse correctly on POSIX too.
+// Suffix is lowercased so case-insensitive Windows paths (e.g. "D:\dev\MIRU-W1")
+// canonicalize to the same parking branch name as their lowercase counterpart —
+// without this, verifyWorktreeParked would reject `_parking_w1` as
+// `wrong_parking_branch` if the cwd happened to use uppercase casing.
 function parkingBranchForCwd(cwd) {
   const name = path.win32.basename(String(cwd));
   const m = name.match(/^miru-(.+)$/i);
-  return m ? `_parking_${m[1]}` : null;
+  return m ? `_parking_${m[1].toLowerCase()}` : null;
 }
 
 // PRO-334: Pre-spawn guard — verify the worktree is on its exact _parking_* branch
@@ -249,6 +253,19 @@ function cleanupWorktree(cwd, traceId, _deps) {
   const parkingBranch = parkingBranchForCwd(cwd);
   if (!parkingBranch) {
     log.warn('worktree_park_skip', { trace_id: traceId, cwd, reason: 'unrecognized_worktree' });
+    return;
+  }
+  // Defense-in-depth: parkingBranch is derived from cwd (config-controlled)
+  // but it gets shell-interpolated into git checkout / git pull below. Apply
+  // the same regex check we use for currentBranch so an unsafe character in
+  // a misconfigured worktree path can't reach the shell.
+  if (!/^[\w./-]+$/.test(parkingBranch)) {
+    log.warn('worktree_park_skip', {
+      trace_id: traceId,
+      cwd,
+      branch: parkingBranch,
+      reason: 'unsafe_parking_branch_name',
+    });
     return;
   }
   try {
@@ -322,12 +339,24 @@ function cleanupWorktree(cwd, traceId, _deps) {
         });
       } else {
         try {
+          // Stricter merged-PR check (Codex P1):
+          //   - Request `headRefName` and `mergedAt` so we can verify the
+          //     match is exact and the PR is actually merged (not just
+          //     closed).
+          //   - `gh pr list --head <branch>` matches by branch name only,
+          //     which can collide with unrelated PRs in repos with forks.
+          //     Filtering on `headRefName === currentBranch` AND
+          //     `mergedAt != null` makes the destructive `git branch -D`
+          //     conditional on a verified-exact merged PR for this branch.
           const prListOut = exec(
-            `gh pr list --head ${currentBranch} --state merged --json number`,
+            `gh pr list --head ${currentBranch} --state merged --json number,headRefName,mergedAt`,
             { cwd, timeout: 15000, encoding: 'utf8', windowsHide: true }
           ).trim();
           const prs = JSON.parse(prListOut || '[]');
-          if (Array.isArray(prs) && prs.length > 0) {
+          const verifiedMerges = Array.isArray(prs)
+            ? prs.filter((pr) => pr && pr.headRefName === currentBranch && pr.mergedAt)
+            : [];
+          if (verifiedMerges.length > 0) {
             exec(`git branch -D ${currentBranch}`, {
               cwd,
               timeout: 10000,
@@ -338,7 +367,7 @@ function cleanupWorktree(cwd, traceId, _deps) {
               trace_id: traceId,
               cwd,
               branch: currentBranch,
-              pr_count: prs.length,
+              pr_count: verifiedMerges.length,
             });
           } else {
             log.info('worktree_cleanup_branch_retained', {

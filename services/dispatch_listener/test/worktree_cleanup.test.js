@@ -23,6 +23,14 @@ test('parkingBranchForCwd: returns null for unrecognized path', () => {
   assert.equal(parkingBranchForCwd('/some/other/path'), null);
 });
 
+test('parkingBranchForCwd: canonicalizes uppercase suffix to lowercase', () => {
+  // Codex P2 finding: Windows paths are case-insensitive, but git branch names
+  // are case-sensitive. Lowercasing the suffix prevents D:\dev\MIRU-W1 from
+  // producing _parking_W1 (which would mismatch the actual _parking_w1 branch).
+  assert.equal(parkingBranchForCwd('D:\\dev\\MIRU-W1'), '_parking_w1');
+  assert.equal(parkingBranchForCwd('D:\\dev\\Miru-Cursor'), '_parking_cursor');
+});
+
 // --- verifyWorktreeParked ---
 
 test('verifyWorktreeParked: returns ok for parked clean worktree', () => {
@@ -174,7 +182,10 @@ test('cleanupWorktree: deletes feature branch when PR is merged', () => {
     if (cmd.includes('rev-parse --abbrev-ref')) return 'feat/pro-300\n';
     if (cmd.startsWith('git checkout')) return '';
     if (cmd.startsWith('git pull')) return '';
-    if (cmd.includes('gh pr list')) return '[{"number":99}]';
+    // Stricter merged-PR check (Codex P1): require headRefName + mergedAt.
+    if (cmd.includes('gh pr list')) {
+      return '[{"number":99,"headRefName":"feat/pro-300","mergedAt":"2026-05-09T18:00:00Z"}]';
+    }
     if (cmd.includes('git branch -D')) return 'Deleted branch feat/pro-300';
     return '';
   };
@@ -182,6 +193,53 @@ test('cleanupWorktree: deletes feature branch when PR is merged', () => {
   assert.ok(
     calls.some((c) => c.includes('git branch -D feat/pro-300')),
     'should force-delete merged branch'
+  );
+});
+
+test('cleanupWorktree: does NOT delete when gh pr list returns wrong headRefName (fork collision)', () => {
+  // Codex P1 finding: gh pr list --head <branch> matches by branch name only.
+  // In repos with forks, a PR with the same branch name from a fork could be
+  // returned as "merged" — deleting our local branch based on someone else's
+  // merged PR is destructive. The stricter check filters by exact headRefName.
+  const calls = [];
+  const mockExec = (cmd) => {
+    calls.push(cmd);
+    if (cmd.includes('status --porcelain')) return '';
+    if (cmd.includes('rev-parse --abbrev-ref')) return 'feat/pro-310\n';
+    if (cmd.startsWith('git checkout')) return '';
+    if (cmd.startsWith('git pull')) return '';
+    if (cmd.includes('gh pr list')) {
+      // Same branch name, but actually a different PR (e.g. fork name collision)
+      return '[{"number":42,"headRefName":"someone-else/feat/pro-310","mergedAt":"2026-05-09T18:00:00Z"}]';
+    }
+    return '';
+  };
+  cleanupWorktree('D:\\dev\\miru-w3', 'trace-fork-collision', { execSync: mockExec });
+  assert.ok(
+    !calls.some((c) => c.includes('git branch -D')),
+    'should NOT delete branch when matched PR has different headRefName'
+  );
+});
+
+test('cleanupWorktree: does NOT delete when matched PR has null mergedAt', () => {
+  // Defensive: even if --state merged returns a PR, double-check mergedAt is
+  // populated. If the PR record has mergedAt: null for any reason, skip deletion.
+  const calls = [];
+  const mockExec = (cmd) => {
+    calls.push(cmd);
+    if (cmd.includes('status --porcelain')) return '';
+    if (cmd.includes('rev-parse --abbrev-ref')) return 'feat/pro-320\n';
+    if (cmd.startsWith('git checkout')) return '';
+    if (cmd.startsWith('git pull')) return '';
+    if (cmd.includes('gh pr list')) {
+      return '[{"number":50,"headRefName":"feat/pro-320","mergedAt":null}]';
+    }
+    return '';
+  };
+  cleanupWorktree('D:\\dev\\miru-w3', 'trace-null-mergedat', { execSync: mockExec });
+  assert.ok(
+    !calls.some((c) => c.includes('git branch -D')),
+    'should NOT delete branch when mergedAt is null'
   );
 });
 
