@@ -98,7 +98,7 @@ DATE_FIELD_RE = re.compile(
 @dataclass(frozen=True)
 class FileResult:
     path: str
-    status: str  # "fresh" | "warn" | "stale" | "missing_stamp" | "bad_date"
+    status: str  # "fresh" | "warn" | "stale" | "missing_stamp" | "missing_file" | "bad_date" | "script_error"
     field_name: str | None
     stamp_date: date | None
     days_old: int | None
@@ -116,30 +116,43 @@ def _today() -> date:
 
 
 def _resolve_canon_files(repo_root: Path) -> list[Path]:
-    """Expand globs in CANON_FILES into a sorted list of actual files.
+    """Expand globs in CANON_FILES into a sorted list of paths.
 
-    Files that don't exist are silently skipped — a glob like
-    .miru/overlays/*.md won't fail just because no overlays exist.
+    Glob patterns expand to whatever exists. Non-glob (literal) paths are
+    ALWAYS included even if missing — the per-file check then surfaces
+    `missing_file` so a dropped canon file fails the gate instead of
+    silently disappearing. Per CodeRabbit feedback on PR #152.
     """
     resolved: list[Path] = []
     for pattern in CANON_FILES:
         if "*" in pattern:
             resolved.extend(sorted(repo_root.glob(pattern)))
         else:
-            target = repo_root / pattern
-            if target.is_file():
-                resolved.append(target)
+            # Always include — let _check_file surface missing_file status
+            resolved.append(repo_root / pattern)
     return resolved
 
 
 def _check_file(path: Path, today: date, threshold: int, warn_threshold: int) -> FileResult:
     """Inspect one canon file and produce a FileResult."""
+    if not path.is_file():
+        return FileResult(
+            path=str(path),
+            status="missing_file",
+            field_name=None,
+            stamp_date=None,
+            days_old=None,
+            detail="canon file not found at expected path",
+        )
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
+        # Script-level I/O failure (permission denied, disk error, etc.) —
+        # not a user/data error. Maps to exit code 2 in main(). Per CodeRabbit
+        # feedback on PR #152.
         return FileResult(
             path=str(path),
-            status="bad_date",
+            status="script_error",
             field_name=None,
             stamp_date=None,
             days_old=None,
@@ -240,8 +253,16 @@ def check_canon_freshness(
 
 
 def _render_text(results: list[FileResult], threshold: int, warn_threshold: int) -> str:
-    """Human-readable report. Sorted: stale/missing first, then warn, then fresh."""
-    order = {"stale": 0, "missing_stamp": 1, "bad_date": 2, "warn": 3, "fresh": 4}
+    """Human-readable report. Sorted: script_error first (operator action), then user errors, then warn, then fresh."""
+    order = {
+        "script_error": 0,
+        "missing_file": 1,
+        "stale": 2,
+        "missing_stamp": 3,
+        "bad_date": 4,
+        "warn": 5,
+        "fresh": 6,
+    }
     results = sorted(results, key=lambda r: (order.get(r.status, 99), -(r.days_old or 0)))
 
     lines: list[str] = []
@@ -252,6 +273,8 @@ def _render_text(results: list[FileResult], threshold: int, warn_threshold: int)
     lines.append("")
     for r in results:
         marker = {
+            "script_error": "ERR ",
+            "missing_file": "FAIL",
             "stale": "FAIL",
             "missing_stamp": "FAIL",
             "bad_date": "FAIL",
@@ -296,12 +319,34 @@ def _resolve_repo_root() -> Path:
     return Path.cwd()
 
 
+def _parse_env_int(name: str, default: int) -> tuple[int | None, str | None]:
+    """Parse an int env var. Returns (value, None) on success, (None, err_msg) on failure.
+
+    Empty/unset env returns (default, None). Bad values return (None, err_msg) so
+    main() can exit 2 with a clear message instead of crashing on ValueError.
+    Per CodeRabbit feedback on PR #152.
+    """
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default, None
+    try:
+        return int(raw), None
+    except ValueError:
+        return None, f"error: env var {name}={raw!r} is not a valid integer"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Check that worker-read canon files have recent date stamps."
     )
-    default_threshold = int(os.environ.get("CANON_FRESHNESS_DAYS", DEFAULT_THRESHOLD_DAYS))
-    default_warn = int(os.environ.get("CANON_FRESHNESS_WARN_DAYS", DEFAULT_WARN_DAYS))
+    default_threshold, env_err1 = _parse_env_int("CANON_FRESHNESS_DAYS", DEFAULT_THRESHOLD_DAYS)
+    default_warn, env_err2 = _parse_env_int("CANON_FRESHNESS_WARN_DAYS", DEFAULT_WARN_DAYS)
+    if env_err1:
+        print(env_err1, file=sys.stderr)
+        return 2
+    if env_err2:
+        print(env_err2, file=sys.stderr)
+        return 2
     parser.add_argument(
         "--threshold",
         type=int,
@@ -350,8 +395,15 @@ def main(argv: list[str] | None = None) -> int:
     else:
         sys.stdout.write(_render_text(results, args.threshold, args.warn_threshold))
 
-    failure_states = {"stale", "missing_stamp", "bad_date"}
-    if any(r.status in failure_states for r in results):
+    # Exit code mapping per CodeRabbit feedback on PR #152:
+    #   2 — script-level error (I/O failure, etc.) — operator action required
+    #   1 — user/data error (stale, missing stamp, missing file, bad date)
+    #   0 — all green
+    script_error_states = {"script_error"}
+    user_error_states = {"stale", "missing_stamp", "missing_file", "bad_date"}
+    if any(r.status in script_error_states for r in results):
+        return 2
+    if any(r.status in user_error_states for r in results):
         return 1
     return 0
 

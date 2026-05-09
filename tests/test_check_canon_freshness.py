@@ -6,7 +6,7 @@ import io
 import json
 import sys
 from contextlib import redirect_stdout
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -16,6 +16,15 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from tools import check_canon_freshness as ccf  # noqa: E402
+
+
+def _utc_today() -> date:
+    """UTC today — matches the tool's logic. Avoids local-timezone test flakiness near midnight.
+
+    Per CodeRabbit feedback on PR #152.
+    """
+    return datetime.now(UTC).date()
+
 
 # ----------------------------------------------------------------------------
 # Fixture helpers — build a fake repo-shaped directory in tmp_path
@@ -40,13 +49,38 @@ def _make_canon_file(
 
 
 def _seed_minimal_repo(tmp: Path, *, today: str = "2026-05-09") -> Path:
-    """Create a fake repo with the minimum canon-file shape so glob expansion works."""
+    """Create a fake repo with the minimum canon-file shape so glob expansion works.
+
+    Does NOT pre-seed the three literal canon files (CLAUDE.md, AGENTS.md,
+    miru-context/team-charter.md). Tests that use `check_canon_freshness()`
+    directly and only inspect specific files use this and pick what to create.
+
+    Tests that invoke `main()` (which exits 1 on `missing_file` per CodeRabbit
+    feedback on PR #152) should use `_seed_full_repo` instead so the literal
+    canon files exist.
+    """
     repo = tmp / "repo"
     repo.mkdir()
-    # Pre-create overlay/reference dirs so the globs find them
     (repo / ".miru" / "overlays").mkdir(parents=True)
     (repo / ".miru" / "reference").mkdir(parents=True)
     (repo / "miru-context").mkdir()
+    return repo
+
+
+def _seed_full_repo(tmp: Path) -> Path:
+    """Like _seed_minimal_repo + pre-seed the 3 literal canon files (fresh UTC today).
+
+    Use for tests that invoke `main()` and don't want missing_file noise from
+    the literals. Tests can still overwrite individual literal files to test
+    specific behavior (the file gets replaced).
+    """
+    repo = _seed_minimal_repo(tmp)
+    fresh = _utc_today().isoformat()
+    _make_canon_file(repo, "CLAUDE.md", date_field="Effective", date_val=fresh)
+    _make_canon_file(repo, "AGENTS.md", date_field="Last synced", date_val=fresh)
+    _make_canon_file(
+        repo, "miru-context/team-charter.md", date_field="Last updated", date_val=fresh
+    )
     return repo
 
 
@@ -82,9 +116,7 @@ def test_all_fresh_returns_exit_zero(tmp_path: Path):
 
 def test_main_exit_zero_when_all_fresh(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """End-to-end CLI: all-fresh → main() returns 0."""
-    repo = _seed_minimal_repo(tmp_path)
-    _make_canon_file(repo, "CLAUDE.md", date_field="Effective", date_val=date.today().isoformat())
-    # Auto-resolve via --repo-root override
+    repo = _seed_full_repo(tmp_path)
     rc = ccf.main(["--repo-root", str(repo), "--threshold", "7", "--warn-threshold", "5"])
     assert rc == 0
 
@@ -113,7 +145,8 @@ def test_one_stale_file_returns_exit_one(tmp_path: Path):
 
 
 def test_main_stale_returns_one(tmp_path: Path):
-    repo = _seed_minimal_repo(tmp_path)
+    repo = _seed_full_repo(tmp_path)
+    # Overwrite CLAUDE.md to be stale (overrides the fresh one from _seed_full_repo)
     _make_canon_file(repo, "CLAUDE.md", date_field="Effective", date_val="2026-04-15")
     rc = ccf.main(["--repo-root", str(repo), "--threshold", "7"])
     assert rc == 1
@@ -134,15 +167,14 @@ def test_warn_zone_does_not_fail(tmp_path: Path):
 
     results = ccf.check_canon_freshness(repo, threshold=7, warn_threshold=5, today=today)
 
-    assert len(results) == 1
-    assert results[0].status == "warn"
-    assert results[0].days_old == 6
+    claude = next(r for r in results if Path(r.path).name == "CLAUDE.md")
+    assert claude.status == "warn"
+    assert claude.days_old == 6
 
 
 def test_main_warn_returns_zero(tmp_path: Path):
     """Today's date is fresh, should pass with default thresholds."""
-    repo = _seed_minimal_repo(tmp_path)
-    _make_canon_file(repo, "CLAUDE.md", date_field="Effective", date_val=date.today().isoformat())
+    repo = _seed_full_repo(tmp_path)
     rc = ccf.main(["--repo-root", str(repo), "--threshold", "7", "--warn-threshold", "5"])
     assert rc == 0
 
@@ -160,14 +192,15 @@ def test_missing_stamp_returns_exit_one(tmp_path: Path):
 
     results = ccf.check_canon_freshness(repo, threshold=7, warn_threshold=5, today=today)
 
-    assert len(results) == 1
-    assert results[0].status == "missing_stamp"
-    assert results[0].field_name is None
-    assert results[0].stamp_date is None
+    claude = next(r for r in results if Path(r.path).name == "CLAUDE.md")
+    assert claude.status == "missing_stamp"
+    assert claude.field_name is None
+    assert claude.stamp_date is None
 
 
 def test_main_missing_stamp_exits_one(tmp_path: Path):
-    repo = _seed_minimal_repo(tmp_path)
+    repo = _seed_full_repo(tmp_path)
+    # Overwrite CLAUDE.md to have no stamp (others remain fresh from _seed_full_repo)
     _make_canon_file(repo, "CLAUDE.md", date_field=None, date_val=None)
     rc = ccf.main(["--repo-root", str(repo)])
     assert rc == 1
@@ -192,8 +225,8 @@ def test_bad_date_format_returns_missing_stamp(tmp_path: Path):
 
     results = ccf.check_canon_freshness(repo, threshold=7, warn_threshold=5, today=today)
 
-    assert len(results) == 1
-    assert results[0].status == "missing_stamp"
+    claude = next(r for r in results if Path(r.path).name == "CLAUDE.md")
+    assert claude.status == "missing_stamp"
 
 
 def test_invalid_iso_date_returns_bad_date(tmp_path: Path):
@@ -210,9 +243,9 @@ def test_invalid_iso_date_returns_bad_date(tmp_path: Path):
 
     results = ccf.check_canon_freshness(repo, threshold=7, warn_threshold=5, today=today)
 
-    assert len(results) == 1
-    assert results[0].status == "bad_date"
-    assert results[0].field_name is not None
+    claude = next(r for r in results if Path(r.path).name == "CLAUDE.md")
+    assert claude.status == "bad_date"
+    assert claude.field_name is not None
 
 
 # ----------------------------------------------------------------------------
@@ -251,9 +284,9 @@ def test_field_name_is_case_insensitive(tmp_path: Path):
         encoding="utf-8",
     )
     results = ccf.check_canon_freshness(repo, threshold=7, warn_threshold=5, today=today)
-    assert len(results) == 1
-    assert results[0].status == "fresh"
-    assert results[0].field_name and results[0].field_name.upper() == "LAST REVIEWED"
+    claude = next(r for r in results if Path(r.path).name == "CLAUDE.md")
+    assert claude.status == "fresh"
+    assert claude.field_name and claude.field_name.upper() == "LAST REVIEWED"
 
 
 # ----------------------------------------------------------------------------
@@ -262,22 +295,87 @@ def test_field_name_is_case_insensitive(tmp_path: Path):
 
 
 def test_warn_threshold_greater_than_threshold_exits_two(tmp_path: Path):
-    repo = _seed_minimal_repo(tmp_path)
-    _make_canon_file(repo, "CLAUDE.md", date_field="Effective", date_val=date.today().isoformat())
+    repo = _seed_full_repo(tmp_path)
     rc = ccf.main(["--repo-root", str(repo), "--threshold", "5", "--warn-threshold", "7"])
     assert rc == 2
 
 
-def test_no_canon_files_exits_two(tmp_path: Path):
-    """Empty repo (no canon files) → exit 2 with error message."""
+def test_no_canon_files_exits_one(tmp_path: Path):
+    """Empty repo (no canon files at expected paths) → exit 1 (missing_file user error).
+
+    The literal canon paths (CLAUDE.md, AGENTS.md, team-charter.md) are always
+    included — missing files surface as `missing_file` per CodeRabbit feedback,
+    so a dropped canon file fails the gate instead of silently disappearing.
+    """
     repo = tmp_path / "empty_repo"
     repo.mkdir()
     rc = ccf.main(["--repo-root", str(repo)])
-    assert rc == 2
+    assert rc == 1
 
 
 def test_missing_repo_root_exits_two(tmp_path: Path):
     rc = ccf.main(["--repo-root", str(tmp_path / "does_not_exist")])
+    assert rc == 2
+
+
+def test_missing_canon_file_returns_missing_file_status(tmp_path: Path):
+    """Per CodeRabbit feedback on PR #152: literal canon paths must always be
+    included; missing ones surface as `missing_file` rather than silently skipped."""
+    repo = _seed_minimal_repo(tmp_path)
+    today = date(2026, 5, 9)
+
+    # Create CLAUDE.md but NOT AGENTS.md or team-charter.md (literal canon paths)
+    _make_canon_file(repo, "CLAUDE.md", date_field="Effective", date_val="2026-05-09")
+
+    results = ccf.check_canon_freshness(repo, threshold=7, warn_threshold=5, today=today)
+    statuses = {Path(r.path).name: r.status for r in results}
+    # CLAUDE.md is fresh
+    assert statuses.get("CLAUDE.md") == "fresh"
+    # AGENTS.md and team-charter.md are missing — should surface as missing_file
+    assert statuses.get("AGENTS.md") == "missing_file"
+    assert statuses.get("team-charter.md") == "missing_file"
+
+
+def test_missing_file_exits_one(tmp_path: Path):
+    """missing_file is a user/data error → exit 1, not 2."""
+    repo = _seed_minimal_repo(tmp_path)
+    _make_canon_file(repo, "CLAUDE.md", date_field="Effective", date_val=_utc_today().isoformat())
+    # Don't create AGENTS.md — should exit 1 (not 2, since it's user-data not script-error)
+    rc = ccf.main(["--repo-root", str(repo)])
+    assert rc == 1
+
+
+def test_bad_env_var_int_exits_two(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Per CodeRabbit feedback on PR #152: bad env var values exit 2 cleanly,
+    not crash with ValueError."""
+    repo = _seed_full_repo(tmp_path)
+    monkeypatch.setenv("CANON_FRESHNESS_DAYS", "not_a_number")
+    rc = ccf.main(["--repo-root", str(repo)])
+    assert rc == 2
+
+
+def test_empty_env_var_uses_default(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """Empty env var should fall back to default, not crash."""
+    repo = _seed_full_repo(tmp_path)
+    monkeypatch.setenv("CANON_FRESHNESS_DAYS", "")
+    rc = ccf.main(["--repo-root", str(repo)])
+    assert rc == 0  # default 7-day threshold, today's date is fresh
+
+
+def test_script_error_status_exits_two(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """OSError during file read should produce script_error status → exit 2."""
+    repo = _seed_full_repo(tmp_path)
+
+    # Monkey-patch Path.read_text to raise OSError for AGENTS.md path
+    real_read_text = Path.read_text
+
+    def fake_read_text(self, *args, **kwargs):
+        if "CLAUDE.md" in str(self):
+            raise PermissionError("simulated I/O failure")
+        return real_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", fake_read_text)
+    rc = ccf.main(["--repo-root", str(repo)])
     assert rc == 2
 
 
@@ -287,19 +385,20 @@ def test_missing_repo_root_exits_two(tmp_path: Path):
 
 
 def test_json_output_is_parseable(tmp_path: Path):
-    repo = _seed_minimal_repo(tmp_path)
-    _make_canon_file(repo, "CLAUDE.md", date_field="Effective", date_val=date.today().isoformat())
+    repo = _seed_full_repo(tmp_path)
     _make_canon_file(repo, ".miru/overlays/x.md", date_field="Last reviewed", date_val="2026-04-01")
 
     buf = io.StringIO()
     with redirect_stdout(buf):
         rc = ccf.main(["--repo-root", str(repo), "--json"])
-    assert rc == 1  # one stale file
+    assert rc == 1  # one stale file (x.md)
     payload = json.loads(buf.getvalue())
     assert isinstance(payload, list)
-    assert len(payload) == 2
+    # 3 fresh literals (from _seed_full_repo) + 1 stale overlay = 4
+    assert len(payload) == 4
     statuses = {item["status"] for item in payload}
     assert "stale" in statuses
+    assert "fresh" in statuses
     # Schema check
     for item in payload:
         assert set(item.keys()) == {
@@ -325,10 +424,10 @@ def test_future_dated_stamp_is_fresh(tmp_path: Path):
     _make_canon_file(repo, "CLAUDE.md", date_field="Effective", date_val="2026-12-31")
 
     results = ccf.check_canon_freshness(repo, threshold=7, warn_threshold=5, today=today)
-    assert len(results) == 1
-    assert results[0].status == "fresh"
-    assert results[0].days_old < 0
-    assert "future-dated" in results[0].detail
+    claude = next(r for r in results if Path(r.path).name == "CLAUDE.md")
+    assert claude.status == "fresh"
+    assert claude.days_old < 0
+    assert "future-dated" in claude.detail
 
 
 # ----------------------------------------------------------------------------
@@ -346,8 +445,8 @@ def test_stamp_in_body_is_not_recognized(tmp_path: Path):
     p.write_text("\n".join(body_lines), encoding="utf-8")
 
     results = ccf.check_canon_freshness(repo, threshold=7, warn_threshold=5, today=today)
-    assert len(results) == 1
-    assert results[0].status == "missing_stamp"
+    claude = next(r for r in results if Path(r.path).name == "CLAUDE.md")
+    assert claude.status == "missing_stamp"
 
 
 # ----------------------------------------------------------------------------
@@ -367,10 +466,10 @@ def test_first_field_wins_when_multiple_present(tmp_path: Path):
     )
 
     results = ccf.check_canon_freshness(repo, threshold=7, warn_threshold=5, today=today)
-    assert len(results) == 1
+    claude = next(r for r in results if Path(r.path).name == "CLAUDE.md")
     # 'Last reviewed' appears first in the file → should be the matched field
-    assert results[0].field_name and "reviewed" in results[0].field_name.lower()
-    assert results[0].status == "fresh"
+    assert claude.field_name and "reviewed" in claude.field_name.lower()
+    assert claude.status == "fresh"
 
 
 # ----------------------------------------------------------------------------
