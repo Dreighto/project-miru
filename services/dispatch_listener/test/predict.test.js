@@ -14,8 +14,18 @@ let mockServer;
 let mockPort;
 let tempDir;
 let basePredictionsPath;
+// Snapshot the inherited env so teardown restores rather than blanket-deletes.
+// This prevents the test suite from clobbering values that other suites in the
+// same process may rely on.
+let savedOllamaUrl;
+let savedPredictionsPath;
+let savedModel;
 
 before(async () => {
+  savedOllamaUrl = process.env.MIRU_HERMES_OLLAMA_URL;
+  savedPredictionsPath = process.env.MIRU_HERMES_PREDICTIONS_PATH;
+  savedModel = process.env.MIRU_HERMES_MODEL;
+
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-predict-test-'));
   basePredictionsPath = path.join(tempDir, 'hermes_predictions.jsonl');
 
@@ -60,9 +70,13 @@ after(async () => {
   } catch (_e) {
     /* best effort */
   }
-  delete process.env.MIRU_HERMES_OLLAMA_URL;
-  delete process.env.MIRU_HERMES_PREDICTIONS_PATH;
-  delete process.env.MIRU_HERMES_MODEL;
+  // Restore originals; only delete if the var was unset before this suite.
+  if (savedOllamaUrl === undefined) delete process.env.MIRU_HERMES_OLLAMA_URL;
+  else process.env.MIRU_HERMES_OLLAMA_URL = savedOllamaUrl;
+  if (savedPredictionsPath === undefined) delete process.env.MIRU_HERMES_PREDICTIONS_PATH;
+  else process.env.MIRU_HERMES_PREDICTIONS_PATH = savedPredictionsPath;
+  if (savedModel === undefined) delete process.env.MIRU_HERMES_MODEL;
+  else process.env.MIRU_HERMES_MODEL = savedModel;
 });
 
 const { predictDispatch, predictDispatchAsync, PREDICTION_SOURCE } = require('../src/predict');
@@ -103,6 +117,16 @@ test('predictDispatch writes one valid row to hermes_predictions.jsonl', async (
 });
 
 test('predictDispatch appends (does not overwrite) on second call', async () => {
+  // Self-contained: reset state, then exercise the append path with two
+  // calls inside this test. Avoids order-dependence on the prior test.
+  if (fs.existsSync(basePredictionsPath)) fs.rmSync(basePredictionsPath);
+
+  await predictDispatch({
+    traceId: 'cc-pro329-test-00000001b',
+    worker: 'claude-code',
+    promptText: 'First dispatch for append-only test.',
+  });
+
   await predictDispatch({
     traceId: 'cc-pro329-test-00000002',
     worker: 'gemini',

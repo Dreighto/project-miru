@@ -79,7 +79,10 @@ function callOllama(ollamaUrl, model, userMessage) {
     }
 
     const transport = urlObj.protocol === 'https:' ? https : http;
-    const defaultPort = urlObj.protocol === 'https:' ? 443 : 11434;
+    // Use protocol default port (80/443) when URL omits one. Ollama's default
+    // 11434 lives in the default URL string, so this branch only fires for
+    // arbitrary override URLs where the proxy/protocol default is correct.
+    const defaultPort = urlObj.protocol === 'https:' ? 443 : 80;
     const reqOptions = {
       hostname: urlObj.hostname,
       port: urlObj.port ? Number(urlObj.port) : defaultPort,
@@ -90,6 +93,11 @@ function callOllama(ollamaUrl, model, userMessage) {
         'Content-Length': body.length,
       },
     };
+    // Forward URL-embedded credentials (e.g. https://user:pass@proxy/...) so
+    // override URLs that front Ollama with basic-auth proxies work as-typed.
+    if (urlObj.username) {
+      reqOptions.auth = `${urlObj.username}:${urlObj.password || ''}`;
+    }
 
     const req = transport.request(reqOptions, (res) => {
       const chunks = [];
@@ -201,11 +209,17 @@ async function predictDispatch({ traceId, worker, promptText }) {
 }
 
 // Fire-and-forget wrapper — never rejects, never blocks the caller.
+// Defers via setImmediate so even the synchronous prologue of predictDispatch
+// (param validation, hash, env reads — everything before the first `await`)
+// runs off the caller's stack. The spawn path must not pay any cost for
+// shadow prediction, even sub-millisecond.
 function predictDispatchAsync(params) {
-  predictDispatch(params).catch((err) => {
-    log.error('hermes_predict_unhandled', {
-      trace_id: params?.traceId,
-      error: err?.message || String(err),
+  setImmediate(() => {
+    predictDispatch(params).catch((err) => {
+      log.error('hermes_predict_unhandled', {
+        trace_id: params?.traceId,
+        error: err?.message || String(err),
+      });
     });
   });
 }
