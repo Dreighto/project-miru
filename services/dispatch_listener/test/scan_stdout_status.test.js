@@ -99,16 +99,15 @@ test('stdout with no status line returns null', () => {
   assert.equal(r.summary, '');
 });
 
-test('summary is capped at 4096 chars + truncated marker', () => {
-  // Build a long stdout: status line + lots of diagnostic
+test('summary is capped at exactly 4096 chars total when truncated', () => {
+  // Build a long stdout: status line + lots of diagnostic. The truncated
+  // result should be EXACTLY 4096 chars including the marker — not 4096
+  // plus marker length. Per CodeRabbit feedback on PR #149.
   const status = 'STATUS: ESCALATE: HUMAN-REQUIRED\n';
   const longBody = 'x'.repeat(10000);
   const r = scanStdoutForStatus(status + longBody);
   assert.equal(r.status, 'INCONCLUSIVE');
-  assert.ok(
-    r.summary.length <= 4096 + '\n... [truncated]'.length,
-    `summary length ${r.summary.length} exceeds cap`
-  );
+  assert.equal(r.summary.length, 4096, `summary length ${r.summary.length} should equal 4096`);
   assert.match(r.summary, /\[truncated\]/);
 });
 

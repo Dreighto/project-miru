@@ -78,8 +78,11 @@ function scanStdoutForStatus(stdoutTail) {
     // dropped on the floor.
     const block = stdoutTail.slice(m.index).trim();
     const SUMMARY_CAP = 4096;
+    const TRUNCATION_MARKER = '\n... [truncated]';
     const summary =
-      block.length > SUMMARY_CAP ? block.slice(0, SUMMARY_CAP) + '\n... [truncated]' : block;
+      block.length > SUMMARY_CAP
+        ? block.slice(0, SUMMARY_CAP - TRUNCATION_MARKER.length) + TRUNCATION_MARKER
+        : block;
     const category = p.escalate ? m[1] || null : null;
     return { status: p.status, category, summary };
   }
