@@ -389,6 +389,21 @@ class LinearIntakeToolsTests(unittest.TestCase):
 
         self.assertEqual(seen_vars[0]["teamId"], "explicit-team-id")
 
+    def test_list_labels_null_team_raises_mcp_error(self) -> None:
+        """linear_list_labels raises McpError when team is None (inaccessible)."""
+
+        def fake_gql(query: str, variables: dict) -> dict:
+            return {"team": None}
+
+        with (
+            patch.object(lw, "_linear_gql", side_effect=fake_gql),
+            self.assertRaises(stdio_mcp.McpError) as ctx,
+        ):
+            lw.linear_list_labels()
+
+        err = str(ctx.exception)
+        self.assertIn("team not found or inaccessible", err)
+
     # ------------------------------------------------------------------
     # linear_list_labels in TOOL_FUNCTIONS
     # ------------------------------------------------------------------

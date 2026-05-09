@@ -100,7 +100,12 @@ def _resolve_label_ids(team_id: str, label_names: list[str]) -> list[str]:
     }
     """
     data = _linear_gql(query, {"teamId": team_id})
-    nodes = (((data.get("team") or {}).get("labels") or {}).get("nodes")) or []
+    team = data.get("team")
+    if team is None:
+        raise stdio_mcp.McpError(
+            "linear_write: team not found or inaccessible", -32000
+        )
+    nodes = ((team.get("labels") or {}).get("nodes")) or []
     name_to_id = {n.get("name", "").lower(): n.get("id", "") for n in nodes if n.get("id")}
     result: list[str] = []
     missing: list[str] = []
@@ -133,7 +138,12 @@ def _resolve_team_state_id(team_id: str, state_name: str) -> str:
     }
     """
     data = _linear_gql(query, {"teamId": team_id})
-    nodes = (((data.get("team") or {}).get("states") or {}).get("nodes")) or []
+    team = data.get("team")
+    if team is None:
+        raise stdio_mcp.McpError(
+            "linear_write: team not found or inaccessible", -32000
+        )
+    nodes = ((team.get("states") or {}).get("nodes")) or []
     lower = state_name.strip().lower()
     matched = [s for s in nodes if s.get("name", "").lower() == lower]
     if not matched:
@@ -358,7 +368,9 @@ def linear_create_issue(
             "(CLAUDE.md hard rule). See CLAUDE.md for the canonical project ID table.",
             -32602,
         )
-    resolved_team_id = (team_id or "").strip() or getattr(_cfg(), "linear_team_id", None)
+    resolved_team_id = str(team_id).strip() if isinstance(team_id, str) and team_id else None
+    if not resolved_team_id:
+        resolved_team_id = getattr(_cfg(), "linear_team_id", None)
     if not resolved_team_id:
         raise stdio_mcp.McpError(
             "linear_write: team_id required (or set MIRU_LINEAR_TEAM_ID)", -32602
@@ -613,7 +625,9 @@ def linear_list_labels(team_id: str | None = None, ctx: Any = None) -> str:
     from this response as ``label_names`` inputs to ``linear_create_issue``.
     """
     caller = gw_audit.caller_from_fastmcp_context(ctx)
-    resolved_team_id = (team_id or "").strip() or getattr(_cfg(), "linear_team_id", None)
+    resolved_team_id = str(team_id).strip() if isinstance(team_id, str) and team_id else None
+    if not resolved_team_id:
+        resolved_team_id = getattr(_cfg(), "linear_team_id", None)
     if not resolved_team_id:
         raise stdio_mcp.McpError(
             "linear_write: team_id required (or set MIRU_LINEAR_TEAM_ID)", -32602
@@ -627,7 +641,12 @@ def linear_list_labels(team_id: str | None = None, ctx: Any = None) -> str:
         }
         """
         data = _linear_gql(query, {"teamId": resolved_team_id})
-        nodes = (((data.get("team") or {}).get("labels") or {}).get("nodes")) or []
+        team = data.get("team")
+        if team is None:
+            raise stdio_mcp.McpError(
+                "linear_write: team not found or inaccessible", -32000
+            )
+        nodes = ((team.get("labels") or {}).get("nodes")) or []
         payload = [
             {"id": n.get("id", ""), "name": n.get("name", ""), "color": n.get("color", "")}
             for n in nodes
