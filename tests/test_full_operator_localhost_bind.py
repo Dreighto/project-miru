@@ -7,7 +7,8 @@ import json
 import unittest
 
 from miru_mcp_gateway._context import current_profile
-from miru_mcp_gateway.server import _ProfileExtractor, _validate_loopback_bind
+from miru_mcp_gateway.server import _ProfileExtractor
+from miru_mcp_gateway.trust_policy import validate_loopback_bind
 
 
 async def _empty_receive():
@@ -286,39 +287,39 @@ class TestFullOperatorLocalhostBind(unittest.TestCase):
 
 class TestValidateLoopbackBind(unittest.TestCase):
     """The Funnel-header trust check assumes the gateway binds loopback only.
-    `_validate_loopback_bind` enforces that invariant at startup so a
+    `validate_loopback_bind` enforces that invariant at startup so a
     misconfigured MIRU_MCP_GATEWAY_HOST cannot silently downgrade security."""
 
     def test_loopback_string_127_accepted(self):
-        _validate_loopback_bind("127.0.0.1")  # does not raise
+        validate_loopback_bind("127.0.0.1")  # does not raise
 
     def test_loopback_string_ipv6_accepted(self):
-        _validate_loopback_bind("::1")  # does not raise
+        validate_loopback_bind("::1")  # does not raise
 
     def test_loopback_string_localhost_accepted(self):
-        _validate_loopback_bind("localhost")  # does not raise
+        validate_loopback_bind("localhost")  # does not raise
 
     def test_loopback_in_127_block_accepted(self):
-        _validate_loopback_bind("127.0.0.5")  # does not raise
+        validate_loopback_bind("127.0.0.5")  # does not raise
 
     def test_wildcard_bind_rejected(self):
         with self.assertRaises(SystemExit) as ctx:
-            _validate_loopback_bind("0.0.0.0")
+            validate_loopback_bind("0.0.0.0")
         self.assertIn("not a loopback", str(ctx.exception))
 
     def test_routable_lan_rejected(self):
         with self.assertRaises(SystemExit) as ctx:
-            _validate_loopback_bind("192.168.1.10")
+            validate_loopback_bind("192.168.1.10")
         self.assertIn("not a loopback", str(ctx.exception))
 
     def test_routable_public_rejected(self):
         with self.assertRaises(SystemExit) as ctx:
-            _validate_loopback_bind("8.8.8.8")
+            validate_loopback_bind("8.8.8.8")
         self.assertIn("not a loopback", str(ctx.exception))
 
     def test_garbage_value_rejected_with_clear_error(self):
         with self.assertRaises(SystemExit) as ctx:
-            _validate_loopback_bind("not-an-ip-and-not-localhost")
+            validate_loopback_bind("not-an-ip-and-not-localhost")
         self.assertIn("does not parse", str(ctx.exception))
 
 
