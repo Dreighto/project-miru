@@ -136,9 +136,9 @@ Replace it with risk-based batching. The matrix below works alongside the existi
 
 **Stay one-per-PR (atomic, never bundled):**
 
-- Anything in the governance file registry: `gatekeeper/`, `.miru/overlays/`, `.miru/reference/`, `.pre-commit-config.yaml`, `tools/check_*.py`, `tools/validate_*.py`, `data/config/w2_profile_rules.json`, `tools/miru_mcp_gateway/profiles.py`
+- Anything in the governance file registry. Canonical source of truth: `tools/check_governance_change.py` `GOVERNANCE_PATTERNS`. Current set: `gatekeeper/`, `.miru/overlays/`, `.miru/reference/`, `.miru/instruction_manifest.json`, `.pre-commit-config.yaml`, `tools/check_*.py`, `tools/validate_*.py`, `data/config/w2_profile_rules.json`, `tools/miru_mcp_gateway/profiles.py`, `tools/check_governance_change.py`, `.github/workflows/governance-check.yml`, `.github/CODEOWNERS`. If `GOVERNANCE_PATTERNS` adds new paths, treat those as governance too — the registry is the law; this list is the convenience copy.
 - Security boundary changes — auth gates, profile permissions, MCP gateway entry middleware (`tools/miru_mcp_gateway/server.py` `_is_local_origin`, `_ProfileExtractor`, related)
-- Customer-facing behavior — anything users (or the claude.ai connector) can observe
+- Customer-facing behavior — anything users (or the claude.ai connector) can observe in production. Examples: UI text, API response shapes, n8n workflow execution behavior, connector-visible fields. NOT customer-facing: internal logging format, worker-to-worker communication, code comments, test fixtures.
 - Data migrations — schema changes, large data rewrites, anything irreversible
 - Cross-service orchestration changes spanning multiple services (n8n + dispatcher + listener) — each service's changes in its own atomic PR, ship in dependency order
 
@@ -147,7 +147,7 @@ Replace it with risk-based batching. The matrix below works alongside the existi
 A bundled PR MUST include a manifest in the description:
 
 1. Each contained change as a numbered item.
-2. Risk class per item (one of: scaffolding, cleanup, docs, test, refactor, hardening).
+2. Risk class per item (one of: scaffolding, cleanup, docs, test, mechanical, hardening — matching the "Bundle freely" categories above).
 3. Files touched per item.
 4. Tests run + pass counts.
 5. Per-change rollback notes — which commit (or sub-revert) restores the codebase if just that one item turns out bad.
@@ -183,7 +183,7 @@ This decision runs alongside the merge-tier decision tree above. Together they p
 - **Atomic + CC-merge** — single CC-mergeable change, worker self-merges.
 - **Atomic + operator-merge** — single operator-merge change (governance, infra, etc.), worker opens, operator merges.
 - **Bundle + CC-merge** — multiple CC-mergeable changes in one PR with manifest, worker self-merges.
-- **Bundle + operator-merge** — bundle that includes any operator-merge file, OR exceeds the worker's self-merge confidence; worker opens with manifest, operator merges.
+- **Bundle + operator-merge** — bundle that includes any operator-merge file (per the merge-tier categories above); worker opens with manifest, operator merges.
 
 **Source:** synthesized 2026-05-09 from independent reviews by GMI (Tier 4 "Milestone Batching" with the 15-file / 800-LOC ceiling and the Functional-State vs System-Governance split) and GPT (risk-based granularity with manifest pattern and "one high-risk item poisons the batch" rule). Trigger: the DGAS sprint shipped 11 single-file PRs in one day; the work was high-velocity, the per-PR ceremony was the slow part. Relay bundles preserved at `data/peer_reviews/2026-05-08_pr_batching_policy_{gmi,gpt}.txt`.
 
