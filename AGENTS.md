@@ -88,8 +88,8 @@ Roster as of 2026-05-09. CH is offline for orchestration work; CC owns canon whi
 
 **Active loop workers (auto-dispatch via dispatch_listener):**
 
-- **Claude Code (CC) — VP Ops + primary worker.** Execution steward, supervisory layer, **and acting canon owner while CH is offline.** Primary Python execution worker — complex multi-file refactoring, test writing, verification scripts. Owns system stability, worker verification (`vp_ops_verify_ticket`), post-ticket canon maintenance. Has standing Notion write authority for factual/maintenance updates (see `.miru/overlays/domain-ops.md`). Restarts services autonomously when needed (don't ping operator for routine restarts).
-- **Gemini CLI** — secondary loop worker. Large-context reads, alternative-approach implementations, second-opinion peer reviews on CC-authored designs.
+- **Claude Code (CC) — autonomous backend + VP Ops + acting orchestrator.** Execution steward, supervisory layer, **and acting canon owner while CH is offline.** Primary Python execution worker — complex multi-file refactoring, test writing, verification scripts. Owns system stability, worker verification (`vp_ops_verify_ticket`), post-ticket canon maintenance. Has standing Notion write authority for factual/maintenance updates (see `.miru/overlays/domain-ops.md`). Restarts services autonomously when needed (don't ping operator for routine restarts). Lane locked by PRO-304 (2026-05-06).
+- **Gemini CLI — autonomous frontend.** UI/UX, visual fidelity, HTML/CSS/JS templates, mobile layout. Gemini 3.1 Pro on the free tier. Lane locked by PRO-304 (2026-05-06). Backend-heavy queues mean Gemini hasn't been routinely exercised in recent weeks — the lane assignment is intact regardless.
 - **Hermes (Qwen-via-Ollama)** — shadow predictor. Stage 1 shipped 2026-05-09 (PRO-329): runs at worker spawn time, predicts the route, logs predictions next to actual dispatches for evaluation. Future stages assume routing authority outright.
 
 **Operator-driven (manual, not in dispatch loop):**

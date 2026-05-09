@@ -58,8 +58,8 @@ Asking for help is not a weakness. Asking before trying is.
 
 **Active loop workers (auto-dispatch via dispatch_listener):**
 
-- **Claude Code (CC) — VP Ops + primary worker.** Python backend, tests, scripts, config, documentation. Owns canon maintenance while CH is offline (see below). Restarts services autonomously when needed (don't ping operator).
-- **Gemini CLI** — secondary loop worker. Large-context reads, alternative-approach implementations, second opinions on CC's design.
+- **Claude Code (CC) — autonomous backend + VP Ops + acting orchestrator.** Python backend, tests, scripts, config, documentation. Complex multi-file refactoring, verification scripts. Owns canon maintenance while CH is offline (see below). Restarts services autonomously when needed (don't ping operator). Lane locked by PRO-304 (2026-05-06).
+- **Gemini CLI — autonomous frontend.** UI/UX, visual fidelity, HTML/CSS/JS templates, mobile layout. Gemini 3.1 Pro on the free tier. Lane locked by PRO-304 (2026-05-06). Note: backend-heavy ticket queues mean Gemini hasn't been routinely exercised recently — the lane is intact, the work just hasn't called for it.
 - **Hermes (Qwen-via-Ollama)** — shadow predictor. Runs at worker spawn time (PRO-329 Stage 1, shipped 2026-05-09). Today: predicts which worker to route a ticket to and logs the prediction next to the actual dispatch decision for evaluation. Future stages: take over routing decisions outright as the prediction track-record matures.
 
 **Operator-driven (manual, not in dispatch loop):**

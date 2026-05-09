@@ -122,10 +122,10 @@ branch is checked out — that worker is in violation.
 
 ## Active loop workers + roles
 
-- **CC (Claude Code)** — primary worker + acting orchestrator (this file's audience).
-- **Gemini CLI** — secondary loop worker, alternative-approach implementations, second-opinion peer review.
+- **CC (Claude Code) — autonomous backend** + acting orchestrator (this file's audience). Python, tests, scripts, verification. PRO-304 (2026-05-06) locked the lane.
+- **Gemini CLI — autonomous frontend.** UI/UX, HTML/CSS/JS templates, mobile layout. Gemini 3.1 Pro free tier. PRO-304 locked the lane. Backend-heavy queues mean recent dispatch reality is CC-dominant; lane assignment is intact.
 - **Hermes (Qwen-via-Ollama)** — shadow predictor at worker spawn time (PRO-329 Stage 1 shipped 2026-05-09). Logs predicted route alongside actual dispatch for evaluation. Does not yet hold routing authority.
-- **Cursor / CH / Codex** — operator-driven or benched. Not in the auto-dispatch loop. See `miru-context/team-charter.md` for full roster + status.
+- **Cursor / CH / Codex** — operator-driven (Cursor IDE), offline (CH), or benched (Codex). Not in the auto-dispatch loop. See `miru-context/team-charter.md` for full roster + status.
 
 ---
 
