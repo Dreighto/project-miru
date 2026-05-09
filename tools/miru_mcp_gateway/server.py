@@ -169,21 +169,33 @@ def _remote_addr(scope) -> str | None:
     return host
 
 
-def _is_local_origin(scope) -> bool:
-    """Return True iff scope.client originates from loopback.
+_TAILSCALE_CGNAT_V4 = None  # lazy-initialised in _is_local_origin
 
-    Handles three forms of "local":
+
+def _is_local_origin(scope) -> bool:
+    """Return True iff scope.client is a trusted-peer origin for full_operator.
+
+    "Trusted" means one of:
         * Literal strings 127.0.0.1, ::1, "localhost".
         * IPv4 loopback range (parsed via ipaddress).
-        * IPv4-mapped IPv6 loopback (e.g. ``::ffff:127.0.0.1``) which some
-          ASGI servers present when listening on a dual-stack socket.
-          Without this, a legitimate local request via the IPv6 mapped
-          form would be rejected.
+        * IPv4-mapped IPv6 loopback (e.g. ``::ffff:127.0.0.1``).
+        * Tailscale CGNAT range 100.64.0.0/10 (and its IPv4-mapped form).
+          The gateway binds 127.0.0.1 only, so the only way a non-loopback
+          peer reaches us is via the local Tailscale daemon proxying
+          tunneled traffic. The URL-path secret enforced at the Tailscale
+          Funnel edge already authorized that upstream; rejecting CGNAT
+          peers here would lock out claude.ai's web connector with no
+          security gain (the path-secret IS the auth boundary for tunneled
+          traffic, and the loopback-only bind keeps non-tunneled remote
+          peers unreachable).
 
-    Anything that doesn't parse as a recognised loopback form is treated
-    as remote — fail-closed.
+    Anything else is treated as remote — fail-closed.
     """
     import ipaddress
+
+    global _TAILSCALE_CGNAT_V4
+    if _TAILSCALE_CGNAT_V4 is None:
+        _TAILSCALE_CGNAT_V4 = ipaddress.ip_network("100.64.0.0/10")
 
     host = _remote_addr(scope)
     if host is None:
@@ -197,8 +209,11 @@ def _is_local_origin(scope) -> bool:
     if addr.is_loopback:
         return True
     if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
-        return addr.ipv4_mapped.is_loopback
-    return False
+        mapped = addr.ipv4_mapped
+        if mapped.is_loopback:
+            return True
+        return mapped in _TAILSCALE_CGNAT_V4
+    return isinstance(addr, ipaddress.IPv4Address) and addr in _TAILSCALE_CGNAT_V4
 
 
 async def _send_full_operator_local_only(scope, send) -> None:
@@ -207,7 +222,7 @@ async def _send_full_operator_local_only(scope, send) -> None:
         remote_addr = gw_redact.redact(remote_addr)
     payload = {
         "error": "full_operator_local_only",
-        "message": "full_operator requires a local origin (127.0.0.1 or ::1)",
+        "message": "full_operator requires a trusted origin (loopback or tailnet 100.64.0.0/10)",
         "remote_addr": remote_addr,
     }
     body = json.dumps(payload).encode("utf-8")
