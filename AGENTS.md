@@ -2,7 +2,7 @@
 
 ```text
 Architecture: MIRU-INSTRUCTIONS-v2
-Last synced: 2026-05-08
+Last synced: 2026-05-09
 ```
 
 This file is the shared worker baseline for Project Miru. Workers read this on every dispatch.
@@ -84,22 +84,31 @@ system faster. Workers that bury the status in word vomit make it slower.
 
 ## Worker Roles — Quick Reference
 
-Two workers carry persistent roles; everything else operates per-task.
+Roster as of 2026-05-09. CH is offline for orchestration work; CC owns canon while CH is out.
 
-- **Claude Chat (CH)** — Lead Architect. Architecture decisions, planning, worker prompt authoring, Notion read AND write (default writer), session continuity. Owns consultant packet content (Perplexity, ChatGPT, Gemini), new Notion page structure, and cross-session synthesis entries.
-- **Claude Code (CC) — VP Ops** — Execution steward and supervisory layer. Primary Python execution worker — complex multi-file refactoring, test writing, verification scripts. Owns system stability, worker verification (`vp_ops_verify_ticket`), and post-ticket canon maintenance. Has standing Notion write authority for factual/maintenance updates (see `.miru/overlays/domain-ops.md`). Handles surgical edits to CH's surfaces when operator authorizes or when edit volume is impractical in chat.
+**Active loop workers (auto-dispatch via dispatch_listener):**
 
-**File ownership:**
+- **Claude Code (CC) — autonomous backend + VP Ops + acting orchestrator.** Execution steward, supervisory layer, **and acting canon owner while CH is offline.** Primary Python execution worker — complex multi-file refactoring, test writing, verification scripts. Owns system stability, worker verification (`vp_ops_verify_ticket`), post-ticket canon maintenance. Has standing Notion write authority for factual/maintenance updates (see `.miru/overlays/domain-ops.md`). Restarts services autonomously when needed (don't ping operator for routine restarts). Lane locked by PRO-304 (2026-05-06).
+- **Gemini CLI — autonomous frontend.** UI/UX, visual fidelity, HTML/CSS/JS templates, mobile layout. Gemini 3.1 Pro on the free tier. Lane locked by PRO-304 (2026-05-06). Backend-heavy queues mean Gemini hasn't been routinely exercised in recent weeks — the lane assignment is intact regardless.
+- **Hermes (Qwen-via-Ollama)** — shadow predictor. Stage 1 shipped 2026-05-09 (PRO-329): runs at worker spawn time, predicts the route, logs predictions next to actual dispatches for evaluation. Future stages assume routing authority outright.
 
-- CC owns: Python backend files, test scripts, verification scripts.
-- CH owns by default: CLAUDE.md, AGENTS.md, GEMINI.md, CURSOR.md, CODEX.md, COPILOT.md, all worker prompts. CC may edit these when the operator explicitly authorizes it for that task.
+**Operator-driven (manual, not in dispatch loop):**
 
-**Must never:**
+- **Cursor** — HTML/CSS/JS templates, UI components, mobile layout. Operator-driven from the IDE; not loop-dispatched.
+- **Claude Chat (CH)** — **OFFLINE for orchestration work** (sidelined 2026-05-07 during loop hardening + Hermes integration). When CH returns: resumes Lead Architect role — architecture decisions, planning, worker prompt authoring, Notion writes, consultant packet content, cross-session synthesis. Until then, CC owns those surfaces and the operator coordinates brainstorming directly.
+- **Codex** — BENCHED. No auto-dispatch. Operator-relayed peer review only. Reliability gap on dispatch surface; revisit when transport stabilizes.
 
-- CC must never touch HTML/CSS/JS templates.
+**File ownership (current — while CH offline):**
+
+- CC owns: Python backend files, test scripts, verification scripts, **AND** all worker rule files (CLAUDE.md, AGENTS.md, GEMINI.md, CURSOR.md, .miru/overlays/, .miru/reference/, miru-context/) — operator-granted standing authority during CH downtime.
+- When CH returns: rule-file authority defaults back to CH; CC keeps backend / Python / test / script / verification ownership.
+
+**Must never (hard rules — apply regardless of who's online):**
+
+- CC must never touch HTML/CSS/JS templates (Cursor's lane).
 - CC must never modify `.mcp.json` or any MCP config files.
 - CC must never write to `card_catalog.db`.
-- CH must never execute code directly on the server.
+- CH (when active) must never execute code directly on the server.
 
 ---
 

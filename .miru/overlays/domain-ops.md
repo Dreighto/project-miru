@@ -4,7 +4,7 @@
 Overlay: domain-ops
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: touching scheduled tasks, services, Notion (read or write), or MCP tool config.
-Last reviewed: 2026-05-08
+Last reviewed: 2026-05-09
 ```
 
 This overlay carries the rules for Windows operations, MCP tool usage, and
@@ -16,8 +16,8 @@ adding/removing MCP servers, or writing to Notion.
 ## Notion — Read/Write Rules
 
 - ALL workers may READ Notion to understand the current job, active tasks, and system state
-- Claude Chat is the default Notion writer for architectural decisions, new page structure, consultant packet content, and cross-session synthesis
-- **Claude Code (VP Ops) has standing write authority** for the following Notion tasks — no per-task operator authorization required:
+- **Claude Code (VP Ops) is the acting default Notion writer while CH is offline** (2026-05-07 onward). When CH returns, default-writer authority returns to CH for architectural decisions, new page structure, consultant packet content, and cross-session synthesis. CC retains standing write authority for the maintenance categories below regardless.
+- **Claude Code standing write authority** — no per-task operator authorization required:
   - Post-ticket canon updates after verifying completed work (factual corrections, tool lists, port/service status)
   - Worker Operating Baseline syncs when CLAUDE.md or AGENTS.md changes
   - Work Log anchor entries after a sprint
@@ -61,3 +61,16 @@ Any new Windows scheduled task or background service that runs periodically or a
 **Exception documentation:** If a task must stay Interactive (e.g. needs user-mounted Google Drive), document the exception inline in the script with a comment explaining why SYSTEM cannot be used.
 
 Set 2026-05-05 by operator. Root cause: periodic tasks (MiruServiceWatchdog 2 min, MiruStallRecovery 3 min, MiruSentinel 20 min, MiruN8nWatchdog 15 min) ran Interactive and repeatedly stole focus while operator was typing.
+
+### Second axis — interactive session required when workers restart the process (added 2026-05-09)
+
+The "no focus stealing" rule above optimizes for SYSTEM (Session 0). That's still correct for **non-interactive periodic services** — watchdogs, sentinels, scheduled audits.
+
+**But** if a non-elevated worker shell (CC, Cursor, normal PowerShell) needs to **kill or restart** the process autonomously, the spawned process MUST land in the operator's interactive Windows session (Session 1+), not Session 0. Cross-session same-user termination requires `SeDebugPrivilege` (admin), which non-elevated workers don't have — even SYSTEM-launched processes the worker user technically owns are unkillable from a worker shell when in Session 0.
+
+**Decision rule when registering a new task:**
+
+1. Will a non-elevated worker need to kill or restart this? → **Session 1+ mandatory.** Use a `shell:startup` shortcut (fires at logon, in interactive session) OR an AtLogOn-triggered task with `LogonType=Interactive` and a wrapper-based hidden-window pattern (no focus steal). Verify post-launch with `(Get-Process -Id <pid>).SessionId -ne 0`.
+2. Pure background service / daemon / periodic check, never killed by workers? → SYSTEM (Session 0) is fine and preferred.
+
+The `dispatch_listener` (port 19100) is the canonical Session-1+ case. Watchdogs and sentinels are the canonical SYSTEM case. See `.miru/reference/restart-procedures.md` for the dispatch_listener boot-path caveat and PRO-336 for the permanent fix.

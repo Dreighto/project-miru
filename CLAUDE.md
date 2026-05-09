@@ -2,7 +2,7 @@
 
 ```text
 Instruction Architecture Version: MIRU-INSTRUCTIONS-v2
-Effective: 2026-05-08
+Effective: 2026-05-09
 If your loaded instructions do not show this version stamp, STOP and reload your boot context.
 ```
 
@@ -14,6 +14,11 @@ discovery index at the bottom tells you when to load each.
 Read `AGENTS.md` for universal communication rules (Operator Communication
 Standard, Try Harder Discipline). Read `miru-context/team-charter.md` on every
 dispatch.
+
+**When sources disagree, fetch `.miru/reference/source-of-truth.md` immediately.**
+That file is the meta-rule that governs every other canon rule. The truth
+hierarchy is: Runtime > Audit logs > Linear > Repo (code/canon/DB) > Notion
+canon > Worker memory > Conversation context. Recency is not authority.
 
 ---
 
@@ -92,8 +97,12 @@ Every task ends with exactly one of:
 - `STATUS: CONFIRMED WORKING`
 - `STATUS: INCONCLUSIVE`
 - `STATUS: FAILED`
+- `STATUS: ESCALATE: <category>` — non-terminal stall signal; categories: `HUMAN-REQUIRED`, `SECURITY`, `SCOPE_EXPANSION`, `DESIGN_CHANGE`, `IRREVERSIBLE_OP`, `REPEATED_FAILURE`
 
-Plus a one-line summary. The full marker schema, heartbeat emission, and stall
+Plus a one-line summary that is **never empty** (an empty INCONCLUSIVE summary
+is treated as a worker failure and bounced — see adopted-lessons "Required
+clauses in every dispatch_worker prompt"). The full marker schema, ESCALATE
+diagnostic-block capture (PRO-335), heartbeat emission, and stall
 classification rules live in `.miru/overlays/workflow-completion.md` — load it
 before declaring a terminal state.
 
@@ -107,11 +116,21 @@ Every task session ends on `main` with a clean working tree. No exceptions.
 A worker that ends on a feature branch leaves the next session blind to which
 branch is checked out — that worker is in violation.
 
-## Worker Role — Claude Code (VP Ops)
+## Worker Role — Claude Code (VP Ops, acting canon owner while CH offline)
 
 - Owns: Python backend files, tests, verification scripts, post-ticket canon maintenance, `vp_ops_verify_ticket`.
+- Acting canon owner while CH offline (2026-05-07 onward): full edit authority on CLAUDE.md, AGENTS.md, .miru/overlays/, .miru/reference/, miru-context/. Authority returns to CH when CH is back in the loop.
 - Standing Notion write authority for factual/maintenance updates (see `.miru/overlays/domain-ops.md`).
+- Restarts services autonomously (gateway, dispatch_listener, PM, Miru AI) — don't ask operator for routine restarts. See `.miru/reference/restart-procedures.md` for the dispatch_listener Session 0 caveat (PRO-336 will close the gap permanently).
+- Files Linear loop tickets directly via `linear_create_issue` (not file-then-paste; that pattern is for benched workers like Codex).
 - Never touches: HTML/CSS/JS templates, `.mcp.json`, `card_catalog.db`.
+
+## Active loop workers + roles
+
+- **CC (Claude Code) — autonomous backend** + acting orchestrator (this file's audience). Python, tests, scripts, verification. PRO-304 (2026-05-06) locked the lane.
+- **Gemini CLI — autonomous frontend.** UI/UX, HTML/CSS/JS templates, mobile layout. Gemini 3.1 Pro free tier. PRO-304 locked the lane. Backend-heavy queues mean recent dispatch reality is CC-dominant; lane assignment is intact.
+- **Hermes (Qwen-via-Ollama)** — shadow predictor at worker spawn time (PRO-329 Stage 1 shipped 2026-05-09). Logs predicted route alongside actual dispatch for evaluation. Does not yet hold routing authority.
+- **Cursor / CH / Codex** — operator-driven (Cursor IDE), offline (CH), or benched (Codex). Not in the auto-dispatch loop. See `miru-context/team-charter.md` for full roster + status.
 
 ---
 
@@ -131,11 +150,13 @@ reference file when you need the specific fact.
 
 ### Reference — `.miru/reference/`
 
-- **`ports-and-services.md`** — FETCH IF you need a port number or service mapping.
+- **`source-of-truth.md`** — FETCH IF deciding where information belongs, resolving a conflict between sources, planning a canon refresh, or onboarding a worker. **This is the meta-rule that governs every other canon rule.** Contains: truth hierarchy (7 layers), system responsibilities, what "verified" means per layer, conflict-resolution procedure, refresh trigger taxonomy, operator-side vs worker-side context paths, Notion-as-derived-mirror pattern, acting roles while CH offline, Verification Layer (concrete).
+- **`roadmap.md`** — FETCH IF planning new work, dispatching a major ticket, or onboarding a worker. Contains: current substrate (DGAS), Gatekeeper architecture, Hermes layered stages (0/1/2/3/N), active tickets, near/mid/long-term roadmap, what NOT to do.
+- **`ports-and-services.md`** — FETCH IF you need a port number or service mapping. Includes in-process modules (Gatekeeper, Hermes Stages).
 - **`linear-projects.md`** — FETCH IF creating a Linear ticket. Contains the `projectId` table.
 - **`file-placement.md`** — FETCH IF creating a new file and unsure where it goes. Contains the NEVER-do list.
 - **`database-rules.md`** — FETCH IF reading or proposing changes to `card_catalog.db`.
-- **`restart-procedures.md`** — FETCH IF restarting a service.
+- **`restart-procedures.md`** — FETCH IF restarting a service. Includes the dispatch_listener Session 0 caveat.
 
 If you cannot tell which overlay applies, see the Fail-Closed Directive at the
 top of this file: stop and ask.

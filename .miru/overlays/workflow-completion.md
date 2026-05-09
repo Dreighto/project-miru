@@ -4,7 +4,7 @@
 Overlay: workflow-completion
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: reaching a terminal task state, emitting heartbeats, or signalling a stall.
-Last reviewed: 2026-05-08
+Last reviewed: 2026-05-09
 ```
 
 This overlay carries the rules for finishing tasks: completion marker schema,
@@ -21,7 +21,7 @@ terminal state once you have one.
 
 When CC completes a task with `CONFIRMED WORKING` status, CC MUST append one structured row to `data/cc_completion_log.jsonl` immediately before reporting completion to the operator in chat.
 
-This is how Claude Chat verifies completion without the operator manually relaying CC's chat report. The file is append-only — never edit, never truncate.
+This is how the orchestrator (CC acting as verifier while CH is offline; CH when CH returns) verifies completion without the operator manually relaying CC's chat report. The file is append-only — never edit, never truncate.
 
 ### Schema (one JSON object per line, no array wrapping)
 
@@ -42,7 +42,7 @@ This is how Claude Chat verifies completion without the operator manually relayi
   - If no tests apply (behavioral rule, doc-only, config change), write `"no_tests"`.
   - Never write freetext narrative without a leading `passed/total`, `ci_only:`, or `no_tests` prefix. The field must be machine-parseable.
 - `follow_up_tickets_filed` (array of strings) — Linear ticket IDs filed during this work for out-of-scope items.
-- `notes` (string) — anything Claude Chat needs to know that doesn't fit above. Empty string if none.
+- `notes` (string) — anything the orchestrator needs to know that doesn't fit above. Empty string if none.
 - `handoff` (object or null) — structured brief for the next worker when a continuation is expected. Null if no handoff needed. Schema:
   - `next_worker` (string) — which worker picks this up (e.g. "cursor", "codex", "claude-code").
   - `ticket_id` (string) — the Linear ticket the next worker is working against.
@@ -53,9 +53,9 @@ This is how Claude Chat verifies completion without the operator manually relayi
 
 ### When to write
 
-Write the row at the moment CC would otherwise produce a `CONFIRMED WORKING` chat report. The chat report still happens (operator visibility is still useful), but the marker is the structured truth Claude Chat reads.
+Write the row at the moment CC would otherwise produce a `CONFIRMED WORKING` chat report. The chat report still happens (operator visibility is still useful), but the marker is the structured truth the orchestrator reads.
 
-For `INCONCLUSIVE` or `FAILED` outcomes: write the row too, with status set accordingly. `notes` field should explain what blocked or broke. This gives Claude Chat visibility into stalled work.
+For `INCONCLUSIVE` or `FAILED` outcomes: write the row too, with status set accordingly. `notes` field should explain what blocked or broke. This gives the orchestrator visibility into stalled work.
 
 ### When NOT to write
 
@@ -94,9 +94,16 @@ that resolves to the wrong directory and the orchestrator will never see the ent
 - If a field is genuinely unknown or not applicable, use `null` (not empty string, not omitted).
 - `tools/emit_completion.py` handles serialisation — pass a dict from Python or a JSON string from shell.
 
-### Verification by Claude Chat
+### Verification by the orchestrator
 
-Claude Chat reads this file via Filesystem MCP when the operator says "task done" or asks for completion verification. Claude Chat then cross-checks the marker against GitHub PR state, Linear ticket state, file changes, and (for n8n workflows) deploy state. Discrepancies between the marker and ground truth get flagged for operator review.
+The orchestrator reads this file via Filesystem MCP when the operator says "task done" or
+asks for completion verification, then cross-checks the marker against GitHub PR state,
+Linear ticket state, file changes, and (for n8n workflows) deploy state. Discrepancies
+between the marker and ground truth get flagged for operator review.
+
+**Who is the orchestrator right now:** CC (acting verifier while CH is offline). When CH
+returns, verification authority returns to CH. The contract is the same either way — the
+marker is the structured truth, and the verifier reads it.
 
 ---
 

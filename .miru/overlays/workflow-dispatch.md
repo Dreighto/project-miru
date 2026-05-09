@@ -4,18 +4,21 @@
 Overlay: workflow-dispatch
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: orchestrating dispatch, configuring gateway profiles, working on W2 routing, or creating Linear tickets.
-Last reviewed: 2026-05-08
+Last reviewed: 2026-05-09
 ```
 
-This overlay carries the rules for orchestration: Claude Chat decision
-authority, gateway tool profile enforcement, ingress classifier behavior,
-orchestrator-side modules, and the Linear `projectId` requirement.
+This overlay carries the rules for orchestration: orchestrator decision
+authority (CC + Hermes shadow predictor while CH offline), gateway tool
+profile enforcement, ingress classifier behavior, orchestrator-side modules,
+and the Linear `projectId` requirement.
 
 ---
 
 ## Linear — Ticket Routing — Hard Rule
 
-Every Linear ticket created by any worker (CC, CH, Codex, Cursor) **MUST include a `projectId`**. Never create a ticket at team level only — tickets without a project are invisible to the project-based workflow and will be lost.
+Every Linear ticket created by any worker (CC, CH, Gemini, Codex, Cursor — anyone) **MUST include a `projectId`**. Never create a ticket at team level only — tickets without a project are invisible to the project-based workflow and will be lost.
+
+**Loop tickets** (work for claude-code or gemini-cli auto-pickup) are filed by **CC directly** via `linear_create_issue` — no operator paste step. Operator-side or benched-worker tickets follow the file-then-paste pattern (operator runs the paste).
 
 The full project ID table is in `.miru/reference/linear-projects.md`. The `linear_projects` table in the miru_memory DB is the authoritative source.
 
@@ -23,13 +26,27 @@ If unsure: default to **Miru Orchestration / Autonomy** for internal system work
 
 ---
 
-## Autonomous Operations — Claude Chat Decision Authority
+## Autonomous Operations — Orchestrator Decision Authority
 
-Claude Chat is the lead orchestrator. The default operating mode is **decide → act → report**.
-Asking the operator is the exception, not the norm. When in doubt: if the decision is local and
-reversible, make it and note it. If it's irreversible or external, ask first.
+```text
+Authority holder while CH offline (set 2026-05-07):
+  - CC (acting orchestrator) for routing, dispatch, ticket lifecycle, execution judgment, ops.
+  - Hermes shadow predictor (Stage 1, PRO-329) logs predictions alongside CC's actual decisions
+    for evaluation. Hermes does not yet hold authority — Stage 2+ takes over routing once the
+    prediction track-record is validated.
+When CH returns: lead orchestrator role returns to CH per pre-2026-05-07 baseline.
+```
 
-### Decisions Claude Chat makes without asking
+The default operating mode is **decide → act → report**. Asking the operator is the exception,
+not the norm. When in doubt: if the decision is local and reversible, make it and note it.
+If it's irreversible or external, ask first.
+
+**Session-level authorization rule (set 2026-05-08):** when the operator says "do what you
+need this session" or equivalent, execute within scope without pausing for individual
+confirmations. Don't re-ask after blanket authorization — that wastes operator time and
+defeats the purpose of granting it.
+
+### Decisions the acting orchestrator (CC, while CH offline) makes without asking
 
 **Routing and dispatch:**
 
@@ -57,6 +74,8 @@ reversible, make it and note it. If it's irreversible or external, ask first.
 
 - Re-dispatching a stalled worker within the recovery_router.py auto-retry budget
 - Reading any log, completion marker, or state file to assess system health before a dispatch
+- **Restarting services autonomously** (gateway, dispatch_listener, PM, Miru AI) — do not ask the operator for routine restarts. Use the registered restart tasks or the documented restart scripts. Operator action is only needed when the process is in Session 0 (see `.miru/reference/restart-procedures.md`).
+- **Auto-dispatching during testing.** While the loop is being validated, CC routes work directly via the `dispatch_worker` MCP tool. Skip the Telegram approval gate for tickets CC files itself. Default `tool_profile=standard_worker` unless the ticket is read-only (use `drift_executor`). Promote back to operator-approval-by-default after the loop is proven stable.
 
 ### When to send a Telegram and wait for the operator
 
@@ -151,3 +170,45 @@ Production worker coordination helpers live under `tools/orchestrator/`. Workers
 - `recovery_router.py` maps stall classes to deterministic recovery actions and forces human escalation for schema, security, scope expansion, or irreversible-operation contexts.
 
 > Note: `task_store.py` (active task state + prompt-hash idempotency) and `worktree_manager.py` (orchestrator-side worktree leases) are described in earlier drafts but not yet implemented. The dispatch listener handles trace_id idempotency directly; worktree leases live in `services/dispatch_listener/src/worktree.js` (in-memory). Tracked in the loop-hardening backlog at `miru-context/loop-hardening-backlog.md` (Ticket B for lease persistence, Ticket C for prompt-hash idempotency).
+
+---
+
+## Local Governance Gatekeeper (Hybrid orchestration pivot Phase 1, shipped 2026-05-06)
+
+The dispatcher (formerly Flask UI + WebSocket on port 19000) was reborn as the **Local Governance Gatekeeper** — a Python module that validates conversational dispatches before forwarding HMAC-signed POSTs to `dispatch_listener` on port 19100.
+
+**Code location:**
+
+- `gatekeeper/gatekeeper.py` (760 lines) — the core gate
+- `gatekeeper/frontmatter_parser.py` (173 lines) — HTML-comment YAML frontmatter extractor
+- `gatekeeper/forwarder.py` (238 lines) — HMAC-signed forward to dispatch_listener
+- `tools/miru_mcp_gateway/gatekeeper_tools.py` — MCP tool wrapper exposing `gate_dispatch()`
+- `tools/gatekeeper/bench.py` + `tools/gatekeeper/routing_schema.gbnf` — bench harness + Cursor-built closed-enum grammar
+
+**Locked model:** `DEFAULT_MODEL = qwen2.5:7b` per the 3-model bench (2026-05-06: qwen 7b vs mistral 7b vs qwen 14b). Best balance of speed (p50=27.7s) + correct rejection-vocab usage. Phase 2 prompt engineering can lift qwen 7b's rejection vocab — that's a prompt issue, not a capability issue.
+
+**Where it runs:** in-process inside the MCP Gateway (port 18766). NO dedicated port. Restart the gateway to restart the Gatekeeper.
+
+**Phase 2 (PLANNED, blocked on operator approval):** add `cc_handoff` MCP tool that invokes `gatekeeper.gate_dispatch()` instead of CH calling `dispatch_listener` directly. Run in shadow mode — Gatekeeper validates and logs decisions to `data/agent_decisions.jsonl` for calibration, but does NOT gate dispatch yet.
+
+**Phase 3 (PLANNED, after Phase 2 validated):** remove `dispatch_worker` from CH's tool profile entirely. CH only has `cc_handoff`. Self-serve loophole closes structurally.
+
+See `.miru/reference/roadmap.md` for the full pivot plan + status.
+
+---
+
+## Hermes — layered architecture (separate from the Gatekeeper)
+
+Don't confuse the Gatekeeper (validates + rejects bad dispatches) with Hermes (predicts + eventually routes good ones). Both happen to use Qwen via Ollama, but they're different systems.
+
+| Stage                                          | Status          | Code                                          | What it does                                                                                                                                                                                                           |
+| ---------------------------------------------- | --------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Stage 0** — Apprentice bridge                | DONE (PRO-312)  | `tools/hermes_apprentice.py`                  | Manual-invocation Python script. Joins routing_history + callbacks. Produces `data/hermes_quality_labels.jsonl` (120 rows backfilled). Read-only observer.                                                             |
+| **Stage 1** — Shadow predictor at spawn        | DONE (PRO-329)  | `services/dispatch_listener/src/spawn.js:625` | Calls `qwen2.5:7b` at every worker spawn. Logs predicted route + confidence + risk to `data/hermes_predictions.jsonl` next to actual dispatch. Observation only. ~8-18s latency, fire-and-forget (never blocks spawn). |
+| **Stage 2** — Hermes assumes routing authority | NOT YET STARTED | —                                             | Hermes makes the actual routing decision. CC + operator override remain.                                                                                                                                               |
+| **Stage 3** — Hermes learns from outcomes      | NOT YET STARTED | —                                             | Hermes consumes completion log, refines prediction model. Likely fine-tuning when `hermes_quality_labels.jsonl` reaches ~1000+ rows.                                                                                   |
+| **Stage N** — NousResearch Hermes proper       | INDEFINITE      | —                                             | Replace Qwen substrate with the actual NousResearch fine-tuned model. Hardware-bound.                                                                                                                                  |
+
+A custom model `miru-router:latest` (9 GB) exists locally and is used by the **Gatekeeper** (NOT Hermes) for routing-validation decisions.
+
+See `.miru/reference/roadmap.md` for stage-promotion criteria.
