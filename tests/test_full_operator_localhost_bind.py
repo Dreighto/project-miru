@@ -150,6 +150,53 @@ class TestFullOperatorLocalhostBind(unittest.TestCase):
         statuses = [m.get("status") for m in messages if m.get("type") == "http.response.start"]
         self.assertEqual(statuses, [403])
 
+    def test_no_header_from_tailscale_cgnat_proceeds_as_full_operator(self):
+        """Tailscale CGNAT range (100.64.0.0/10) is a trusted origin: the
+        gateway binds loopback only, so the only way such a peer reaches us
+        is via the local Tailscale daemon proxying tunneled traffic that
+        has already been authorized by the Funnel path-secret. Rejecting
+        these would lock out the claude.ai web connector with no security
+        gain."""
+        app, messages = _run_middleware(_http_scope(host="100.81.19.49"))
+
+        self.assertTrue(app.called)
+        self.assertEqual(app.profile_seen, "full_operator")
+        self.assertEqual(messages, [{"type": "test.app_called"}])
+
+    def test_full_operator_header_from_tailscale_cgnat_proceeds(self):
+        app, messages = _run_middleware(
+            _http_scope(
+                host="100.64.0.1",
+                headers=[_header("x-miru-tool-profile", "full_operator")],
+            )
+        )
+
+        self.assertTrue(app.called)
+        self.assertEqual(app.profile_seen, "full_operator")
+        self.assertEqual(messages, [{"type": "test.app_called"}])
+
+    def test_full_operator_from_ipv4_mapped_tailscale_cgnat_proceeds(self):
+        """IPv4-mapped IPv6 form of a tailnet IP also counts as trusted."""
+        app, messages = _run_middleware(
+            _http_scope(
+                host="::ffff:100.81.19.49",
+                headers=[_header("x-miru-tool-profile", "full_operator")],
+            )
+        )
+
+        self.assertTrue(app.called)
+        self.assertEqual(app.profile_seen, "full_operator")
+        self.assertEqual(messages, [{"type": "test.app_called"}])
+
+    def test_full_operator_from_just_outside_cgnat_rejected(self):
+        """100.128.0.0 is one bit outside the 100.64.0.0/10 boundary and
+        must NOT be treated as tailnet. Boundary regression check."""
+        app, messages = _run_middleware(_http_scope(host="100.128.0.1"))
+
+        self.assertFalse(app.called)
+        statuses = [m.get("status") for m in messages if m.get("type") == "http.response.start"]
+        self.assertEqual(statuses, [403])
+
     def test_stdio_like_non_http_scope_bypasses_localhost_check(self):
         app, messages = _run_middleware({"type": "lifespan", "client": ("10.0.0.5", 54321)})
 
