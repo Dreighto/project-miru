@@ -300,6 +300,44 @@ def test_warn_threshold_greater_than_threshold_exits_two(tmp_path: Path):
     assert rc == 2
 
 
+def test_negative_threshold_exits_two(tmp_path: Path):
+    """Per CodeRabbit round-4 feedback on PR #152: negative thresholds rejected."""
+    repo = _seed_full_repo(tmp_path)
+    rc = ccf.main(["--repo-root", str(repo), "--threshold", "-1"])
+    assert rc == 2
+
+
+def test_negative_warn_threshold_exits_two(tmp_path: Path):
+    """Per CodeRabbit round-4 feedback on PR #152: negative warn threshold rejected."""
+    repo = _seed_full_repo(tmp_path)
+    rc = ccf.main(["--repo-root", str(repo), "--threshold", "7", "--warn-threshold", "-1"])
+    assert rc == 2
+
+
+def test_resolve_repo_root_raises_when_anchors_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Per CodeRabbit round-4 feedback on PR #152: _resolve_repo_root raises RuntimeError
+    when the auto-detected candidate doesn't have BOTH CLAUDE.md and AGENTS.md."""
+    # Move __file__ so the auto-detect lands in tmp_path/tools/
+    fake_tools = tmp_path / "tools"
+    fake_tools.mkdir()
+    monkeypatch.setattr(ccf, "__file__", str(fake_tools / "check_canon_freshness.py"))
+    with pytest.raises(RuntimeError, match="could not auto-detect repo root"):
+        ccf._resolve_repo_root()
+
+
+def test_main_exits_two_when_repo_root_autodetect_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """When --repo-root is not given AND autodetect fails, main() returns 2 with clear message."""
+    fake_tools = tmp_path / "tools"
+    fake_tools.mkdir()
+    monkeypatch.setattr(ccf, "__file__", str(fake_tools / "check_canon_freshness.py"))
+    rc = ccf.main([])  # no --repo-root
+    assert rc == 2
+
+
 def test_no_canon_files_exits_one(tmp_path: Path):
     """Empty repo (no canon files at expected paths) → exit 1 (missing_file user error).
 

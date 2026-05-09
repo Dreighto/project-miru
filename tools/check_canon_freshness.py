@@ -281,9 +281,15 @@ def _render_text(results: list[FileResult], threshold: int, warn_threshold: int)
             "warn": "WARN",
             "fresh": "OK  ",
         }[r.status]
-        date_part = (
-            f"  ({r.field_name}: {r.stamp_date.isoformat()})" if r.stamp_date else f"  ({r.detail})"
-        )
+        # Show date if available; append detail too when it carries extra
+        # signal (warn-zone explanation, future-dated note, etc.). Per
+        # CodeRabbit round-4 feedback on PR #152.
+        if r.stamp_date:
+            date_part = f"  ({r.field_name}: {r.stamp_date.isoformat()})"
+            if r.detail and r.status in ("warn", "fresh") and "days old" not in r.detail:
+                date_part += f" - {r.detail}"
+        else:
+            date_part = f"  ({r.detail})"
         lines.append(f"  [{marker}] {r.path}{date_part}")
     return "\n".join(lines) + "\n"
 
@@ -322,8 +328,10 @@ def _resolve_repo_root() -> Path:
     candidate = here.parent.parent
     if (candidate / "CLAUDE.md").is_file() and (candidate / "AGENTS.md").is_file():
         return candidate
-    sys.exit(
-        "error: could not auto-detect repo root (CLAUDE.md and AGENTS.md not both "
+    # Raise instead of sys.exit so main() can map this to its exit-2 contract
+    # consistently with other script-level errors. Per CodeRabbit round-4 feedback.
+    raise RuntimeError(
+        "could not auto-detect repo root (CLAUDE.md and AGENTS.md not both "
         f"present at expected location {candidate}). Pass --repo-root explicitly."
     )
 
@@ -381,6 +389,15 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    # Threshold validation. Both must be non-negative; warn must not exceed fail.
+    # Per CodeRabbit round-4 feedback on PR #152.
+    if args.threshold < 0 or args.warn_threshold < 0:
+        print(
+            f"error: --threshold ({args.threshold}) and --warn-threshold "
+            f"({args.warn_threshold}) must be non-negative",
+            file=sys.stderr,
+        )
+        return 2
     if args.warn_threshold > args.threshold:
         print(
             f"error: --warn-threshold ({args.warn_threshold}) cannot exceed "
@@ -389,7 +406,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
-    repo_root = args.repo_root or _resolve_repo_root()
+    try:
+        repo_root = args.repo_root or _resolve_repo_root()
+    except RuntimeError as exc:
+        # Per CodeRabbit round-4 feedback: _resolve_repo_root raises RuntimeError
+        # on autodetect failure so we can map to exit 2 consistently here.
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     if not repo_root.is_dir():
         print(f"error: repo root not found: {repo_root}", file=sys.stderr)
         return 2
