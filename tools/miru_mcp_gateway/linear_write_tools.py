@@ -88,6 +88,68 @@ def _linear_gql(query: str, variables: dict[str, Any]) -> dict[str, Any]:
 # --- Resolution helpers -------------------------------------------------
 
 
+def _resolve_label_ids(team_id: str, label_names: list[str]) -> list[str]:
+    """Resolve label names to Linear label UUIDs for a team (case-insensitive)."""
+    if not label_names:
+        return []
+    query = """
+    query($teamId: String!) {
+      team(id: $teamId) {
+        labels { nodes { id name } }
+      }
+    }
+    """
+    data = _linear_gql(query, {"teamId": team_id})
+    team = data.get("team")
+    if team is None:
+        raise stdio_mcp.McpError("linear_write: team not found or inaccessible", -32000)
+    nodes = ((team.get("labels") or {}).get("nodes")) or []
+    name_to_id = {n.get("name", "").lower(): n.get("id", "") for n in nodes if n.get("id")}
+    result: list[str] = []
+    missing: list[str] = []
+    seen: set[str] = set()
+    for name in label_names:
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        lid = name_to_id.get(key)
+        if lid:
+            result.append(lid)
+        else:
+            missing.append(name)
+    if missing:
+        available = [n.get("name", "") for n in nodes]
+        raise stdio_mcp.McpError(
+            f"linear_write: label(s) not found: {missing}; available: {available}", -32602
+        )
+    return result
+
+
+def _resolve_team_state_id(team_id: str, state_name: str) -> str:
+    """Resolve a state name to a Linear state UUID for a team (case-insensitive)."""
+    query = """
+    query($teamId: String!) {
+      team(id: $teamId) {
+        states { nodes { id name type } }
+      }
+    }
+    """
+    data = _linear_gql(query, {"teamId": team_id})
+    team = data.get("team")
+    if team is None:
+        raise stdio_mcp.McpError("linear_write: team not found or inaccessible", -32000)
+    nodes = ((team.get("states") or {}).get("nodes")) or []
+    lower = state_name.strip().lower()
+    matched = [s for s in nodes if s.get("name", "").lower() == lower]
+    if not matched:
+        available = [s.get("name", "") for s in nodes]
+        raise stdio_mcp.McpError(
+            f"linear_write: state {state_name!r} not found; available: {available}", -32602
+        )
+    return str(matched[0]["id"])
+
+
 def _resolve_issue_id(identifier: str) -> str:
     """Resolve a PRO-XXX identifier or pass-through UUID to Linear internal ID.
 
@@ -278,6 +340,8 @@ def linear_create_issue(
     project_id: str | None = None,
     priority: int | None = None,
     parent_id: str | None = None,
+    label_names: list[str] | None = None,
+    initial_state: str | None = None,
     ctx: Any = None,
 ) -> str:
     """Create a new Linear issue.
@@ -288,6 +352,8 @@ def linear_create_issue(
     project-based workflow). See CLAUDE.md for the canonical project ID table.
     ``priority``: 0=None, 1=Urgent, 2=High, 3=Normal, 4=Low.
     ``parent_id``: identifier (e.g. 'PRO-226') or UUID of a parent issue.
+    ``label_names``: list of label names to attach (e.g. ``['Bug', 'High Priority']``).
+    ``initial_state``: workflow state name to set at creation (e.g. 'In Progress').
     """
     caller = gw_audit.caller_from_fastmcp_context(ctx)
     if not title or not title.strip():
@@ -298,7 +364,9 @@ def linear_create_issue(
             "(CLAUDE.md hard rule). See CLAUDE.md for the canonical project ID table.",
             -32602,
         )
-    resolved_team_id = (team_id or "").strip() or getattr(_cfg(), "linear_team_id", None)
+    resolved_team_id = str(team_id).strip() if isinstance(team_id, str) and team_id else None
+    if not resolved_team_id:
+        resolved_team_id = getattr(_cfg(), "linear_team_id", None)
     if not resolved_team_id:
         raise stdio_mcp.McpError(
             "linear_write: team_id required (or set MIRU_LINEAR_TEAM_ID)", -32602
@@ -328,29 +396,58 @@ def linear_create_issue(
     mutation($input: IssueCreateInput!) {
       issueCreate(input: $input) {
         success
-        issue { id identifier title url }
+        issue { id identifier title url state { name } labels { nodes { name } } }
       }
     }
     """
     try:
+        if label_names is not None:
+            if not isinstance(label_names, list) or any(
+                not isinstance(n, str) or not n.strip() for n in label_names
+            ):
+                raise stdio_mcp.McpError(
+                    "linear_write: label_names must be a list of non-empty strings", -32602
+                )
+            cleaned_labels = [n.strip() for n in label_names]
+            if cleaned_labels:
+                inp["labelIds"] = _resolve_label_ids(resolved_team_id, cleaned_labels)
+        if initial_state is not None:
+            if not isinstance(initial_state, str) or not initial_state.strip():
+                raise stdio_mcp.McpError(
+                    "linear_write: initial_state must be a non-empty string", -32602
+                )
+            inp["stateId"] = _resolve_team_state_id(resolved_team_id, initial_state.strip())
         data = _linear_gql(mutation, {"input": inp})
         created = data.get("issueCreate") or {}
         if not created.get("success"):
             raise stdio_mcp.McpError("linear_write: issueCreate returned success=false", -32000)
         issue = created.get("issue") or {}
+        label_names_out = [
+            lbl.get("name", "")
+            for lbl in ((issue.get("labels") or {}).get("nodes") or [])
+            if isinstance(lbl, dict)
+        ]
         payload = {
             "ok": True,
             "identifier": issue.get("identifier", ""),
             "id": issue.get("id", ""),
             "title": issue.get("title", title),
             "url": issue.get("url", ""),
+            "state": (issue.get("state") or {}).get("name", ""),
+            "labels": label_names_out,
         }
         _audit_linear(
             tool="linear_create_issue",
             caller=caller,
             issue_id=issue.get("identifier", ""),
             operation="create",
-            params={"title": title, "team_id": resolved_team_id, "priority": priority},
+            params={
+                "title": title,
+                "team_id": resolved_team_id,
+                "priority": priority,
+                "label_names": label_names,
+                "initial_state": initial_state,
+            },
             result="success",
             error=None,
         )
@@ -516,6 +613,72 @@ def linear_assign_issue(issue_id: str, assignee_id: str, ctx: Any = None) -> str
         raise stdio_mcp.McpError(f"linear_write: {exc!r}", -32000) from exc
 
 
+def linear_list_labels(team_id: str | None = None, ctx: Any = None) -> str:
+    """List all issue labels for a Linear team.
+
+    ``team_id`` defaults to MIRU_LINEAR_TEAM_ID. Returns a JSON array where
+    each element has ``id``, ``name``, and ``color``. Use the ``name`` values
+    from this response as ``label_names`` inputs to ``linear_create_issue``.
+    """
+    caller = gw_audit.caller_from_fastmcp_context(ctx)
+    resolved_team_id = str(team_id).strip() if isinstance(team_id, str) and team_id else None
+    if not resolved_team_id:
+        resolved_team_id = getattr(_cfg(), "linear_team_id", None)
+    if not resolved_team_id:
+        raise stdio_mcp.McpError(
+            "linear_write: team_id required (or set MIRU_LINEAR_TEAM_ID)", -32602
+        )
+    try:
+        query = """
+        query($teamId: String!) {
+          team(id: $teamId) {
+            labels { nodes { id name color } }
+          }
+        }
+        """
+        data = _linear_gql(query, {"teamId": resolved_team_id})
+        team = data.get("team")
+        if team is None:
+            raise stdio_mcp.McpError("linear_write: team not found or inaccessible", -32000)
+        nodes = ((team.get("labels") or {}).get("nodes")) or []
+        payload = [
+            {"id": n.get("id", ""), "name": n.get("name", ""), "color": n.get("color", "")}
+            for n in nodes
+        ]
+        _audit_linear(
+            tool="linear_list_labels",
+            caller=caller,
+            issue_id="",
+            operation="list_labels",
+            params={"team_id": resolved_team_id},
+            result="success",
+            error=None,
+        )
+        return json.dumps(payload, indent=2)
+    except stdio_mcp.McpError as exc:
+        _audit_linear(
+            tool="linear_list_labels",
+            caller=caller,
+            issue_id="",
+            operation="list_labels",
+            params={"team_id": resolved_team_id},
+            result="failure",
+            error=str(exc),
+        )
+        raise
+    except Exception as exc:
+        _audit_linear(
+            tool="linear_list_labels",
+            caller=caller,
+            issue_id="",
+            operation="list_labels",
+            params={},
+            result="failure",
+            error=repr(exc),
+        )
+        raise stdio_mcp.McpError(f"linear_write: {exc!r}", -32000) from exc
+
+
 _DESC_TRUNCATE = 500
 
 
@@ -612,6 +775,7 @@ TOOL_FUNCTIONS = (
     linear_add_comment,
     linear_assign_issue,
     linear_get_issue,
+    linear_list_labels,
 )
 
 
