@@ -9,6 +9,8 @@ Last reviewed: 2026-05-09 (verified against Linear + git log + actually-running 
 
 This file is the canonical answer to **"where are we and where are we going."** Keep it current — stale roadmap = duplicated work or contradicted plans.
 
+**This file is governed by `.miru/reference/source-of-truth.md`** — load that first when reconciling sources or deciding what gets logged where. Roadmap entries follow the truth hierarchy and refresh trigger taxonomy defined there.
+
 ---
 
 ## Current State (2026-05-09, verified)

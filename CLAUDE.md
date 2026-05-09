@@ -15,6 +15,11 @@ Read `AGENTS.md` for universal communication rules (Operator Communication
 Standard, Try Harder Discipline). Read `miru-context/team-charter.md` on every
 dispatch.
 
+**When sources disagree, fetch `.miru/reference/source-of-truth.md` immediately.**
+That file is the meta-rule that governs every other canon rule. The truth
+hierarchy is: Runtime > Audit logs > Linear > Repo (code/canon/DB) > Notion
+canon > Worker memory > Conversation context. Recency is not authority.
+
 ---
 
 ## Fail-Closed Directive
@@ -145,6 +150,7 @@ reference file when you need the specific fact.
 
 ### Reference — `.miru/reference/`
 
+- **`source-of-truth.md`** — FETCH IF deciding where information belongs, resolving a conflict between sources, planning a canon refresh, or onboarding a worker. **This is the meta-rule that governs every other canon rule.** Contains: truth hierarchy (7 layers), system responsibilities, what "verified" means per layer, conflict-resolution procedure, refresh trigger taxonomy, operator-side vs worker-side context paths, Notion-as-derived-mirror pattern, acting roles while CH offline, Verification Layer (concrete).
 - **`roadmap.md`** — FETCH IF planning new work, dispatching a major ticket, or onboarding a worker. Contains: current substrate (DGAS), Gatekeeper architecture, Hermes layered stages (0/1/2/3/N), active tickets, near/mid/long-term roadmap, what NOT to do.
 - **`ports-and-services.md`** — FETCH IF you need a port number or service mapping. Includes in-process modules (Gatekeeper, Hermes Stages).
 - **`linear-projects.md`** — FETCH IF creating a Linear ticket. Contains the `projectId` table.
