@@ -15,12 +15,12 @@ Last reviewed: 2026-05-09 (PRO-336: shell:startup primary path added)
 
 ## Service restart commands
 
-| Service           | Port  | Preferred command                                                                                                                                                                                                                              |
-| ----------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dispatch Listener | 19100 | **Primary:** `Start-ScheduledTask -TaskName MiruRestartDispatcher` — works when listener is in the interactive session (shell:startup path, PRO-336). **Recovery (Session 0):** see "Dispatch Listener — Session 0 recovery (FALLBACK)" below. |
-| PM Dashboard      | 18080 | `powershell -ExecutionPolicy Bypass -File windows\restart_pm.ps1` (or `Start-ScheduledTask -TaskName MiruRestartPM`)                                                                                                                           |
-| Miru AI           | 18765 | `powershell -ExecutionPolicy Bypass -File windows\restart_miru_ai.ps1` (or `Start-ScheduledTask -TaskName MiruRestartMiruAI`)                                                                                                                  |
-| MCP Gateway       | 18766 | `Start-ScheduledTask -TaskName MiruRestartMcpGateway`                                                                                                                                                                                          |
+| Service           | Port  | Preferred command                                                                                                                                                                                                                                                                     |
+| ----------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dispatch Listener | 19100 | **Primary:** `Start-ScheduledTask -TaskName MiruRestartDispatcher` — works when listener is in the interactive session (shell:startup path, PRO-336). **Recovery (Session 0):** see "Dispatch Listener — Session 0 recovery (FALLBACK, pre-PRO-336 or shortcut not installed)" below. |
+| PM Dashboard      | 18080 | `powershell -ExecutionPolicy Bypass -File windows\restart_pm.ps1` (or `Start-ScheduledTask -TaskName MiruRestartPM`)                                                                                                                                                                  |
+| Miru AI           | 18765 | `powershell -ExecutionPolicy Bypass -File windows\restart_miru_ai.ps1` (or `Start-ScheduledTask -TaskName MiruRestartMiruAI`)                                                                                                                                                         |
+| MCP Gateway       | 18766 | `Start-ScheduledTask -TaskName MiruRestartMcpGateway`                                                                                                                                                                                                                                 |
 
 ## Dispatch Listener — boot path (PRIMARY, PRO-336)
 
@@ -37,7 +37,8 @@ The installer is idempotent — safe to re-run after a repo move or OS reinstall
 **Verify after logoff/logon:**
 
 ```powershell
-$l = Get-NetTCPConnection -State Listen -LocalPort 19100 | Select-Object -First 1
+$l = Get-NetTCPConnection -State Listen -LocalPort 19100 -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $l) { Write-Host "ERROR: No listener on port 19100 — service may not be running"; exit 1 }
 "PID=$($l.OwningProcess) Session=$((Get-Process -Id $l.OwningProcess).SessionId)"
 # Session must be 1 or higher
 ```
@@ -51,7 +52,8 @@ $l = Get-NetTCPConnection -State Listen -LocalPort 19100 | Select-Object -First 
 **Diagnosis:**
 
 ```powershell
-$l = Get-NetTCPConnection -State Listen -LocalPort 19100 | Select-Object -First 1
+$l = Get-NetTCPConnection -State Listen -LocalPort 19100 -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $l) { Write-Host "ERROR: No listener on port 19100 — service may not be running"; exit 1 }
 (Get-Process -Id $l.OwningProcess).SessionId
 # 0 = Session 0 (problem); 1 or higher = healthy
 ```
@@ -71,21 +73,26 @@ taskkill /F /T /PID $pspid
 
 ```powershell
 Start-Process powershell.exe `
-    -ArgumentList '-NoLogo','-NoProfile','-WindowStyle','Hidden','-ExecutionPolicy','Bypass','-File','D:\dev\miru\windows\start_dispatch_listener.ps1' `
+    -ArgumentList '-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File','D:\dev\miru\windows\start_dispatch_listener.ps1' `
     -WindowStyle Hidden
 ```
 
-**Permanent fix:** run the installer above (`install_dispatch_listener_startup_shortcut.ps1`) and reboot/logon. The Session 0 self-check in `start_dispatch_listener.ps1` will log a WARN and exit 1 if the scheduled task fires in Session 0 again, making future regressions immediately visible in the log.
+**Permanent fix:** run the installer above (`install_dispatch_listener_startup_shortcut.ps1`) and reboot or log on. The Session 0 self-check in `start_dispatch_listener.ps1` will log a WARN and exit 1 if the scheduled task fires in Session 0 again, making future regressions immediately visible in the log.
 
 ## After restart — sanity checks
 
 ```powershell
 # Listener health
-(Invoke-WebRequest -Uri 'http://127.0.0.1:19100/health' -UseBasicParsing -TimeoutSec 5).Content
-# Should return: {"status":"ok","listener":"dispatch_listener","port":19100}
+try {
+    (Invoke-WebRequest -Uri 'http://127.0.0.1:19100/health' -UseBasicParsing -TimeoutSec 5).Content
+    # Should return: {"status":"ok","listener":"dispatch_listener","port":19100}
+} catch {
+    Write-Host "ERROR: Health check failed — $($_.Exception.Message)"
+}
 
 # Session check
-$l = Get-NetTCPConnection -State Listen -LocalPort 19100 | Select-Object -First 1
+$l = Get-NetTCPConnection -State Listen -LocalPort 19100 -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $l) { Write-Host "ERROR: No listener on port 19100"; exit 1 }
 "PID=$($l.OwningProcess) Session=$((Get-Process -Id $l.OwningProcess).SessionId)"
 # Session must be != 0 for CC to manage autonomously
 ```
