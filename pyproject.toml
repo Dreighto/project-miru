@@ -15,13 +15,24 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
+# Rule sets:
+#   E, F, W, I, N, UP, B, C4, SIM, RUF — original mechanical/style checks (PRO-107).
+#   TRY, PT, RSE — added 2026-05-09 to catch error-handling + test-pattern bugs
+#     that CodeRabbit assertive flagged on PR #152 (UnicodeError missing,
+#     date.today() flakiness, raise-vanilla-args, etc.). Linter tightening per
+#     CH proposal — keeps CodeRabbit on assertive while reducing review cycles.
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF", "TRY", "PT", "RSE"]
 # E501 (line length) is enforced softly via the formatter; not a hard error.
-ignore = ["E501"]
+# TRY003 ignored: we use long exception messages intentionally for diagnostics.
+ignore = ["E501", "TRY003"]
 
 # server.py mutates sys.path before miru_mcp_gateway imports (script entrypoint).
 [tool.ruff.lint.per-file-ignores]
 "tools/miru_mcp_gateway/server.py" = ["E402"]
+# Legacy unittest-style tests (~2000 PT009/PT027 violations as of 2026-05-09).
+# Per-file-ignored to avoid forcing immediate conversion. New pytest-style tests
+# in tests/ won't trigger PT009/PT027 since they don't use unittest.TestCase.
+"tests/**" = ["PT009", "PT027"]
 
 [tool.ruff.format]
 quote-style = "double"

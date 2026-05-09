@@ -35,10 +35,36 @@ export default [
       'tests/_tmp/**',
     ],
     rules: {
-      'no-unused-vars': 'warn',
+      // Existing (tightened 2026-05-09 per CH linter-tightening proposal).
+      // caughtErrorsIgnorePattern: '^_' honors the existing convention where
+      // `_e` / `_err` indicates "intentionally swallowed error" (used in
+      // spawn.js cleanup paths and elsewhere).
+      'no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', caughtErrors: 'all', caughtErrorsIgnorePattern: '^_' },
+      ],
       'no-undef': 'error',
       'prefer-const': 'warn',
       'no-var': 'error',
+
+      // Error handling — added 2026-05-09 to catch the class of bugs CodeRabbit
+      // assertive flagged on PR #152 (silent catches, missing exception types,
+      // useless catch blocks, async without await).
+      'no-throw-literal': 'error',
+      'no-useless-catch': 'error',
+      'no-empty': ['error', { allowEmptyCatch: false }],
+      'require-await': 'error',
+      'no-return-await': 'error',
+
+      // Logic errors — contract violations + footguns that linters can catch
+      // before code review.
+      'consistent-return': 'error',
+      'no-promise-executor-return': 'error',
+      'no-unreachable': 'error',
+      'no-fallthrough': 'error',
+      eqeqeq: ['error', 'always'],
+      'no-self-compare': 'error',
+      'no-constant-condition': 'error',
     },
   },
   // PRO-83 — Node CommonJS service. Scoped so the rest of the repo isn't affected.
