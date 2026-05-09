@@ -3,12 +3,13 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
+const https = require('https');
 const path = require('path');
 
 const log = require('./log');
 
 const PREDICTION_SOURCE = 'hermes_shadow_v1';
-const HERMES_TIMEOUT_MS = 60_000;
+const HERMES_TIMEOUT_MS = 30_000;
 const REPO_ROOT = process.env.MIRU_REPO_ROOT || path.resolve(__dirname, '../../..');
 
 // JSON schema for Qwen's structured prediction response.
@@ -77,10 +78,12 @@ function callOllama(ollamaUrl, model, userMessage) {
       return reject(new Error(`invalid_ollama_url: ${ollamaUrl}`));
     }
 
+    const transport = urlObj.protocol === 'https:' ? https : http;
+    const defaultPort = urlObj.protocol === 'https:' ? 443 : 11434;
     const reqOptions = {
       hostname: urlObj.hostname,
-      port: urlObj.port ? Number(urlObj.port) : 11434,
-      path: urlObj.pathname,
+      port: urlObj.port ? Number(urlObj.port) : defaultPort,
+      path: urlObj.pathname + (urlObj.search || ''),
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -88,7 +91,7 @@ function callOllama(ollamaUrl, model, userMessage) {
       },
     };
 
-    const req = http.request(reqOptions, (res) => {
+    const req = transport.request(reqOptions, (res) => {
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => {
@@ -103,7 +106,7 @@ function callOllama(ollamaUrl, model, userMessage) {
     });
 
     req.setTimeout(HERMES_TIMEOUT_MS, () => {
-      req.destroy(new Error('ollama_timeout'));
+      req.destroy(new Error('qwen_timeout'));
     });
 
     req.on('error', reject);
@@ -121,6 +124,15 @@ function appendRow(predictionsPath, row) {
 }
 
 async function predictDispatch({ traceId, worker, promptText }) {
+  if (!traceId || !worker || typeof promptText !== 'string' || promptText.trim() === '') {
+    log.warn('hermes_predict_invalid_params', {
+      trace_id: traceId || null,
+      worker: worker || null,
+      prompt_type: typeof promptText,
+    });
+    return;
+  }
+
   const startMs = Date.now();
   const model = getModel();
   const ollamaUrl = getOllamaUrl();

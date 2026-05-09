@@ -126,14 +126,16 @@ test('predictDispatch logs ollama_error and still writes row when Ollama is unre
   process.env.MIRU_HERMES_OLLAMA_URL = 'http://127.0.0.1:19999/api/chat';
   process.env.MIRU_HERMES_PREDICTIONS_PATH = errPath;
 
-  await predictDispatch({
-    traceId: 'cc-pro329-test-error',
-    worker: 'gemini',
-    promptText: 'Task that will hit an unreachable Ollama.',
-  });
-
-  process.env.MIRU_HERMES_OLLAMA_URL = savedUrl;
-  process.env.MIRU_HERMES_PREDICTIONS_PATH = savedPath;
+  try {
+    await predictDispatch({
+      traceId: 'cc-pro329-test-error',
+      worker: 'gemini',
+      promptText: 'Task that will hit an unreachable Ollama.',
+    });
+  } finally {
+    process.env.MIRU_HERMES_OLLAMA_URL = savedUrl;
+    process.env.MIRU_HERMES_PREDICTIONS_PATH = savedPath;
+  }
 
   assert.ok(fs.existsSync(errPath), 'predictions file must still be created on Ollama error');
   const row = JSON.parse(fs.readFileSync(errPath, 'utf8').trim());
