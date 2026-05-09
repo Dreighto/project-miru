@@ -286,7 +286,7 @@ def _render_text(results: list[FileResult], threshold: int, warn_threshold: int)
         # CodeRabbit round-4 feedback on PR #152.
         if r.stamp_date:
             date_part = f"  ({r.field_name}: {r.stamp_date.isoformat()})"
-            if r.detail and r.status in ("warn", "fresh") and "days old" not in r.detail:
+            if r.detail:
                 date_part += f" - {r.detail}"
         else:
             date_part = f"  ({r.detail})"
