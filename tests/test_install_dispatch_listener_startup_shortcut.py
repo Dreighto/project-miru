@@ -16,6 +16,7 @@ Skipped automatically on non-Windows platforms where powershell.exe is absent.
 
 from __future__ import annotations
 
+import platform
 import shutil
 import subprocess
 import tempfile
@@ -30,7 +31,7 @@ REAL_WRAPPER = REPO_ROOT / "windows" / "start_dispatch_listener.ps1"
 # Skip the entire module on platforms without PowerShell
 _powershell = shutil.which("powershell.exe") or shutil.which("powershell")
 pytestmark = pytest.mark.skipif(
-    _powershell is None,
+    _powershell is None or platform.system() != "Windows",
     reason="powershell.exe not found -- skipping Windows-only tests",
 )
 
@@ -75,7 +76,8 @@ def test_shortcut_name_is_fixed():
     """Shortcut file name is always MiruDispatchListener.lnk."""
     with tempfile.TemporaryDirectory() as tmp:
         startup = Path(tmp)
-        _run_installer(startup, wrapper_script=REAL_WRAPPER)
+        result = _run_installer(startup, wrapper_script=REAL_WRAPPER)
+        assert result.returncode == 0, f"installer failed:\n{result.stdout}\n{result.stderr}"
         lnk_files = list(startup.glob("*.lnk"))
         assert len(lnk_files) == 1, f"expected exactly one .lnk, got {lnk_files}"
         assert lnk_files[0].name == "MiruDispatchListener.lnk"
@@ -109,7 +111,8 @@ def test_idempotent_rerun_logs_skipping():
     """Second run stdout must confirm it skipped re-creation."""
     with tempfile.TemporaryDirectory() as tmp:
         startup = Path(tmp)
-        _run_installer(startup, wrapper_script=REAL_WRAPPER)
+        r1 = _run_installer(startup, wrapper_script=REAL_WRAPPER)
+        assert r1.returncode == 0, f"first run failed:\n{r1.stdout}\n{r1.stderr}"
         r2 = _run_installer(startup, wrapper_script=REAL_WRAPPER)
         combined = r2.stdout + r2.stderr
         assert (
