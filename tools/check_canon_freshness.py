@@ -146,10 +146,10 @@ def _check_file(path: Path, today: date, threshold: int, warn_threshold: int) ->
         )
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        # Script-level I/O failure (permission denied, disk error, etc.) —
-        # not a user/data error. Maps to exit code 2 in main(). Per CodeRabbit
-        # feedback on PR #152.
+    except (OSError, UnicodeError) as exc:
+        # Script-level I/O failure (permission denied, disk error, invalid UTF-8,
+        # etc.) — not a user/data error. Maps to exit code 2 in main(). Per
+        # CodeRabbit feedback on PR #152 (rounds 2 + 3 — UnicodeError added).
         return FileResult(
             path=str(path),
             status="script_error",
@@ -309,14 +309,23 @@ def _render_json(results: list[FileResult]) -> str:
 
 
 def _resolve_repo_root() -> Path:
-    """Find the repo root. Prefer git, fall back to walking up from this file."""
+    """Find the repo root by anchoring on both CLAUDE.md AND AGENTS.md.
+
+    Per CodeRabbit round-3 feedback on PR #152: requiring BOTH anchors prevents
+    false-positive matches in directories that happen to have only one of them
+    (e.g., a docs subdirectory that contains a CLAUDE.md fragment). If neither
+    candidate matches, exit with a clear error pointing the caller at --repo-root
+    rather than silently falling back to cwd.
+    """
     here = Path(__file__).resolve()
     # tools/check_canon_freshness.py → repo root is two parents up
     candidate = here.parent.parent
-    if (candidate / "CLAUDE.md").is_file():
+    if (candidate / "CLAUDE.md").is_file() and (candidate / "AGENTS.md").is_file():
         return candidate
-    # Last-resort fallback: cwd
-    return Path.cwd()
+    sys.exit(
+        "error: could not auto-detect repo root (CLAUDE.md and AGENTS.md not both "
+        f"present at expected location {candidate}). Pass --repo-root explicitly."
+    )
 
 
 def _parse_env_int(name: str, default: int) -> tuple[int | None, str | None]:
