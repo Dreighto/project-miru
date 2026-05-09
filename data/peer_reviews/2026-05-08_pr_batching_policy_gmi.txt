@@ -1,0 +1,120 @@
+PEER REVIEW REQUEST — Gemini
+
+Topic: PR granularity policy for a single-operator + AI-worker codebase
+
+============================================================================
+THE SITUATION
+============================================================================
+
+I run a small system called Project Miru. It's a worker-orchestration
+codebase (Python, ~150-ish source files, single Git repo, GitHub remote).
+The headcount is one human operator (me) and a rotating cast of AI
+sub-workers — Claude Code is the primary; Codex and Cursor are also
+dispatched. Workers operate in their own git worktrees, open PRs against
+main, and either self-merge (small changes) or wait for operator merge
+(larger / governance-touching changes).
+
+We just finished a one-day infrastructure sprint called DGAS (Deterministic
+Governed Autonomous System) — a set of audit, gating, and verification
+gates around the worker-dispatch system. In one day we shipped 11 PRs:
+nine feature PRs (#126, #127, #128, #129, #130, #132, #133, #134, #136)
+plus two cleanup PRs (#131, #135).
+
+Each PR was small — usually one file plus its tests. Each followed the
+full ceremony: branch, push, PR description, CI, review, merge, branch
+delete, post-merge cleanup. The work itself was high-velocity; the PR
+ceremony around each one was the slow part.
+
+The operator (me) flagged the cost: "PRs aren't being run every single
+time for every single thing. There shouldn't be any reason for every
+single job to be sent up for PR if it is stuff like what we are doing.
+We are still tightening and strengthening this loop and system. We can
+do a big PR every now and then."
+
+I want a principled second opinion before I change the policy.
+
+============================================================================
+CURRENT POLICY (verbatim from .miru/overlays/workflow-git.md, summarized)
+============================================================================
+
+Three tiers exist today:
+
+1. Direct-to-main (no PR): documentation typos, comment fixes, very
+   narrow operator-only edits. Almost never used.
+
+2. CC-merge (worker self-merge): single-file or single-feature changes
+   under ~300 LOC, tests included, CI green. The worker opens the PR,
+   waits for CI, then merges. Used for ~80% of feature work.
+
+3. Operator-merge: anything that touches governance files (gates,
+   profiles, overlays, pre-commit config), any change >300 LOC, any
+   change that crosses module boundaries, any rename or move. Operator
+   reviews and merges manually.
+
+GitHub branch protection on main requires PR (no direct push). The
+governance file registry triggers operator-merge automatically (CODEOWNERS
++ GitHub workflow). Force-push and branch-delete on main are blocked at
+both server (GitHub) and local (pre-push hook).
+
+============================================================================
+THE QUESTION
+============================================================================
+
+When (if ever) should related changes be batched into one larger PR
+instead of one PR per change, given:
+
+- Single-operator review bandwidth is the bottleneck, not CI cost.
+- AI workers can produce small atomic changes very quickly — the rate-
+  limiting step is the human review-and-merge loop.
+- The codebase is pre-production scaffolding right now. No paying users.
+  No 24/7 uptime requirement. The "blast radius of a bad merge" is the
+  operator's own next session, not customers.
+- BUT: granular PRs give a clean audit trail (each PR = one logical
+  change, one revert button, one bisect target). The DGAS work itself
+  was *about* governance and audit integrity — undermining the audit
+  trail for velocity feels self-defeating.
+- The governance gates (branch protection, governance file registry,
+  pre-push hooks, audit chain verifier) are designed assuming each
+  change passes through a PR. Batching changes that touch governance
+  files into one PR doesn't bypass any gate, but it does make the
+  CODEOWNERS prompt and the governance description gate fire less often.
+
+I'm specifically interested in your take on:
+
+1. Is there a principled rule for "what counts as one PR" when the
+   review bottleneck is one human reviewing AI-authored code? The
+   classic OSS rule "one logical change per PR" assumes many reviewers
+   and many authors — does it still hold here?
+
+2. For pre-production scaffolding sprints (like the one we just ran),
+   is bundling 5-10 related changes into one PR a defensible mode, or
+   does it cost more in review difficulty than it saves in ceremony?
+
+3. What policy would you propose? Concrete is better than abstract —
+   a one-paragraph rule the operator could put in workflow-git.md.
+
+4. Is there a hybrid mode — e.g., "scaffolding PRs may bundle freely,
+   governance-touching PRs may not" — that captures the right tradeoff?
+   Or does that just create a confusing two-track policy?
+
+5. Anything we're missing — failure mode you've seen in similar setups
+   that would change the calculus?
+
+Please be opinionated. I have a Claude instance that already gave me
+its read; I want yours independently before I synthesize.
+
+============================================================================
+CONTEXT FILES YOU MAY ASK FOR
+============================================================================
+
+If useful, the operator can paste any of:
+
+- .miru/overlays/workflow-git.md (current PR/merge tier policy)
+- data/peer_reviews/2026-05-08_dgas_three_way_synthesis.md (the DGAS
+  framework you may already have seen)
+- data/peer_reviews/2026-05-08_codex_audit_dgas_sprint.md (the audit
+  that surfaced this conversation)
+- The list of 11 PRs from the sprint with titles + LOC
+
+Output format: free-form prose is fine. If you'd like to give a single
+recommended-policy paragraph at the end, that's ideal.

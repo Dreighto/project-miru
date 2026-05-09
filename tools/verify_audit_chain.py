@@ -77,7 +77,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--files",
-        nargs="*",
+        nargs="+",
         default=None,
         help="override the default list of files (paths are repo-relative)",
     )
@@ -181,9 +181,7 @@ def main() -> int:
         if args.strict and any_legacy_only and not any_chained_broken:
             print("WARNING (--strict): at least one file is legacy-only or missing.")
 
-    if any_chained_broken:
-        return 1
-    if args.strict and (not overall_ok or any_legacy_only):
+    if not effective_ok:
         return 1
     return 0
 

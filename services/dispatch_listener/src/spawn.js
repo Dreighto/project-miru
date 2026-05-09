@@ -8,9 +8,19 @@ const log = require('./log');
 const { spec } = require('./allowlist');
 const { writeTerminalReceipt } = require('./receipt');
 const { writeDlqEntry } = require('./dlq');
+const { predictDispatchAsync } = require('./predict');
 
 const STDERR_TAIL_BYTES = 4096;
 const STDOUT_SCAN_BYTES = 8192;
+
+// Closed taxonomy of terminal causes. Every spawn ends with exactly one.
+const TERMINAL_CAUSES = Object.freeze(['spawn_error', 'timeout', 'exit_clean', 'exit_nonzero']);
+
+function computeTerminalCause(timedOut, exitCode) {
+  if (timedOut) return 'timeout';
+  if (exitCode === 0) return 'exit_clean';
+  return 'exit_nonzero';
+}
 
 // Scan stdout tail for terminal status markers emitted by workers.
 // Workers print "STATUS: CONFIRMED WORKING" or "CONFIRMED_WORKING" in stdout.
@@ -34,11 +44,50 @@ function readTailRaw(filePath, maxBytes) {
   }
 }
 
+// PRO-335: recognize all four canonical terminal statuses from CLAUDE.md
+// + the ESCALATE pattern. Capture the diagnostic block following the status
+// line so result.json carries the worker's actual reason, not an empty string.
+//
+// Returns { status, category, summary }:
+//   status   = 'CONFIRMED_WORKING' | 'INCONCLUSIVE' | 'FAILED' | null
+//   category = string | null   (e.g. 'HUMAN-REQUIRED' for ESCALATE)
+//   summary  = string          (diagnostic block, capped at 4096 chars)
+//
+// ESCALATE is mapped to INCONCLUSIVE-with-summary so downstream consumers
+// don't need a new terminal state in TERMINAL_STATES. The category field
+// preserves the escalation reason (HUMAN-REQUIRED, SCOPE_EXPANSION, etc.).
 function scanStdoutForStatus(stdoutTail) {
-  if (!stdoutTail) return null;
-  if (/STATUS:\s*\bCONFIRMED[\s_]WORKING\b/i.test(stdoutTail)) return 'CONFIRMED_WORKING';
-  if (/\bCONFIRMED_WORKING\b/i.test(stdoutTail)) return 'CONFIRMED_WORKING';
-  return null;
+  const empty = { status: null, category: null, summary: '' };
+  if (!stdoutTail) return empty;
+
+  // Patterns ordered by specificity: explicit STATUS: lines first, then the
+  // loose fallback for CONFIRMED_WORKING anywhere. First match wins.
+  const patterns = [
+    { re: /STATUS:\s*\bCONFIRMED[\s_]WORKING\b/i, status: 'CONFIRMED_WORKING' },
+    { re: /STATUS:\s*ESCALATE:\s*([A-Z_-]+)\b/i, status: 'INCONCLUSIVE', escalate: true },
+    { re: /STATUS:\s*INCONCLUSIVE\b/i, status: 'INCONCLUSIVE' },
+    { re: /STATUS:\s*FAILED\b/i, status: 'FAILED' },
+    { re: /\bCONFIRMED_WORKING\b/i, status: 'CONFIRMED_WORKING' },
+  ];
+
+  for (const p of patterns) {
+    const m = stdoutTail.match(p.re);
+    if (!m) continue;
+    // Capture from the matched status line through the end of stdout. This
+    // is the worker's diagnostic block — the explanation that today gets
+    // dropped on the floor.
+    const block = stdoutTail.slice(m.index).trim();
+    const SUMMARY_CAP = 4096;
+    const TRUNCATION_MARKER = '\n... [truncated]';
+    const summary =
+      block.length > SUMMARY_CAP
+        ? block.slice(0, SUMMARY_CAP - TRUNCATION_MARKER.length) + TRUNCATION_MARKER
+        : block;
+    const category = p.escalate ? m[1] || null : null;
+    return { status: p.status, category, summary };
+  }
+
+  return empty;
 }
 
 function killProcessTree(child) {
@@ -93,6 +142,14 @@ function readTail(filePath, maxBytes) {
     }
   } catch (_e) {
     return '';
+  }
+}
+
+function safeStatSize(filePath) {
+  try {
+    return fs.statSync(filePath).size;
+  } catch (_e) {
+    return 0;
   }
 }
 
@@ -500,6 +557,9 @@ function spawnWorker({
     thinking_level_requested: thinkingLevel,
   });
 
+  // PRO-329: Hermes shadow prediction — fire-and-forget, never blocks spawn.
+  predictDispatchAsync({ traceId, worker, promptText });
+
   let child;
   try {
     // detached:true was empirically incompatible with stdio file fds on this
@@ -571,6 +631,9 @@ function spawnWorker({
   // overwriting receipt rename. The `finalized` flag guarantees exactly one
   // terminal receipt + at most one DLQ row per spawn even when both events
   // fire (and even when the timeout races with a natural exit).
+  //
+  // worker_terminal is the single canonical terminal event. It fires exactly
+  // once per spawn from whichever handler wins the finalized race.
   let finalized = false;
   let timedOut = false;
   const timer = setTimeout(() => {
@@ -595,6 +658,19 @@ function spawnWorker({
     log.error('worker_spawn_error', { trace_id: traceId, error: err.message });
     const completedAt = new Date().toISOString();
     const stderrTail = readTail(stderrPath, STDERR_TAIL_BYTES);
+    log.info('worker_terminal', {
+      trace_id: traceId,
+      worker,
+      pid: child.pid,
+      exit_code: null,
+      signal: null,
+      timed_out: false,
+      cause: 'spawn_error',
+      status: 'FAILED',
+      duration_ms: new Date(completedAt) - new Date(startedAt),
+      stdout_bytes: 0,
+      stderr_bytes: safeStatSize(stderrPath),
+    });
     try {
       writeTerminalReceipt({
         traceId,
@@ -636,13 +712,25 @@ function spawnWorker({
 
     // --print buffers all stdout until clean exit; a killed process flushes nothing.
     // Timeout → FAILED is intentional — no stdout data to scan.
+    // PRO-335: scanStdoutForStatus now returns {status, category, summary} so
+    // the worker's diagnostic block flows through to result.json instead of
+    // being silently replaced with an empty INCONCLUSIVE.
     let status;
+    let summary = '';
+    let escalationCategory = null;
     if (timedOut) {
       status = 'FAILED';
+      summary = stderrTail || '';
     } else if (exitCode === 0) {
-      status = scanStdoutForStatus(stdoutTail) || 'INCONCLUSIVE';
+      const scan = scanStdoutForStatus(stdoutTail);
+      status = scan.status || 'INCONCLUSIVE';
+      summary = scan.summary || '';
+      escalationCategory = scan.category;
     } else {
       status = 'FAILED';
+      const scan = scanStdoutForStatus(stdoutTail);
+      summary = scan.summary || stderrTail || '';
+      escalationCategory = scan.category;
     }
 
     log.info('worker_exit', {
@@ -654,6 +742,19 @@ function spawnWorker({
       status,
       timed_out: timedOut,
     });
+    log.info('worker_terminal', {
+      trace_id: traceId,
+      worker,
+      pid: child.pid,
+      exit_code: exitCode,
+      signal,
+      timed_out: timedOut,
+      cause: computeTerminalCause(timedOut, exitCode),
+      status,
+      duration_ms: new Date(completedAt) - new Date(startedAt),
+      stdout_bytes: safeStatSize(stdoutPath),
+      stderr_bytes: safeStatSize(stderrPath),
+    });
 
     try {
       writeTerminalReceipt({
@@ -664,6 +765,8 @@ function spawnWorker({
         completedAt,
         exitCode,
         stderrTail,
+        summary,
+        escalationCategory,
       });
 
       if (status === 'FAILED') {
@@ -697,6 +800,8 @@ module.exports = {
   readTail,
   readTailRaw,
   scanStdoutForStatus,
+  computeTerminalCause,
+  TERMINAL_CAUSES,
   parkingBranchForCwd,
   cleanupWorktree,
   verifyWorktreeParked,

@@ -33,7 +33,6 @@ Path-stripped mode:
 
 from __future__ import annotations
 
-import json
 import sys
 import traceback
 from pathlib import Path
@@ -67,6 +66,11 @@ from miru_mcp_gateway import (
 )
 from miru_mcp_gateway import config as gw_config
 from miru_mcp_gateway import redact as gw_redact
+from miru_mcp_gateway.trust_policy import (
+    is_trusted_origin,
+    send_full_operator_local_only,
+    validate_loopback_bind,
+)
 
 SERVER_NAME = "miru-fs-gateway"
 SERVER_VERSION = "0.4.0"
@@ -154,72 +158,6 @@ class _RootAlias:
 
 from miru_mcp_gateway._context import current_profile, current_trace_id
 
-_LOCAL_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
-
-
-def _remote_addr(scope) -> str | None:
-    client = scope.get("client")
-    if not client:
-        return None
-    if not isinstance(client, list | tuple) or len(client) < 1:
-        return None
-    host = client[0]
-    if not isinstance(host, str):
-        return None
-    return host
-
-
-def _is_local_origin(scope) -> bool:
-    """Return True iff scope.client originates from loopback.
-
-    Handles three forms of "local":
-        * Literal strings 127.0.0.1, ::1, "localhost".
-        * IPv4 loopback range (parsed via ipaddress).
-        * IPv4-mapped IPv6 loopback (e.g. ``::ffff:127.0.0.1``) which some
-          ASGI servers present when listening on a dual-stack socket.
-          Without this, a legitimate local request via the IPv6 mapped
-          form would be rejected.
-
-    Anything that doesn't parse as a recognised loopback form is treated
-    as remote — fail-closed.
-    """
-    import ipaddress
-
-    host = _remote_addr(scope)
-    if host is None:
-        return False
-    if host in _LOCAL_HOSTS:
-        return True
-    try:
-        addr = ipaddress.ip_address(host)
-    except ValueError:
-        return False
-    if addr.is_loopback:
-        return True
-    if isinstance(addr, ipaddress.IPv6Address) and addr.ipv4_mapped is not None:
-        return addr.ipv4_mapped.is_loopback
-    return False
-
-
-async def _send_full_operator_local_only(scope, send) -> None:
-    remote_addr = _remote_addr(scope)
-    if remote_addr is not None:
-        remote_addr = gw_redact.redact(remote_addr)
-    payload = {
-        "error": "full_operator_local_only",
-        "message": "full_operator requires a local origin (127.0.0.1 or ::1)",
-        "remote_addr": remote_addr,
-    }
-    body = json.dumps(payload).encode("utf-8")
-    await send(
-        {
-            "type": "http.response.start",
-            "status": 403,
-            "headers": [(b"content-type", b"application/json")],
-        }
-    )
-    await send({"type": "http.response.body", "body": body})
-
 
 class _ProfileExtractor:
     """ASGI middleware that reads X-Miru-Tool-Profile from HTTP headers."""
@@ -238,8 +176,8 @@ class _ProfileExtractor:
                     profile = value.decode("utf-8") if isinstance(value, bytes) else value
                 elif lower == b"x-miru-trace-id":
                     trace_id = value.decode("utf-8") if isinstance(value, bytes) else value
-            if profile == "full_operator" and not _is_local_origin(scope):
-                await _send_full_operator_local_only(scope, send)
+            if profile == "full_operator" and not is_trusted_origin(scope):
+                await send_full_operator_local_only(scope, send)
                 return
             tok_p = current_profile.set(profile)
             tok_t = current_trace_id.set(trace_id)
@@ -376,6 +314,14 @@ def main() -> int:
     inner_app = mcp.http_app(path=cfg.mcp_path, transport="streamable-http")
     profiled_app = _ProfileExtractor(inner_app)
     wrapped_app = _RootAlias(profiled_app)
+
+    # Hard invariant: the Tailscale-Funnel-Request header trust check in
+    # is_trusted_origin assumes the gateway is reachable ONLY from the
+    # local Tailscale daemon and from local processes. That assumption
+    # holds iff the bind is loopback. Fail fast if not — running on a
+    # non-loopback interface would let any reachable peer spoof the
+    # header and self-elevate to full_operator.
+    validate_loopback_bind(cfg.host)
 
     try:
         uvicorn.run(
