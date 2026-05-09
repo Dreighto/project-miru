@@ -102,9 +102,7 @@ def _resolve_label_ids(team_id: str, label_names: list[str]) -> list[str]:
     data = _linear_gql(query, {"teamId": team_id})
     team = data.get("team")
     if team is None:
-        raise stdio_mcp.McpError(
-            "linear_write: team not found or inaccessible", -32000
-        )
+        raise stdio_mcp.McpError("linear_write: team not found or inaccessible", -32000)
     nodes = ((team.get("labels") or {}).get("nodes")) or []
     name_to_id = {n.get("name", "").lower(): n.get("id", "") for n in nodes if n.get("id")}
     result: list[str] = []
@@ -140,9 +138,7 @@ def _resolve_team_state_id(team_id: str, state_name: str) -> str:
     data = _linear_gql(query, {"teamId": team_id})
     team = data.get("team")
     if team is None:
-        raise stdio_mcp.McpError(
-            "linear_write: team not found or inaccessible", -32000
-        )
+        raise stdio_mcp.McpError("linear_write: team not found or inaccessible", -32000)
     nodes = ((team.get("states") or {}).get("nodes")) or []
     lower = state_name.strip().lower()
     matched = [s for s in nodes if s.get("name", "").lower() == lower]
@@ -643,9 +639,7 @@ def linear_list_labels(team_id: str | None = None, ctx: Any = None) -> str:
         data = _linear_gql(query, {"teamId": resolved_team_id})
         team = data.get("team")
         if team is None:
-            raise stdio_mcp.McpError(
-                "linear_write: team not found or inaccessible", -32000
-            )
+            raise stdio_mcp.McpError("linear_write: team not found or inaccessible", -32000)
         nodes = ((team.get("labels") or {}).get("nodes")) or []
         payload = [
             {"id": n.get("id", ""), "name": n.get("name", ""), "color": n.get("color", "")}
