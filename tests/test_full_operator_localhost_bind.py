@@ -7,7 +7,7 @@ import json
 import unittest
 
 from miru_mcp_gateway._context import current_profile
-from miru_mcp_gateway.server import _ProfileExtractor
+from miru_mcp_gateway.server import _ProfileExtractor, _validate_loopback_bind
 
 
 async def _empty_receive():
@@ -197,12 +197,129 @@ class TestFullOperatorLocalhostBind(unittest.TestCase):
         statuses = [m.get("status") for m in messages if m.get("type") == "http.response.start"]
         self.assertEqual(statuses, [403])
 
+    def test_no_header_from_public_ip_with_funnel_marker_proceeds(self):
+        """Tailscale Funnel preserves the original public client IP through
+        to the upstream, so claude.ai requests arrive with public IPs (e.g.
+        160.79.106.x) — outside both loopback and CGNAT. The Funnel injects
+        a ``Tailscale-Funnel-Request`` header that external clients cannot
+        spoof (Tailscale strips client-supplied Tailscale-* headers); its
+        presence is the trust signal for these requests."""
+        app, messages = _run_middleware(
+            _http_scope(
+                host="160.79.106.37",
+                headers=[_header("tailscale-funnel-request", "?1")],
+            )
+        )
+
+        self.assertTrue(app.called)
+        self.assertEqual(app.profile_seen, "full_operator")
+        self.assertEqual(messages, [{"type": "test.app_called"}])
+
+    def test_explicit_full_operator_from_public_ip_with_funnel_marker_proceeds(self):
+        app, messages = _run_middleware(
+            _http_scope(
+                host="34.170.211.100",
+                headers=[
+                    _header("tailscale-funnel-request", "?1"),
+                    _header("x-miru-tool-profile", "full_operator"),
+                ],
+            )
+        )
+
+        self.assertTrue(app.called)
+        self.assertEqual(app.profile_seen, "full_operator")
+        self.assertEqual(messages, [{"type": "test.app_called"}])
+
+    def test_public_ip_without_funnel_marker_still_rejected(self):
+        """Negative control: a public IP without the Funnel header (i.e. a
+        request that did NOT come through Tailscale) is still rejected.
+        The gateway binds loopback so this is unreachable in practice,
+        but the test pins the predicate to prevent regressions if the
+        bind is ever loosened."""
+        app, messages = _run_middleware(_http_scope(host="160.79.106.37"))
+
+        self.assertFalse(app.called)
+        statuses = [m.get("status") for m in messages if m.get("type") == "http.response.start"]
+        self.assertEqual(statuses, [403])
+
+    def test_funnel_marker_with_empty_value_does_not_grant_trust(self):
+        """Empty header value must NOT count as a positive marker — only
+        Tailscale sets a real Structured-Field value."""
+        app, messages = _run_middleware(
+            _http_scope(
+                host="160.79.106.37",
+                headers=[_header("tailscale-funnel-request", "")],
+            )
+        )
+
+        self.assertFalse(app.called)
+        statuses = [m.get("status") for m in messages if m.get("type") == "http.response.start"]
+        self.assertEqual(statuses, [403])
+
+    def test_funnel_marker_with_arbitrary_value_does_not_grant_trust(self):
+        """Strict per Tailscale's Structured Field spec: only ``?1`` is
+        accepted. Arbitrary truthy strings (e.g. ``true``, ``1``, ``yes``)
+        must NOT grant trust — they would let an attacker bypass the gate
+        if Tailscale ever changed the marker format and we silently
+        accepted the legacy form."""
+        for value in ("true", "1", "yes", "?0", "TRUE"):
+            with self.subTest(value=value):
+                app, messages = _run_middleware(
+                    _http_scope(
+                        host="160.79.106.37",
+                        headers=[_header("tailscale-funnel-request", value)],
+                    )
+                )
+                self.assertFalse(app.called, f"value={value!r} must not grant trust")
+                statuses = [
+                    m.get("status") for m in messages if m.get("type") == "http.response.start"
+                ]
+                self.assertEqual(statuses, [403], f"value={value!r} must yield 403")
+
     def test_stdio_like_non_http_scope_bypasses_localhost_check(self):
         app, messages = _run_middleware({"type": "lifespan", "client": ("10.0.0.5", 54321)})
 
         self.assertTrue(app.called)
         self.assertEqual(app.profile_seen, "full_operator")
         self.assertEqual(messages, [{"type": "test.app_called"}])
+
+
+class TestValidateLoopbackBind(unittest.TestCase):
+    """The Funnel-header trust check assumes the gateway binds loopback only.
+    `_validate_loopback_bind` enforces that invariant at startup so a
+    misconfigured MIRU_MCP_GATEWAY_HOST cannot silently downgrade security."""
+
+    def test_loopback_string_127_accepted(self):
+        _validate_loopback_bind("127.0.0.1")  # does not raise
+
+    def test_loopback_string_ipv6_accepted(self):
+        _validate_loopback_bind("::1")  # does not raise
+
+    def test_loopback_string_localhost_accepted(self):
+        _validate_loopback_bind("localhost")  # does not raise
+
+    def test_loopback_in_127_block_accepted(self):
+        _validate_loopback_bind("127.0.0.5")  # does not raise
+
+    def test_wildcard_bind_rejected(self):
+        with self.assertRaises(SystemExit) as ctx:
+            _validate_loopback_bind("0.0.0.0")
+        self.assertIn("not a loopback", str(ctx.exception))
+
+    def test_routable_lan_rejected(self):
+        with self.assertRaises(SystemExit) as ctx:
+            _validate_loopback_bind("192.168.1.10")
+        self.assertIn("not a loopback", str(ctx.exception))
+
+    def test_routable_public_rejected(self):
+        with self.assertRaises(SystemExit) as ctx:
+            _validate_loopback_bind("8.8.8.8")
+        self.assertIn("not a loopback", str(ctx.exception))
+
+    def test_garbage_value_rejected_with_clear_error(self):
+        with self.assertRaises(SystemExit) as ctx:
+            _validate_loopback_bind("not-an-ip-and-not-localhost")
+        self.assertIn("does not parse", str(ctx.exception))
 
 
 if __name__ == "__main__":
