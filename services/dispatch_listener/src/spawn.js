@@ -13,6 +13,15 @@ const { predictDispatchAsync } = require('./predict');
 const STDERR_TAIL_BYTES = 4096;
 const STDOUT_SCAN_BYTES = 8192;
 
+// Closed taxonomy of terminal causes. Every spawn ends with exactly one.
+const TERMINAL_CAUSES = Object.freeze(['spawn_error', 'timeout', 'exit_clean', 'exit_nonzero']);
+
+function computeTerminalCause(timedOut, exitCode) {
+  if (timedOut) return 'timeout';
+  if (exitCode === 0) return 'exit_clean';
+  return 'exit_nonzero';
+}
+
 // Scan stdout tail for terminal status markers emitted by workers.
 // Workers print "STATUS: CONFIRMED WORKING" or "CONFIRMED_WORKING" in stdout.
 // Returns 'CONFIRMED_WORKING' if found, null otherwise.
@@ -94,6 +103,14 @@ function readTail(filePath, maxBytes) {
     }
   } catch (_e) {
     return '';
+  }
+}
+
+function safeStatSize(filePath) {
+  try {
+    return fs.statSync(filePath).size;
+  } catch (_e) {
+    return 0;
   }
 }
 
@@ -375,6 +392,9 @@ function spawnWorker({
   // overwriting receipt rename. The `finalized` flag guarantees exactly one
   // terminal receipt + at most one DLQ row per spawn even when both events
   // fire (and even when the timeout races with a natural exit).
+  //
+  // worker_terminal is the single canonical terminal event. It fires exactly
+  // once per spawn from whichever handler wins the finalized race.
   let finalized = false;
   let timedOut = false;
   const timer = setTimeout(() => {
@@ -399,6 +419,19 @@ function spawnWorker({
     log.error('worker_spawn_error', { trace_id: traceId, error: err.message });
     const completedAt = new Date().toISOString();
     const stderrTail = readTail(stderrPath, STDERR_TAIL_BYTES);
+    log.info('worker_terminal', {
+      trace_id: traceId,
+      worker,
+      pid: child.pid,
+      exit_code: null,
+      signal: null,
+      timed_out: false,
+      cause: 'spawn_error',
+      status: 'FAILED',
+      duration_ms: new Date(completedAt) - new Date(startedAt),
+      stdout_bytes: 0,
+      stderr_bytes: safeStatSize(stderrPath),
+    });
     try {
       writeTerminalReceipt({
         traceId,
@@ -457,6 +490,19 @@ function spawnWorker({
       status,
       timed_out: timedOut,
     });
+    log.info('worker_terminal', {
+      trace_id: traceId,
+      worker,
+      pid: child.pid,
+      exit_code: exitCode,
+      signal,
+      timed_out: timedOut,
+      cause: computeTerminalCause(timedOut, exitCode),
+      status,
+      duration_ms: new Date(completedAt) - new Date(startedAt),
+      stdout_bytes: safeStatSize(stdoutPath),
+      stderr_bytes: safeStatSize(stderrPath),
+    });
 
     try {
       writeTerminalReceipt({
@@ -494,4 +540,11 @@ function spawnWorker({
   return { pid: child.pid, startedAt };
 }
 
-module.exports = { spawnWorker, readTail, readTailRaw, scanStdoutForStatus };
+module.exports = {
+  spawnWorker,
+  readTail,
+  readTailRaw,
+  scanStdoutForStatus,
+  computeTerminalCause,
+  TERMINAL_CAUSES,
+};
