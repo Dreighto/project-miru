@@ -44,11 +44,50 @@ function readTailRaw(filePath, maxBytes) {
   }
 }
 
+// PRO-335: recognize all four canonical terminal statuses from CLAUDE.md
+// + the ESCALATE pattern. Capture the diagnostic block following the status
+// line so result.json carries the worker's actual reason, not an empty string.
+//
+// Returns { status, category, summary }:
+//   status   = 'CONFIRMED_WORKING' | 'INCONCLUSIVE' | 'FAILED' | null
+//   category = string | null   (e.g. 'HUMAN-REQUIRED' for ESCALATE)
+//   summary  = string          (diagnostic block, capped at 4096 chars)
+//
+// ESCALATE is mapped to INCONCLUSIVE-with-summary so downstream consumers
+// don't need a new terminal state in TERMINAL_STATES. The category field
+// preserves the escalation reason (HUMAN-REQUIRED, SCOPE_EXPANSION, etc.).
 function scanStdoutForStatus(stdoutTail) {
-  if (!stdoutTail) return null;
-  if (/STATUS:\s*\bCONFIRMED[\s_]WORKING\b/i.test(stdoutTail)) return 'CONFIRMED_WORKING';
-  if (/\bCONFIRMED_WORKING\b/i.test(stdoutTail)) return 'CONFIRMED_WORKING';
-  return null;
+  const empty = { status: null, category: null, summary: '' };
+  if (!stdoutTail) return empty;
+
+  // Patterns ordered by specificity: explicit STATUS: lines first, then the
+  // loose fallback for CONFIRMED_WORKING anywhere. First match wins.
+  const patterns = [
+    { re: /STATUS:\s*\bCONFIRMED[\s_]WORKING\b/i, status: 'CONFIRMED_WORKING' },
+    { re: /STATUS:\s*ESCALATE:\s*([A-Z_-]+)\b/i, status: 'INCONCLUSIVE', escalate: true },
+    { re: /STATUS:\s*INCONCLUSIVE\b/i, status: 'INCONCLUSIVE' },
+    { re: /STATUS:\s*FAILED\b/i, status: 'FAILED' },
+    { re: /\bCONFIRMED_WORKING\b/i, status: 'CONFIRMED_WORKING' },
+  ];
+
+  for (const p of patterns) {
+    const m = stdoutTail.match(p.re);
+    if (!m) continue;
+    // Capture from the matched status line through the end of stdout. This
+    // is the worker's diagnostic block — the explanation that today gets
+    // dropped on the floor.
+    const block = stdoutTail.slice(m.index).trim();
+    const SUMMARY_CAP = 4096;
+    const TRUNCATION_MARKER = '\n... [truncated]';
+    const summary =
+      block.length > SUMMARY_CAP
+        ? block.slice(0, SUMMARY_CAP - TRUNCATION_MARKER.length) + TRUNCATION_MARKER
+        : block;
+    const category = p.escalate ? m[1] || null : null;
+    return { status: p.status, category, summary };
+  }
+
+  return empty;
 }
 
 function killProcessTree(child) {
@@ -472,13 +511,25 @@ function spawnWorker({
 
     // --print buffers all stdout until clean exit; a killed process flushes nothing.
     // Timeout → FAILED is intentional — no stdout data to scan.
+    // PRO-335: scanStdoutForStatus now returns {status, category, summary} so
+    // the worker's diagnostic block flows through to result.json instead of
+    // being silently replaced with an empty INCONCLUSIVE.
     let status;
+    let summary = '';
+    let escalationCategory = null;
     if (timedOut) {
       status = 'FAILED';
+      summary = stderrTail || '';
     } else if (exitCode === 0) {
-      status = scanStdoutForStatus(stdoutTail) || 'INCONCLUSIVE';
+      const scan = scanStdoutForStatus(stdoutTail);
+      status = scan.status || 'INCONCLUSIVE';
+      summary = scan.summary || '';
+      escalationCategory = scan.category;
     } else {
       status = 'FAILED';
+      const scan = scanStdoutForStatus(stdoutTail);
+      summary = scan.summary || stderrTail || '';
+      escalationCategory = scan.category;
     }
 
     log.info('worker_exit', {
@@ -513,6 +564,8 @@ function spawnWorker({
         completedAt,
         exitCode,
         stderrTail,
+        summary,
+        escalationCategory,
       });
 
       if (status === 'FAILED') {
