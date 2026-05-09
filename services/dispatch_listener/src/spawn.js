@@ -8,6 +8,7 @@ const log = require('./log');
 const { spec } = require('./allowlist');
 const { writeTerminalReceipt } = require('./receipt');
 const { writeDlqEntry } = require('./dlq');
+const { predictDispatchAsync } = require('./predict');
 
 const STDERR_TAIL_BYTES = 4096;
 const STDOUT_SCAN_BYTES = 8192;
@@ -299,6 +300,9 @@ function spawnWorker({
     model_requested: model,
     thinking_level_requested: thinkingLevel,
   });
+
+  // PRO-329: Hermes shadow prediction — fire-and-forget, never blocks spawn.
+  predictDispatchAsync({ traceId, worker, promptText });
 
   let child;
   try {
