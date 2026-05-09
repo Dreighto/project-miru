@@ -388,9 +388,21 @@ def linear_create_issue(
     }
     """
     try:
-        if label_names:
-            inp["labelIds"] = _resolve_label_ids(resolved_team_id, label_names)
-        if initial_state:
+        if label_names is not None:
+            if not isinstance(label_names, list) or any(
+                not isinstance(n, str) or not n.strip() for n in label_names
+            ):
+                raise stdio_mcp.McpError(
+                    "linear_write: label_names must be a list of non-empty strings", -32602
+                )
+            cleaned_labels = [n.strip() for n in label_names]
+            if cleaned_labels:
+                inp["labelIds"] = _resolve_label_ids(resolved_team_id, cleaned_labels)
+        if initial_state is not None:
+            if not isinstance(initial_state, str) or not initial_state.strip():
+                raise stdio_mcp.McpError(
+                    "linear_write: initial_state must be a non-empty string", -32602
+                )
             inp["stateId"] = _resolve_team_state_id(resolved_team_id, initial_state.strip())
         data = _linear_gql(mutation, {"input": inp})
         created = data.get("issueCreate") or {}
@@ -592,7 +604,7 @@ def linear_list_labels(team_id: str | None = None, ctx: Any = None) -> str:
     """List all issue labels for a Linear team.
 
     ``team_id`` defaults to MIRU_LINEAR_TEAM_ID. Returns a JSON array where
-    each element has ``id``, ``name``, and ``color``. Use the ``id`` values
+    each element has ``id``, ``name``, and ``color``. Use the ``name`` values
     from this response as ``label_names`` inputs to ``linear_create_issue``.
     """
     caller = gw_audit.caller_from_fastmcp_context(ctx)
