@@ -106,10 +106,23 @@ _CANON_LAYOUT: dict[str, str] = {
     "root/AGENTS.md": "AGENTS.md",
 }
 
-# Cache: <canon_path> -> {mtime_ns, sha256, byte_length, content_bytes}
+# Cache: (repo_root_str, canon_path) -> {mtime_ns, sha256, byte_length, content_bytes}
+# Snapshot cache: repo_root_str -> {"id": ..., "fingerprint": ...}
+#
+# CodeRabbit R1: cache keys MUST include repo_root because get_canon_file()
+# accepts a repo_root parameter and could be called with different roots
+# (e.g., test temp dirs vs production repo). Without per-repo scoping, a test
+# that loaded canon from /tmp/repo_A would corrupt the production cache.
+# In production we only have one repo_root, but the defense matters for
+# tests + future flexibility.
 _CACHE_LOCK = threading.Lock()
-_FILE_CACHE: dict[str, dict[str, Any]] = {}
-_SNAPSHOT_CACHE: dict[str, str] = {"id": "", "fingerprint": ""}
+_FILE_CACHE: dict[tuple[str, str], dict[str, Any]] = {}
+_SNAPSHOT_CACHE: dict[str, dict[str, str]] = {}
+
+
+def _repo_key(repo_root: Path) -> str:
+    """Stable string key for a repo_root, used in cache keys."""
+    return str(repo_root.resolve())
 
 
 class CanonAccessError(Exception):
@@ -133,7 +146,7 @@ def _hash_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _load_file(canon_path: str, abs_path: Path) -> dict[str, Any] | None:
+def _load_file(repo_key: str, canon_path: str, abs_path: Path) -> dict[str, Any] | None:
     """Load file content + compute metadata. Caller holds _CACHE_LOCK.
 
     Returns None if the file disappeared between an earlier exists() check
@@ -141,22 +154,26 @@ def _load_file(canon_path: str, abs_path: Path) -> dict[str, Any] | None:
     TOCTOU window is real on a busy host (file cleanup, antivirus quarantine,
     operator editing) and an unguarded FileNotFoundError would 500 the
     request instead of cleanly 404-ing.
+
+    CodeRabbit R1: repo_key is now part of the cache key so cross-repo
+    collisions are impossible.
     """
+    cache_key = (repo_key, canon_path)
     try:
         stat = abs_path.stat()
     except FileNotFoundError:
         # Drop any stale cached entry so a recreate-then-fetch sequence
         # doesn't keep serving the deleted file's old content.
-        _FILE_CACHE.pop(canon_path, None)
+        _FILE_CACHE.pop(cache_key, None)
         return None
     mtime_ns = stat.st_mtime_ns
-    cached = _FILE_CACHE.get(canon_path)
+    cached = _FILE_CACHE.get(cache_key)
     if cached and cached["mtime_ns"] == mtime_ns:
         return cached
     try:
         content_bytes = abs_path.read_bytes()
     except FileNotFoundError:
-        _FILE_CACHE.pop(canon_path, None)
+        _FILE_CACHE.pop(cache_key, None)
         return None
     entry = {
         "mtime_ns": mtime_ns,
@@ -164,7 +181,7 @@ def _load_file(canon_path: str, abs_path: Path) -> dict[str, Any] | None:
         "sha256": _hash_bytes(content_bytes),
         "content_bytes": content_bytes,
     }
-    _FILE_CACHE[canon_path] = entry
+    _FILE_CACHE[cache_key] = entry
     return entry
 
 
@@ -177,15 +194,20 @@ def _refresh_snapshot(repo_root: Path) -> tuple[str, dict[str, dict[str, Any]]]:
     worker can record everything in a single round-trip without paying the
     bandwidth of pulling all 42 files at spawn.
 
+    Side effect: every canon file's entry is loaded into _FILE_CACHE under
+    the (repo_key, canon_path) key. This is what get_canon_file relies on
+    for its single-pass race-free read (CodeRabbit R1).
+
     Caller holds _CACHE_LOCK.
     """
+    repo_key = _repo_key(repo_root)
     per_file_meta: dict[str, dict[str, Any]] = {}
     fingerprint_parts: list[str] = []  # also drives a quick "did anything change" check
     for canon_path, rel_path in _CANON_LAYOUT.items():
         abs_path = repo_root / rel_path
         # _load_file is itself TOCTOU-safe: returns None if the file is
         # missing or vanishes mid-read. We don't need an exists() pre-check.
-        entry = _load_file(canon_path, abs_path)
+        entry = _load_file(repo_key, canon_path, abs_path)
         if entry is None:
             # Canon file declared in layout but missing on disk. Should never
             # happen in production; defensive — surface via 'missing' marker.
@@ -205,12 +227,13 @@ def _refresh_snapshot(repo_root: Path) -> tuple[str, dict[str, dict[str, Any]]]:
         fingerprint_parts.append(f"{canon_path}:{entry['sha256']}")
 
     fingerprint = "\n".join(sorted(fingerprint_parts))
-    if fingerprint == _SNAPSHOT_CACHE.get("fingerprint"):
-        return _SNAPSHOT_CACHE["id"], per_file_meta
+    repo_snapshot = _SNAPSHOT_CACHE.setdefault(repo_key, {"id": "", "fingerprint": ""})
+    if fingerprint == repo_snapshot["fingerprint"]:
+        return repo_snapshot["id"], per_file_meta
 
     snapshot_id = _hash_bytes(fingerprint.encode("utf-8"))
-    _SNAPSHOT_CACHE["id"] = snapshot_id
-    _SNAPSHOT_CACHE["fingerprint"] = fingerprint
+    repo_snapshot["id"] = snapshot_id
+    repo_snapshot["fingerprint"] = fingerprint
     return snapshot_id, per_file_meta
 
 
@@ -229,15 +252,29 @@ def get_canon_file(repo_root: Path, canon_path: str) -> dict[str, Any]:
     forced the HTTP handler to use the same 404 payload for "you typed a
     wrong path" and "the canon file is gone" — operationally distinct
     failures. Distinct exceptions let the handler differentiate.
+
+    CodeRabbit R1: previously read the file via _load_file then called
+    _refresh_snapshot which re-read the same file. Between those two reads
+    (in-process lock prevents in-process races but NOT OS-level mtime
+    changes), the returned `entry.sha256` and `canon_snapshot_id` could be
+    derived from different bytes-on-disk. Now: refresh first (loads all
+    canon files in a single pass, populates _FILE_CACHE), then read the
+    cached entry. Single source of truth.
     """
     if canon_path not in _CANON_LAYOUT:
         raise NotAllowlistedError(canon_path)
-    abs_path = repo_root / _CANON_LAYOUT[canon_path]
+    repo_key = _repo_key(repo_root)
+    cache_key = (repo_key, canon_path)
     with _CACHE_LOCK:
-        entry = _load_file(canon_path, abs_path)
-        if entry is None:
+        snapshot_id, per_file_meta = _refresh_snapshot(repo_root)
+        if per_file_meta[canon_path].get("missing"):
             raise AllowlistedFileMissingError(canon_path)
-        snapshot_id, _ = _refresh_snapshot(repo_root)
+        entry = _FILE_CACHE.get(cache_key)
+        if entry is None:
+            # Defensive — _refresh_snapshot just populated this key. If we
+            # got here something raced very tightly (cache eviction or
+            # concurrent reset). Treat as missing.
+            raise AllowlistedFileMissingError(canon_path)
     return {
         "canon_path": canon_path,
         "content": entry["content_bytes"].decode("utf-8"),
@@ -266,8 +303,7 @@ def reset_cache_for_tests() -> None:
     calls this."""
     with _CACHE_LOCK:
         _FILE_CACHE.clear()
-        _SNAPSHOT_CACHE["id"] = ""
-        _SNAPSHOT_CACHE["fingerprint"] = ""
+        _SNAPSHOT_CACHE.clear()
 
 
 def register_canon_routes(mcp, repo_root: Path) -> None:

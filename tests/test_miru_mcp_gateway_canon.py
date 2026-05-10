@@ -314,10 +314,64 @@ class CanonRoutesHTTPTests(unittest.TestCase):
         self.assertEqual(body["canon_path"], "overlays/adopted-lessons.md")
 
     def test_route_canon_file_404_for_traversal_attempt(self) -> None:
-        # Path traversal must be blocked at the allowlist boundary, not at
-        # the filesystem layer.
-        response = self.client.get("/canon/../../etc/passwd")
+        # CodeRabbit R1: use URL-encoded segments so Starlette's router
+        # cannot normalize the traversal away before the handler sees it.
+        # Then assert the payload — not just status_code — to prove the 404
+        # came from the allowlist boundary (returning the canonical
+        # "not_in_canon_allowlist" error), NOT from the router 404'ing on a
+        # missing route. If we only checked status_code, a router-level 404
+        # would silently pass the test for the wrong reason.
+        response = self.client.get("/canon/%2E%2E%2F%2E%2E%2Fetc/passwd")
         self.assertEqual(response.status_code, 404)
+        body = response.json()
+        self.assertFalse(body["ok"])
+        self.assertEqual(body["error"], "not_in_canon_allowlist")
+        # The handler echoes the canon_path it saw — proves the request
+        # reached the handler with the encoded path intact.
+        self.assertIn("..", body["canon_path"])
+
+    # Note (CodeRabbit R1 follow-up): a plain `/canon/../../etc/passwd` test
+    # was attempted but httpx (TestClient's transport) normalizes `..`
+    # segments BEFORE the request even leaves the client. The request
+    # reaching the app is `/etc/passwd` — no route match, body is empty.
+    # The URL-encoded test above is the correct way to prove the allowlist
+    # is the rejection point: encoded segments survive httpx normalization
+    # and reach the handler verbatim.
+
+
+class CanonRoutesCrossRepoIsolationTests(unittest.TestCase):
+    """CodeRabbit R1: cache must isolate per repo_root. Two temp repos with
+    DIFFERENT content for the same canon_path must NOT cross-contaminate
+    each other's cached entry."""
+
+    def setUp(self) -> None:
+        self.tmp_a = Path(tempfile.mkdtemp(prefix="canon_iso_A_"))
+        self.tmp_b = Path(tempfile.mkdtemp(prefix="canon_iso_B_"))
+        self.addCleanup(lambda: shutil.rmtree(self.tmp_a, ignore_errors=True))
+        self.addCleanup(lambda: shutil.rmtree(self.tmp_b, ignore_errors=True))
+        for root, content in ((self.tmp_a, b"# from REPO A\n"), (self.tmp_b, b"# from REPO B\n")):
+            (root / ".miru" / "overlays").mkdir(parents=True)
+            (root / ".miru" / "overlays" / "workflow-git.md").write_bytes(content)
+        canon_routes.reset_cache_for_tests()
+
+    def test_two_repos_serve_their_own_content(self) -> None:
+        a = canon_routes.get_canon_file(self.tmp_a, "overlays/workflow-git.md")
+        b = canon_routes.get_canon_file(self.tmp_b, "overlays/workflow-git.md")
+        self.assertEqual(a["content"], "# from REPO A\n")
+        self.assertEqual(b["content"], "# from REPO B\n")
+        self.assertNotEqual(a["sha256"], b["sha256"])
+        # Snapshot ids must also differ — different content set per repo.
+        self.assertNotEqual(a["canon_snapshot_id"], b["canon_snapshot_id"])
+
+    def test_repo_a_cache_not_corrupted_by_repo_b_request(self) -> None:
+        # Prime A's cache, then hit B (which has different content for the
+        # same canon_path). Then re-hit A — must still return A's content.
+        a1 = canon_routes.get_canon_file(self.tmp_a, "overlays/workflow-git.md")
+        canon_routes.get_canon_file(self.tmp_b, "overlays/workflow-git.md")
+        a2 = canon_routes.get_canon_file(self.tmp_a, "overlays/workflow-git.md")
+        self.assertEqual(a1["content"], a2["content"])
+        self.assertEqual(a1["sha256"], a2["sha256"])
+        self.assertEqual(a1["canon_snapshot_id"], a2["canon_snapshot_id"])
 
 
 if __name__ == "__main__":
