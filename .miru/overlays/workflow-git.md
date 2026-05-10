@@ -19,11 +19,11 @@ CC may self-merge PRs that fall in the low-risk column below. Operator reviews a
 
 **No PR needed — commit direct to main:**
 
-Small, obviously-correct changes that carry no meaningful risk of breakage may be committed directly to main without opening a PR. Bugbot and CI do not need to run on these.
+> **NOTE (2026-05-10):** Branch protection on `main` now blocks all direct pushes — every change goes through a PR with the governance + hygiene checks running. The "no PR needed" tier below is **historical** and kept here for context; in practice every entry below now goes through a one-line PR (CC-merge tier, fastest review). Completion-log appends specifically use the `chore/<ticket>-completion-marker` branch pattern; see PRs #158 + #161 as examples. The append-only pre-commit hook still validates the diff is pure-append.
 
 - Version bumps in CI config (e.g. `node-version`, action runner pins) — one-liners
 - Typo or wording fixes in worker rule files (CLAUDE.md, AGENTS.md, etc.) — no logic change
-- Completion log entries (`data/cc_completion_log.jsonl` appends)
+- Completion log entries (`data/cc_completion_log.jsonl` appends) — **opens its own one-line `chore/<ticket>-completion-marker` PR**
 - Lint / format-only auto-fixes with no logic change
 
 **CC merges (fixes):**

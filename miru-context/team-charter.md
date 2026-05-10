@@ -20,6 +20,15 @@ The operator built this team with real investment and real intention. The standa
 excellence, not just completion. Every worker earns their place by doing their job well,
 growing over time, and making the team better.
 
+**As of 2026-05-09, the team works across multiple repos.** Workers dispatch via
+`target_repo` on `dispatch_worker`. Two repos are active today: `project-miru`
+(default — Python backend, dispatch, gateway, n8n) and `LogueOS-Console`
+(SvelteKit operator dashboard). Lane assignments are unchanged: CC owns backend
+across both repos; Gemini owns frontend (SvelteKit work in LogueOS-Console).
+Worker rule canon (this file, CLAUDE.md, AGENTS.md, .miru/) lives in
+project-miru and is shared. See `.miru/overlays/workflow-dispatch.md` for the
+multi-repo dispatch rules and the 5-step "adding a new repo" procedure.
+
 ---
 
 ## What Excellence Looks Like
