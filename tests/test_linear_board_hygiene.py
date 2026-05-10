@@ -151,7 +151,7 @@ class TestActiveArchivedTicketQueued(unittest.TestCase):
             _UPDATE_SUCCESS,
         ]
         with mock.patch.object(lbh, "_gql", side_effect=_make_gql_side_effect(*responses)):
-            count = lbh.run_hygiene(_FAKE_KEY)
+            count = lbh.run_hygiene(_FAKE_KEY, dry_run=False)
 
         self.assertEqual(count, 1)
 
@@ -170,7 +170,7 @@ class TestDoneOrCanceledTicketSkipped(unittest.TestCase):
     def test_done_ticket_is_skipped(self):
         page = self._page_with(_ISSUE_DONE_ARCHIVED)
         with mock.patch.object(lbh, "_gql", side_effect=_make_gql_side_effect(page)) as mock_gql:
-            count = lbh.run_hygiene(_FAKE_KEY)
+            count = lbh.run_hygiene(_FAKE_KEY, dry_run=False)
 
         # The GQL filter in the query already excludes done/canceled, but the
         # Python-side double-check in _fetch_archived_active_issues is what we
@@ -182,7 +182,7 @@ class TestDoneOrCanceledTicketSkipped(unittest.TestCase):
     def test_canceled_ticket_is_skipped(self):
         page = self._page_with(_ISSUE_CANCELED_ARCHIVED)
         with mock.patch.object(lbh, "_gql", side_effect=_make_gql_side_effect(page)) as mock_gql:
-            count = lbh.run_hygiene(_FAKE_KEY)
+            count = lbh.run_hygiene(_FAKE_KEY, dry_run=False)
 
         self.assertEqual(mock_gql.call_count, 1)
         self.assertEqual(count, 0)
@@ -228,7 +228,7 @@ class TestSingleTicketFailureDoesNotAbortBatch(unittest.TestCase):
             raise AssertionError(f"Unexpected GQL call #{n}")
 
         with mock.patch.object(lbh, "_gql", side_effect=selective_gql):
-            count = lbh.run_hygiene(_FAKE_KEY)
+            count = lbh.run_hygiene(_FAKE_KEY, dry_run=False)
 
         # Only the second ticket succeeded; the batch continued past the error.
         self.assertEqual(count, 1)
