@@ -123,7 +123,10 @@ def _gql(api_key: str, query: str, variables: dict[str, Any] | None = None) -> d
     Raises RuntimeError on HTTP error or GraphQL top-level errors.
     Handles 429 with one retry after _RATE_LIMIT_SLEEP_S seconds.
     """
-    import requests  # deferred so pytest collection works without the package
+    try:
+        import requests  # deferred so pytest collection works without the package
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("requests is required: pip install requests") from exc
 
     headers = {
         "Authorization": api_key,
@@ -134,7 +137,10 @@ def _gql(api_key: str, query: str, variables: dict[str, Any] | None = None) -> d
         payload["variables"] = variables
 
     for attempt in range(_RATE_LIMIT_RETRY + 1):
-        resp = requests.post(_LINEAR_API_URL, json=payload, headers=headers, timeout=30)
+        try:
+            resp = requests.post(_LINEAR_API_URL, json=payload, headers=headers, timeout=30)
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Linear API request failed: {exc}") from exc
         if resp.status_code == 429:
             if attempt < _RATE_LIMIT_RETRY:
                 print(
@@ -146,7 +152,10 @@ def _gql(api_key: str, query: str, variables: dict[str, Any] | None = None) -> d
             raise RuntimeError("Rate-limited by Linear API and retry exhausted.")
         if not resp.ok:
             raise RuntimeError(f"Linear API HTTP {resp.status_code}: {resp.text[:200]}")
-        body = resp.json()
+        try:
+            body = resp.json()
+        except ValueError as exc:
+            raise RuntimeError(f"Linear API returned non-JSON response: {exc}") from exc
         errors = body.get("errors")
         if errors:
             raise RuntimeError(f"Linear GraphQL errors: {errors}")
@@ -223,7 +232,7 @@ def _cancel_issue(api_key: str, issue_id: str, state_id: str) -> bool:
 def run_hygiene(
     api_key: str,
     team_filter: str | None = None,
-    dry_run: bool = False,
+    dry_run: bool = True,
     json_output: bool = False,
 ) -> int:
     """Main logic; returns count of tickets moved (or that would be moved).
@@ -265,7 +274,22 @@ def run_hygiene(
         team_id = (issue.get("team") or {}).get("id", "")
 
         if team_id not in canceled_state_cache:
-            canceled_state_cache[team_id] = _get_canceled_state_id(api_key, team_id)
+            try:
+                canceled_state_cache[team_id] = _get_canceled_state_id(api_key, team_id)
+            except RuntimeError as exc:
+                canceled_state_cache[team_id] = None
+                rows.append(f"  {identifier:<12} ERROR — canceled state lookup failed: {exc}")
+                errors += 1
+                ticket_records.append(
+                    {
+                        "id": identifier,
+                        "title": title,
+                        "from_state": old_state,
+                        "action": "error",
+                        "reason": "canceled_state_lookup_failed",
+                    }
+                )
+                continue
 
         canceled_id = canceled_state_cache[team_id]
         if canceled_id is None:
@@ -379,10 +403,16 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Cancel Linear tickets that are archived but still in active states."
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--execute",
+        action="store_true",
+        help="Apply cancellations. Without this flag the script runs in dry-run (preview) mode.",
+    )
+    mode.add_argument(
         "--dry-run",
         action="store_true",
-        help="Print what would be canceled; make no changes.",
+        help="Preview only; make no changes (default behavior, kept for explicitness).",
     )
     parser.add_argument(
         "--json",
@@ -406,7 +436,10 @@ def main() -> int:
 
     try:
         run_hygiene(
-            api_key, team_filter=args.team, dry_run=args.dry_run, json_output=args.json_output
+            api_key,
+            team_filter=args.team,
+            dry_run=not args.execute,
+            json_output=args.json_output,
         )
     except RuntimeError as exc:
         print(f"[hygiene] fatal: {exc}", file=sys.stderr)
