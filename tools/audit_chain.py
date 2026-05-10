@@ -30,6 +30,15 @@ from typing import Any
 CHAIN_FIELD_PREV = "prev_hash"
 CHAIN_FIELD_HASH = "row_hash"
 
+# v2 chain (post LOS-10 boundary cutover): domain-separated, block-index-
+# bound. Formula: h_i = SHA256("DGASv1" || str(i) || h_{i-1} || SHA256(canonical_payload_i))
+# The "DGASv1" prefix is the cryptographic construction version, NOT the
+# chain segment version. See tools/verify_dgas_boundary.py for the
+# authoritative description of the construction. Keep these two files in
+# lockstep — any change here must mirror to the verifier.
+CHAIN_FIELD_BLOCK_INDEX = "block_index"
+DGAS_V2_DOMAIN_PREFIX = b"DGASv1"
+
 
 @dataclass
 class ChainResult:
@@ -168,6 +177,133 @@ def append_chained(path: Path, row: dict[str, Any], *, fsync: bool = False) -> s
             fh.flush()
             _os.fsync(fh.fileno())
     return row_hash
+
+
+def _hash_v2_row(block_index: int, prev_hash: str | None, payload: dict[str, Any]) -> str:
+    """Compute the v2 row hash for a payload at block_index.
+
+    Mirrors tools/verify_dgas_boundary.py::_hash_v2_row. The two MUST stay
+    byte-for-byte identical — the standalone verifier is the auditor's
+    source of truth, and divergence here means our writes won't verify.
+
+    Formula: SHA256("DGASv1" || str(i) || h_{i-1} || SHA256(canonical_payload_i))
+
+    - prev_hash is the v1 chain's terminal hash (from the boundary manifest)
+      for the first v2 row, then the previous v2 row's row_hash thereafter.
+    - The first v2 row has prev_hash set to the manifest's terminal_hash
+      (never None — the boundary anchor IS the prev_hash).
+    """
+    prev_bytes = b"" if prev_hash is None else prev_hash.encode("ascii")
+    payload_inner_hash = hashlib.sha256(_canonical(payload).encode("utf-8")).digest()
+    combined = (
+        DGAS_V2_DOMAIN_PREFIX + str(block_index).encode("ascii") + prev_bytes + payload_inner_hash
+    )
+    return hashlib.sha256(combined).hexdigest()
+
+
+def _read_last_v2_state(path: Path) -> tuple[str | None, int | None]:
+    """Return (last_row_hash, last_block_index) for a v2-chained file.
+
+    Returns (None, None) for an empty/missing file. Walks from the tail like
+    _read_last_chained, but extracts both the row_hash AND the block_index
+    so the next append can increment correctly. The block_index is required
+    to compute the next v2 row hash.
+    """
+    if not path.exists() or path.stat().st_size == 0:
+        return None, None
+    try:
+        size = path.stat().st_size
+        chunk = min(size, 65536)
+        with path.open("rb") as fh:
+            fh.seek(size - chunk)
+            data = fh.read()
+    except OSError:
+        return None, None
+
+    text = data.decode("utf-8", errors="replace")
+    for raw in reversed(text.splitlines()):
+        line = raw.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(obj, dict):
+            continue
+        rh = obj.get(CHAIN_FIELD_HASH)
+        bi = obj.get(CHAIN_FIELD_BLOCK_INDEX)
+        if isinstance(rh, str) and rh and isinstance(bi, int):
+            return rh, bi
+        # v2 files MUST have row_hash + block_index on every row; if we
+        # find a row without them, the file is corrupt. Return None to
+        # force the caller to handle it (typically: refuse to append).
+        return None, None
+    return None, None
+
+
+def append_v2_chained(
+    path: Path,
+    row: dict[str, Any],
+    *,
+    anchor_prev_hash: str | None = None,
+    anchor_block_index: int | None = None,
+    fsync: bool = False,
+) -> tuple[str, int]:
+    """Append ``row`` to ``path`` using the v2 chain formula.
+
+    Post-LOS-10-boundary-cutover writer. For the FIRST row in a v2 file,
+    the caller MUST provide ``anchor_prev_hash`` (= boundary manifest's
+    terminal_hash) and ``anchor_block_index`` (= manifest.new_chain_starts_at).
+    For subsequent rows, the function reads the previous row's hash + index
+    from the file tail.
+
+    ``row`` must not contain prev_hash, row_hash, or block_index keys; they
+    are added here. The payload is canonicalized identically to v1.
+
+    Returns (row_hash, block_index) of the row written.
+
+    Raises:
+        ValueError: if the file exists with rows but tail parse fails, or
+            if the file is empty and no anchor is provided.
+    """
+    import os as _os
+
+    body = {
+        k: v
+        for k, v in row.items()
+        if k not in (CHAIN_FIELD_PREV, CHAIN_FIELD_HASH, CHAIN_FIELD_BLOCK_INDEX)
+    }
+
+    last_hash, last_block_index = _read_last_v2_state(path)
+    if last_hash is None:
+        # First row in this v2 file. The caller must supply the boundary anchor.
+        if anchor_prev_hash is None or anchor_block_index is None:
+            raise ValueError(
+                "append_v2_chained: file is empty/missing — anchor_prev_hash and "
+                "anchor_block_index are required for the first v2 row."
+            )
+        prev_hash: str = anchor_prev_hash
+        block_index: int = anchor_block_index
+    else:
+        prev_hash = last_hash
+        block_index = last_block_index + 1
+
+    row_hash = _hash_v2_row(block_index, prev_hash, body)
+    final = {
+        **body,
+        CHAIN_FIELD_PREV: prev_hash,
+        CHAIN_FIELD_BLOCK_INDEX: block_index,
+        CHAIN_FIELD_HASH: row_hash,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(final, separators=(",", ":"), ensure_ascii=False) + "\n"
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(line)
+        if fsync:
+            fh.flush()
+            _os.fsync(fh.fileno())
+    return row_hash, block_index
 
 
 def validate_chain(path: Path) -> ChainResult:
