@@ -221,7 +221,9 @@ Before declaring CONFIRMED_WORKING, you MUST verify the change end-to-end via Pl
 If the screenshot shows a 500/blank/error page, OR if console_messages returns ANY errors, the status is INCONCLUSIVE not CONFIRMED. Iterate until both pass. Include the screenshot filename in your terminal-state output as proof.
 ```
 
-Squash-merge audit: ALSO before declaring CONFIRMED_WORKING, run `git diff origin/main..HEAD --stat` and confirm every file you intended to ship is in the diff. PR #5 (LOS-5 Activity tab) shipped a squash that dropped 4 of 6 files silently; gemini's CONFIRMED_WORKING was a lie because it never re-fetched main after the merge. Add a final `git fetch origin && git diff origin/main..HEAD` check to your dispatch flow.
+Squash-merge audit: ALSO before declaring CONFIRMED_WORKING, run `git fetch origin && git diff origin/main..HEAD --stat` and confirm every file you intended to ship is in the diff. PR #5 (LOS-5 Activity tab) shipped a squash that dropped 4 of 6 files silently; gemini's CONFIRMED_WORKING was a lie because it never re-fetched main after the merge. Add a final `git fetch origin && git diff origin/main..HEAD --stat` check to your dispatch flow.
+
+**Note:** this squash-merge audit applies to ALL dispatched workers, not just frontend. Run it after the PR is merged (so `HEAD` on `main` equals the merge commit). Reference: LOS-5 Activity tab (PR #5) where 4 of 6 files were silently dropped. If you prefer supplying the merge commit SHA explicitly, you may run `git fetch origin && git diff origin/main..<merge-commit> --stat` instead.
 
 ---
 
