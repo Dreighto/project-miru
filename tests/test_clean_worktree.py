@@ -155,5 +155,83 @@ class CleanTest(unittest.TestCase):
         self.assertFalse(os.path.exists(target))
 
 
+class CliCwdFlagTest(unittest.TestCase):
+    """PRO-338: --cwd flag lets the dispatch_listener invoke from outside the worktree.
+
+    These tests run the script as a subprocess (the way spawn.js calls it) to
+    verify the CLI surface, not just the importable function.
+    """
+
+    def setUp(self) -> None:
+        self.tmpdir = tempfile.mkdtemp()
+        _init_git_repo(self.tmpdir)
+
+    def tearDown(self) -> None:
+        import shutil
+
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+    def _run_script(self, args: list[str], invoke_from: str) -> subprocess.CompletedProcess[str]:
+        """Invoke clean_worktree.py as a subprocess from `invoke_from` directory."""
+        return subprocess.run(
+            [sys.executable, str(MODULE_PATH), *args],
+            cwd=invoke_from,
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+
+    def test_cwd_flag_targets_directory_outside_invoke_dir(self) -> None:
+        # Make a target dir somewhere unrelated to where we invoke from.
+        # Drop a gitignored artifact in it. Invoke the script from project-miru's
+        # tools/ (or any unrelated dir). The --cwd flag should make it operate
+        # on the target dir, not on the invoke dir.
+        target_artifact = os.path.join(self.tmpdir, "test-results")
+        os.makedirs(target_artifact)
+        Path(os.path.join(target_artifact, "out.xml")).write_text("data")
+
+        # Invoke from a totally different dir (the script's own parent).
+        invoke_from = str(MODULE_PATH.parent.parent)  # repo root
+
+        result = self._run_script(["--cwd", self.tmpdir], invoke_from)
+
+        self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
+        # The artifact should have been removed in the target tmpdir.
+        self.assertFalse(
+            os.path.exists(target_artifact),
+            f"expected {target_artifact} to be cleaned via --cwd flag",
+        )
+
+    def test_no_cwd_flag_falls_back_to_getcwd(self) -> None:
+        # Backward compat: invoking without --cwd uses os.getcwd(), so running
+        # the script with cwd=tmpdir cleans tmpdir. This is the pre-PRO-338
+        # behavior the dispatch_listener used to rely on.
+        target_artifact = os.path.join(self.tmpdir, "playwright-report")
+        os.makedirs(target_artifact)
+        Path(os.path.join(target_artifact, "index.html")).write_text("<html>")
+
+        result = self._run_script([], invoke_from=self.tmpdir)
+
+        self.assertEqual(result.returncode, 0, f"stderr: {result.stderr}")
+        self.assertFalse(os.path.exists(target_artifact))
+
+    def test_cwd_flag_with_nonexistent_directory_exits_2(self) -> None:
+        # Defensive: invalid --cwd should fail loudly rather than silently
+        # do nothing (which would mask bugs in the dispatcher).
+        result = self._run_script(
+            ["--cwd", os.path.join(self.tmpdir, "definitely-does-not-exist")],
+            invoke_from=str(MODULE_PATH.parent.parent),
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("CLEAN_ERROR", result.stderr)
+
+    def test_help_flag_shows_cwd_documentation(self) -> None:
+        # Belt-and-suspenders: verify the --cwd flag is documented in the help
+        # output so an operator running `python clean_worktree.py --help` sees it.
+        result = self._run_script(["--help"], invoke_from=str(MODULE_PATH.parent.parent))
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("--cwd", result.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

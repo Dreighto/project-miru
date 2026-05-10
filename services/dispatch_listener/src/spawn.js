@@ -153,25 +153,45 @@ function safeStatSize(filePath) {
   }
 }
 
-// PRO-316: run `python tools/clean_worktree.py` before spawning to remove
-// known-safe gitignored artifacts (test-results/, playwright-report/, etc.)
-// that would fail the worker's worktree cleanliness gate.
-function cleanWorktree(cwd, traceId) {
+// PRO-316/PRO-338: run clean_worktree.py before spawning to remove known-safe
+// gitignored artifacts (test-results/, playwright-report/, .pytest_cache/,
+// __pycache__, node_modules/.cache) that would fail the worker's worktree
+// cleanliness gate.
+//
+// PRO-338 (2026-05-10): the script now lives in project-miru's tools/ and is
+// invoked via absolute path with --cwd <worker_cwd>. Previously this ran
+// `python tools/clean_worktree.py` with cwd=<worker_cwd>, which broke for
+// non-miru worktrees (LogueOS-Console-w1) where tools/ doesn't exist —
+// the listener log had a worktree_auto_clean_failed warning on every
+// multi-repo dispatch, and the cleanup never actually happened. Now the
+// script is project-miru's tooling regardless of where the worker lives.
+const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
+const CLEAN_WORKTREE_SCRIPT = path.join(REPO_ROOT, 'tools', 'clean_worktree.py');
+
+function cleanWorktree(cwd, traceId, opts) {
+  // opts.execSync is for tests; default to the real execSync.
+  const exec = (opts && opts.execSync) || execSync;
   try {
-    const output = execSync('python tools/clean_worktree.py', {
-      cwd,
+    const output = exec(`python "${CLEAN_WORKTREE_SCRIPT}" --cwd "${cwd}"`, {
+      // No `cwd` here — the script reads --cwd from argv. Running from
+      // REPO_ROOT (or anywhere) doesn't matter; --cwd controls the target.
       timeout: 15000,
       encoding: 'utf8',
       windowsHide: true,
     });
     log.info('worktree_auto_clean', {
       trace_id: traceId,
+      cwd,
       output: (output || '').trim().slice(0, 500),
     });
     return { ok: true };
   } catch (err) {
     const stderr = String(err.stderr || err.message || '').trim();
-    log.warn('worktree_auto_clean_failed', { trace_id: traceId, stderr: stderr.slice(0, 500) });
+    log.warn('worktree_auto_clean_failed', {
+      trace_id: traceId,
+      cwd,
+      stderr: stderr.slice(0, 500),
+    });
     return { ok: false, error: stderr.slice(0, 300) };
   }
 }
@@ -906,5 +926,7 @@ module.exports = {
   TERMINAL_CAUSES,
   parkingBranchForCwd,
   cleanupWorktree,
+  cleanWorktree,
   verifyWorktreeParked,
+  CLEAN_WORKTREE_SCRIPT,
 };

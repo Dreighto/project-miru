@@ -8,15 +8,24 @@ Only removes directories that git confirms are ignored. Never touches tracked
 files or staged changes.
 
 Usage:
-    python tools/clean_worktree.py
+    python tools/clean_worktree.py            # operates on current working dir
+    python tools/clean_worktree.py --cwd PATH # operates on PATH
+
+The --cwd flag (PRO-338, 2026-05-10) lets the dispatch_listener invoke this
+script from project-miru's REPO_ROOT while pointing it at any worker worktree
+— including non-miru repos like LogueOS-Console that don't have tools/ on their
+own filesystem. Without --cwd, the dispatcher would have to chdir into each
+worktree (and hope tools/ exists there), which it doesn't for multi-repo dispatch.
 
 Exit codes:
     0 = cleanup succeeded (or nothing to clean)
     1 = unexpected error during cleanup
+    2 = invalid --cwd argument (path doesn't exist or isn't a directory)
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shutil
@@ -51,9 +60,10 @@ def _is_gitignored(path: str, cwd: str) -> bool:
             cwd=cwd,
             timeout=5,
         )
-        return result.returncode == 0
     except Exception:
         return False
+    else:
+        return result.returncode == 0
 
 
 def clean(cwd: str | None = None) -> dict[str, list[str]]:
@@ -89,8 +99,33 @@ def clean(cwd: str | None = None) -> dict[str, list[str]]:
     return {"cleaned": cleaned, "skipped": skipped, "errors": errors}
 
 
-def main() -> None:
-    cwd = os.getcwd()
+def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Auto-clean gitignored worktree artifacts.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--cwd",
+        default=None,
+        help=(
+            "Operate on this directory instead of the current working dir. "
+            "Required when the script is invoked from outside the target worktree "
+            "(e.g. dispatch_listener pointing at a multi-repo worker slot)."
+        ),
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv)
+
+    cwd = args.cwd if args.cwd is not None else os.getcwd()
+    if not os.path.isdir(cwd):
+        # Don't proceed against a non-existent path — the script's git-check-ignore
+        # call would silently fail, returning nothing to clean and masking the bug.
+        print(f"CLEAN_ERROR: --cwd path is not a directory: {cwd}", file=sys.stderr)
+        sys.exit(2)
+
     result = clean(cwd)
 
     print(json.dumps(result, indent=2), file=sys.stderr)
