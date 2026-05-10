@@ -5,12 +5,15 @@ const assert = require('node:assert/strict');
 
 const { checkNoPrAsync } = require('../src/spawn');
 
-// checkNoPrAsync is fire-and-forget (setImmediate). Tests use a Promise wrapper
-// to await the deferred execution.
+// checkNoPrAsync is fire-and-forget (setImmediate). The function now uses async
+// execFile internally; the mock must call the callback to drive the logic.
+// setImmediate(resolve) fires after the scheduled setImmediate in checkNoPrAsync,
+// which works because mock callbacks are synchronous — all work completes before
+// the resolve setImmediate fires.
 
-function runCheck(args, mockExecFileSync) {
+function runCheck(args, mockExecFile) {
   return new Promise((resolve) => {
-    checkNoPrAsync(args, { execFileSync: mockExecFileSync });
+    checkNoPrAsync(args, { execFile: mockExecFile });
     // setImmediate fires after the current tick; resolve after it runs
     setImmediate(resolve);
   });
@@ -18,18 +21,18 @@ function runCheck(args, mockExecFileSync) {
 
 test('checkNoPrAsync: warns when PR count is 0', async () => {
   const warnings = [];
-  const mockExecFileSync = (bin, argv) => {
+  const mockExecFile = (bin, argv, _opts, callback) => {
     if (bin === 'git' && argv.includes('remote.origin.url')) {
-      return 'https://github.com/Dreighto/project-miru.git\n';
+      callback(null, 'https://github.com/Dreighto/project-miru.git\n');
+      return;
     }
     if (bin === 'gh' && argv.includes('pr')) {
-      return '0\n';
+      callback(null, '0\n');
+      return;
     }
-    throw new Error(`unexpected cmd: ${bin} ${argv.join(' ')}`);
+    callback(new Error(`unexpected cmd: ${bin} ${argv.join(' ')}`));
   };
 
-  // Patch log.warn to capture calls
-  require('../src/spawn');
   const log = require('../src/log');
   const original = log.warn;
   log.warn = (event, data) => {
@@ -38,7 +41,7 @@ test('checkNoPrAsync: warns when PR count is 0', async () => {
   try {
     await runCheck(
       { traceId: 'trace-no-pr', worker: 'gemini', branch: 'feat/los-3', cwd: 'D:\\dev\\miru-w1' },
-      mockExecFileSync
+      mockExecFile
     );
   } finally {
     log.warn = original;
@@ -53,14 +56,16 @@ test('checkNoPrAsync: warns when PR count is 0', async () => {
 
 test('checkNoPrAsync: no warning when PR exists', async () => {
   const warnings = [];
-  const mockExecFileSync = (bin, argv) => {
+  const mockExecFile = (bin, argv, _opts, callback) => {
     if (bin === 'git' && argv.includes('remote.origin.url')) {
-      return 'https://github.com/Dreighto/project-miru.git\n';
+      callback(null, 'https://github.com/Dreighto/project-miru.git\n');
+      return;
     }
     if (bin === 'gh' && argv.includes('pr')) {
-      return '1\n';
+      callback(null, '1\n');
+      return;
     }
-    throw new Error(`unexpected cmd: ${bin} ${argv.join(' ')}`);
+    callback(new Error(`unexpected cmd: ${bin} ${argv.join(' ')}`));
   };
 
   const log = require('../src/log');
@@ -71,7 +76,7 @@ test('checkNoPrAsync: no warning when PR exists', async () => {
   try {
     await runCheck(
       { traceId: 'trace-has-pr', worker: 'gemini', branch: 'feat/los-4', cwd: 'D:\\dev\\miru-w1' },
-      mockExecFileSync
+      mockExecFile
     );
   } finally {
     log.warn = original;
@@ -83,14 +88,16 @@ test('checkNoPrAsync: no warning when PR exists', async () => {
 
 test('checkNoPrAsync: silently skips when gh throws', async () => {
   const warnings = [];
-  const mockExecFileSync = (bin, argv) => {
+  const mockExecFile = (bin, argv, _opts, callback) => {
     if (bin === 'git' && argv.includes('remote.origin.url')) {
-      return 'https://github.com/Dreighto/project-miru.git\n';
+      callback(null, 'https://github.com/Dreighto/project-miru.git\n');
+      return;
     }
     if (bin === 'gh' && argv.includes('pr')) {
-      throw new Error('gh: command not found');
+      callback(new Error('gh: command not found'));
+      return;
     }
-    throw new Error(`unexpected cmd: ${bin} ${argv.join(' ')}`);
+    callback(new Error(`unexpected cmd: ${bin} ${argv.join(' ')}`));
   };
 
   const log = require('../src/log');
@@ -106,7 +113,7 @@ test('checkNoPrAsync: silently skips when gh throws', async () => {
         branch: 'feat/los-5',
         cwd: 'D:\\dev\\miru-w1',
       },
-      mockExecFileSync
+      mockExecFile
     );
   } finally {
     log.warn = original;
@@ -118,11 +125,12 @@ test('checkNoPrAsync: silently skips when gh throws', async () => {
 
 test('checkNoPrAsync: silently skips when remote URL cannot be parsed', async () => {
   const warnings = [];
-  const mockExecFileSync = (bin, argv) => {
+  const mockExecFile = (bin, argv, _opts, callback) => {
     if (bin === 'git' && argv.includes('remote.origin.url')) {
-      return 'not-a-valid-url\n';
+      callback(null, 'not-a-valid-url\n');
+      return;
     }
-    throw new Error(`unexpected cmd: ${bin} ${argv.join(' ')}`);
+    callback(new Error(`unexpected cmd: ${bin} ${argv.join(' ')}`));
   };
 
   const log = require('../src/log');
@@ -133,7 +141,7 @@ test('checkNoPrAsync: silently skips when remote URL cannot be parsed', async ()
   try {
     await runCheck(
       { traceId: 'trace-bad-url', worker: 'gemini', branch: 'feat/los-6', cwd: 'D:\\dev\\miru-w1' },
-      mockExecFileSync
+      mockExecFile
     );
   } finally {
     log.warn = original;

@@ -494,60 +494,72 @@ function cleanupWorktree(cwd, traceId, _deps) {
 
 // PRO-342: After a CONFIRMED_WORKING exit, verify that a PR was opened for the
 // worker's branch. Fire-and-forget via setImmediate — never blocks the listener
-// event loop or delays onDone. Injectable _deps.execFileSync for testability.
+// event loop or delays onDone. Injectable _deps.execFile for testability.
 function checkNoPrAsync({ traceId, worker, branch, cwd }, _deps) {
   setImmediate(() => {
-    const execF = (_deps && _deps.execFileSync) || execFileSync;
-    try {
-      const remoteUrl = execF('git', ['config', '--get', 'remote.origin.url'], {
-        cwd,
-        timeout: 5000,
-        encoding: 'utf8',
-        windowsHide: true,
-      }).trim();
-      const m = remoteUrl.match(/[/:]([^/:]+)\/([^/]+?)(\.git)?$/);
-      if (!m) {
-        log.info('no_pr_check_skipped', { trace_id: traceId, reason: 'cannot_parse_remote_url' });
-        return;
+    const execFileAsync = (_deps && _deps.execFile) || execFile;
+    execFileAsync(
+      'git',
+      ['config', '--get', 'remote.origin.url'],
+      { cwd, timeout: 5000, encoding: 'utf8', windowsHide: true },
+      (_err, stdout) => {
+        if (_err) {
+          log.info('no_pr_check_skipped', {
+            trace_id: traceId,
+            error: String(_err.message || _err).slice(0, 200),
+          });
+          return;
+        }
+        const remoteUrl = stdout.trim();
+        const m = remoteUrl.match(/[/:]([^/:]+)\/([^/]+?)(\.git)?$/);
+        if (!m) {
+          log.info('no_pr_check_skipped', { trace_id: traceId, reason: 'cannot_parse_remote_url' });
+          return;
+        }
+        const targetRepo = `${m[1]}/${m[2]}`;
+        execFileAsync(
+          'gh',
+          [
+            'pr',
+            'list',
+            '--repo',
+            targetRepo,
+            '--head',
+            branch,
+            '--json',
+            'number',
+            '--jq',
+            'length',
+          ],
+          { timeout: 15000, encoding: 'utf8', windowsHide: true },
+          (_err2, stdout2) => {
+            if (_err2) {
+              log.info('no_pr_check_skipped', {
+                trace_id: traceId,
+                error: String(_err2.message || _err2).slice(0, 200),
+              });
+              return;
+            }
+            const countStr = stdout2.trim();
+            const count = parseInt(countStr, 10);
+            if (isNaN(count)) {
+              log.info('no_pr_check_skipped', {
+                trace_id: traceId,
+                reason: 'malformed_gh_output',
+                raw: countStr.slice(0, 100),
+              });
+            } else if (count === 0) {
+              log.warn('worker_no_pr_warning', {
+                trace_id: traceId,
+                worker,
+                branch,
+                target_repo: targetRepo,
+              });
+            }
+          }
+        );
       }
-      const targetRepo = `${m[1]}/${m[2]}`;
-      const countStr = execF(
-        'gh',
-        [
-          'pr',
-          'list',
-          '--repo',
-          targetRepo,
-          '--head',
-          branch,
-          '--json',
-          'number',
-          '--jq',
-          'length',
-        ],
-        { timeout: 15000, encoding: 'utf8', windowsHide: true }
-      ).trim();
-      const count = parseInt(countStr, 10);
-      if (isNaN(count)) {
-        log.info('no_pr_check_skipped', {
-          trace_id: traceId,
-          reason: 'malformed_gh_output',
-          raw: countStr.slice(0, 100),
-        });
-      } else if (count === 0) {
-        log.warn('worker_no_pr_warning', {
-          trace_id: traceId,
-          worker,
-          branch,
-          target_repo: targetRepo,
-        });
-      }
-    } catch (err) {
-      log.info('no_pr_check_skipped', {
-        trace_id: traceId,
-        error: String(err.message || err).slice(0, 200),
-      });
-    }
+    );
   });
 }
 
@@ -975,7 +987,8 @@ function spawnWorker({
       /* best effort */
     }
 
-    // PRO-342: capture branch then clean up — async to avoid blocking onDone
+    // PRO-342: start branch probe fire-and-forget, then clean up immediately
+    // so onDone is never gated on the probe. Callback only calls checkNoPrAsync.
     if (status === 'CONFIRMED_WORKING') {
       execFile(
         'git',
@@ -983,15 +996,12 @@ function spawnWorker({
         { cwd, timeout: 2000, encoding: 'utf8', windowsHide: true },
         (_err, stdout) => {
           const workerBranch = _err ? null : stdout.trim() || null;
-          cleanupWorktree(cwd, traceId); // PRO-334
-          if (typeof onDone === 'function') onDone();
           if (workerBranch) checkNoPrAsync({ traceId, worker, branch: workerBranch, cwd });
         }
       );
-    } else {
-      cleanupWorktree(cwd, traceId); // PRO-334
-      if (typeof onDone === 'function') onDone();
     }
+    cleanupWorktree(cwd, traceId); // PRO-334 — always runs immediately
+    if (typeof onDone === 'function') onDone();
   });
 
   return { pid: child.pid, startedAt };
