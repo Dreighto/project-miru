@@ -33,16 +33,25 @@ The behavioral rule that every ticket MUST include a `projectId` lives in
 | ----------------- | -------------------------------------- | ------------------------------------------------------- |
 | NASDOOM Dashboard | `db48a3f5-73e7-4289-bbcc-0732028f5041` | NAS dashboard UI, SvelteKit, Plex/Sonarr/Radarr/SABnzbd |
 
-**Team: LogueOS (key: LOS, team_id: 98159aeb-6c6b-44e6-aa90-d50d51e58761)** — added 2026-05-09
+**Team: LogueOS (key: LOS, team_id: 98159aeb-6c6b-44e6-aa90-d50d51e58761)** — added 2026-05-09; restructured 2026-05-10
 
-| Project               | ID                                     | Route tickets here for                                                                                                                                    |
-| --------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| LogueOS Console       | `e68181cf-ed3c-459d-b253-d2bf84b3060a` | SvelteKit dashboard work — UI, components, monitoring screens. Repo: `Dreighto/LogueOS-Console`. Worker dispatches use `target_repo=LogueOS-Console`.     |
-| LogueOS Framework     | `34fa16f5-365e-483d-aa87-2010a49585b5` | Methodology docs at `D:\dev\LogueOS\` (01-07 + workers/), framework evolution, eventual extraction into `Dreighto/LogueOS` repo.                          |
-| LogueOS Orchestration | `b0b0f119-782e-4e70-8de9-8ec1a3cd359a` | PARKED. Future extraction of project-miru orchestration layer (dispatch_listener, gateway, n8n routing, Gatekeeper, Hermes) into standalone LogueOS repo. |
-| LogueOS (catch-all)   | `c03d8e7f-bd03-4136-9faa-a6734cba7abd` | Default project for LogueOS-team work that doesn't fit Console / Framework / Orchestration. Use only when the right project isn't obvious.                |
+| Project              | ID                                     | Route tickets here for                                                                                                                                                                                                                                                                                                                      |
+| -------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| LogueOS Console      | `e68181cf-ed3c-459d-b253-d2bf84b3060a` | SvelteKit dashboard work — UI, components, monitoring screens. Repo: `Dreighto/LogueOS-Console`. Worker dispatches use `target_repo=LogueOS-Console`.                                                                                                                                                                                       |
+| LogueOS Framework    | `34fa16f5-365e-483d-aa87-2010a49585b5` | Methodology docs at `D:\dev\LogueOS\` (01-07 + workers/), framework evolution, eventual extraction into `Dreighto/LogueOS` repo.                                                                                                                                                                                                            |
+| LogueOS Migration    | `e573cf5b-d587-467a-8709-ad188fe93757` | **One-time** orchestrator extraction work. LOS-10 + Step 1–9 sub-tickets + cutover-window operational tickets. Archives after the cutover lands and the standalone DGAS verifier returns valid. Created 2026-05-10 per operator's Option B.                                                                                                 |
+| LogueOS Orchestrator | `b0b0f119-782e-4e70-8de9-8ec1a3cd359a` | **Standing** project for the orchestrator codebase: dispatch_listener, gateway, canon, n8n workflows, scheduled tasks, audit logs. Bugs, features, maintenance, n8n hygiene fixes that depend on Migration landing (e.g. LOS-11). Repo: `Dreighto/LogueOS-Orchestrator` (post-extraction). Renamed from `LogueOS Orchestration` 2026-05-10. |
+| LogueOS (catch-all)  | `c03d8e7f-bd03-4136-9faa-a6734cba7abd` | Default project for LogueOS-team work that doesn't fit Console / Framework / Migration / Orchestrator. Use only when the right project isn't obvious.                                                                                                                                                                                       |
 
-**Never use** the legacy "Project Miru" catch-all (`7c2b40d5-058a-457d-84c7-d57d6bf3f281`). Always pick the specific project above. If unsure: default to Miru Orchestration / Autonomy for internal system work, or Docs / Canon / Process for rule/doc changes.
+**Routing rules (LogueOS team):**
+
+- **Dashboard UI work** → `LogueOS Console`. Repo: `Dreighto/LogueOS-Console`.
+- **Methodology / framework docs** → `LogueOS Framework`.
+- **The migration event itself** (LOS-10 + Step 1–9 + cutover ops) → `LogueOS Migration`. Lifecycle-bounded; will be archived once cutover validates.
+- **Anything ongoing about the orchestrator** (post-extraction code maintenance, new features, n8n fixes, gateway changes, dispatch_listener bugs, scheduled-task issues) → `LogueOS Orchestrator`.
+- **Cross-cutting / unclear** → `LogueOS (catch-all)` — last resort.
+
+**Never use** the legacy "Project Miru" catch-all (`7c2b40d5-058a-457d-84c7-d57d6bf3f281`). Always pick the specific project above. If unsure for project-miru work: default to Miru Orchestration / Autonomy for internal system work, or Docs / Canon / Process for rule/doc changes.
 
 **New project creation:** If a ticket genuinely does not fit any existing project, create a new Linear project for it — but only when the mismatch is real, not just adjacent. The bar is high: forcing a ticket into the wrong project is worse than having many projects, but creating a project for one ticket is wasteful. If unsure, ask the operator.
 
@@ -51,3 +60,4 @@ The behavioral rule that every ticket MUST include a `projectId` lives in
 - **2026-05-04** — projectId requirement set. Root cause: tickets were created without `projectId` and landed at team level, making them unfindable by project.
 - **2026-05-07** — "New project creation" rule above added by operator.
 - **2026-05-09** — LogueOS team (LOS) created with 4 projects. Coupled with multi-repo dispatch infrastructure landing the same day (`infra/multi-repo-dispatch` PR): `target_repo` parameter on `dispatch_worker` MCP tool, per-repo worktree pools in `services/dispatch_listener/src/worktree.js`. LOS tickets dispatch to `target_repo=LogueOS-Console` and land in `D:\dev\LogueOS-Console-w*` worktrees, separate from `D:\dev\miru-w*`.
+- **2026-05-10** — Restructured per operator's Option B decision (CC's recommendation). Created `LogueOS Migration` for the one-time extraction event. Renamed `LogueOS Orchestration` (PARKED) → `LogueOS Orchestrator` (standing project for ongoing orchestrator work). Moved LOS-10 → Migration; LOS-11 → Orchestrator. Lifecycle separation — Migration archives after cutover; Orchestrator persists as the home for orchestrator work forever after. Future LOS-prefixed tickets follow the routing rules above.
