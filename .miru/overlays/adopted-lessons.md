@@ -196,17 +196,74 @@ The "verified locally with curl" pattern is a lie for any UI change. `curl http:
 Concrete recipe (built into every frontend ticket's done-when checklist from now on):
 
 ```text
-mcp__playwright__browser_resize { width: 430, height: 932 }   # iPhone 16 Pro Max
+mcp__playwright__browser_resize { width: 440, height: 956 }   # iPhone 16 Pro Max (CSS pixels / "points")
 mcp__playwright__browser_navigate { url: <production/tailnet URL, NOT localhost> }
-mcp__playwright__browser_take_screenshot
+mcp__playwright__browser_take_screenshot { filename: "los-N-iphone-verified.png" }
 mcp__playwright__browser_console_messages { level: "error" }
 ```
+
+The `filename:` parameter is mandatory — leaving it default produces `page-{timestamp}.png` artifacts that are hard to correlate with a specific dispatch. Use the same filename token (`los-N-iphone-verified.png`, where N is the ticket number) in both this recipe AND in the terminal-state output so the audit trail stays consistent.
+
+**Viewport size matters and the easy-to-confuse numbers are a real trap.** iPhone 16 Pro Max is 440×956 CSS pixels (6.9" display). Do NOT use 430×932 — that's the iPhone 16 Plus / 15 Pro Max / 15 Plus (6.7" display). Ask-the-cause: this canon was first written with 430×932 because the author conflated the two; CodeRabbit caught it on PR #172. If the operator changes phones, update this canon AND every dispatched prompt that copies the recipe.
 
 If the snapshot is blank, broken, or the console has errors → status is INCONCLUSIVE, not CONFIRMED. Investigate and fix.
 
 **Why:** today (2026-05-10) the operator wasted 30+ minutes trying to load the LogueOS Console on iPhone. CC repeatedly claimed the dashboard was "verified live" via local curl probes. The actual failure was a cascade: Tailscale serve subpath strip + SvelteKit base path mismatch + bare `/api/runs` fetch hitting wrong host + Tailwind 4 missing `--color-foreground` token. Each layer LOOKED fine to curl. Playwright at iPhone viewport caught it in 30 seconds. The skill exists; we have no excuse not to use it.
 
 **Applies to:** every PR touching `src/routes/`, `src/lib/components/`, `src/app.html`, `vite.config.*`, `svelte.config.*`, or any file under `LogueOS-Console/`.
+
+**Worker-tool-availability constraint** (set 2026-05-10 after LOS-7 thrashed for 22 minutes and was killed): the Playwright MCP tools (`mcp__playwright__*`) live in CC's MCP profile, NOT in gemini's. A frontend dispatch routed to `worker=gemini` cannot satisfy the gate by itself — gemini will try to npm-install Playwright in the worktree, fail, and recursively attempt to re-dispatch back to claude-code. Both behaviors waste tokens and never produce a verified screenshot. **For frontend tickets routed to gemini:** include the gate in the prompt but explicitly note that the operator-facing screenshot will be performed by a claude-code follow-up dispatch. CC (the orchestrator) runs the Playwright gate itself after gemini's work merges, OR dispatches a tiny `worker=claude-code` follow-up whose only job is the Playwright iPhone gate. Mark gemini's CONFIRMED_WORKING contingent on the follow-up gate passing — if the follow-up gate fails, the lane is INCONCLUSIVE not CONFIRMED. See LOS-7 cc-LOS-7-12cad92b-3a38104d for the failure mode.
+
+**Mandatory clause for every frontend `dispatch_worker` prompt** (added 2026-05-10 after overnight LOS-4 + LOS-5 shipped broken because the gate wasn't enforced):
+
+```text
+Before declaring CONFIRMED_WORKING, you MUST verify the change end-to-end via Playwright MCP at iPhone 16 Pro Max viewport (440x956 CSS pixels — NOT 430x932, that is the 16 Plus) hitting the operator-facing URL (NOT localhost). Concrete recipe:
+
+  mcp__playwright__browser_resize { width: 440, height: 956 }
+  mcp__playwright__browser_navigate { url: "https://room.taila28611.ts.net/console/<your-route>" }
+  mcp__playwright__browser_take_screenshot { filename: "los-N-iphone-verified.png" }
+  mcp__playwright__browser_console_messages { level: "error" }
+
+If the screenshot shows a 500/blank/error page, OR if console_messages returns ANY errors, the status is INCONCLUSIVE not CONFIRMED. Iterate until both pass. Include the screenshot filename in your terminal-state output as proof.
+```
+
+---
+
+## Multi-file dispatch audit + squash-merge verification (set 2026-05-10)
+
+**Applies to:** every `dispatch_worker` prompt that touches multiple files — frontend OR backend, no exception. The Playwright iPhone gate above is frontend-specific; this section is the parallel rule for catching files that silently disappear between branch and main during a squash merge. The two gates compose: frontend multi-file PRs run BOTH, backend multi-file PRs run this one alone (Playwright is meaningless without a UI surface).
+
+**Two checkpoints, NOT one:**
+
+**Pre-push (on the feature branch, before opening PR):** `git fetch origin && git diff origin/main..HEAD --stat` shows every file your branch will introduce. Compare against the file list you intended to ship; fail-fast if anything's missing. Do this BEFORE pushing — once pushed, anything dropped will surface as a phantom file in the PR's diff view but is hard to spot in a long file list.
+
+**Post-merge (after PR is squashed to main):** the `origin/main..HEAD` diff is empty (same SHA) — that comparison is useless after merge. Instead capture the merge commit SHA and inspect IT: `git fetch origin && git show --stat <merge-sha>` (or `gh pr view <N> --json mergeCommit --jq .mergeCommit.oid` then `git show --stat`). PR #5's branch had 6 files in `git diff origin/main..HEAD --stat`, but the operator's squash-merge produced a merge commit that contained only 2 of those files — `git show --stat <merge-sha>` revealed the drop. **File existence in `git show --stat` does NOT prove the change reached the running app** — it only proves the file is present in the merge commit. For frontend PRs, you MUST run the Playwright iPhone gate (see section above) against the operator-facing production URL after squash, regardless of what the diff shows. For backend PRs, exercise the affected endpoint/script against the live service. Treat the diff as a necessary-but-insufficient signal; treat the running app as ground truth.
+
+**Mandatory clause for every multi-file `dispatch_worker` prompt** (frontend or backend):
+
+```text
+Before declaring CONFIRMED_WORKING:
+1. On feature branch (pre-push): `git fetch origin && git diff origin/main..HEAD --stat`. Confirm every file you intended to ship is listed.
+2. After squash merge to main (post-merge): capture the merge commit SHA via
+   `gh pr view <N> --json mergeCommit --jq .mergeCommit.oid`
+   then run
+   `git fetch origin && git show --stat <merge-sha>`
+   to confirm every file from step 1 is also in the squash diff. (squash merges can silently drop files between PR open and main; this catches the drop)
+3. After step 2 passes: ALWAYS exercise the running app against the change.
+   - Frontend: run the Playwright iPhone gate (440x956) against the operator-facing URL.
+   - Backend: hit the affected endpoint/script against the live service and confirm behavior.
+   `git show --stat <merge-sha>` is necessary but NOT sufficient — file existence in the squash diff does not prove the change reached production. Mark CONFIRMED_WORKING only after steps 1, 2, AND 3 all pass; the running app is the ground truth.
+
+REQUIRED in your CONFIRMED_WORKING terminal-state output (audit evidence — not optional):
+- The merge commit SHA from `gh pr view ... --jq .mergeCommit.oid` (step 2).
+- The full `git show --stat <merge-sha>` output (step 2) — file list, not summary.
+- The running-app verification result from step 3:
+  - Frontend: the screenshot filename emitted by `mcp__playwright__browser_take_screenshot { filename: "los-N-iphone-verified.png" }` AND the count of `mcp__playwright__browser_console_messages { level: "error" }` results (must be 0).
+  - Backend: the endpoint/script name + a 1-2 line excerpt of the response/output that confirms the change took effect.
+A CONFIRMED_WORKING block missing any of these three evidence artifacts will be treated as INCONCLUSIVE and bounced.
+```
+
+LOS-5 (PR #5) is the canonical motivating example — gemini emitted CONFIRMED_WORKING based on git status in its branch, but the squash on the operator's side merged only 2 of 6 files (`+page.server.ts` + `+layout.svelte`); the new component, types, API endpoint, and replaced `+page.svelte` all silently disappeared. The dashboard rendered the original placeholder for 7 hours before Playwright iPhone verification caught it.
 
 ---
 
