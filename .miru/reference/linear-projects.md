@@ -4,7 +4,7 @@
 Reference: linear-projects
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: creating a Linear ticket and you need a projectId.
-Last reviewed: 2026-05-09
+Last reviewed: 2026-05-10
 ```
 
 The `linear_projects` table in the miru_memory DB is the authoritative source.
