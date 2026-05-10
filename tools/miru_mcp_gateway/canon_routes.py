@@ -275,9 +275,26 @@ def get_canon_file(repo_root: Path, canon_path: str) -> dict[str, Any]:
             # got here something raced very tightly (cache eviction or
             # concurrent reset). Treat as missing.
             raise AllowlistedFileMissingError(canon_path)
+    # CodeRabbit R2: guard the UTF-8 decode. Canon files SHOULD always be
+    # UTF-8 .md text — we control the layout and the inputs. But defense in
+    # depth: if a file gets corrupted (binary content, mangled BOM, partial
+    # write during edit), an unguarded decode raises UnicodeDecodeError and
+    # the handler returns 500 instead of a clean error. Reuse
+    # AllowlistedFileMissingError per CR's guidance — semantically the file
+    # IS present but unusable for canon purposes (workers can't act on
+    # undecodable bytes), so the operator-facing semantics are the same as
+    # "the file is gone."
+    try:
+        content = entry["content_bytes"].decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise AllowlistedFileMissingError(
+            f"{canon_path}: file present but not valid UTF-8 "
+            f"(snapshot_id={snapshot_id}, sha256={entry['sha256']}, "
+            f"byte_length={entry['byte_length']}): {exc}"
+        ) from exc
     return {
         "canon_path": canon_path,
-        "content": entry["content_bytes"].decode("utf-8"),
+        "content": content,
         "encoding": "utf-8",
         "sha256": entry["sha256"],
         "byte_length": entry["byte_length"],

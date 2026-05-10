@@ -195,6 +195,24 @@ class CanonRoutesTests(unittest.TestCase):
         # Adjust this number when canon legitimately grows.
         self.assertEqual(len(canon_routes._CANON_LAYOUT), 42)
 
+    def test_get_canon_file_handles_non_utf8_content(self) -> None:
+        # CodeRabbit R2: defense in depth — a corrupted canon file with
+        # invalid UTF-8 bytes must NOT 500 the handler. get_canon_file
+        # should raise AllowlistedFileMissingError (semantically: file
+        # is present but unusable for canon purposes — workers can't act
+        # on undecodable bytes).
+        # Write raw bytes that are not valid UTF-8 (bare 0xFF byte).
+        (self.tmp_root / ".miru" / "overlays" / "workflow-git.md").write_bytes(
+            b"\xff\xfe binary garbage \x00\x01\x02"
+        )
+        with self.assertRaises(canon_routes.AllowlistedFileMissingError) as ctx:
+            canon_routes.get_canon_file(self.tmp_root, "overlays/workflow-git.md")
+        # The error message should include enough debug info for the operator
+        # to find the corrupted file (canon_path + sha256 + byte_length).
+        msg = str(ctx.exception)
+        self.assertIn("overlays/workflow-git.md", msg)
+        self.assertIn("not valid UTF-8", msg)
+
     def test_load_file_handles_toctou_disappearance(self) -> None:
         # CodeRabbit R0: between the cache's internal exists() and the
         # subsequent stat()/read_bytes(), a file can disappear (operator edit,
@@ -312,6 +330,21 @@ class CanonRoutesHTTPTests(unittest.TestCase):
         self.assertFalse(body["ok"])
         self.assertEqual(body["error"], "allowlisted_file_missing")
         self.assertEqual(body["canon_path"], "overlays/adopted-lessons.md")
+
+    def test_route_canon_file_404_for_non_utf8_content(self) -> None:
+        # CodeRabbit R2: at the route level, a corrupted UTF-8 file in the
+        # canon must surface as a clean 404 (allowlisted_file_missing), NOT
+        # a 500 from an unhandled UnicodeDecodeError. Operators on iPhone
+        # debugging the dashboard would see a server-error blob instead of
+        # an actionable error payload otherwise.
+        (self.tmp_root / ".miru" / "overlays" / "workflow-git.md").write_bytes(
+            b"\xff\xfe corrupted \x00"
+        )
+        canon_routes.reset_cache_for_tests()
+        response = self.client.get("/canon/overlays/workflow-git.md")
+        self.assertEqual(response.status_code, 404)
+        body = response.json()
+        self.assertEqual(body["error"], "allowlisted_file_missing")
 
     def test_route_canon_file_404_for_traversal_attempt(self) -> None:
         # CodeRabbit R1: use URL-encoded segments so Starlette's router
