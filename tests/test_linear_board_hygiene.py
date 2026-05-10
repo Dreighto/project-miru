@@ -313,6 +313,13 @@ class TestPaginationHandling(unittest.TestCase):
 
         self.assertEqual(count, 2, "Both pages' tickets should be processed")
         self.assertEqual(mock_gql.call_count, 5)
+        # The second issues-query call must carry the pagination cursor.
+        second_call_vars = mock_gql.call_args_list[1].args[2]
+        self.assertEqual(
+            second_call_vars,
+            {"after": "cursor-abc"},
+            "Second issues query must include the cursor from page 1",
+        )
 
 
 class TestRateLimitRetry(unittest.TestCase):
