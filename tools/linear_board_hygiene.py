@@ -33,8 +33,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-import requests
-from dotenv import load_dotenv
+# requests and load_dotenv are imported inside the functions that use them
+# so pytest can collect this module without requiring these packages installed.
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -123,6 +123,8 @@ def _gql(api_key: str, query: str, variables: dict[str, Any] | None = None) -> d
     Raises RuntimeError on HTTP error or GraphQL top-level errors.
     Handles 429 with one retry after _RATE_LIMIT_SLEEP_S seconds.
     """
+    import requests  # deferred so pytest collection works without the package
+
     headers = {
         "Authorization": api_key,
         "Content-Type": "application/json",
@@ -173,6 +175,8 @@ def _fetch_archived_active_issues(api_key: str, team_filter: str | None) -> list
         nodes = page.get("nodes", [])
 
         for node in nodes:
+            if not (node.get("archivedAt") or ""):
+                continue
             team_name = (node.get("team") or {}).get("name", "")
             if team_filter and team_name.lower() != team_filter.lower():
                 continue
@@ -358,6 +362,8 @@ def run_hygiene(
 
 def _load_api_key() -> str:
     """Load LINEAR_API_KEY from environment (after loading .env)."""
+    from dotenv import load_dotenv  # deferred so pytest collection works without the package
+
     this_dir = Path(__file__).resolve().parent
     repo_root = this_dir.parent
     env_path = repo_root / ".env"
