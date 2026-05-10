@@ -94,7 +94,8 @@ Operator-facing dashboard for the dispatch loop. Replaces "ask CC how the loop i
 - **LOS-3 — P1c — Run detail view** — DONE (PR #3 squash a28d2e6). Tap a run card → `/runs/[trace_id]` route showing full summary, branch, files_touched, full PR link. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
 - **LOS-4 — P2 — Workers tab: live status from dispatch log** — DONE (PR #4). Workers tab reads live worker-state events from `logs/dispatch_listener_stdout.log` NDJSON; shows active/idle/error per worker with last-seen timestamps. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
 - **LOS-5 — P3 — Activity tab: recent ops events feed** — DONE. Activity tab wired to dispatch log NDJSON stream; surfaces `worker_spawned`, `worker_exited`, `pre_spawn_dirty_refusal`, `worktree_parked`, and error events in chronological feed. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
-- **LOS-6 — P5 — Settings + write actions** — NOT YET FILED. Next slice.
+- **P4** — Not scoped in the v1 spec. The locked phase sequence runs P1a→P1b→P1c→P2→P3→P5. P4 was deliberately omitted from the original plan.
+- **LOS-6 — P5 — Settings + write actions** — NOT YET FILED. Next slice. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
 
 ### Active tickets (2026-05-10, post-evening sweep)
 
