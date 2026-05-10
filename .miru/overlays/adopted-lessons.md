@@ -186,3 +186,120 @@ Branch protection on `main` blocks direct pushes. Worker `tools/emit_completion.
 **Why each marker gets its own PR (and not bundled):** the marker is the canonical proof-of-completion event in the DGAS audit chain; bundling it with feature work would conflate "feature shipped" with "feature shipping recorded." Keeping the chore commits one-per-marker also makes `git log -- data/cc_completion_log.jsonl` legible.
 
 **Applies to:** every dispatched ticket completion that emits a marker.
+
+---
+
+## Frontend dispatches MUST verify with Playwright MCP at iPhone viewport BEFORE declaring CONFIRMED_WORKING (set 2026-05-10)
+
+The "verified locally with curl" pattern is a lie for any UI change. `curl http://127.0.0.1:18767/` will return 200 + valid HTML even when the actual user-agent (operator's iPhone) loads a blank page. Frontend tickets MUST run a Playwright MCP screenshot at iPhone-shape viewport against the **same URL the operator will use** before emitting CONFIRMED_WORKING.
+
+Concrete recipe (built into every frontend ticket's done-when checklist from now on):
+
+```text
+mcp__playwright__browser_resize { width: 430, height: 932 }   # iPhone 16 Pro Max
+mcp__playwright__browser_navigate { url: <production/tailnet URL, NOT localhost> }
+mcp__playwright__browser_take_screenshot
+mcp__playwright__browser_console_messages { level: "error" }
+```
+
+If the snapshot is blank, broken, or the console has errors → status is INCONCLUSIVE, not CONFIRMED. Investigate and fix.
+
+**Why:** today (2026-05-10) the operator wasted 30+ minutes trying to load the LogueOS Console on iPhone. CC repeatedly claimed the dashboard was "verified live" via local curl probes. The actual failure was a cascade: Tailscale serve subpath strip + SvelteKit base path mismatch + bare `/api/runs` fetch hitting wrong host + Tailwind 4 missing `--color-foreground` token. Each layer LOOKED fine to curl. Playwright at iPhone viewport caught it in 30 seconds. The skill exists; we have no excuse not to use it.
+
+**Applies to:** every PR touching `src/routes/`, `src/lib/components/`, `src/app.html`, `vite.config.*`, `svelte.config.*`, or any file under `LogueOS-Console/`.
+
+---
+
+## Tailwind 4 utility classes are generated from `@theme` ONLY, not `:root` (set 2026-05-10)
+
+Tailwind 4 + shadcn migration trap. shadcn's legacy convention puts design tokens in `:root { --foreground: ...; --card: ...; }`. Tailwind 3 generated utility classes (`text-foreground`, `bg-card`) from those. **Tailwind 4 does NOT.** It generates utility classes only from tokens declared in the `@theme` block with the `--color-` prefix.
+
+Symptom: `Cannot apply unknown utility class 'text-foreground'` 500 errors on every page request. The class is undefined because `--color-foreground` doesn't exist in `@theme`.
+
+```css
+/* WRONG (legacy Tailwind 3 / shadcn) — does not generate text-foreground utility */
+@layer base {
+  :root {
+    --foreground: #ffffff;
+  }
+}
+
+/* RIGHT (Tailwind 4) — generates text-foreground utility */
+@theme {
+  --color-foreground: #ffffff;
+}
+```
+
+Both can coexist if components also read raw CSS vars. The point is: `@theme` is mandatory for utility class generation in Tailwind 4.
+
+**Applies to:** every Tailwind-styled SvelteKit/React project that's on Tailwind 4 (>=4.0.0).
+
+---
+
+## Tailscale serve subpath BEHAVIOR depends on target URL trailing path (set 2026-05-10)
+
+`tailscale serve --bg --set-path=/console http://localhost:18767` — Tailscale **strips** `/console` from incoming requests before forwarding to localhost. So `/console/api/runs` arrives at SvelteKit as `/api/runs`.
+
+`tailscale serve --bg --set-path=/console http://localhost:18767/console` — Tailscale **preserves** the path because the target URL has matching prefix. SvelteKit receives `/console/api/runs` as-is.
+
+Pick one based on what the downstream app expects:
+
+- **App at root (no base path):** use the strip variant (`http://localhost:18767`). SvelteKit `kit.paths.base = ''`.
+- **App with base path:** use the preserve variant (`http://localhost:18767/console`). SvelteKit `kit.paths.base = '/console'`. This is required when the app needs to generate URL-prefixed asset paths (Vite's `/@fs/...`, SvelteKit's `resolve('/foo')` → `/console/foo`).
+
+For LogueOS Console specifically: app at `/console` because n8n owns the tailnet root. `kit.paths.base = '/console'` + Tailscale preserve-path is the working combination.
+
+**Applies to:** any service exposed via `tailscale serve --set-path` where the served app generates internal URLs.
+
+---
+
+## Client-side `fetch('/api/foo')` is NOT base-path aware in SvelteKit; use `resolve()` (set 2026-05-10)
+
+SvelteKit's `kit.paths.base` is honored by `<a href>` anchors, server-side `fetch` (in load functions), and `resolve()` from `$app/paths`. It is **NOT** honored by client-side `fetch()` in `+page.svelte` — `fetch('/api/runs')` resolves relative to the **origin**, not the base path.
+
+When served behind a reverse proxy at a subpath (e.g. Tailscale serve at `/console`), `fetch('/api/runs')` from the browser hits `https://<host>/api/runs` instead of `https://<host>/console/api/runs`. The request bypasses the SvelteKit app entirely and may hit a different service at root.
+
+```typescript
+// WRONG when app is served at /console behind a reverse proxy
+const resp = await fetch('/api/runs');
+
+// RIGHT — base-path aware
+import { resolve } from '$app/paths';
+const resp = await fetch(resolve('/api/runs'));
+```
+
+**Applies to:** every client-side `fetch()` call in `+page.svelte`, `+layout.svelte`, or any Svelte component running in the browser.
+
+---
+
+## iOS PWA viewport-fit=cover is REQUIRED for safe-area insets to be non-zero (set 2026-05-10)
+
+`env(safe-area-inset-bottom)` and the other safe-area-inset variables resolve to `0px` on iPhone unless the viewport meta tag includes `viewport-fit=cover`. Without it, the bottom nav gets covered by the iPhone home indicator (the 34pt translucent bar at the bottom of the screen on iPhone 16 Pro Max in portrait), and `padding-bottom: env(safe-area-inset-bottom)` does nothing.
+
+The full minimum-viable iOS PWA meta tag set:
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="<App Name>" />
+<meta name="theme-color" content="#0d1117" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<link rel="manifest" href="/manifest.webmanifest" />
+```
+
+iOS 16+ also requires `apple-touch-icon` as a separate `<link>` even when the manifest specifies icons (Safari ignores manifest icons; uses apple-touch-icon for the home-screen icon).
+
+For bottom navs:
+
+```css
+.bottom-nav {
+  padding-bottom: calc(<design-padding> + env(safe-area-inset-bottom, 0px));
+}
+```
+
+Always supply the `, 0px` fallback so older browsers without `env()` support don't drop the whole declaration.
+
+For container heights, use `100dvh` (dynamic viewport height) not `100vh` — `dvh` accounts for the iOS address bar contracting/expanding during scroll.
+
+**Applies to:** every SvelteKit/React app intended to be installed as an iOS home-screen PWA.
