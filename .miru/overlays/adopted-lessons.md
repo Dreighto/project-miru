@@ -221,9 +221,21 @@ Before declaring CONFIRMED_WORKING, you MUST verify the change end-to-end via Pl
 If the screenshot shows a 500/blank/error page, OR if console_messages returns ANY errors, the status is INCONCLUSIVE not CONFIRMED. Iterate until both pass. Include the screenshot filename in your terminal-state output as proof.
 ```
 
-Squash-merge audit: ALSO before declaring CONFIRMED_WORKING, run `git fetch origin && git diff origin/main..HEAD --stat` and confirm every file you intended to ship is in the diff. PR #5 (LOS-5 Activity tab) shipped a squash that dropped 4 of 6 files silently; gemini's CONFIRMED_WORKING was a lie because it never re-fetched main after the merge. Add a final `git fetch origin && git diff origin/main..HEAD --stat` check to your dispatch flow.
+**Squash-merge audit** (set 2026-05-10 after PR #5 / LOS-5 dropped 4 of 6 files silently). Two checkpoints, NOT one:
 
-**Note:** this squash-merge audit applies to ALL dispatched workers, not just frontend. Run it after the PR is merged (so `HEAD` on `main` equals the merge commit). Reference: LOS-5 Activity tab (PR #5) where 4 of 6 files were silently dropped. If you prefer supplying the merge commit SHA explicitly, you may run `git fetch origin && git diff origin/main..<merge-commit> --stat` instead.
+**Pre-push (on the feature branch, before opening PR):** `git fetch origin && git diff origin/main..HEAD --stat` shows every file your branch will introduce. Compare against the file list you intended to ship; fail-fast if anything's missing. Do this BEFORE pushing — once pushed, anything dropped will surface as a phantom file in the PR's diff view but is hard to spot in a long file list.
+
+**Post-merge (after PR is squashed to main):** the `origin/main..HEAD` diff is empty (same SHA) — that comparison is useless after merge. Instead capture the merge commit SHA and inspect IT: `git fetch origin && git show --stat <merge-sha>` (or `gh pr view <N> --json mergeCommit --jq .mergeCommit.oid` then `git show --stat`). PR #5's squash showed 6 files in `git show --stat <merge-sha>`; only 2 actually landed because of how the squash merged. Always cross-reference the squash diff against the running production state (e.g. via Playwright iPhone gate above) — file existence on main does NOT prove the change reached production.
+
+Mandatory clause for every dispatch_worker prompt that touches multiple files:
+
+```text
+Before declaring CONFIRMED_WORKING:
+1. On feature branch: `git fetch origin && git diff origin/main..HEAD --stat`. Confirm every file you intended to ship is listed.
+2. After PR opens: do NOT skip the Playwright gate just because `git diff` showed your files. Squash merges can silently drop files between PR open and main; the only reliable verification is loading the running app at the operator-facing URL.
+```
+
+LOS-5 (PR #5) is the canonical motivating example — gemini emitted CONFIRMED_WORKING based on git status in its branch, but the squash on the operator's side merged only 2 of 6 files (`+page.server.ts` + `+layout.svelte`); the new component, types, API endpoint, and replaced `+page.svelte` all silently disappeared. The dashboard rendered the original placeholder for 7 hours before Playwright iPhone verification caught it.
 
 ---
 
