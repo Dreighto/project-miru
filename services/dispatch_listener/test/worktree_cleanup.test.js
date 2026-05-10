@@ -429,10 +429,7 @@ test('cleanupWorktree: retains feature branch when PR is not merged', () => {
 // POSIX path handling for multi-repo worktrees.
 // path.win32.basename is used so the function works on both POSIX and Windows.
 test('parkingBranchForCwd: POSIX path with LogueOS worktree produces full-basename', () => {
-  assert.equal(
-    parkingBranchForCwd('/home/user/LogueOS-Console-w1'),
-    '_parking_LogueOS-Console-w1'
-  );
+  assert.equal(parkingBranchForCwd('/home/user/LogueOS-Console-w1'), '_parking_LogueOS-Console-w1');
 });
 
 test('parkingBranchForCwd: POSIX path with miru-w1 (legacy) still produces short-form', () => {
@@ -459,17 +456,11 @@ test('parkingBranchForCwd: miru-w8 and miru-w9 are not in legacy allowlist', () 
 // Worktree basenames with dots and underscores are valid per the pattern
 // /^[A-Za-z0-9._-]+-w\d+$/i — verify the pattern accepts them.
 test('parkingBranchForCwd: basename with dots is accepted by full-basename pattern', () => {
-  assert.equal(
-    parkingBranchForCwd('D:\\dev\\My.Project-w1'),
-    '_parking_My.Project-w1'
-  );
+  assert.equal(parkingBranchForCwd('D:\\dev\\My.Project-w1'), '_parking_My.Project-w1');
 });
 
 test('parkingBranchForCwd: basename with underscores is accepted by full-basename pattern', () => {
-  assert.equal(
-    parkingBranchForCwd('D:\\dev\\My_Project-w2'),
-    '_parking_My_Project-w2'
-  );
+  assert.equal(parkingBranchForCwd('D:\\dev\\My_Project-w2'), '_parking_My_Project-w2');
 });
 
 // The pattern requires at least one character before -wN, so bare -w1 is null.
@@ -541,10 +532,7 @@ test('parkingBranchForCwd: Miru-W4 (mixed-case) maps to _parking_w4', () => {
 test('parkingBranchForCwd: MIRU-TOOLS-W1 (all-caps non-legacy) gets full-basename', () => {
   // lowercased to "miru-tools-w1" which is not in LEGACY_MIRU_SLOT_BASENAMES,
   // then checked against the pattern with original casing.
-  assert.equal(
-    parkingBranchForCwd('D:\\dev\\MIRU-TOOLS-W1'),
-    '_parking_MIRU-TOOLS-W1'
-  );
+  assert.equal(parkingBranchForCwd('D:\\dev\\MIRU-TOOLS-W1'), '_parking_MIRU-TOOLS-W1');
   assert.notEqual(
     parkingBranchForCwd('D:\\dev\\MIRU-TOOLS-W1'),
     '_parking_TOOLS-W1',
@@ -584,11 +572,9 @@ test('verifyWorktreeParked: accepts LogueOS-Console-w1 on its expected parking b
     if (cmd.includes('status --porcelain')) return '';
     throw new Error(`unexpected cmd: ${cmd}`);
   };
-  const result = verifyWorktreeParked(
-    'D:\\dev\\LogueOS-Console-w1',
-    'trace-los-verify-ok',
-    { execSync: mockExec }
-  );
+  const result = verifyWorktreeParked('D:\\dev\\LogueOS-Console-w1', 'trace-los-verify-ok', {
+    execSync: mockExec,
+  });
   assert.equal(result.ok, true);
 });
 
@@ -599,11 +585,9 @@ test('verifyWorktreeParked: refuses LogueOS-Console-w1 on wrong parking branch',
     if (cmd.includes('rev-parse')) return '_parking_logueos-console-w1\n'; // wrong casing
     throw new Error(`unexpected cmd: ${cmd}`);
   };
-  const result = verifyWorktreeParked(
-    'D:\\dev\\LogueOS-Console-w1',
-    'trace-los-wrong-branch',
-    { execSync: mockExec }
-  );
+  const result = verifyWorktreeParked('D:\\dev\\LogueOS-Console-w1', 'trace-los-wrong-branch', {
+    execSync: mockExec,
+  });
   assert.equal(result.ok, false);
   assert.ok(
     result.reason.includes('wrong_parking_branch'),
@@ -617,11 +601,9 @@ test('verifyWorktreeParked: refuses LogueOS-Console-w1 when worktree is dirty', 
     if (cmd.includes('status --porcelain')) return 'M  src/index.js\n';
     throw new Error(`unexpected cmd: ${cmd}`);
   };
-  const result = verifyWorktreeParked(
-    'D:\\dev\\LogueOS-Console-w1',
-    'trace-los-dirty',
-    { execSync: mockExec }
-  );
+  const result = verifyWorktreeParked('D:\\dev\\LogueOS-Console-w1', 'trace-los-dirty', {
+    execSync: mockExec,
+  });
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'dirty_worktree');
 });
@@ -632,11 +614,9 @@ test('verifyWorktreeParked: treats LogueOS path as unrecognized when it has no -
   const mockExec = () => {
     throw new Error('should not be called for unrecognized paths');
   };
-  const result = verifyWorktreeParked(
-    'D:\\dev\\LogueOS-Console',
-    'trace-los-no-wn',
-    { execSync: mockExec }
-  );
+  const result = verifyWorktreeParked('D:\\dev\\LogueOS-Console', 'trace-los-no-wn', {
+    execSync: mockExec,
+  });
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'unrecognized_worktree');
 });
