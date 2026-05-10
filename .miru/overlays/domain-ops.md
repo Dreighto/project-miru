@@ -93,7 +93,7 @@ MCP servers defined in `.mcp.json` are spawned by Claude Code as child processes
 
 **Current pre-installed MCP packages (as of 2026-05-10):**
 
-```
+```text
 C:\Users\Dreighto\AppData\Roaming\npm\node_modules\
   @perplexity-ai\mcp-server\dist\index.js
   @modelcontextprotocol\server-sequential-thinking\dist\index.js
