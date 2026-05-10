@@ -104,8 +104,11 @@ def _make_gql_side_effect(*responses):
     """Return a side_effect function that yields responses in order."""
     it = iter(responses)
 
-    def _side_effect(api_key, query, variables=None):
-        return next(it)
+    def _side_effect(_api_key, _query, _variables=None):
+        try:
+            return next(it)
+        except StopIteration as exc:
+            raise AssertionError("Unexpected extra GQL call — no response configured") from exc
 
     return _side_effect
 
@@ -232,7 +235,7 @@ class TestSingleTicketFailureDoesNotAbortBatch(unittest.TestCase):
 
         call_count = {"n": 0}
 
-        def selective_gql(api_key, query, variables=None):
+        def selective_gql(_api_key, _query, _variables=None):
             call_count["n"] += 1
             n = call_count["n"]
             if n == 1:
