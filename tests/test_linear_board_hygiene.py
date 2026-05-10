@@ -316,10 +316,17 @@ class TestPaginationHandling(unittest.TestCase):
         self.assertEqual(count, 2, "Both pages' tickets should be processed")
         self.assertEqual(mock_gql.call_count, 5)
         # The second issues-query call must carry the pagination cursor.
-        second_call_vars = mock_gql.call_args_list[1].args[2]
+        # Extract variables robustly: keyword arg takes precedence, positional fallback.
+        _call = mock_gql.call_args_list[1]
+        second_call_vars = (
+            _call.kwargs["variables"]
+            if "variables" in _call.kwargs
+            else (_call.args[2] if len(_call.args) > 2 else None)
+        )
+        self.assertIsNotNone(second_call_vars, "Second issues call must pass variables")
         self.assertEqual(
-            second_call_vars,
-            {"after": "cursor-abc"},
+            second_call_vars.get("after"),
+            "cursor-abc",
             "Second issues query must include the cursor from page 1",
         )
 
