@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import sys
 import unittest
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 from unittest import mock
 
 # ---------------------------------------------------------------------------
@@ -100,11 +101,17 @@ _UPDATE_FAILURE = {
 }
 
 
-def _make_gql_side_effect(*responses):
+def _make_gql_side_effect(
+    *responses: Mapping[str, Any],
+) -> Callable[[str, str, Mapping[str, Any] | None], Any]:
     """Return a side_effect function that yields responses in order."""
     it = iter(responses)
 
-    def _side_effect(_api_key, _query, _variables=None):
+    def _side_effect(
+        _api_key: str,
+        _query: str,
+        _variables: Mapping[str, Any] | None = None,
+    ) -> Any:
         try:
             return next(it)
         except StopIteration as exc:
@@ -235,7 +242,11 @@ class TestSingleTicketFailureDoesNotAbortBatch(unittest.TestCase):
 
         call_count = {"n": 0}
 
-        def selective_gql(_api_key, _query, _variables=None):
+        def selective_gql(
+            _api_key: str,
+            _query: str,
+            _variables: Mapping[str, Any] | None = None,
+        ) -> Any:
             call_count["n"] += 1
             n = call_count["n"]
             if n == 1:
@@ -245,10 +256,16 @@ class TestSingleTicketFailureDoesNotAbortBatch(unittest.TestCase):
                 # Second call: canceled state for the team (shared)
                 return _CANCELED_STATE_RESP
             if n == 3:
-                # Third call: mutation for issue-001 — simulate failure
+                # Third call: mutation for issue-001 — assert target then fail
+                assert (
+                    (_variables or {}).get("id") == "issue-001"
+                ), f"Expected mutation target issue-001, got {(_variables or {}).get('id')}"
                 raise RuntimeError("Simulated Linear API failure")
             if n == 4:
-                # Fourth call: mutation for issue-004 — succeeds
+                # Fourth call: mutation for issue-004 — assert target then succeed
+                assert (
+                    (_variables or {}).get("id") == "issue-004"
+                ), f"Expected mutation target issue-004, got {(_variables or {}).get('id')}"
                 return _UPDATE_SUCCESS
             raise AssertionError(f"Unexpected GQL call #{n}")
 
