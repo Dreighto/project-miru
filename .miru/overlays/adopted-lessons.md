@@ -217,10 +217,10 @@ If the snapshot is blank, broken, or the console has errors → status is INCONC
 ```text
 Before declaring CONFIRMED_WORKING, you MUST verify the change end-to-end via Playwright MCP at iPhone 16 Pro Max viewport (440x956 CSS pixels — NOT 430x932, that is the 16 Plus) hitting the operator-facing URL (NOT localhost). Concrete recipe:
 
-  mcp__playwright__browser_resize(width=440, height=956)
-  mcp__playwright__browser_navigate(url="https://room.taila28611.ts.net/console/<your-route>")
-  mcp__playwright__browser_take_screenshot(filename="los-N-iphone-verified.png")
-  mcp__playwright__browser_console_messages(level="error")
+  mcp__playwright__browser_resize { width: 440, height: 956 }
+  mcp__playwright__browser_navigate { url: "https://room.taila28611.ts.net/console/<your-route>" }
+  mcp__playwright__browser_take_screenshot { filename: "los-N-iphone-verified.png" }
+  mcp__playwright__browser_console_messages { level: "error" }
 
 If the screenshot shows a 500/blank/error page, OR if console_messages returns ANY errors, the status is INCONCLUSIVE not CONFIRMED. Iterate until both pass. Include the screenshot filename in your terminal-state output as proof.
 ```
@@ -235,7 +235,7 @@ If the screenshot shows a 500/blank/error page, OR if console_messages returns A
 
 **Pre-push (on the feature branch, before opening PR):** `git fetch origin && git diff origin/main..HEAD --stat` shows every file your branch will introduce. Compare against the file list you intended to ship; fail-fast if anything's missing. Do this BEFORE pushing — once pushed, anything dropped will surface as a phantom file in the PR's diff view but is hard to spot in a long file list.
 
-**Post-merge (after PR is squashed to main):** the `origin/main..HEAD` diff is empty (same SHA) — that comparison is useless after merge. Instead capture the merge commit SHA and inspect IT: `git fetch origin && git show --stat <merge-sha>` (or `gh pr view <N> --json mergeCommit --jq .mergeCommit.oid` then `git show --stat`). PR #5's squash showed 6 files in `git show --stat <merge-sha>`; only 2 actually landed because of how the squash merged. **File existence in `git show --stat` does NOT prove the change reached the running app.** For frontend PRs, you MUST run the Playwright iPhone gate (see section above) against the operator-facing production URL after squash, regardless of what the diff shows. For backend PRs, exercise the affected endpoint/script against the live service. Treat the diff as a necessary-but-insufficient signal; treat the running app as ground truth.
+**Post-merge (after PR is squashed to main):** the `origin/main..HEAD` diff is empty (same SHA) — that comparison is useless after merge. Instead capture the merge commit SHA and inspect IT: `git fetch origin && git show --stat <merge-sha>` (or `gh pr view <N> --json mergeCommit --jq .mergeCommit.oid` then `git show --stat`). PR #5's branch had 6 files in `git diff origin/main..HEAD --stat`, but the operator's squash-merge produced a merge commit that contained only 2 of those files — `git show --stat <merge-sha>` revealed the drop. **File existence in `git show --stat` does NOT prove the change reached the running app** — it only proves the file is present in the merge commit. For frontend PRs, you MUST run the Playwright iPhone gate (see section above) against the operator-facing production URL after squash, regardless of what the diff shows. For backend PRs, exercise the affected endpoint/script against the live service. Treat the diff as a necessary-but-insufficient signal; treat the running app as ground truth.
 
 **Mandatory clause for every multi-file `dispatch_worker` prompt** (frontend or backend):
 
@@ -251,6 +251,14 @@ Before declaring CONFIRMED_WORKING:
    - Frontend: run the Playwright iPhone gate (440x956) against the operator-facing URL.
    - Backend: hit the affected endpoint/script against the live service and confirm behavior.
    `git show --stat <merge-sha>` is necessary but NOT sufficient — file existence in the squash diff does not prove the change reached production. Mark CONFIRMED_WORKING only after steps 1, 2, AND 3 all pass; the running app is the ground truth.
+
+REQUIRED in your CONFIRMED_WORKING terminal-state output (audit evidence — not optional):
+- The merge commit SHA from `gh pr view ... --jq .mergeCommit.oid` (step 2).
+- The full `git show --stat <merge-sha>` output (step 2) — file list, not summary.
+- The running-app verification result from step 3:
+  - Frontend: the screenshot filename emitted by `mcp__playwright__browser_take_screenshot { filename: "los-N-iphone-verified.png" }` AND the count of `mcp__playwright__browser_console_messages { level: "error" }` results (must be 0).
+  - Backend: the endpoint/script name + a 1-2 line excerpt of the response/output that confirms the change took effect.
+A CONFIRMED_WORKING block missing any of these three evidence artifacts will be treated as INCONCLUSIVE and bounced.
 ```
 
 LOS-5 (PR #5) is the canonical motivating example — gemini emitted CONFIRMED_WORKING based on git status in its branch, but the squash on the operator's side merged only 2 of 6 files (`+page.server.ts` + `+layout.svelte`); the new component, types, API endpoint, and replaced `+page.svelte` all silently disappeared. The dashboard rendered the original placeholder for 7 hours before Playwright iPhone verification caught it.
