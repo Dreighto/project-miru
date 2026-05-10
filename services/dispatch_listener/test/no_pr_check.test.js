@@ -29,7 +29,7 @@ test('checkNoPrAsync: warns when PR count is 0', async () => {
   };
 
   // Patch log.warn to capture calls
-  const spawn = require('../src/spawn');
+  require('../src/spawn');
   const log = require('../src/log');
   const original = log.warn;
   log.warn = (event, data) => {
