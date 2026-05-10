@@ -167,7 +167,7 @@ class VerifyDgasBoundaryTests(unittest.TestCase):
             "genesis_hash": _sha256_hex(b""),
             "new_repo": "Dreighto/LogueOS-Orchestrator",
             "new_chain_starts_at": self.legacy_count + 1,
-            "new_chain_format_version": "v2",
+            "new_chain_format_version": "DGAS_V2",
             "created_at_utc": "2026-05-10T03:00:00Z",
         }
         self.manifest_path.write_text(json.dumps(self.manifest, indent=2))
@@ -370,6 +370,18 @@ class VerifyDgasBoundaryTests(unittest.TestCase):
         # Default invocation with no signature arg
         code, _, stderr = _run_verifier(self.legacy_path, self.manifest_path, self.new_path)
         self.assertEqual(code, 0, f"expected pass without --signature: stderr={stderr}")
+
+    def test_unknown_chain_format_version_rejected(self) -> None:
+        """CR R2 (PR #182): manifest's new_chain_format_version must equal
+        'DGAS_V2'. Any other value (including 'v2', 'v3', 'DGAS_V1') must
+        fail-closed even if the rest of the chain is fine."""
+        for bogus in ["v2", "v3", "DGAS_V1", "DGAS_V3", "future-version", ""]:
+            bad = dict(self.manifest)
+            bad["new_chain_format_version"] = bogus
+            self.manifest_path.write_text(json.dumps(bad, indent=2))
+            code, _, stderr = _run_verifier(self.legacy_path, self.manifest_path, self.new_path)
+            self.assertEqual(code, 1, f"expected fail for bogus version {bogus!r}: stderr={stderr}")
+            self.assertIn("new_chain_format_version", stderr)
 
 
 if __name__ == "__main__":

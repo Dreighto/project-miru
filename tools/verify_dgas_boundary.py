@@ -27,8 +27,11 @@ USAGE
 
 Exit codes:
     0 — chain valid across the boundary, every check passed
-    1 — validation failure (specific cause printed to stderr)
-    2 — usage error (missing arg, file not found, etc.)
+    1 — validation failure (specific cause printed to stderr; includes
+        missing input files, malformed manifest, broken chains, signature
+        failures, and any other content-level check)
+    2 — usage error (missing required arg, invalid flag value, argparse
+        exit)
 
 WHAT IT VERIFIES
 
@@ -38,12 +41,18 @@ WHAT IT VERIFIES
    - terminal_hash matches the legacy chain's final row_hash
    - row_count matches the legacy chain's chained row count
    - byte_length matches the legacy file's actual size
-3. **Boundary manifest signature** (optional, --verify-signature):
+   - hash_algorithm == "sha256"
+   - new_chain_format_version == "DGAS_V2" (CR R2: enforced)
+3. **Boundary manifest signature** (optional, `--signature <path>` plus
+   optional `--require-signature` to fail on absence):
    - Verify operator-held SSH key signed the manifest. Skipped if no
-     signature file is present + flag not passed.
+     `--signature` is passed and `--require-signature` is off.
+   - If `--signature` IS passed but the file is missing or invalid,
+     verification fails regardless of `--require-signature`.
 4. **New v2 chain**: walk new-log row-by-row, recomputing each row_hash
    using the v2 formula (domain-separated, block-index-bound).
    - First v2 row's prev_hash MUST equal manifest.terminal_hash.
+   - First v2 row's block_index MUST equal manifest.new_chain_starts_at.
    - Each subsequent row chains correctly.
 
 V1 ALGORITHM (matches tools/audit_chain.py in project-miru):
@@ -413,6 +422,19 @@ def verify_boundary(
     if m["hash_algorithm"] != "sha256":
         errors.append(
             f"manifest hash_algorithm = {m['hash_algorithm']!r}; verifier only supports sha256"
+        )
+        return False, errors
+
+    # CR R2 (PR #182): enforce new_chain_format_version. A manifest declaring
+    # any other value would still pass otherwise because the verifier always
+    # applies the v2 formula. Mismatch indicates either a tampered manifest
+    # or a future protocol version this verifier doesn't yet support — either
+    # way, fail-closed so the operator sees the discrepancy.
+    if m["new_chain_format_version"] != "DGAS_V2":
+        errors.append(
+            f"manifest new_chain_format_version = {m['new_chain_format_version']!r}; "
+            "verifier only supports 'DGAS_V2'. If this is a newer protocol, "
+            "use the matching verifier."
         )
         return False, errors
 
