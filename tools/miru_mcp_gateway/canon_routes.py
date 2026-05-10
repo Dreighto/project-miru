@@ -50,6 +50,7 @@ notify-based cache; for now, simple-and-correct wins.
 from __future__ import annotations
 
 import hashlib
+import stat as stat_mod
 import threading
 from pathlib import Path
 from typing import Any
@@ -146,33 +147,76 @@ def _hash_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _load_file(repo_key: str, canon_path: str, abs_path: Path) -> dict[str, Any] | None:
+def _load_file(
+    repo_root: Path, repo_key: str, canon_path: str, abs_path: Path
+) -> dict[str, Any] | None:
     """Load file content + compute metadata. Caller holds _CACHE_LOCK.
 
-    Returns None if the file disappeared between an earlier exists() check
-    and the stat()/read_bytes() inside this function. CodeRabbit R0: that
-    TOCTOU window is real on a busy host (file cleanup, antivirus quarantine,
-    operator editing) and an unguarded FileNotFoundError would 500 the
-    request instead of cleanly 404-ing.
+    Returns None if the file is missing OR the access fails for any reason
+    OS-level (deleted, permission denied, file-not-readable, target is a
+    directory, symlink-out-of-tree, etc.). All None-return paths also evict
+    the stale cache entry.
 
-    CodeRabbit R1: repo_key is now part of the cache key so cross-repo
-    collisions are impossible.
+    CodeRabbit R0: TOCTOU between exists()/stat()/read_bytes() — wrap in
+    try/except, return None instead of 500.
+
+    CodeRabbit R1: repo_key included in cache key so cross-repo collisions
+    are impossible.
+
+    CodeRabbit R4: defense-in-depth against symlink-escape and broken
+    permissions:
+    - Resolve symlinks via Path.resolve() and ensure the resolved path is
+      contained under repo_root. Even if a malicious actor (or accidental
+      operator misconfig) put a symlink in `.miru/overlays/x.md` pointing at
+      `/etc/passwd` or `D:/.env`, the allowlist alone wouldn't block the
+      read — symlink containment does.
+    - Verify the resolved target is a regular file (not a directory or
+      special device).
+    - Catch OSError (parent of FileNotFoundError, PermissionError,
+      IsADirectoryError, OSError on Windows access-denied/in-use) so any
+      OS-level failure surfaces as a clean 404, not a 500.
     """
     cache_key = (repo_key, canon_path)
+    # Resolve symlinks + verify containment under repo_root BEFORE any I/O.
+    # Path.resolve(strict=False) doesn't raise on missing files — that's
+    # what we want; the stat() below catches missing-file separately.
     try:
-        stat = abs_path.stat()
-    except FileNotFoundError:
-        # Drop any stale cached entry so a recreate-then-fetch sequence
-        # doesn't keep serving the deleted file's old content.
+        resolved = abs_path.resolve(strict=False)
+        repo_root_resolved = repo_root.resolve(strict=False)
+        # is_relative_to is Python 3.9+; we're on 3.14 per the env.
+        if not resolved.is_relative_to(repo_root_resolved):
+            # Symlink escape attempt — file resolves outside repo_root.
+            # Treat exactly like a missing canon file so the route returns
+            # a clean 404 + the operator sees the "allowlisted_file_missing"
+            # diagnostic in the log.
+            _FILE_CACHE.pop(cache_key, None)
+            return None
+    except OSError:
         _FILE_CACHE.pop(cache_key, None)
         return None
+
+    try:
+        stat = resolved.stat()
+    except OSError:
+        # FileNotFoundError, PermissionError, OSError on Windows
+        # (access-denied, sharing-violation, etc.) — drop stale cache,
+        # surface as missing.
+        _FILE_CACHE.pop(cache_key, None)
+        return None
+
+    # Reject directories / special devices — only regular files are canon.
+    # st_mode bit-test avoids an extra stat() call.
+    if not stat_mod.S_ISREG(stat.st_mode):
+        _FILE_CACHE.pop(cache_key, None)
+        return None
+
     mtime_ns = stat.st_mtime_ns
     cached = _FILE_CACHE.get(cache_key)
     if cached and cached["mtime_ns"] == mtime_ns:
         return cached
     try:
-        content_bytes = abs_path.read_bytes()
-    except FileNotFoundError:
+        content_bytes = resolved.read_bytes()
+    except OSError:
         _FILE_CACHE.pop(cache_key, None)
         return None
     entry = {
@@ -205,9 +249,10 @@ def _refresh_snapshot(repo_root: Path) -> tuple[str, dict[str, dict[str, Any]]]:
     fingerprint_parts: list[str] = []  # also drives a quick "did anything change" check
     for canon_path, rel_path in _CANON_LAYOUT.items():
         abs_path = repo_root / rel_path
-        # _load_file is itself TOCTOU-safe: returns None if the file is
-        # missing or vanishes mid-read. We don't need an exists() pre-check.
-        entry = _load_file(repo_key, canon_path, abs_path)
+        # _load_file is itself TOCTOU-safe + symlink-escape-safe (CR R4):
+        # returns None if the file is missing, resolves outside repo_root,
+        # is a directory/special, or any OSError occurs.
+        entry = _load_file(repo_root, repo_key, canon_path, abs_path)
         if entry is None:
             # Canon file declared in layout but missing on disk. Should never
             # happen in production; defensive — surface via 'missing' marker.

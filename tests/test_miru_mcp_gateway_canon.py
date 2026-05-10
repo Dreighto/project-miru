@@ -213,6 +213,43 @@ class CanonRoutesTests(unittest.TestCase):
         self.assertIn("overlays/workflow-git.md", msg)
         self.assertIn("not valid UTF-8", msg)
 
+    def test_load_file_rejects_symlink_escape(self) -> None:
+        # CodeRabbit R4: defense-in-depth against symlink escape. If a canon
+        # file is replaced with a symlink pointing OUTSIDE repo_root,
+        # _load_file MUST refuse to follow it (returns None, surfaces as
+        # AllowlistedFileMissingError to the route handler). The URL
+        # allowlist alone wouldn't catch this — only filesystem-level
+        # containment does.
+        # Skip on platforms where symlink creation requires elevation we
+        # don't have (Windows non-developer-mode).
+        target_outside = Path(tempfile.mkdtemp(prefix="canon_outside_"))
+        self.addCleanup(lambda: shutil.rmtree(target_outside, ignore_errors=True))
+        outside_secret = target_outside / "secret.md"
+        outside_secret.write_bytes(b"# SHOULD_NOT_BE_READABLE\n")
+
+        canon_link = self.tmp_root / ".miru" / "overlays" / "workflow-git.md"
+        canon_link.unlink()
+        try:
+            canon_link.symlink_to(outside_secret)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlink creation not supported on this platform")
+
+        canon_routes.reset_cache_for_tests()
+        with self.assertRaises(canon_routes.AllowlistedFileMissingError):
+            canon_routes.get_canon_file(self.tmp_root, "overlays/workflow-git.md")
+
+    def test_load_file_rejects_directory_target(self) -> None:
+        # CodeRabbit R4: only regular files are canon. If a canon path
+        # accidentally points at a directory (operator misconfig, broken
+        # checkout, mount weirdness), _load_file must refuse rather than
+        # explode in read_bytes() with IsADirectoryError -> 500.
+        canon_path_target = self.tmp_root / ".miru" / "overlays" / "workflow-git.md"
+        canon_path_target.unlink()
+        canon_path_target.mkdir()  # same name as the canon file, but a dir
+        canon_routes.reset_cache_for_tests()
+        with self.assertRaises(canon_routes.AllowlistedFileMissingError):
+            canon_routes.get_canon_file(self.tmp_root, "overlays/workflow-git.md")
+
     def test_load_file_handles_toctou_disappearance(self) -> None:
         # CodeRabbit R0: between the cache's internal exists() and the
         # subsequent stat()/read_bytes(), a file can disappear (operator edit,
