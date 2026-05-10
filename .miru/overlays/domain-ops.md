@@ -74,3 +74,34 @@ The "no focus stealing" rule above optimizes for SYSTEM (Session 0). That's stil
 2. Pure background service / daemon / periodic check, never killed by workers? → SYSTEM (Session 0) is fine and preferred.
 
 The `dispatch_listener` (port 19100) is the canonical Session-1+ case. Watchdogs and sentinels are the canonical SYSTEM case. See `.miru/reference/restart-procedures.md` for the dispatch_listener boot-path caveat and PRO-336 for the permanent fix.
+
+### Third axis -- MCP server startup windows (added 2026-05-10)
+
+MCP servers defined in `.mcp.json` are spawned by Claude Code as child processes at session start. Claude Code applies `windowsHide` / `CREATE_NO_WINDOW` for `node.exe` children but NOT for `cmd.exe` or bare `powershell.exe` -- so the choice of `command` in `.mcp.json` directly controls whether a console window flashes on startup.
+
+**Rules:**
+
+1. **Never use `npx` in any form (`npx.cmd`, bare `npx`, `cmd /c npx`) as the MCP server command.** `npx` resolves via `cmd.exe`; Claude Code spawns that `cmd.exe` without `CREATE_NO_WINDOW`, causing a visible console flash. Pre-install the npm package globally (`npm install -g <package>`) and set `"command": "node"` with the absolute path to the package's main script. Global node_modules root: `C:\Users\Dreighto\AppData\Roaming\npm\node_modules`.
+
+2. **Never use `"command": "powershell.exe"` without `-WindowStyle Hidden` and `-NonInteractive`.** Always include those flags before `-ExecutionPolicy Bypass`.
+
+3. **`@latest` version specifiers are banned** (in `npm install -g` or any package invocation). They trigger a network version check on every session start and pin to an unpredictable version. Pre-installed packages are pinned at install time; run `tools/update_mcp_global_packages.ps1` periodically to pull updates.
+
+4. **Docker-based entries are exempt** -- Docker handles console allocation internally; the `docker` command is already handled cleanly by Claude Code.
+
+**Maintenance:** Run `tools/update_mcp_global_packages.ps1` to update all pre-installed MCP packages to their latest versions. No `.mcp.json` edits needed -- the package paths are stable across minor/patch version bumps.
+
+**Current pre-installed MCP packages (as of 2026-05-10):**
+
+```text
+C:\Users\Dreighto\AppData\Roaming\npm\node_modules\
+  @perplexity-ai\mcp-server\dist\index.js
+  @modelcontextprotocol\server-sequential-thinking\dist\index.js
+  @playwright\mcp\cli.js
+  @cyanheads\git-mcp-server\dist\index.js
+  @mokei\mcp-sqlite\lib\serve.js
+  @notionhq\notion-mcp-server\bin\cli.mjs
+  @21st-dev\magic\dist\index.js
+  @a.ardeshir\youtube-mcp\index.js
+  shadcn\dist\index.js
+```
