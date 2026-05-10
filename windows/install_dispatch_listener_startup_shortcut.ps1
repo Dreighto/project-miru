@@ -59,17 +59,29 @@ $exitCode = 1
 try {
     Write-InstallLog "action=install_begin"
 
-    # Resolve the wrapper script path
-    if ($WrapperScript -eq "") {
-        $resolvedWrapper = Join-Path $scriptDir "start_dispatch_listener.ps1"
-    } else {
-        $resolvedWrapper = $WrapperScript
+    # Use wscript.exe + VBS as the shortcut target.
+    # wscript.exe is a GUI-subsystem binary (no console window of its own).
+    # The VBS calls WshShell.Run "powershell.exe ...", 0, False which sets
+    # SW_HIDE at process-creation time -- no visible window at any point.
+    # This is strictly better than a .lnk pointing directly at powershell.exe
+    # with WindowStyle=7 (minimized), which briefly shows a taskbar button.
+    $resolvedVbs = Join-Path $scriptDir "tasks\run_dispatch_listener.vbs"
+    if ($WrapperScript -ne "") {
+        # Test override: still accept a PS1 path but wrap it via VBS logic
+        $resolvedVbs = $WrapperScript
     }
-    Write-InstallLog "wrapper_script=$resolvedWrapper"
+    Write-InstallLog "vbs_wrapper=$resolvedVbs"
 
-    if (-not (Test-Path $resolvedWrapper)) {
-        throw "Wrapper script not found at '$resolvedWrapper'. Ensure the repo is intact before running this installer."
+    if (-not (Test-Path $resolvedVbs)) {
+        throw "VBS wrapper not found at '$resolvedVbs'. Ensure the repo is intact before running this installer."
     }
+
+    # Resolve wscript.exe
+    $resolvedWscript = "$env:SystemRoot\System32\wscript.exe"
+    if (-not (Test-Path $resolvedWscript)) {
+        throw "wscript.exe not found at $resolvedWscript"
+    }
+    $expectedArgs = "`"$resolvedVbs`""
 
     # Resolve the startup folder
     if ($StartupFolder -eq "") {
@@ -86,16 +98,8 @@ try {
     $shortcutName = "MiruDispatchListener.lnk"
     $shortcutPath = Join-Path $resolvedStartupFolder $shortcutName
 
-    # Resolve the full path to powershell.exe so the idempotency check can
-    # compare against what the COM object actually stores in the .lnk file.
-    $resolvedPowershell = (Get-Command "powershell.exe" -ErrorAction SilentlyContinue).Source
-    if (-not $resolvedPowershell) {
-        throw "powershell.exe not found on PATH -- cannot create shortcut."
-    }
-    $expectedArgs = "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$resolvedWrapper`""
-
-    # Idempotency check: if shortcut already exists, verify it points at the
-    # correct target. If the target matches, skip creation and exit 0.
+    # Idempotency check: if shortcut already exists and points at the correct
+    # wscript.exe + VBS target, skip creation and exit 0.
     if (Test-Path $shortcutPath) {
         try {
             $checkShell  = New-Object -ComObject WScript.Shell
@@ -104,7 +108,7 @@ try {
             $existingArgs   = $existingLnk.Arguments
             [System.Runtime.InteropServices.Marshal]::ReleaseComObject($checkShell) | Out-Null
 
-            if ($existingTarget -ieq $resolvedPowershell -and $existingArgs -eq $expectedArgs) {
+            if ($existingTarget -ieq $resolvedWscript -and $existingArgs -eq $expectedArgs) {
                 Write-InstallLog "shortcut_exists=yes target_matches=yes -- skipping (idempotent)"
                 $exitCode = 0
                 return
@@ -122,11 +126,11 @@ try {
 
     $wshShell  = New-Object -ComObject WScript.Shell
     $shortcut  = $wshShell.CreateShortcut($shortcutPath)
-    $shortcut.TargetPath       = $resolvedPowershell
+    $shortcut.TargetPath       = $resolvedWscript
     $shortcut.Arguments        = $expectedArgs
     $shortcut.WorkingDirectory = $repoRoot
-    $shortcut.Description      = "Miru Dispatch Listener (port 19100) -- starts in operator interactive session"
-    $shortcut.WindowStyle      = 7  # 7 = minimized
+    $shortcut.Description      = "Miru Dispatch Listener (port 19100) -- starts in operator interactive session, no visible window"
+    $shortcut.WindowStyle      = 1  # irrelevant for wscript.exe (GUI subsystem, no console)
     $shortcut.Save()
     [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wshShell) | Out-Null
 

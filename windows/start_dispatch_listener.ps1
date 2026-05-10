@@ -87,6 +87,17 @@ if ($portBound) {
 $respawns = 0
 $lastExit = -1
 while ($respawns -lt $MAX_RESPAWNS) {
+    # Before each spawn attempt, check if another instance already owns the port.
+    # This prevents a flash-respawn loop when a second wrapper (watchdog restart or
+    # shell:startup shortcut) starts a new node.js while this loop is running.
+    $portCheck = Get-NetTCPConnection -LocalPort 19100 -State Listen -ErrorAction SilentlyContinue |
+                 Select-Object -First 1
+    if ($portCheck) {
+        Write-WrapperLog "pre-spawn port check: 19100 already listening (PID=$($portCheck.OwningProcess)) -- another instance running, exiting gracefully"
+        $lastExit = 0
+        break
+    }
+
     Write-WrapperLog "spawn attempt=$($respawns + 1) node=$($nodeCmd.Source) entry=$entry"
 
     Push-Location -Path $repoRoot
