@@ -182,6 +182,10 @@ def _fetch_archived_active_issues(api_key: str, team_filter: str | None) -> list
         if not page_info.get("hasNextPage"):
             break
         cursor = page_info.get("endCursor")
+        if not cursor:
+            raise RuntimeError(
+                "Linear pagination error: hasNextPage=true but endCursor is missing."
+            )
 
     return issues
 
