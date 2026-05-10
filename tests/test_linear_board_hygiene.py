@@ -5,6 +5,8 @@ Coverage:
     2. active+archived ticket is queued for cancel
     3. done/canceled ticket is skipped even if archived
     4. single ticket update failure does not abort the batch
+    5. multi-page cursor responses are fully fetched and cursor is propagated
+    6. HTTP 429 rate-limit triggers one retry then succeeds
 """
 
 from __future__ import annotations
