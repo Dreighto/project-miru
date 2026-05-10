@@ -4,10 +4,11 @@ Finds tickets where archivedAt != null AND state.type in
 [unstarted, started, triage], then moves them to Canceled.
 
 Usage:
-    python tools/linear_board_hygiene.py [--dry-run] [--json] [--team "Project Miru"]
+    python tools/linear_board_hygiene.py [--execute] [--json] [--team "Project Miru"]
 
 Options:
-    --dry-run   Print what would be canceled; no mutations.
+    --execute   Apply cancellations (default: dry-run / preview only).
+    --dry-run   Preview only; make no changes (explicit form of the default).
     --json      Emit machine-readable JSON instead of text output.
     --team NAME Filter to a single team by name (default: all teams).
 
@@ -385,15 +386,24 @@ def run_hygiene(
 
 
 def _load_api_key() -> str:
-    """Load LINEAR_API_KEY from environment (after loading .env)."""
-    from dotenv import load_dotenv  # deferred so pytest collection works without the package
+    """Load LINEAR_API_KEY from environment, optionally augmenting from .env."""
+    key = os.environ.get("LINEAR_API_KEY", "").strip()
+    if key:
+        return key
 
     this_dir = Path(__file__).resolve().parent
     repo_root = this_dir.parent
     env_path = repo_root / ".env"
     if env_path.exists():
+        try:
+            from dotenv import load_dotenv  # deferred; only needed when .env exists
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "python-dotenv is required to load .env files: pip install python-dotenv"
+            ) from exc
         load_dotenv(env_path)
-    key = os.environ.get("LINEAR_API_KEY", "").strip()
+        key = os.environ.get("LINEAR_API_KEY", "").strip()
+
     if not key:
         raise RuntimeError("LINEAR_API_KEY is not set. Add it to .env or the environment.")
     return key
