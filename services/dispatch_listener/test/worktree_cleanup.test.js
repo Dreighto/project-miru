@@ -463,28 +463,17 @@ test('parkingBranchForCwd: basename with underscores is accepted by full-basenam
   assert.equal(parkingBranchForCwd('D:\\dev\\My_Project-w2'), '_parking_My_Project-w2');
 });
 
-// The pattern requires at least one character before -wN, so bare -w1 is null.
-test('parkingBranchForCwd: basename starting with -wN (no prefix) returns null', () => {
-  // "-w1" would need chars before the hyphen to satisfy [A-Za-z0-9._-]+
-  // but the regex anchors at start: the first char group matches hyphens too,
-  // so "-w1" → the entire name is just "-w1": [A-Za-z0-9._-]+ matches "-",
-  // then "-w1" requires a "-w" before digits. Verify actual behavior.
-  // Expected: null because there is no recognizable repo name part before -wN.
-  // Actually "-w1" has "-" as the prefix part (matches [A-Za-z0-9._-]+) and
-  // then "-w1" — but we need "-w\d+" at the END, so the full string "-w1"
-  // has no content before the suffix. Let's assert what the implementation
-  // actually returns rather than guess, so this is a boundary documentation test.
-  const result = parkingBranchForCwd('D:\\dev\\-w1');
-  // "-w1".match(/^[A-Za-z0-9._-]+-w\d+$/i) — "-" before "-w1" matches the
-  // char class but the suffix "-w1" is only 3 chars: "-", "w", "1". The regex
-  // requires "-w" + digits at end, so "-w1" matches as: prefix="-", suffix="-w1"?
-  // No: the full string is "-w1" so it matches /^[A-Za-z0-9._-]+-w\d+$/ because
-  // "-" is a valid char in [A-Za-z0-9._-], and then "-w1" matches "-w\d+". So it
-  // WOULD match: _parking_-w1. Document this boundary behavior.
-  assert.ok(
-    result === '_parking_-w1' || result === null,
-    `boundary: got ${result} for basename "-w1"`
-  );
+// Boundary: bare "-w1" basename returns null. The regex
+// /^[A-Za-z0-9._-]+-w\d+$/i requires SOMETHING before the "-wN" suffix; the
+// chars consumed by [A-Za-z0-9._-]+ can't double as the "-w" of the suffix,
+// so "-w1" fails the pattern (no characters left for the prefix after
+// reserving "-w1" for the suffix portion). Asserting the concrete `null`
+// outcome so a regression that loosened the prefix requirement (e.g.
+// allowing zero-length prefix) would be caught.
+// Per CodeRabbit feedback on PR #157: the previous OR assertion accepted
+// two outcomes — non-deterministic and useless as a regression guard.
+test('parkingBranchForCwd: bare "-w1" basename (no real prefix) returns null', () => {
+  assert.strictEqual(parkingBranchForCwd('D:\\dev\\-w1'), null);
 });
 
 // Numbers-only prefix with -wN suffix — valid per regex.
