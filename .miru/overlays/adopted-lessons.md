@@ -212,6 +212,8 @@ If the snapshot is blank, broken, or the console has errors → status is INCONC
 
 **Applies to:** every PR touching `src/routes/`, `src/lib/components/`, `src/app.html`, `vite.config.*`, `svelte.config.*`, or any file under `LogueOS-Console/`.
 
+**Worker-tool-availability constraint** (set 2026-05-10 after LOS-7 thrashed for 22 minutes and was killed): the Playwright MCP tools (`mcp__playwright__*`) live in CC's MCP profile, NOT in gemini's. A frontend dispatch routed to `worker=gemini` cannot satisfy the gate by itself — gemini will try to npm-install Playwright in the worktree, fail, and recursively attempt to re-dispatch back to claude-code. Both behaviors waste tokens and never produce a verified screenshot. **For frontend tickets routed to gemini:** include the gate in the prompt but explicitly note that the operator-facing screenshot will be performed by a claude-code follow-up dispatch. CC (the orchestrator) runs the Playwright gate itself after gemini's work merges, OR dispatches a tiny `worker=claude-code` follow-up whose only job is the Playwright iPhone gate. Mark gemini's CONFIRMED_WORKING contingent on the follow-up gate passing — if the follow-up gate fails, the lane is INCONCLUSIVE not CONFIRMED. See LOS-7 cc-LOS-7-12cad92b-3a38104d for the failure mode.
+
 **Mandatory clause for every frontend `dispatch_worker` prompt** (added 2026-05-10 after overnight LOS-4 + LOS-5 shipped broken because the gate wasn't enforced):
 
 ```text
