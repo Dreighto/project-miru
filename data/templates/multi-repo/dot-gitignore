@@ -1,0 +1,23 @@
+# ── MCP per-spawn files (dispatch_listener writes these at spawn time; tracking
+#    them causes dirty_worktree refusal on every subsequent dispatch)
+.mcp.json
+mcp.json
+
+# ── Gemini CLI temp files
+.gemini/tmp/
+
+# ── Python
+__pycache__/
+*.pyc
+
+# ── Node
+node_modules/
+
+# ── Secrets
+.env
+.env.*
+!.env.example
+
+# ── Logs
+logs/
+*.log

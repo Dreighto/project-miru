@@ -286,7 +286,8 @@ def test_field_name_is_case_insensitive(tmp_path: Path):
     results = ccf.check_canon_freshness(repo, threshold=7, warn_threshold=5, today=today)
     claude = next(r for r in results if Path(r.path).name == "CLAUDE.md")
     assert claude.status == "fresh"
-    assert claude.field_name and claude.field_name.upper() == "LAST REVIEWED"
+    assert claude.field_name
+    assert claude.field_name.upper() == "LAST REVIEWED"
 
 
 # ----------------------------------------------------------------------------
@@ -506,7 +507,8 @@ def test_first_field_wins_when_multiple_present(tmp_path: Path):
     results = ccf.check_canon_freshness(repo, threshold=7, warn_threshold=5, today=today)
     claude = next(r for r in results if Path(r.path).name == "CLAUDE.md")
     # 'Last reviewed' appears first in the file → should be the matched field
-    assert claude.field_name and "reviewed" in claude.field_name.lower()
+    assert claude.field_name
+    assert "reviewed" in claude.field_name.lower()
     assert claude.status == "fresh"
 
 

@@ -1,0 +1,14 @@
+{
+	"_meta": "Workspace-tier MCP config for <RepoName>. Gemini CLI discovers this when CWD is anywhere inside this repo (including the <RepoName>-w* worktrees that the dispatch_listener spawns into). The gateway is the SOLE MCP server here on purpose -- workers go through the project-miru MCP gateway, which gates tools per the X-Miru-Tool-Profile header injected at spawn time. Direct MCP servers (notion, git, perplexity, etc.) are NOT exposed here because that would bypass the gateway's per-trace access control. Operator interactive sessions in this repo also get only the gateway; for direct tool access cd into D:\\dev\\miru and use the full MCP set there.",
+	"mcpServers": {
+		"miru-gateway": {
+			"httpUrl": "http://127.0.0.1:18766/mcp",
+			"headers": {
+				"X-Miru-Tool-Profile": "${env:MIRU_TOOL_PROFILE}",
+				"X-Miru-Trace-Id": "${env:MIRU_TRACE_ID}"
+			},
+			"trust": true,
+			"timeout": 600000
+		}
+	}
+}

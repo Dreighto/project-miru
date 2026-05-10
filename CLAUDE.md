@@ -157,7 +157,8 @@ reference file when you need the specific fact.
 - **`linear-projects.md`** — FETCH IF creating a Linear ticket. Contains the `projectId` table.
 - **`file-placement.md`** — FETCH IF creating a new file and unsure where it goes. Contains the NEVER-do list.
 - **`database-rules.md`** — FETCH IF reading or proposing changes to `card_catalog.db`.
-- **`restart-procedures.md`** — FETCH IF restarting a service. Includes the dispatch_listener Session 0 caveat.
+- **`restart-procedures.md`** — FETCH IF restarting a service.
+- **`multi-repo-onboarding.md`** — FETCH IF adding a new repo to the dispatch loop.
 
 If you cannot tell which overlay applies, see the Fail-Closed Directive at the
 top of this file: stop and ask.

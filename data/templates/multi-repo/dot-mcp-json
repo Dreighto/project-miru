@@ -1,0 +1,9 @@
+{
+  "_meta": "Gateway-only .mcp.json for interactive claude-code operator sessions in <RepoName>. Copy this to <RepoName>/.mcp.json and add .mcp.json to .gitignore (dispatch_listener writes its own per-spawn; this file is for operator interactive use only). Replace <RepoName> with the actual repo name.",
+  "mcpServers": {
+    "miru-gateway": {
+      "type": "http",
+      "url": "http://127.0.0.1:18766/mcp"
+    }
+  }
+}
