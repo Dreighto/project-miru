@@ -14,6 +14,14 @@ history in LogueOS-Orchestrator reflects the FINAL names rather than the
 introduce new `miru-*` identifiers in code that is destined for
 LogueOS-Orchestrator after this map ships.
 
+**Provenance:** this file IS the canon for the LOS-10 rename map. There
+is no separate Notion or Linear "approval table" to consult — per the
+source-of-truth meta-rule (`.miru/reference/source-of-truth.md`), repo
+canon is the authoritative source for Miru-side governance decisions.
+The pre-2026-05-10 LOGUEOS_CANON_SNAPSHOT_ID adoption in PR [#181](https://github.com/Dreighto/project-miru/pull/181)
+already used the post-rename style; this file makes that pattern
+explicit for the rest of the env var surface.
+
 ---
 
 ## Service / module / path renames
@@ -47,22 +55,25 @@ the `LOGUEOS_*` prefix (set in PR #181 / LOGUEOS_CANON_SNAPSHOT_ID).
 
 ## Identifier renames (in code comments + docstrings)
 
-These are not load-bearing but should be normalized during the same
-mechanical sweep so audits don't see stale `miru-*` pointers in the
-imported history:
+These are not load-bearing but should be normalized during the mechanical
+sweep so audits don't see stale `miru-*` pointers in the imported history.
+The list is **deliberately conservative** — each entry has a unique enough
+shape that a global substitution is safe.
 
-- "miru-gateway" (string literal in docs, comments, log messages) → "logueos-gateway"
-- "miru-dispatch-listener" (same) → "logueos-dispatch-listener"
-- "project-miru" (in references to dispatch-loop substrate, NOT the actual GitHub repo) → "LogueOS-Orchestrator"
-- "Miru dispatch loop" → "LogueOS dispatch loop"
+- `miru-gateway` (string literal in docs, comments, log messages) → `logueos-gateway`
+- `miru-dispatch-listener` (same) → `logueos-dispatch-listener`
+- `miru_mcp_gateway` (module identifier) → `logueos_mcp_gateway`
+- `MIRU_ROUTING_KEY` / `MIRU_TRACE_ID` / `MIRU_MCP_GATEWAY_PORT` / `MIRU_MCP_GATEWAY_HOST` → `LOGUEOS_*` (per env var table above; same suffixes, only the prefix changes — unambiguous)
 
-**DO NOT rename:**
+**Deliberately NOT in the mechanical sweep — DO NOT auto-rename:**
 
-- `project-miru` the GitHub repo name (that repo continues to exist as Miru-specific business logic + worker rule canon).
-- `Project Miru` the trading-card retail business name (that's the unrelated venture).
-- `card_catalog.db` and other Miru-specific runtime artifacts (they stay in project-miru, not imported here).
-- `miru_ai/` directory (Miru's chatbot product; stays in project-miru).
-- `pm/` directory (Miru-specific HTML/CSS templates; stays in project-miru).
+- `project-miru` — the GitHub repo name continues to exist post-cutover as Miru-specific business logic + shared worker rule canon. A naive substitution would also catch every prose reference that must keep the literal repo name (URLs, git remote strings, file paths). Manual review only if a specific prose line needs updating after the import. **Resolves CR R1 ambiguity:** earlier draft had a conflicting "project-miru → LogueOS-Orchestrator in prose" rule alongside the DO-NOT-rename guard; the rename is removed and only the DO-NOT-rename guard stands.
+- `Miru dispatch loop` (prose label) — manual review only. The cutover changes WHERE the dispatch loop runs, not whether project-miru's archived history still references the concept.
+- `Project Miru` (capitalized prose form) — the trading-card retail business name. Unrelated venture; never rename.
+- `card_catalog.db` and other Miru-specific runtime artifacts (stay in project-miru, not imported here).
+- `miru_ai/` directory (Miru's chatbot product; excluded by filter-repo pass 1).
+- `pm/` directory (Miru-specific HTML/CSS templates; excluded by filter-repo pass 1).
+- `miru-context/` directory — kept under its current name in the imported history (historical canon naming; renaming is a future-review item per source-of-truth meta-rule).
 
 ## DGAS append-only JSONL renames
 
@@ -78,18 +89,18 @@ cryptographic anchor between them.
 ## Filter-repo invocation (Step 6 mechanical extraction)
 
 The mechanical extraction is driven by `tools/los_10_filter_repo.sh`
-(see PR #TBD when this is committed). It runs `git filter-repo
---path-rename` for each path-level rename above and a sed-like
-substitution for env var + string-literal renames. The script:
+(introduced in PR [#184](https://github.com/Dreighto/project-miru/pull/184)).
+It runs `git filter-repo` in TWO passes:
 
-1. Refuses to run on the live project-miru working tree (writes to a
-   throwaway clone instead).
-2. Refuses to run with uncommitted changes anywhere in scope.
-3. Prints a dry-run preview by default; requires `--execute` for the
-   real run.
-4. Outputs the result to a sibling directory which is then `git push
---force` to LogueOS-Orchestrator's `migration-import` branch (NOT
-   main). Main is updated via PR after manual review.
+- **Pass 1 — excludes**: `git filter-repo --invert-paths --path-glob '<exclude>'` for each Miru-specific path that should NOT appear in the imported history. `--invert-paths` flips `--path-glob` from inclusion to exclusion, which is the only correct way to express exclusion in git-filter-repo. (Earlier draft used `--path-glob '!path'`, which is treated as literal text and was a critical bug — CR R1.)
+- **Pass 2 — renames + replace-text**: `git filter-repo --path-rename <src>:<dst> --replace-text <file>` applies the path-level renames and the env-var/identifier sed-like substitutions. Per upstream docs, mixing inclusion + exclusion in one filter-repo invocation is unsupported; chained runs are the recommended pattern.
+
+Script invariants:
+
+1. Refuses to run on the live project-miru working tree (writes to a throwaway clone instead).
+2. Refuses to run on a clone with uncommitted changes OR untracked files (`git status --porcelain --untracked-files=all` must be empty).
+3. Prints a dry-run plan by default; requires `--execute` for the real run.
+4. Outputs to a sibling directory. Operator manually pushes that directory's HEAD to LogueOS-Orchestrator's `migration-import` branch (NEVER main directly). Main is updated via PR after manual review.
 
 ## Audit checklist (run before merging the Step 6 PR into LogueOS-Orchestrator/main)
 

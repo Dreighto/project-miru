@@ -101,9 +101,12 @@ for live in "${LIVE_REPO_PATHS[@]}"; do
     fi
 done
 
-# Refusal: source must be clean
-if ! (cd "$SOURCE_CLONE" && git diff --quiet && git diff --cached --quiet); then
-    echo "[los_10_filter_repo] ERROR: source clone has uncommitted changes" >&2
+# Refusal: source must be clean. CR R1 fix: include untracked files too —
+# `git diff` alone doesn't catch them, so a clone with random new files in
+# the tree would silently pass and end up in the rewritten history.
+if ! (cd "$SOURCE_CLONE" && [[ -z "$(git status --porcelain --untracked-files=all)" ]]); then
+    echo "[los_10_filter_repo] ERROR: source clone has uncommitted changes or untracked files" >&2
+    echo "    Run 'git status' in $SOURCE_CLONE and commit or remove them first." >&2
     exit 1
 fi
 
@@ -170,13 +173,13 @@ print_plan() {
     echo "Output dir:      $OUTPUT_DIR"
     echo "Mode:            $( [[ $EXECUTE -eq 1 ]] && echo EXECUTE || echo DRY-RUN )"
     echo
-    echo "Path renames (filter-repo --path-rename):"
-    for r in "${PATH_RENAMES[@]}"; do echo "  $r"; done
-    echo
-    echo "Path excludes (filter-repo --path-glob ! ...):"
+    echo "Pass 1 — excludes (filter-repo --invert-paths --path-glob ...):"
     for r in "${PATH_EXCLUDES[@]}"; do echo "  $r"; done
     echo
-    echo "Identifier renames (replace-text):"
+    echo "Pass 2 — renames + replace-text (filter-repo --path-rename ... --replace-text):"
+    for r in "${PATH_RENAMES[@]}"; do echo "  $r"; done
+    echo
+    echo "Identifier renames (replace-text, applied in pass 2):"
     echo "  MIRU_ROUTING_KEY → LOGUEOS_ROUTING_KEY"
     echo "  MIRU_TRACE_ID → LOGUEOS_TRACE_ID"
     echo "  MIRU_MCP_GATEWAY_PORT → LOGUEOS_MCP_GATEWAY_PORT"
@@ -198,8 +201,16 @@ fi
 
 # Real execution path:
 # 1. Copy the clone to OUTPUT_DIR so filter-repo doesn't mangle the original
-# 2. Run filter-repo with all path rename + exclude + replace-text args
-# 3. Print final size + commit-graph summary
+# 2. Pass 1: filter-repo with --invert-paths to EXCLUDE the Miru-specific
+#    paths (this is the ONLY way to do exclusion in git-filter-repo: --path-glob
+#    is inclusion-based, --invert-paths flips the selection to "everything
+#    NOT matching these patterns"). CR R1 fix: previous implementation used
+#    --path-glob "!path" which is treated as literal "!path", not as an
+#    exclusion operator. See https://github.com/newren/git-filter-repo docs.
+# 3. Pass 2: filter-repo with --path-rename + --replace-text. Per upstream
+#    docs, the project recommends chaining separate runs rather than mixing
+#    inclusion + exclusion in one invocation.
+# 4. Print final size + commit-graph summary
 
 echo "[los_10_filter_repo] copying $SOURCE_CLONE → $OUTPUT_DIR" >&2
 cp -r "$SOURCE_CLONE" "$OUTPUT_DIR"
@@ -207,19 +218,23 @@ build_replace_text
 
 cd "$OUTPUT_DIR"
 
-# Build filter-repo args
-FILTER_ARGS=(
-    --replace-text "$REPLACE_TEXT_FILE"
-)
-for r in "${PATH_RENAMES[@]}"; do
-    FILTER_ARGS+=( --path-rename "$r" )
-done
+# Pass 1: exclude Miru-specific paths via --invert-paths
+EXCLUDE_ARGS=( --invert-paths )
 for r in "${PATH_EXCLUDES[@]}"; do
-    FILTER_ARGS+=( --path-glob "!$r" )
+    EXCLUDE_ARGS+=( --path-glob "$r" )
 done
 
-echo "[los_10_filter_repo] running git filter-repo (this may take a few minutes)..." >&2
-git filter-repo "${FILTER_ARGS[@]}"
+echo "[los_10_filter_repo] pass 1: excluding Miru-specific paths (this may take a few minutes)..." >&2
+git filter-repo "${EXCLUDE_ARGS[@]}"
+
+# Pass 2: apply path renames + replace-text
+RENAME_ARGS=( --replace-text "$REPLACE_TEXT_FILE" )
+for r in "${PATH_RENAMES[@]}"; do
+    RENAME_ARGS+=( --path-rename "$r" )
+done
+
+echo "[los_10_filter_repo] pass 2: applying path renames + identifier replacements..." >&2
+git filter-repo "${RENAME_ARGS[@]}"
 
 echo
 echo "==[ Filter-repo done ]=============================================="
