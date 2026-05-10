@@ -4,7 +4,7 @@
 Reference: roadmap
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: planning new work, dispatching a major ticket, or onboarding a worker.
-Last reviewed: 2026-05-10 (post-evening sweep — verified against Linear + git log + LogueOS-Console PR list)
+Last reviewed: 2026-05-10 (post-late-evening sweep — verified against Linear + git log + LogueOS-Console PR list)
 ```
 
 This file is the canonical answer to **"where are we and where are we going."** Keep it current — stale roadmap = duplicated work or contradicted plans.
@@ -85,7 +85,7 @@ Dispatch loop now serves multiple repos via the `target_repo` parameter on `disp
 - **PR #157** — Generalized `parkingBranchForCwd` for non-miru worktrees. Legacy basenames (`miru-w1`..`miru-w6`, `miru-cursor`) keep the short-form `_parking_w1` convention via an explicit `LEGACY_MIRU_SLOT_BASENAMES` Set; everything else maps to full-basename `_parking_<repo>-w<N>` (e.g. `_parking_LogueOS-Console-w1`).
 - First active second pool: `LogueOS-Console` (1 slot at `D:\dev\LogueOS-Console-w1`). LOS-1 + LOS-2 both shipped through it on 2026-05-10.
 
-### LogueOS Console — P1a through P3 SHIPPED 2026-05-10
+### LogueOS Console — P1a through P3 + deployment hardening SHIPPED 2026-05-10
 
 Operator-facing dashboard for the dispatch loop. Replaces "ask CC how the loop is doing" with a glance-able SvelteKit UI. Lives at `Dreighto/LogueOS-Console` (separate repo from project-miru).
 
@@ -95,15 +95,28 @@ Operator-facing dashboard for the dispatch loop. Replaces "ask CC how the loop i
 - **LOS-4 — P2 — Workers tab: live status from dispatch log** — DONE (PR #4). Workers tab reads live worker-state events from `logs/dispatch_listener_stdout.log` NDJSON; shows active/idle/error per worker with last-seen timestamps. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
 - **LOS-5 — P3 — Activity tab: recent ops events feed** — DONE. Activity tab wired to dispatch log NDJSON stream; surfaces `worker_spawned`, `worker_exited`, `pre_spawn_dirty_refusal`, `worktree_parked`, and error events in chronological feed. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
 - **P4** — Not scoped in the v1 spec. The locked phase sequence runs P1a→P1b→P1c→P2→P3→P5. P4 was deliberately omitted from the original plan.
-- **LOS-6 — P5 — Settings + write actions** — NOT YET FILED. Next slice. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
+- **LOS-6 — persistent deployment (adapter-node + scheduled task)** — DONE (PR #6, completion marker PR #173). Switched from Vite dev mode to adapter-node build; start script + Windows scheduled task; mirrors PM/Miru AI pattern. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
+- **LOS-7 — fix worker classification + empty-timestamp on Run cards** — DONE (PR #8, completion marker PR #174). Trust `row.worker` when present, fall back to `deriveWorkerFromTraceId`; safe timestamp display fallback for null/NaN values. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
+- **LOS-8 — P5 — Settings tab with operator write actions** — TRIAGE. Notification toggles, worker enable/disable, kill switch, connection status. Replaces the Settings placeholder tab. Gemini-cli dispatch, `target_repo=LogueOS-Console`. Needs operator approval to move to Todo.
+- **LOS-9 — /api/runs dedupe duplicate trace_id rows** — TRIAGE. LOS-2/3 each appear twice in Recent Runs due to duplicate append-log entries. Fix: dedupe by trace_id in the server endpoint. Gemini-cli dispatch, `target_repo=LogueOS-Console`. Needs operator approval to move to Todo.
 
-### Active tickets (2026-05-10, post-evening sweep)
+### Active tickets (2026-05-10, post-late-evening sweep)
 
-| Ticket  | State     | Notes                                                                                                                |
-| ------- | --------- | -------------------------------------------------------------------------------------------------------------------- |
-| PRO-292 | Todo      | E2E test ticket (do-not-dispatch flag). Audit deployment pipeline for stale env vars.                                |
-| PRO-343 | Todo      | n8n W1 DNS error (transient). Labeled `triage` + `n8n-error-queue`. Needs operator decision: archive or investigate. |
-| LOS-6   | NOT FILED | Next LogueOS Console slice — P5 Settings + write actions. Dispatch to gemini-cli with `target_repo=LogueOS-Console`. |
+| Ticket  | State  | Notes                                                                                                                                                        |
+| ------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PRO-292 | Todo   | E2E test ticket (do-not-dispatch flag). Audit deployment pipeline for stale env vars.                                                                        |
+| PRO-343 | Todo   | n8n W1 DNS error (transient). Labeled `triage` + `n8n-error-queue`. Needs operator decision: archive or investigate. CC cannot auto-dispatch (triage label). |
+| LOS-8   | Triage | Console P5 Settings tab. Needs operator approval → Todo before Gemini dispatch. `target_repo=LogueOS-Console`.                                               |
+| LOS-9   | Triage | Console /api/runs dedupe. Needs operator approval → Todo before Gemini dispatch. `target_repo=LogueOS-Console`.                                              |
+| LOS-10  | Done   | Step 1 (gateway `/canon/*` + `/canon-manifest` HTTP routes) shipped PR #177. Full orchestrator extraction plan underway — Steps 2-9 TBD per migration plan.  |
+
+**Recently DONE (2026-05-10, late-evening batch):**
+
+- LOS-6 (Console adapter-node deployment) → Done, PR #6 + completion marker PR #173.
+- LOS-7 (worker classification + timestamp fix) → Done, PR #8 + completion marker PR #174.
+- LOS-10 Step 1 (gateway canon HTTP routes) → Done, PR #177 + completion marker PR #179.
+- PR #175 (Playwright MCP added to dispatched-worker `.mcp.json`). Workers can now drive Chrome for UI testing.
+- PR #178 (LogueOS projects restructure — Migration vs Orchestrator). Created `LogueOS Migration` for the one-time extraction event; renamed `LogueOS Orchestration` → `LogueOS Orchestrator` for standing ongoing work. LOS-10 → Migration; LOS-11 → Orchestrator.
 
 **Recently DONE (2026-05-10, evening batch):**
 
@@ -130,9 +143,11 @@ Operator-facing dashboard for the dispatch loop. Replaces "ask CC how the loop i
 
 ### Near-term (this week — next week)
 
-1. **LOS-6 — Console P5 Settings + write actions.** File and dispatch. Gemini-cli, `target_repo=LogueOS-Console`. Last planned Console slice from the v1 spec.
-2. **PRO-343 — n8n W1 DNS error triage.** Operator decision needed: one-time blip (archive) or systemic (investigate). Labeled `triage` + `n8n-error-queue`. CC cannot auto-dispatch (triage label).
-3. **MiruOpsDigest failing daily at 9 AM** — Last result: 1 (failed). Not blocking but worth diagnosing. File ticket if it's not a one-off.
+1. **LOS-8 — Console P5 Settings + write actions.** Triage → operator approves → dispatch to Gemini-cli, `target_repo=LogueOS-Console`. Last planned Console slice from the v1 spec.
+2. **LOS-9 — Console /api/runs dedupe.** Triage → operator approves → dispatch to Gemini-cli, `target_repo=LogueOS-Console`. Cosmetic data bug but visible on dashboard.
+3. **LOS-10 Steps 2-9 — orchestrator extraction.** Step 1 (gateway HTTP routes) done. Next steps per the locked plan in `data/peer_reviews/2026-05-10_orchestrator-extraction-plan_gmi.md`. CC lane. File sub-tickets as each step is approved.
+4. **PRO-343 — n8n W1 DNS error triage.** Operator decision needed: one-time blip (archive) or systemic (investigate). Labeled `triage` + `n8n-error-queue`. CC cannot auto-dispatch (triage label).
+5. **MiruOpsDigest failing daily at 9 AM** — Last result: 1 (failed). Not blocking but worth diagnosing. File ticket if it's not a one-off.
 
 ### Mid-term (next 2-4 weeks)
 
