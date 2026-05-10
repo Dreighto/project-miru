@@ -183,10 +183,43 @@ function cleanWorktree(cwd, traceId) {
 // canonicalize to the same parking branch name as their lowercase counterpart —
 // without this, verifyWorktreeParked would reject `_parking_w1` as
 // `wrong_parking_branch` if the cwd happened to use uppercase casing.
+// Legacy project-miru slots — explicit allowlist (NOT a regex). The legacy
+// short-form parking branch convention (`_parking_w1`, `_parking_cursor`) is
+// frozen at exactly these basenames. Any other `miru-*` basename (e.g. a
+// hypothetical future `miru-tools-w1`) goes through the new full-basename
+// pattern below and gets `_parking_miru-tools-w1`.
+//
+// Per CodeRabbit feedback on PR #157: a regex like /^miru-(.+)$/ would silently
+// misclassify modern repo names that happen to start with `miru-`. The Set
+// makes the legacy boundary explicit and impossible to extend by accident.
+const LEGACY_MIRU_SLOT_BASENAMES = new Set([
+  'miru-w1',
+  'miru-w2',
+  'miru-w3',
+  'miru-w4',
+  'miru-w5',
+  'miru-w6',
+  'miru-cursor',
+]);
+
 function parkingBranchForCwd(cwd) {
   const name = path.win32.basename(String(cwd));
-  const m = name.match(/^miru-(.+)$/i);
-  return m ? `_parking_${m[1].toLowerCase()}` : null;
+  // Legacy: only the exact basenames in the allowlist get the short-form
+  // parking branch (`_parking_w1`). The lowercase normalization handles
+  // case-insensitive Windows paths.
+  const lowerName = name.toLowerCase();
+  if (LEGACY_MIRU_SLOT_BASENAMES.has(lowerName)) {
+    const suffix = lowerName.slice('miru-'.length);
+    return `_parking_${suffix}`;
+  }
+  // Multi-repo worktrees (added 2026-05-09 for LOS team and beyond):
+  // <RepoName>-w<N> → _parking_<RepoName>-w<N>. Full basename preserved
+  // (case-sensitive) because cross-repo collisions are possible (e.g.,
+  // LogueOS-Console-w1 and LogueOS-Framework-w1 must produce different
+  // parking branches even though both end in -w1). Pattern guard ensures
+  // we only match worktree-shaped basenames — random paths return null.
+  if (/^[A-Za-z0-9._-]+-w\d+$/i.test(name)) return `_parking_${name}`;
+  return null;
 }
 
 // PRO-334: Pre-spawn guard — verify the worktree is on its exact _parking_* branch
@@ -452,7 +485,7 @@ function probeWorkerBinary(binary, cwd) {
     const combined = String(err.stderr || err.stdout || err.message || '').trim();
     return {
       ok: false,
-      exit_code: err.status != null ? err.status : null,
+      exit_code: err.status !== null && err.status !== undefined ? err.status : null,
       signal: err.signal || null,
       output: combined.slice(0, 300),
     };
@@ -464,7 +497,11 @@ function spawnWorker({
   worker,
   promptText,
   timeoutSeconds,
-  useApiKey = false,
+  // Renamed to _useApiKey because the param is accepted from the dispatch
+  // payload but not currently wired through to the spawned worker (legacy
+  // caller contract). Prefix matches the no-unused-vars argsIgnorePattern.
+  // If/when this gets wired, drop the underscore.
+  useApiKey: _useApiKey = false,
   model = null,
   thinkingLevel = null,
   toolProfile = 'standard_worker',
@@ -675,13 +712,13 @@ function spawnWorker({
     trace_id: traceId,
     worker,
     pid: child.pid,
-    pid_defined: child.pid != null,
+    pid_defined: child.pid !== null && child.pid !== undefined,
     timeout_seconds: timeoutSeconds,
     model: model || null,
     thinking_level: thinkingLevel || null,
   });
 
-  if (child.pid == null) {
+  if (child.pid === null || child.pid === undefined) {
     log.error('spawn_pid_undefined', {
       trace_id: traceId,
       worker,
