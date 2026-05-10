@@ -134,6 +134,20 @@ def main() -> None:
             if inferred:
                 data["ticket_id"] = inferred
 
+    # LOS-10 Step 2 / LOS-13: auto-fill canon_snapshot_id from env if the
+    # marker didn't include it. The dispatch listener probes /canon-manifest
+    # before spawn and passes LOGUEOS_CANON_SNAPSHOT_ID into the worker's env.
+    # Recording it on every marker makes the canon-that-was-in-force
+    # deterministically queryable for any historical row — the reproducibility
+    # property GMI + GPT both called out as required for the DGAS audit chain.
+    #
+    # Naming: LOGUEOS_CANON_SNAPSHOT_ID uses the FUTURE post-rename style
+    # (see Step 6 rename map). New env vars adopt LogueOS naming immediately
+    # to avoid a second rename pass at cutover.
+    env_canon = os.environ.get("LOGUEOS_CANON_SNAPSHOT_ID", "").strip()
+    if env_canon and not data.get("canon_snapshot_id"):
+        data["canon_snapshot_id"] = env_canon
+
     log_path = Path(_repo_root()) / "data" / "cc_completion_log.jsonl"
     # DGAS Tier 2 #6 Part B: chain every new row. Existing legacy rows at the
     # head of the file remain untouched; the first chained row anchors with
