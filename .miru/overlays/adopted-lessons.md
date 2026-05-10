@@ -208,6 +208,21 @@ If the snapshot is blank, broken, or the console has errors → status is INCONC
 
 **Applies to:** every PR touching `src/routes/`, `src/lib/components/`, `src/app.html`, `vite.config.*`, `svelte.config.*`, or any file under `LogueOS-Console/`.
 
+**Mandatory clause for every frontend `dispatch_worker` prompt** (added 2026-05-10 after overnight LOS-4 + LOS-5 shipped broken because the gate wasn't enforced):
+
+```text
+Before declaring CONFIRMED_WORKING, you MUST verify the change end-to-end via Playwright MCP at iPhone 16 Pro Max viewport (430x932) hitting the operator-facing URL (NOT localhost). Concrete recipe:
+
+  mcp__playwright__browser_resize(width=430, height=932)
+  mcp__playwright__browser_navigate(url="https://room.taila28611.ts.net/console/<your-route>")
+  mcp__playwright__browser_take_screenshot(filename="los-N-iphone-verified.png")
+  mcp__playwright__browser_console_messages(level="error")
+
+If the screenshot shows a 500/blank/error page, OR if console_messages returns ANY errors, the status is INCONCLUSIVE not CONFIRMED. Iterate until both pass. Include the screenshot filename in your terminal-state output as proof.
+```
+
+Squash-merge audit: ALSO before declaring CONFIRMED_WORKING, run `git diff origin/main..HEAD --stat` and confirm every file you intended to ship is in the diff. PR #5 (LOS-5 Activity tab) shipped a squash that dropped 4 of 6 files silently; gemini's CONFIRMED_WORKING was a lie because it never re-fetched main after the merge. Add a final `git fetch origin && git diff origin/main..HEAD` check to your dispatch flow.
+
 ---
 
 ## Tailwind 4 utility classes are generated from `@theme` ONLY, not `:root` (set 2026-05-10)
