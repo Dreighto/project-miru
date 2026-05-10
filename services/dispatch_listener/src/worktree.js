@@ -33,11 +33,11 @@ const WORKTREE_POOLS = {
     process.env.WORKTREE_SLOT_6 || 'D:\\dev\\miru-w6',
   ],
   'LogueOS-Console': [process.env.LOGUEOS_CONSOLE_WORKTREE_SLOT_1 || 'D:\\dev\\LogueOS-Console-w1'],
-  // LOS-10 Step 5: added 2026-05-10. Pre-cutover, this pool is for scaffold
-  // work only (README/canon docs, no dispatch loop code yet). After cutover
-  // (Step 8), this becomes the active dispatch substrate and the listener
-  // itself runs from this repo. Single slot is sufficient for the migration
-  // window; expand if post-cutover dispatch volume demands it.
+  // LOS-10 Step 7 prep: added 2026-05-10. Pre-cutover, this pool is for
+  // scaffold work only (README/canon docs, no dispatch loop code yet).
+  // After cutover (Step 8), this becomes the active dispatch substrate and
+  // the listener itself runs from this repo. Single slot is sufficient for
+  // the migration window; expand if post-cutover dispatch volume demands it.
   'LogueOS-Orchestrator': [
     process.env.LOGUEOS_ORCHESTRATOR_WORKTREE_SLOT_1 || 'D:\\dev\\LogueOS-Orchestrator-w1',
   ],

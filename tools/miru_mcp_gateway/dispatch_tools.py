@@ -120,9 +120,12 @@ def dispatch_worker(
     ``thinking_level``: 'extended' or 'none'; claude-code only (PRO-265).
     ``tool_profile``: Phase 3 subagent isolation profile (e.g. 'drift_executor').
     ``target_repo``: which worktree pool to lease from (added 2026-05-09 for
-        multi-repo dispatch). One of: 'project-miru' (default) or 'LogueOS-Console'.
+        multi-repo dispatch). One of: 'project-miru' (default), 'LogueOS-Console',
+        or 'LogueOS-Orchestrator' (added 2026-05-10 for LOS-10 Step 7 prep).
         Workers landing in non-default repos must pass this explicitly. PRO-team
-        tickets stay on 'project-miru'; LOS-team tickets go to 'LogueOS-Console'.
+        tickets stay on 'project-miru'; LOS-team tickets default to 'LogueOS-Console'
+        unless they target the dispatch loop substrate (LOS-10 Step 6+) in which
+        case use 'LogueOS-Orchestrator'.
     Returns JSON: ok, trace_id, worker, ticket_id, http_status, listener_response.
     """
     cfg = _CFG
