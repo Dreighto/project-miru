@@ -50,6 +50,17 @@ function buildMcpConfig() {
       args: [PLAYWRIGHT_MCP_PATH],
       env: {},
     };
+  } else {
+    // CodeRabbit R1: don't silently drop the entry — surface the missing
+    // install so the operator notices BEFORE a worker fails the iPhone
+    // gate at dispatch time. Using console.warn so the message lands in
+    // the dispatch listener's stdout log alongside other [warn] lines.
+    console.warn(
+      `[mcp_config] PLAYWRIGHT_MCP_PATH not found at ${PLAYWRIGHT_MCP_PATH} — ` +
+        `dispatched workers will NOT have mcp__playwright__* tools and the ` +
+        `canon's iPhone gate will be unsatisfiable. Install via ` +
+        `'npm install -g @playwright/mcp' and restart the dispatch listener.`
+    );
   }
 
   return JSON.stringify({ mcpServers }, null, 2);
