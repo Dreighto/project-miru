@@ -108,6 +108,7 @@ tests/_tmp/
 # Ad-hoc output/report files in tools/ (date-stamped CSVs, txt output dumps)
 tools/*.csv
 tools/*.txt
+!tools/requirements.txt
 tools/diagnostics/
 archive/diagnostics/
 
