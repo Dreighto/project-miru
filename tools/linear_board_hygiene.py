@@ -4,15 +4,19 @@ Finds tickets where archivedAt != null AND state.type in
 [unstarted, started, triage], then moves them to Canceled.
 
 Usage:
-    python tools/linear_board_hygiene.py [--dry-run] [--team "Project Miru"]
+    python tools/linear_board_hygiene.py [--dry-run] [--json] [--team "Project Miru"]
 
 Options:
     --dry-run   Print what would be canceled; no mutations.
+    --json      Emit machine-readable JSON instead of text output.
     --team NAME Filter to a single team by name (default: all teams).
 
-Output:
+Output (text, default):
     Table: ticket ID | title | old state -> Canceled
     Summary: "N tickets moved to Canceled"
+
+Output (--json):
+    {"dry_run": bool, "tickets": [...], "summary": {"moved": N, "skipped": N, "errors": N}}
 
 Exit codes:
     0  Success (or dry-run pass)
@@ -22,6 +26,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -215,6 +220,7 @@ def run_hygiene(
     api_key: str,
     team_filter: str | None = None,
     dry_run: bool = False,
+    json_output: bool = False,
 ) -> int:
     """Main logic; returns count of tickets moved (or that would be moved).
 
@@ -224,14 +230,29 @@ def run_hygiene(
     issues = _fetch_archived_active_issues(api_key, team_filter)
 
     if not issues:
-        print("No archived tickets in active states found.")
+        if json_output:
+            print(
+                json.dumps(
+                    {
+                        "dry_run": dry_run,
+                        "tickets": [],
+                        "summary": {"moved": 0, "skipped": 0, "errors": 0},
+                    },
+                    sort_keys=True,
+                )
+            )
+        else:
+            print("No archived tickets in active states found.")
         return 0
 
     # Cache canceled-state IDs per team so we don't re-fetch per ticket.
     canceled_state_cache: dict[str, str | None] = {}
 
     moved = 0
+    skipped = 0
+    errors = 0
     rows: list[str] = []
+    ticket_records: list[dict[str, Any]] = []
 
     for issue in issues:
         identifier = issue.get("identifier", issue["id"])
@@ -245,11 +266,29 @@ def run_hygiene(
         canceled_id = canceled_state_cache[team_id]
         if canceled_id is None:
             rows.append(f"  {identifier:<12} SKIP  — no Canceled state found for team")
+            skipped += 1
+            ticket_records.append(
+                {
+                    "id": identifier,
+                    "title": title,
+                    "from_state": old_state,
+                    "action": "skipped",
+                    "reason": "no_canceled_state",
+                }
+            )
             continue
 
         if dry_run:
             rows.append(f"  {identifier:<12} {old_state} -> Canceled  [{title[:60]}]")
             moved += 1
+            ticket_records.append(
+                {
+                    "id": identifier,
+                    "title": title,
+                    "from_state": old_state,
+                    "action": "would_cancel",
+                }
+            )
             continue
 
         try:
@@ -257,18 +296,58 @@ def run_hygiene(
             if ok:
                 rows.append(f"  {identifier:<12} {old_state} -> Canceled  [{title[:60]}]")
                 moved += 1
+                ticket_records.append(
+                    {
+                        "id": identifier,
+                        "title": title,
+                        "from_state": old_state,
+                        "action": "canceled",
+                    }
+                )
             else:
                 rows.append(f"  {identifier:<12} WARN — issueUpdate returned success=false")
+                errors += 1
+                ticket_records.append(
+                    {
+                        "id": identifier,
+                        "title": title,
+                        "from_state": old_state,
+                        "action": "error",
+                        "reason": "success_false",
+                    }
+                )
         except Exception as exc:
             rows.append(f"  {identifier:<12} ERROR — {exc}")
+            errors += 1
+            ticket_records.append(
+                {
+                    "id": identifier,
+                    "title": title,
+                    "from_state": old_state,
+                    "action": "error",
+                    "reason": str(exc)[:200],
+                }
+            )
 
-    prefix = "[DRY RUN] " if dry_run else ""
-    print(f"\n{prefix}Tickets processed:\n")
-    for row in rows:
-        print(row)
+    if json_output:
+        print(
+            json.dumps(
+                {
+                    "dry_run": dry_run,
+                    "tickets": ticket_records,
+                    "summary": {"moved": moved, "skipped": skipped, "errors": errors},
+                },
+                sort_keys=True,
+            )
+        )
+    else:
+        prefix = "[DRY RUN] " if dry_run else ""
+        print(f"\n{prefix}Tickets processed:\n")
+        for row in rows:
+            print(row)
+        verb = "would be moved" if dry_run else "moved"
+        print(f"\n{prefix}{moved} ticket(s) {verb} to Canceled.")
 
-    verb = "would be moved" if dry_run else "moved"
-    print(f"\n{prefix}{moved} ticket(s) {verb} to Canceled.")
     return moved
 
 
@@ -300,6 +379,12 @@ def main() -> int:
         help="Print what would be canceled; make no changes.",
     )
     parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_output",
+        help="Emit machine-readable JSON output instead of text.",
+    )
+    parser.add_argument(
         "--team",
         default=None,
         metavar="NAME",
@@ -314,7 +399,9 @@ def main() -> int:
         return 1
 
     try:
-        run_hygiene(api_key, team_filter=args.team, dry_run=args.dry_run)
+        run_hygiene(
+            api_key, team_filter=args.team, dry_run=args.dry_run, json_output=args.json_output
+        )
     except RuntimeError as exc:
         print(f"[hygiene] fatal: {exc}", file=sys.stderr)
         return 1
