@@ -1,0 +1,237 @@
+#!/usr/bin/env bash
+#
+# los_10_filter_repo.sh — Step 6 mechanical extraction (LOS-10).
+#
+# Runs `git filter-repo --path-rename` and string substitution on a
+# THROWAWAY CLONE of project-miru, producing a history that imports
+# cleanly into Dreighto/LogueOS-Orchestrator.
+#
+# This script is invoked ONCE at Step 6 of the LOS-10 cutover. It must
+# never run against the live project-miru working tree.
+#
+# USAGE:
+#
+#     # Dry-run (default): print what would happen, do not modify anything.
+#     bash tools/los_10_filter_repo.sh --source-clone /tmp/project-miru-clone
+#
+#     # Real run: write the rewritten history to /tmp/los-10-import/.
+#     bash tools/los_10_filter_repo.sh --source-clone /tmp/project-miru-clone --execute
+#
+# AFTER A SUCCESSFUL --execute, the output at /tmp/los-10-import/ is
+# pushed to Dreighto/LogueOS-Orchestrator's `migration-import` branch
+# (NEVER main directly). Main is updated via PR after manual review.
+#
+# REFUSAL CONDITIONS:
+#
+# - Source clone is not a git repo
+# - Source clone has uncommitted changes
+# - Source clone path resolves to the live D:\dev\miru tree
+# - `git filter-repo` is not on PATH (install: pip install git-filter-repo)
+# - Output directory already exists (must be a fresh path)
+#
+# WHAT THIS SCRIPT DOES NOT DO:
+#
+# - Push to GitHub (operator does this manually with explicit confirmation)
+# - Sign commits (the imported history retains original signatures or lacks
+#   them; new commits added post-import carry fresh signatures)
+# - Touch the DGAS audit log (handled by tools/migrate_dgas_boundary.py at Step 4)
+# - Change repo settings, branch protections, or webhooks
+#
+# See .miru/reference/los-10-rename-map.md for the canonical name list.
+
+set -euo pipefail
+
+EXECUTE=0
+SOURCE_CLONE=""
+OUTPUT_DIR="${LOS_10_OUTPUT_DIR:-/tmp/los-10-import}"
+
+LIVE_REPO_PATHS=(
+    "/d/dev/miru"
+    "D:/dev/miru"
+    "D:\\dev\\miru"
+)
+
+usage() {
+    sed -n '2,40p' "$0" >&2
+    exit 2
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --source-clone)
+            SOURCE_CLONE="$2"
+            shift 2
+            ;;
+        --output-dir)
+            OUTPUT_DIR="$2"
+            shift 2
+            ;;
+        --execute)
+            EXECUTE=1
+            shift
+            ;;
+        --help|-h)
+            usage
+            ;;
+        *)
+            echo "unknown arg: $1" >&2
+            usage
+            ;;
+    esac
+done
+
+if [[ -z "$SOURCE_CLONE" ]]; then
+    echo "[los_10_filter_repo] ERROR: --source-clone is required" >&2
+    usage
+fi
+
+# Refusal: source must be a real git repo
+if [[ ! -d "$SOURCE_CLONE/.git" ]]; then
+    echo "[los_10_filter_repo] ERROR: $SOURCE_CLONE is not a git repository" >&2
+    exit 1
+fi
+
+# Refusal: source must not be the live tree (we operate on clones only)
+SOURCE_ABS="$(cd "$SOURCE_CLONE" && pwd)"
+for live in "${LIVE_REPO_PATHS[@]}"; do
+    if [[ "$SOURCE_ABS" == "$live" ]]; then
+        echo "[los_10_filter_repo] ERROR: refusing to run on the live tree ($live). Clone first:" >&2
+        echo "    git clone --no-local /d/dev/miru /tmp/project-miru-clone" >&2
+        exit 1
+    fi
+done
+
+# Refusal: source must be clean
+if ! (cd "$SOURCE_CLONE" && git diff --quiet && git diff --cached --quiet); then
+    echo "[los_10_filter_repo] ERROR: source clone has uncommitted changes" >&2
+    exit 1
+fi
+
+# Refusal: git filter-repo must be installed
+if ! command -v git-filter-repo >/dev/null 2>&1; then
+    echo "[los_10_filter_repo] ERROR: git-filter-repo not on PATH" >&2
+    echo "    Install: pip install git-filter-repo" >&2
+    exit 1
+fi
+
+# Refusal: output dir must not exist
+if [[ -e "$OUTPUT_DIR" ]]; then
+    echo "[los_10_filter_repo] ERROR: output dir already exists: $OUTPUT_DIR" >&2
+    echo "    Pick a fresh path or delete the existing one." >&2
+    exit 1
+fi
+
+# Path renames per .miru/reference/los-10-rename-map.md.
+#
+# Format: "source-glob:dest-path" — git-filter-repo --path-rename treats
+# source as a prefix match. We list only the renames; identity paths
+# (services/dispatch_listener/, tools/audit_chain.py, etc.) flow through
+# unchanged.
+PATH_RENAMES=(
+    "tools/miru_mcp_gateway/:tools/logueos_mcp_gateway/"
+)
+
+# Paths to EXCLUDE from the import (Miru-specific business logic that
+# does NOT go into LogueOS-Orchestrator).
+PATH_EXCLUDES=(
+    "miru_ai/"
+    "pm/"
+    "data/card_catalog_backup_*.db"
+    "data/card_data.db"
+    "tests/test_miru_ai_server.py"
+    "tests/test_miru_project_sync.py"
+    "tests/test_miru_learning_engine.py"
+    "tests/test_miru_card_intel.py"
+    "tests/test_miru_image_ingestion.py"
+    "tests/test_miru_source_registry.py"
+)
+
+# Identifier renames inside file contents. Applied via
+# git-filter-repo --replace-text. The replace-text file has one
+# `old==>new` per line, NO leading whitespace.
+REPLACE_TEXT_FILE="$OUTPUT_DIR/.filter-repo-replace-text"
+
+build_replace_text() {
+    mkdir -p "$OUTPUT_DIR"
+    cat > "$REPLACE_TEXT_FILE" <<'EOF'
+MIRU_ROUTING_KEY==>LOGUEOS_ROUTING_KEY
+MIRU_TRACE_ID==>LOGUEOS_TRACE_ID
+MIRU_MCP_GATEWAY_PORT==>LOGUEOS_MCP_GATEWAY_PORT
+MIRU_MCP_GATEWAY_HOST==>LOGUEOS_MCP_GATEWAY_HOST
+miru-gateway==>logueos-gateway
+miru-dispatch-listener==>logueos-dispatch-listener
+miru_mcp_gateway==>logueos_mcp_gateway
+EOF
+}
+
+print_plan() {
+    echo "==[ LOS-10 Step 6 filter-repo plan ]=================================="
+    echo "Source clone:    $SOURCE_CLONE"
+    echo "Output dir:      $OUTPUT_DIR"
+    echo "Mode:            $( [[ $EXECUTE -eq 1 ]] && echo EXECUTE || echo DRY-RUN )"
+    echo
+    echo "Path renames (filter-repo --path-rename):"
+    for r in "${PATH_RENAMES[@]}"; do echo "  $r"; done
+    echo
+    echo "Path excludes (filter-repo --path-glob ! ...):"
+    for r in "${PATH_EXCLUDES[@]}"; do echo "  $r"; done
+    echo
+    echo "Identifier renames (replace-text):"
+    echo "  MIRU_ROUTING_KEY → LOGUEOS_ROUTING_KEY"
+    echo "  MIRU_TRACE_ID → LOGUEOS_TRACE_ID"
+    echo "  MIRU_MCP_GATEWAY_PORT → LOGUEOS_MCP_GATEWAY_PORT"
+    echo "  MIRU_MCP_GATEWAY_HOST → LOGUEOS_MCP_GATEWAY_HOST"
+    echo "  miru-gateway → logueos-gateway"
+    echo "  miru-dispatch-listener → logueos-dispatch-listener"
+    echo "  miru_mcp_gateway → logueos_mcp_gateway"
+    echo
+    echo "Refusal: NO push to remote performed by this script. Operator pushes manually."
+    echo "======================================================================"
+}
+
+print_plan
+
+if [[ $EXECUTE -eq 0 ]]; then
+    echo "[los_10_filter_repo] dry-run complete. Re-run with --execute to write to $OUTPUT_DIR." >&2
+    exit 0
+fi
+
+# Real execution path:
+# 1. Copy the clone to OUTPUT_DIR so filter-repo doesn't mangle the original
+# 2. Run filter-repo with all path rename + exclude + replace-text args
+# 3. Print final size + commit-graph summary
+
+echo "[los_10_filter_repo] copying $SOURCE_CLONE → $OUTPUT_DIR" >&2
+cp -r "$SOURCE_CLONE" "$OUTPUT_DIR"
+build_replace_text
+
+cd "$OUTPUT_DIR"
+
+# Build filter-repo args
+FILTER_ARGS=(
+    --replace-text "$REPLACE_TEXT_FILE"
+)
+for r in "${PATH_RENAMES[@]}"; do
+    FILTER_ARGS+=( --path-rename "$r" )
+done
+for r in "${PATH_EXCLUDES[@]}"; do
+    FILTER_ARGS+=( --path-glob "!$r" )
+done
+
+echo "[los_10_filter_repo] running git filter-repo (this may take a few minutes)..." >&2
+git filter-repo "${FILTER_ARGS[@]}"
+
+echo
+echo "==[ Filter-repo done ]=============================================="
+echo "Output:           $OUTPUT_DIR"
+echo "Commit count:     $(git rev-list --count HEAD)"
+echo "Working dir size: $(du -sh .git 2>/dev/null | awk '{print $1}')"
+echo
+echo "Next:"
+echo "  1. Inspect the result: cd $OUTPUT_DIR && git log --oneline | head"
+echo "  2. Add LogueOS-Orchestrator as remote:"
+echo "       git remote add origin https://github.com/Dreighto/LogueOS-Orchestrator.git"
+echo "  3. Push to migration-import branch (NEVER main directly):"
+echo "       git push -u origin HEAD:migration-import"
+echo "  4. Open PR from migration-import → main on LogueOS-Orchestrator. Manual review required."
+echo "===================================================================="
