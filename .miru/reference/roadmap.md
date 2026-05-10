@@ -4,7 +4,7 @@
 Reference: roadmap
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: planning new work, dispatching a major ticket, or onboarding a worker.
-Last reviewed: 2026-05-10 (verified against Linear + git log + LogueOS-Console PR list + actually-running services)
+Last reviewed: 2026-05-10 (post-evening sweep — verified against Linear + git log + LogueOS-Console PR list)
 ```
 
 This file is the canonical answer to **"where are we and where are we going."** Keep it current — stale roadmap = duplicated work or contradicted plans.
@@ -85,25 +85,37 @@ Dispatch loop now serves multiple repos via the `target_repo` parameter on `disp
 - **PR #157** — Generalized `parkingBranchForCwd` for non-miru worktrees. Legacy basenames (`miru-w1`..`miru-w6`, `miru-cursor`) keep the short-form `_parking_w1` convention via an explicit `LEGACY_MIRU_SLOT_BASENAMES` Set; everything else maps to full-basename `_parking_<repo>-w<N>` (e.g. `_parking_LogueOS-Console-w1`).
 - First active second pool: `LogueOS-Console` (1 slot at `D:\dev\LogueOS-Console-w1`). LOS-1 + LOS-2 both shipped through it on 2026-05-10.
 
-### LogueOS Console — P1a + P1b SHIPPED 2026-05-10
+### LogueOS Console — P1a through P3 SHIPPED 2026-05-10
 
 Operator-facing dashboard for the dispatch loop. Replaces "ask CC how the loop is doing" with a glance-able SvelteKit UI. Lives at `Dreighto/LogueOS-Console` (separate repo from project-miru).
 
 - **LOS-1 — P1a — bootstrap shell + 5-tab nav** — DONE (PR #1 squash e21ba0b8). SvelteKit 2 + Svelte 5 (runes) + Tailwind 4 + shadcn-svelte + lucide-svelte + LayerChart. 5 tabs in order: **Runs · Workers · Activity · Ask · Settings**. Locked design tokens: `bg #0D1117`, `surface #161B22`, `cta #A3E635`, Mona Sans body / IBM Plex Mono metadata. 480px max-width container. Chart isolation pattern in `src/lib/charts/`.
 - **LOS-2 — P1b — Runs tab data wiring** — DONE (PR #2 squash 8651bb0b). `/api/runs` server endpoint reads `D:\dev\miru\data\cc_completion_log.jsonl` via `$lib/server/config.ts`; `/api/runs?limit=N` returns the most recent N rows in reverse chronological order. RunCard component renders worker badge (5 worker identity colors), status icon (5 status colors with traffic-light semantics), trace_id chip, ticket_id, summary preview, duration, PR link. Polling pauses when tab is hidden via `document.visibilityState`.
-- **LOS-3 — P1c — Run detail view** — NOT YET FILED. Tap a run card → `/runs/[trace_id]` route showing full summary, branch, files_touched, full PR link. Will dispatch to gemini-cli with `target_repo=LogueOS-Console`. Next slice.
+- **LOS-3 — P1c — Run detail view** — DONE (PR #3 squash a28d2e6). Tap a run card → `/runs/[trace_id]` route showing full summary, branch, files_touched, full PR link. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
+- **LOS-4 — P2 — Workers tab: live status from dispatch log** — DONE (PR #4). Workers tab reads live worker-state events from `logs/dispatch_listener_stdout.log` NDJSON; shows active/idle/error per worker with last-seen timestamps. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
+- **LOS-5 — P3 — Activity tab: recent ops events feed** — DONE. Activity tab wired to dispatch log NDJSON stream; surfaces `worker_spawned`, `worker_exited`, `pre_spawn_dirty_refusal`, `worktree_parked`, and error events in chronological feed. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
+- **P4** — Not scoped in the v1 spec. The locked phase sequence runs P1a→P1b→P1c→P2→P3→P5. P4 was deliberately omitted from the original plan.
+- **LOS-6 — P5 — Settings + write actions** — NOT YET FILED. Next slice. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
 
-### Active tickets (2026-05-10)
+### Active tickets (2026-05-10, post-evening sweep)
 
-| Ticket  | State     | Notes                                                                                                                                                                                      |
-| ------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PRO-340 | Triage    | Multi-repo dispatch onboarding checklist + `data/templates/multi-repo/` template directory. Captures the 5-step "adding a new repo" procedure scar tissue from LOS-1/LOS-2 dispatch chain. |
-| PRO-326 | In Review | parent_watcher `_evaluate_parent` unit tests. CC dispatched.                                                                                                                               |
-| PRO-327 | In Review | parent_watcher `_is_forward_transition` edge case tests. CC dispatched.                                                                                                                    |
-| PRO-292 | Todo      | E2E test ticket (do-not-dispatch flag). Audit deployment pipeline for stale env vars.                                                                                                      |
-| LOS-3   | NOT FILED | Next LogueOS Console slice — P1c Run detail view (`/runs/[trace_id]`). Dispatch to gemini-cli with `target_repo=LogueOS-Console`.                                                          |
+| Ticket  | State     | Notes                                                                                                                |
+| ------- | --------- | -------------------------------------------------------------------------------------------------------------------- |
+| PRO-292 | Todo      | E2E test ticket (do-not-dispatch flag). Audit deployment pipeline for stale env vars.                                |
+| PRO-343 | Todo      | n8n W1 DNS error (transient). Labeled `triage` + `n8n-error-queue`. Needs operator decision: archive or investigate. |
+| LOS-6   | NOT FILED | Next LogueOS Console slice — P5 Settings + write actions. Dispatch to gemini-cli with `target_repo=LogueOS-Console`. |
 
-**Recently DONE (2026-05-09 + 2026-05-10):**
+**Recently DONE (2026-05-10, evening batch):**
+
+- PRO-322 (Linear board hygiene script) → Done, PR #166. `tools/linear_board_hygiene.py` + full test suite.
+- PRO-326 (parent_watcher `_evaluate_parent` unit tests) → Done, PR on 2026-05-10.
+- PRO-327 (parent_watcher `_is_forward_transition` edge case tests) → Done, PR #119.
+- PRO-340 (multi-repo onboarding checklist) → Done, PR #164. `data/templates/multi-repo/` + `.miru/reference/multi-repo-onboarding.md`.
+- LOS-3 (Console P1c Run detail) → Done, PR #3 (LogueOS-Console).
+- LOS-4 (Console P2 Workers tab) → Done, PR #4 (LogueOS-Console).
+- LOS-5 (Console P3 Activity tab) → Done (LogueOS-Console).
+
+**Recently DONE (2026-05-09 + early 2026-05-10):**
 
 - PRO-333 → reframed as LOS-1 + LOS-2 (LogueOS Console moved to its own repo + team). Original ticket cancelled.
 - PRO-336 (Session 0 boot fix) → Done, PRs #154 + #155.
@@ -118,10 +130,9 @@ Operator-facing dashboard for the dispatch loop. Replaces "ask CC how the loop i
 
 ### Near-term (this week — next week)
 
-1. **LOS-3 — Console P1c Run detail view.** File and dispatch. `/runs/[trace_id]` route + RunDetail component showing full summary, branch, files_touched, PR link. Closes the inbox-then-detail UX pattern from the locked v1 spec. Gemini-cli, `target_repo=LogueOS-Console`.
-2. **PRO-340 — Multi-repo onboarding checklist.** Document the 5 steps + ship `data/templates/multi-repo/` so the next repo addition is checklist-driven, not trial-and-error. Tier: docs + templates only.
+1. **LOS-6 — Console P5 Settings + write actions.** File and dispatch. Gemini-cli, `target_repo=LogueOS-Console`. Last planned Console slice from the v1 spec.
+2. **PRO-343 — n8n W1 DNS error triage.** Operator decision needed: one-time blip (archive) or systemic (investigate). Labeled `triage` + `n8n-error-queue`. CC cannot auto-dispatch (triage label).
 3. **MiruOpsDigest failing daily at 9 AM** — Last result: 1 (failed). Not blocking but worth diagnosing. File ticket if it's not a one-off.
-4. **LOS Console P2/P3/P5 ticket pipeline** — once P1c lands, file LOS-4 (Workers tab), LOS-5 (Activity feed), LOS-6 (Settings + write actions). Each is its own gemini dispatch.
 
 ### Mid-term (next 2-4 weeks)
 
