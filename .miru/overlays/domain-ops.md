@@ -81,11 +81,11 @@ MCP servers defined in `.mcp.json` are spawned by Claude Code as child processes
 
 **Rules:**
 
-1. **Never use `npx.cmd` or `cmd /c npx.cmd` as the MCP server command.** `.cmd` files run inside `cmd.exe`; Claude Code spawns that `cmd.exe` without `CREATE_NO_WINDOW`, causing a visible console flash. Pre-install the npm package globally (`npm install -g <package>`) and set `"command": "node"` with the absolute path to the package's main script. Global node_modules root: `C:\Users\Dreighto\AppData\Roaming\npm\node_modules`.
+1. **Never use `npx` in any form (`npx.cmd`, bare `npx`, `cmd /c npx`) as the MCP server command.** `npx` resolves via `cmd.exe`; Claude Code spawns that `cmd.exe` without `CREATE_NO_WINDOW`, causing a visible console flash. Pre-install the npm package globally (`npm install -g <package>`) and set `"command": "node"` with the absolute path to the package's main script. Global node_modules root: `C:\Users\Dreighto\AppData\Roaming\npm\node_modules`.
 
 2. **Never use `"command": "powershell.exe"` without `-WindowStyle Hidden` and `-NonInteractive`.** Always include those flags before `-ExecutionPolicy Bypass`.
 
-3. **`@latest` tags in npx are banned.** They trigger a network version check on every session start, which spawns additional processes. Pre-installed packages are pinned at install time; run `tools/update_mcp_global_packages.ps1` periodically to pull updates.
+3. **`@latest` version specifiers are banned** (in `npm install -g` or any package invocation). They trigger a network version check on every session start and pin to an unpredictable version. Pre-installed packages are pinned at install time; run `tools/update_mcp_global_packages.ps1` periodically to pull updates.
 
 4. **Docker-based entries are exempt** -- Docker handles console allocation internally; the `docker` command is already handled cleanly by Claude Code.
 
