@@ -150,10 +150,16 @@ class TestActiveArchivedTicketQueued(unittest.TestCase):
             _CANCELED_STATE_RESP,
             _UPDATE_SUCCESS,
         ]
-        with mock.patch.object(lbh, "_gql", side_effect=_make_gql_side_effect(*responses)):
+        with mock.patch.object(
+            lbh, "_gql", side_effect=_make_gql_side_effect(*responses)
+        ) as mock_gql:
             count = lbh.run_hygiene(_FAKE_KEY, dry_run=False)
 
         self.assertEqual(count, 1)
+        self.assertTrue(
+            any("issueUpdate" in c.args[1] for c in mock_gql.call_args_list),
+            "issueUpdate mutation must be called in execute mode",
+        )
 
 
 class TestDoneOrCanceledTicketSkipped(unittest.TestCase):
