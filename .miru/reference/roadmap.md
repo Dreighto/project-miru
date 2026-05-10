@@ -102,13 +102,13 @@ Operator-facing dashboard for the dispatch loop. Replaces "ask CC how the loop i
 
 ### Active tickets (2026-05-10, post-late-evening sweep)
 
-| Ticket  | State  | Notes                                                                                                                                                       |
-| ------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PRO-292 | Todo   | E2E test ticket (do-not-dispatch flag). Audit deployment pipeline for stale env vars.                                                                       |
-| PRO-343 | Triage | n8n W1 DNS error (transient). Labeled `triage` + `n8n-error-queue`. Needs operator decision: archive or investigate.                                        |
-| LOS-8   | Triage | Console P5 Settings tab. Needs operator approval → Todo before Gemini dispatch. `target_repo=LogueOS-Console`.                                              |
-| LOS-9   | Triage | Console /api/runs dedupe. Needs operator approval → Todo before Gemini dispatch. `target_repo=LogueOS-Console`.                                             |
-| LOS-10  | Done   | Step 1 (gateway `/canon/*` + `/canon-manifest` HTTP routes) shipped PR #177. Full orchestrator extraction plan underway — Steps 2-9 TBD per migration plan. |
+| Ticket  | State  | Notes                                                                                                                                                        |
+| ------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PRO-292 | Todo   | E2E test ticket (do-not-dispatch flag). Audit deployment pipeline for stale env vars.                                                                        |
+| PRO-343 | Todo   | n8n W1 DNS error (transient). Labeled `triage` + `n8n-error-queue`. Needs operator decision: archive or investigate. CC cannot auto-dispatch (triage label). |
+| LOS-8   | Triage | Console P5 Settings tab. Needs operator approval → Todo before Gemini dispatch. `target_repo=LogueOS-Console`.                                               |
+| LOS-9   | Triage | Console /api/runs dedupe. Needs operator approval → Todo before Gemini dispatch. `target_repo=LogueOS-Console`.                                              |
+| LOS-10  | Done   | Step 1 (gateway `/canon/*` + `/canon-manifest` HTTP routes) shipped PR #177. Full orchestrator extraction plan underway — Steps 2-9 TBD per migration plan.  |
 
 **Recently DONE (2026-05-10, late-evening batch):**
 
