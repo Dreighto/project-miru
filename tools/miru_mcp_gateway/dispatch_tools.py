@@ -45,7 +45,7 @@ _APPROVED_THINKING_LEVELS = frozenset({"extended", "none", "low", "medium", "hig
 #
 # Parity is enforced by tests/test_dispatch_tools_target_repo_parity.py — that
 # test fails if these two lists diverge. Per CodeRabbit feedback on PR #156.
-_APPROVED_TARGET_REPOS = frozenset({"project-miru", "LogueOS-Console"})
+_APPROVED_TARGET_REPOS = frozenset({"project-miru", "LogueOS-Console", "LogueOS-Orchestrator"})
 _DEFAULT_TARGET_REPO = "project-miru"
 _DEFAULT_TIMEOUT_S = 600
 _TIMEOUT_MIN = 1
