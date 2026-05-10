@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { spawn, execSync } = require('child_process');
+const { spawn, execSync, execFileSync } = require('child_process');
 
 const log = require('./log');
 const { spec } = require('./allowlist');
@@ -169,10 +169,15 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 const CLEAN_WORKTREE_SCRIPT = path.join(REPO_ROOT, 'tools', 'clean_worktree.py');
 
 function cleanWorktree(cwd, traceId, opts) {
-  // opts.execSync is for tests; default to the real execSync.
-  const exec = (opts && opts.execSync) || execSync;
+  // opts.execFileSync is for tests; default to the real execFileSync.
+  // execFileSync (not execSync) so we pass argv as an array — the shell never
+  // sees the `cwd` value, which prevents shell-injection if a worktree path
+  // ever contained metacharacters. (CodeRabbit Major on PR #160; in practice
+  // cwd comes from a hardcoded WORKTREE_POOLS map, but defensive coding is
+  // cheap and the test mocks adapt trivially.)
+  const execFile = (opts && opts.execFileSync) || execFileSync;
   try {
-    const output = exec(`python "${CLEAN_WORKTREE_SCRIPT}" --cwd "${cwd}"`, {
+    const output = execFile('python', [CLEAN_WORKTREE_SCRIPT, '--cwd', String(cwd)], {
       // No `cwd` here — the script reads --cwd from argv. Running from
       // REPO_ROOT (or anywhere) doesn't matter; --cwd controls the target.
       timeout: 15000,
