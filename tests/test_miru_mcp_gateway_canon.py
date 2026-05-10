@@ -97,17 +97,25 @@ class CanonRoutesTests(unittest.TestCase):
         self.assertEqual(result["content"], "# guardrails\n")
 
     def test_get_canon_file_rejects_path_not_in_allowlist(self) -> None:
-        # Random invented paths should return None — the layout dict is the
-        # ONLY source of truth for what's exposable. No directory walking.
-        self.assertIsNone(canon_routes.get_canon_file(self.tmp_root, "overlays/nonexistent.md"))
-        self.assertIsNone(canon_routes.get_canon_file(self.tmp_root, "../../etc/passwd"))
-        self.assertIsNone(canon_routes.get_canon_file(self.tmp_root, "root/.env"))
-        self.assertIsNone(canon_routes.get_canon_file(self.tmp_root, "data/secrets.json"))
+        # Random invented paths must raise NotAllowlistedError — the layout
+        # dict is the ONLY source of truth for what's exposable. No
+        # directory walking. CodeRabbit R0: distinct exception lets the
+        # handler differentiate "wrong path" from "file gone."
+        for bogus in [
+            "overlays/nonexistent.md",
+            "../../etc/passwd",
+            "root/.env",
+            "data/secrets.json",
+        ]:
+            with self.assertRaises(canon_routes.NotAllowlistedError):
+                canon_routes.get_canon_file(self.tmp_root, bogus)
 
-    def test_get_canon_file_missing_on_disk_returns_none(self) -> None:
+    def test_get_canon_file_missing_on_disk_raises_distinct_error(self) -> None:
         # 'overlays/adopted-lessons.md' IS in the allowlist but we didn't
-        # create it in setUp. Should not crash; should return None.
-        self.assertIsNone(canon_routes.get_canon_file(self.tmp_root, "overlays/adopted-lessons.md"))
+        # create it in setUp. Must raise AllowlistedFileMissingError — NOT
+        # the same exception as a path that's not in the allowlist at all.
+        with self.assertRaises(canon_routes.AllowlistedFileMissingError):
+            canon_routes.get_canon_file(self.tmp_root, "overlays/adopted-lessons.md")
 
     # -------------------------------------------------------------------
     # get_canon_manifest
@@ -186,6 +194,130 @@ class CanonRoutesTests(unittest.TestCase):
         # 2026-05-10: 6 overlays + 8 reference + 26 context + 2 root = 42.
         # Adjust this number when canon legitimately grows.
         self.assertEqual(len(canon_routes._CANON_LAYOUT), 42)
+
+    def test_load_file_handles_toctou_disappearance(self) -> None:
+        # CodeRabbit R0: between the cache's internal exists() and the
+        # subsequent stat()/read_bytes(), a file can disappear (operator edit,
+        # antivirus quarantine, parallel cleanup). _load_file must catch
+        # FileNotFoundError and return None instead of letting it escape.
+        # Simulate by deleting the file mid-cache-prime.
+        target = self.tmp_root / ".miru" / "overlays" / "workflow-git.md"
+        target.unlink()
+        # Now the file is missing; calling get_canon_file must surface as the
+        # AllowlistedFileMissingError, not a raw FileNotFoundError 500.
+        with self.assertRaises(canon_routes.AllowlistedFileMissingError):
+            canon_routes.get_canon_file(self.tmp_root, "overlays/workflow-git.md")
+        # Manifest should mark it missing instead of crashing.
+        manifest = canon_routes.get_canon_manifest(self.tmp_root)
+        self.assertTrue(manifest["files"]["overlays/workflow-git.md"]["missing"])
+
+
+class CanonRoutesHTTPTests(unittest.TestCase):
+    """Route-level tests via Starlette's TestClient.
+
+    CodeRabbit R0: helpers were unit-tested but the HTTP wiring (route paths,
+    JSON shape, status codes) wasn't. These tests exercise the actual handlers
+    registered by `register_canon_routes()` so the contract is covered.
+
+    A tiny FakeMcp stand-in collects routes via the same `custom_route`
+    decorator API that FastMCP exposes. Avoids dragging the full FastMCP
+    dependency into the test path.
+    """
+
+    def setUp(self) -> None:
+        self.tmp_root = Path(tempfile.mkdtemp(prefix="canon_routes_http_test_"))
+        self.addCleanup(lambda: shutil.rmtree(self.tmp_root, ignore_errors=True))
+        (self.tmp_root / ".miru" / "overlays").mkdir(parents=True)
+        (self.tmp_root / "miru-context").mkdir(parents=True)
+        (self.tmp_root / "CLAUDE.md").write_bytes(b"# CLAUDE\n")
+        (self.tmp_root / "AGENTS.md").write_bytes(b"# AGENTS\n")
+        (self.tmp_root / ".miru" / "overlays" / "workflow-git.md").write_bytes(b"# workflow-git\n")
+        (self.tmp_root / "miru-context" / "guardrails.md").write_bytes(b"# guardrails\n")
+        canon_routes.reset_cache_for_tests()
+
+        # Build a Starlette app with the canon routes wired in.
+        from starlette.applications import Starlette
+        from starlette.routing import Route
+        from starlette.testclient import TestClient
+
+        class FakeMcp:
+            """Stand-in for FastMCP — same custom_route decorator API."""
+
+            def __init__(self) -> None:
+                self.routes: list[Route] = []
+
+            def custom_route(self, path, methods):
+                def decorator(handler):
+                    self.routes.append(Route(path, handler, methods=methods))
+                    return handler
+
+                return decorator
+
+        fake_mcp = FakeMcp()
+        canon_routes.register_canon_routes(fake_mcp, self.tmp_root)
+        self.app = Starlette(routes=fake_mcp.routes)
+        self.client = TestClient(self.app)
+
+    def test_route_canon_manifest_returns_full_shape(self) -> None:
+        response = self.client.get("/canon-manifest")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertIn("canon_snapshot_id", body)
+        self.assertIn("files", body)
+        self.assertEqual(body["file_count"], len(canon_routes._CANON_LAYOUT))
+        # Files we created should report present + correct sha
+        wg = body["files"]["overlays/workflow-git.md"]
+        self.assertFalse(wg.get("missing", False))
+        self.assertEqual(wg["sha256"], _sha256(b"# workflow-git\n"))
+
+    def test_route_canon_file_happy_path(self) -> None:
+        response = self.client.get("/canon/overlays/workflow-git.md")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["canon_path"], "overlays/workflow-git.md")
+        self.assertEqual(body["content"], "# workflow-git\n")
+        self.assertEqual(body["sha256"], _sha256(b"# workflow-git\n"))
+        self.assertEqual(body["byte_length"], len(b"# workflow-git\n"))
+        self.assertEqual(len(body["canon_snapshot_id"]), 64)
+
+    def test_route_canon_file_per_file_snapshot_id_matches_manifest(self) -> None:
+        # CR R0 explicit ask: per-file snapshot_id must match manifest's.
+        per_file = self.client.get("/canon/overlays/workflow-git.md").json()
+        manifest = self.client.get("/canon-manifest").json()
+        self.assertEqual(per_file["canon_snapshot_id"], manifest["canon_snapshot_id"])
+
+    def test_route_canon_file_root_files(self) -> None:
+        response = self.client.get("/canon/root/CLAUDE.md")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["content"], "# CLAUDE\n")
+
+    def test_route_canon_file_404_for_non_allowlisted_path(self) -> None:
+        response = self.client.get("/canon/overlays/totally-fake.md")
+        self.assertEqual(response.status_code, 404)
+        body = response.json()
+        self.assertFalse(body["ok"])
+        self.assertEqual(body["error"], "not_in_canon_allowlist")
+        self.assertEqual(body["canon_path"], "overlays/totally-fake.md")
+
+    def test_route_canon_file_404_for_allowlisted_but_missing(self) -> None:
+        # 'overlays/adopted-lessons.md' is in _CANON_LAYOUT but not in the
+        # temp dir — handler must return the differentiated error code, NOT
+        # the same 'not_in_canon_allowlist' as a bogus path. Operators
+        # debugging missing canon need to know the difference.
+        response = self.client.get("/canon/overlays/adopted-lessons.md")
+        self.assertEqual(response.status_code, 404)
+        body = response.json()
+        self.assertFalse(body["ok"])
+        self.assertEqual(body["error"], "allowlisted_file_missing")
+        self.assertEqual(body["canon_path"], "overlays/adopted-lessons.md")
+
+    def test_route_canon_file_404_for_traversal_attempt(self) -> None:
+        # Path traversal must be blocked at the allowlist boundary, not at
+        # the filesystem layer.
+        response = self.client.get("/canon/../../etc/passwd")
+        self.assertEqual(response.status_code, 404)
 
 
 if __name__ == "__main__":

@@ -112,19 +112,52 @@ _FILE_CACHE: dict[str, dict[str, Any]] = {}
 _SNAPSHOT_CACHE: dict[str, str] = {"id": "", "fingerprint": ""}
 
 
+class CanonAccessError(Exception):
+    """Base for canon resolution failures. Lets the HTTP handler return
+    differentiated 404 payloads — operators debugging a missing canon entry
+    need to know whether they typed a wrong path or whether the file
+    actually disappeared."""
+
+
+class NotAllowlistedError(CanonAccessError):
+    """The requested canon_path is not in the static allowlist."""
+
+
+class AllowlistedFileMissingError(CanonAccessError):
+    """The canon_path is allowlisted but the underlying file has gone
+    missing on disk (or vanished mid-read via TOCTOU race)."""
+
+
 def _hash_bytes(data: bytes) -> str:
     """sha256 hex of arbitrary bytes."""
     return hashlib.sha256(data).hexdigest()
 
 
-def _load_file(canon_path: str, abs_path: Path) -> dict[str, Any]:
-    """Load file content + compute metadata. Caller holds _CACHE_LOCK."""
-    stat = abs_path.stat()
+def _load_file(canon_path: str, abs_path: Path) -> dict[str, Any] | None:
+    """Load file content + compute metadata. Caller holds _CACHE_LOCK.
+
+    Returns None if the file disappeared between an earlier exists() check
+    and the stat()/read_bytes() inside this function. CodeRabbit R0: that
+    TOCTOU window is real on a busy host (file cleanup, antivirus quarantine,
+    operator editing) and an unguarded FileNotFoundError would 500 the
+    request instead of cleanly 404-ing.
+    """
+    try:
+        stat = abs_path.stat()
+    except FileNotFoundError:
+        # Drop any stale cached entry so a recreate-then-fetch sequence
+        # doesn't keep serving the deleted file's old content.
+        _FILE_CACHE.pop(canon_path, None)
+        return None
     mtime_ns = stat.st_mtime_ns
     cached = _FILE_CACHE.get(canon_path)
     if cached and cached["mtime_ns"] == mtime_ns:
         return cached
-    content_bytes = abs_path.read_bytes()
+    try:
+        content_bytes = abs_path.read_bytes()
+    except FileNotFoundError:
+        _FILE_CACHE.pop(canon_path, None)
+        return None
     entry = {
         "mtime_ns": mtime_ns,
         "byte_length": len(content_bytes),
@@ -142,7 +175,7 @@ def _refresh_snapshot(repo_root: Path) -> tuple[str, dict[str, dict[str, Any]]]:
     include `content_bytes` — that's cached separately and only sent when the
     per-file endpoint is called. Manifest endpoint sends only metadata so a
     worker can record everything in a single round-trip without paying the
-    bandwidth of pulling all 41 files at spawn.
+    bandwidth of pulling all 42 files at spawn.
 
     Caller holds _CACHE_LOCK.
     """
@@ -150,7 +183,10 @@ def _refresh_snapshot(repo_root: Path) -> tuple[str, dict[str, dict[str, Any]]]:
     fingerprint_parts: list[str] = []  # also drives a quick "did anything change" check
     for canon_path, rel_path in _CANON_LAYOUT.items():
         abs_path = repo_root / rel_path
-        if not abs_path.exists():
+        # _load_file is itself TOCTOU-safe: returns None if the file is
+        # missing or vanishes mid-read. We don't need an exists() pre-check.
+        entry = _load_file(canon_path, abs_path)
+        if entry is None:
             # Canon file declared in layout but missing on disk. Should never
             # happen in production; defensive — surface via 'missing' marker.
             per_file_meta[canon_path] = {
@@ -161,7 +197,6 @@ def _refresh_snapshot(repo_root: Path) -> tuple[str, dict[str, dict[str, Any]]]:
             }
             fingerprint_parts.append(f"{canon_path}:MISSING")
             continue
-        entry = _load_file(canon_path, abs_path)
         per_file_meta[canon_path] = {
             "mtime_ns": entry["mtime_ns"],
             "byte_length": entry["byte_length"],
@@ -179,18 +214,29 @@ def _refresh_snapshot(repo_root: Path) -> tuple[str, dict[str, dict[str, Any]]]:
     return snapshot_id, per_file_meta
 
 
-def get_canon_file(repo_root: Path, canon_path: str) -> dict[str, Any] | None:
-    """Return the file content + metadata for one canon path, or None if not
-    in the allowlist. The returned dict shape matches the JSON the HTTP
-    handler will return.
+def get_canon_file(repo_root: Path, canon_path: str) -> dict[str, Any]:
+    """Return the file content + metadata for one canon path.
+
+    Raises:
+        NotAllowlistedError: canon_path is not in the static allowlist.
+        AllowlistedFileMissingError: canon_path is allowlisted but the
+            underlying file is missing on disk (declared-but-not-present, or
+            disappeared via TOCTOU race during read).
+
+    The returned dict shape matches the JSON the HTTP handler will return.
+
+    CodeRabbit R0: previously returned None for both error conditions, which
+    forced the HTTP handler to use the same 404 payload for "you typed a
+    wrong path" and "the canon file is gone" — operationally distinct
+    failures. Distinct exceptions let the handler differentiate.
     """
     if canon_path not in _CANON_LAYOUT:
-        return None
+        raise NotAllowlistedError(canon_path)
     abs_path = repo_root / _CANON_LAYOUT[canon_path]
-    if not abs_path.exists():
-        return None
     with _CACHE_LOCK:
         entry = _load_file(canon_path, abs_path)
+        if entry is None:
+            raise AllowlistedFileMissingError(canon_path)
         snapshot_id, _ = _refresh_snapshot(repo_root)
     return {
         "canon_path": canon_path,
@@ -251,10 +297,18 @@ def register_canon_routes(mcp, repo_root: Path) -> None:
         # registered as `/canon/{canon_path:path}` so subdirectories (e.g.
         # `overlays/workflow-git.md`) come through intact.
         canon_path = request.path_params.get("canon_path", "")
-        result = get_canon_file(repo_root, canon_path)
-        if result is None:
+        try:
+            result = get_canon_file(repo_root, canon_path)
+        except NotAllowlistedError:
             return JSONResponse(
                 {"ok": False, "error": "not_in_canon_allowlist", "canon_path": canon_path},
+                status_code=404,
+            )
+        except AllowlistedFileMissingError:
+            # Distinguishable from "wrong path" — operator should investigate
+            # why a file declared in _CANON_LAYOUT is no longer on disk.
+            return JSONResponse(
+                {"ok": False, "error": "allowlisted_file_missing", "canon_path": canon_path},
                 status_code=404,
             )
         return JSONResponse({"ok": True, **result})
@@ -267,6 +321,9 @@ def register_canon_routes(mcp, repo_root: Path) -> None:
 
 
 __all__ = [
+    "AllowlistedFileMissingError",
+    "CanonAccessError",
+    "NotAllowlistedError",
     "get_canon_file",
     "get_canon_manifest",
     "register_canon_routes",
