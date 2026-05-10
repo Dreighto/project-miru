@@ -295,6 +295,82 @@ class VerifyDgasBoundaryTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("signature", stderr.lower())
 
+    # ------------------------------------------------------------------
+    # CR R1 (PR #182) regression tests
+    # ------------------------------------------------------------------
+
+    def test_first_v2_row_block_index_must_match_manifest(self) -> None:
+        """CR R1 #1: verifier must reject a v2 chain whose first row's
+        block_index differs from manifest.new_chain_starts_at, even if
+        every subsequent row chains correctly internally."""
+        # Build v2 starting at a DIFFERENT block index than manifest says.
+        wrong_start = self.legacy_count + 99
+        _write_v2_chain(
+            self.new_path,
+            [
+                {"event": "marker", "ticket_id": "LOS-400", "ts": "2026-05-11T08:00:00Z"},
+                {"event": "marker", "ticket_id": "LOS-401", "ts": "2026-05-11T09:00:00Z"},
+            ],
+            anchor_prev=self.legacy_terminal,
+            start_block=wrong_start,
+        )
+        code, _, stderr = _run_verifier(self.legacy_path, self.manifest_path, self.new_path)
+        self.assertEqual(code, 1)
+        self.assertIn("first v2 row block_index mismatch", stderr)
+        self.assertIn("new_chain_starts_at", stderr)
+
+    def test_non_object_manifest_rejected_cleanly(self) -> None:
+        """CR R1 #2: a manifest that is valid JSON but not an object (e.g. a
+        bare array) must be rejected with a clean validation error, not a
+        Python TypeError."""
+        # Overwrite manifest with a JSON array
+        self.manifest_path.write_text(json.dumps(["not", "a", "manifest"]))
+        code, _, stderr = _run_verifier(self.legacy_path, self.manifest_path, self.new_path)
+        self.assertEqual(code, 1)
+        self.assertIn("manifest must be a JSON object", stderr)
+        self.assertNotIn("Traceback", stderr)
+
+    def test_signature_provided_but_invalid_fails_without_require_flag(self) -> None:
+        """CR R1 #3: passing --signature explicitly should fail the run if
+        the signature is missing/invalid, regardless of --require-signature.
+        Intent of --signature is 'verify this signature', not 'try and shrug'."""
+        # Point to a sig file that doesn't exist.
+        bogus_sig = self.tmp / "bogus.sig"
+        # File doesn't exist on disk
+        code, _, stderr = _run_verifier(
+            self.legacy_path,
+            self.manifest_path,
+            self.new_path,
+            "--signature",
+            str(bogus_sig),
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("signature", stderr.lower())
+
+    def test_signature_provided_invalid_still_explicit_no_traceback(self) -> None:
+        """Companion to R1 #3: a file that exists but isn't a valid sig
+        should also fail cleanly without crashing."""
+        bad_sig = self.tmp / "bad.sig"
+        bad_sig.write_text("not a real signature\n")
+        code, _, stderr = _run_verifier(
+            self.legacy_path,
+            self.manifest_path,
+            self.new_path,
+            "--signature",
+            str(bad_sig),
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("signature", stderr.lower())
+        self.assertNotIn("Traceback", stderr)
+
+    def test_no_signature_arg_passes_without_failing(self) -> None:
+        """Regression guard: omitting --signature entirely should still
+        pass (signature is optional when not provided + --require-signature
+        is off). This is the default case."""
+        # Default invocation with no signature arg
+        code, _, stderr = _run_verifier(self.legacy_path, self.manifest_path, self.new_path)
+        self.assertEqual(code, 0, f"expected pass without --signature: stderr={stderr}")
+
 
 if __name__ == "__main__":
     unittest.main()

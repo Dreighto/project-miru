@@ -198,14 +198,20 @@ def _walk_v1_chain(path: Path) -> tuple[str | None, int, int, list[str]]:
     return terminal_hash, chained_count, byte_length, errors
 
 
-def _walk_v2_chain(path: Path, anchor_prev_hash: str) -> tuple[str | None, int, list[str]]:
+def _walk_v2_chain(
+    path: Path, anchor_prev_hash: str, expected_first_block: int
+) -> tuple[str | None, int, list[str]]:
     """Walk a v2 chained JSONL file starting from a legacy boundary anchor.
 
     The first row in the v2 chain MUST declare:
       - prev_hash == anchor_prev_hash (from boundary manifest)
-      - block_index == manifest.new_chain_starts_at
+      - block_index == expected_first_block (= manifest.new_chain_starts_at)
 
-    Each subsequent row chains via the v2 formula.
+    Each subsequent row chains via the v2 formula. CR R1 finding: previously
+    the first-row block_index was seeded from whatever the log declared, so
+    new_chain_starts_at was never validated. Now the verifier asserts the
+    first row matches the manifest's expected starting block, which is the
+    contract the boundary protocol guarantees.
 
     Returns (terminal_row_hash, chained_row_count, errors).
     """
@@ -219,7 +225,7 @@ def _walk_v2_chain(path: Path, anchor_prev_hash: str) -> tuple[str | None, int, 
     chained_count = 0
     terminal_hash: str | None = anchor_prev_hash
     expected_prev = anchor_prev_hash
-    expected_block_index: int | None = None  # set from first row
+    expected_block_index: int = expected_first_block
 
     with path.open("r", encoding="utf-8") as fh:
         for idx, raw in enumerate(fh):
@@ -248,7 +254,8 @@ def _walk_v2_chain(path: Path, anchor_prev_hash: str) -> tuple[str | None, int, 
                 return terminal_hash, chained_count, errors
 
             if chained_count == 0:
-                # First v2 row anchors to legacy terminal hash.
+                # First v2 row anchors to legacy terminal hash AND must
+                # declare the block_index promised by the manifest.
                 if declared_prev != anchor_prev_hash:
                     errors.append(
                         f"line {idx}: first v2 row prev_hash mismatch — "
@@ -256,7 +263,13 @@ def _walk_v2_chain(path: Path, anchor_prev_hash: str) -> tuple[str | None, int, 
                         f"{anchor_prev_hash!r}"
                     )
                     return terminal_hash, chained_count, errors
-                expected_block_index = declared_block
+                if declared_block != expected_first_block:
+                    errors.append(
+                        f"line {idx}: first v2 row block_index mismatch — "
+                        f"declared {declared_block}, expected manifest."
+                        f"new_chain_starts_at={expected_first_block}"
+                    )
+                    return terminal_hash, chained_count, errors
             else:
                 if declared_prev != expected_prev:
                     errors.append(
@@ -264,7 +277,7 @@ def _walk_v2_chain(path: Path, anchor_prev_hash: str) -> tuple[str | None, int, 
                         f"(declared {declared_prev!r}, expected {expected_prev!r})"
                     )
                     return terminal_hash, chained_count, errors
-                if expected_block_index is not None and declared_block != expected_block_index:
+                if declared_block != expected_block_index:
                     errors.append(
                         f"line {idx}: block_index mismatch "
                         f"(declared {declared_block}, expected {expected_block_index})"
@@ -289,8 +302,7 @@ def _walk_v2_chain(path: Path, anchor_prev_hash: str) -> tuple[str | None, int, 
             chained_count += 1
             terminal_hash = rh
             expected_prev = rh
-            if expected_block_index is not None:
-                expected_block_index += 1
+            expected_block_index += 1
 
     return terminal_hash, chained_count, errors
 
@@ -375,6 +387,14 @@ def verify_boundary(
         errors.append(f"manifest load failed: {exc}")
         return False, errors
 
+    # CR R1: reject non-object manifest JSON before indexing into it. A valid
+    # JSON that is not a dict (e.g. an array, a number, a string) would later
+    # raise TypeError on m["..."]. Catch it cleanly here so the operator sees
+    # a structured validation error, not a Python traceback.
+    if not isinstance(m, dict):
+        errors.append(f"manifest must be a JSON object, got {type(m).__name__}")
+        return False, errors
+
     required_fields = [
         "legacy_log_path",
         "terminal_block",
@@ -420,20 +440,42 @@ def verify_boundary(
         errors.append(f"manifest byte_length {m['byte_length']} != legacy file size {legacy_bytes}")
         return False, errors
 
-    # Step 4: verify manifest signature (optional unless --require-signature).
+    # Step 4: verify manifest signature.
+    # CR R1: fail when signature is provided but doesn't verify, even
+    # without --require-signature. The intent of passing --signature is
+    # "verify this signature"; silently accepting failure would be a
+    # confusing false-success.
+    #
+    # Behavior matrix:
+    #   --signature absent, --require-signature off  → skip (sig_ok=False,
+    #     no error)
+    #   --signature absent, --require-signature on   → fail
+    #   --signature present, signature verifies      → pass
+    #   --signature present, signature fails to verify → fail (regardless
+    #     of --require-signature)
     sig_ok, sig_reason = _verify_manifest_signature(manifest, signature_path)
-    if require_signature and not sig_ok:
+    sig_provided = signature_path is not None
+    if not sig_ok and (require_signature or sig_provided):
         errors.append(f"signature verification failed: {sig_reason}")
         return False, errors
     # If signature is present + verified, that's the strongest trust root.
     # If absent + not required, we proceed but caller should note it in their
     # audit report.
 
-    # Step 5: walk new chain anchored to manifest.terminal_hash. The
-    # terminal hash + count from the new chain are computed but not used
-    # by this verifier — they exist for callers that want to continue
-    # auditing forward. Underscore-prefixed per ruff RUF059.
-    _new_terminal, _new_count, new_errors = _walk_v2_chain(new_log, m["terminal_hash"])
+    # Step 5: walk new chain anchored to manifest.terminal_hash AND
+    # manifest.new_chain_starts_at. The terminal hash + count from the new
+    # chain are computed but not used by this verifier — they exist for
+    # callers that want to continue auditing forward. Underscore-prefixed
+    # per ruff RUF059.
+    expected_first_block = m["new_chain_starts_at"]
+    if not isinstance(expected_first_block, int):
+        errors.append(
+            f"manifest.new_chain_starts_at must be int, got {type(expected_first_block).__name__}"
+        )
+        return False, errors
+    _new_terminal, _new_count, new_errors = _walk_v2_chain(
+        new_log, m["terminal_hash"], expected_first_block
+    )
     if new_errors:
         errors.extend(f"[new] {e}" for e in new_errors)
         return False, errors
