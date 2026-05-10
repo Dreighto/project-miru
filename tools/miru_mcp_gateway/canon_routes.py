@@ -330,8 +330,15 @@ def register_canon_routes(mcp, repo_root: Path) -> None:
     Mirrors the registration pattern in `_register_health_route` in
     server.py. The Funnel layer is the secret check; 127.0.0.1 binding is
     what keeps these routes private.
+
+    CodeRabbit R3: handlers offload the blocking disk I/O + hashing work to
+    a threadpool via starlette.concurrency.run_in_threadpool. Without this,
+    multiple concurrent canon requests would serialize through the async
+    event loop (the work is sync + holds _CACHE_LOCK), starving every other
+    HTTP route on the gateway during a canon read.
     """
     try:
+        from starlette.concurrency import run_in_threadpool
         from starlette.responses import JSONResponse
     except ImportError as exc:  # pragma: no cover -- dependency invariant
         raise SystemExit(
@@ -351,15 +358,28 @@ def register_canon_routes(mcp, repo_root: Path) -> None:
         # `overlays/workflow-git.md`) come through intact.
         canon_path = request.path_params.get("canon_path", "")
         try:
-            result = get_canon_file(repo_root, canon_path)
+            result = await run_in_threadpool(get_canon_file, repo_root, canon_path)
         except NotAllowlistedError:
             return JSONResponse(
                 {"ok": False, "error": "not_in_canon_allowlist", "canon_path": canon_path},
                 status_code=404,
             )
-        except AllowlistedFileMissingError:
+        except AllowlistedFileMissingError as exc:
             # Distinguishable from "wrong path" — operator should investigate
-            # why a file declared in _CANON_LAYOUT is no longer on disk.
+            # why a file declared in _CANON_LAYOUT is no longer on disk OR
+            # is present but not valid UTF-8. CodeRabbit R3: log the
+            # exception so the diagnostic info that get_canon_file built
+            # into the message (snapshot_id, sha256, byte_length for the
+            # corrupted-UTF-8 case) lands in dispatch_listener_stdout.log
+            # via the gateway's own log stream — otherwise the operator
+            # only sees a bare 404 with no clue what failed. Using print
+            # to stdout matches the rest of this gateway's logging
+            # convention (no central logger module — see server.py banner).
+            print(
+                f"[canon_routes] WARN allowlisted_file_missing: "
+                f"canon_path={canon_path} detail={exc}",
+                flush=True,
+            )
             return JSONResponse(
                 {"ok": False, "error": "allowlisted_file_missing", "canon_path": canon_path},
                 status_code=404,
@@ -367,7 +387,8 @@ def register_canon_routes(mcp, repo_root: Path) -> None:
         return JSONResponse({"ok": True, **result})
 
     async def canon_manifest(_request):
-        return JSONResponse({"ok": True, **get_canon_manifest(repo_root)})
+        manifest = await run_in_threadpool(get_canon_manifest, repo_root)
+        return JSONResponse({"ok": True, **manifest})
 
     mcp.custom_route("/canon/{canon_path:path}", methods=["GET"])(canon_file)
     mcp.custom_route("/canon-manifest", methods=["GET"])(canon_manifest)
