@@ -37,7 +37,7 @@ Without this, dispatched gemini workers have ZERO tools and hang.
 c. (optional) `.mcp.json` -- only if operator interactive claude-code needed.
 
 **Step 5: RESTART + SMOKE TEST** -- restart dispatch_listener, dispatch no-op
-smoke test (both claude-code and gemini). Both must reach CONFIRMED_WORKING.
+smoke test (both claude-code and gemini). Both must reach `STATUS: CONFIRMED WORKING`.
 
 ---
 
