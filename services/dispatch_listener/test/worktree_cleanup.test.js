@@ -58,9 +58,42 @@ test('parkingBranchForCwd: still returns null for non-worktree-shaped paths', ()
   assert.equal(parkingBranchForCwd('D:\\dev\\LogueOS-Console'), null); // no -wN suffix
 });
 
-test('parkingBranchForCwd: handles multi-digit worker numbers', () => {
+test('parkingBranchForCwd: handles multi-digit worker numbers (non-legacy slots)', () => {
   assert.equal(parkingBranchForCwd('D:\\dev\\LogueOS-Console-w10'), '_parking_LogueOS-Console-w10');
-  assert.equal(parkingBranchForCwd('D:\\dev\\miru-w99'), '_parking_w99');
+  // miru-w99 is NOT in the legacy allowlist — falls through to full-basename pattern
+  assert.equal(parkingBranchForCwd('D:\\dev\\miru-w99'), '_parking_miru-w99');
+});
+
+test('parkingBranchForCwd: hypothetical miru-prefixed repo gets full-basename, not legacy short-form', () => {
+  // Per CodeRabbit feedback on PR #157: a regex /^miru-/ would misclassify a
+  // future repo named miru-tools-w1 as legacy and produce _parking_tools-w1.
+  // The explicit LEGACY_MIRU_SLOT_BASENAMES allowlist prevents this — only
+  // the 7 known legacy basenames get the short-form, everything else gets
+  // full-basename treatment.
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\miru-tools-w1'),
+    '_parking_miru-tools-w1',
+    'miru-tools-w1 must NOT be treated as legacy short-form'
+  );
+  assert.notEqual(
+    parkingBranchForCwd('D:\\dev\\miru-tools-w1'),
+    '_parking_tools-w1',
+    'misclassification regression guard'
+  );
+});
+
+test('parkingBranchForCwd: only the exact 7 legacy basenames get short-form', () => {
+  // Inventory check: w1..w6 + cursor are the legacy slots. Anything else
+  // with miru- prefix is a new repo and gets full-basename.
+  for (const slot of ['miru-w1', 'miru-w2', 'miru-w3', 'miru-w4', 'miru-w5', 'miru-w6']) {
+    const expected = `_parking_${slot.slice('miru-'.length)}`;
+    assert.equal(
+      parkingBranchForCwd(`D:\\dev\\${slot}`),
+      expected,
+      `${slot} should map to ${expected}`
+    );
+  }
+  assert.equal(parkingBranchForCwd('D:\\dev\\miru-cursor'), '_parking_cursor');
 });
 
 // --- verifyWorktreeParked ---
