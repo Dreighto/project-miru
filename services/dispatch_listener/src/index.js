@@ -19,7 +19,14 @@ const {
 } = require('./receipt');
 const { writeDlqEntry } = require('./dlq');
 const { spawnWorker } = require('./spawn');
-const { leaseSlot, updateLeasePid, releaseSlot, getLeaseByTraceId } = require('./worktree');
+const {
+  leaseSlot,
+  updateLeasePid,
+  releaseSlot,
+  getLeaseByTraceId,
+  listKnownRepos,
+  DEFAULT_TARGET_REPO,
+} = require('./worktree');
 const { writeMcpConfig } = require('./mcp_config');
 
 const PORT = 19100;
@@ -173,7 +180,14 @@ app.post(
       model,
       thinking_level: thinkingLevel,
       tool_profile: toolProfile,
+      target_repo: targetRepoRaw,
     } = payload || {};
+    // target_repo defaults to project-miru for backward compat with pre-2026-05-09
+    // dispatchers. Workers landing in non-default repos must pass it explicitly.
+    const targetRepo =
+      typeof targetRepoRaw === 'string' && targetRepoRaw.trim()
+        ? targetRepoRaw.trim()
+        : DEFAULT_TARGET_REPO;
     let timeoutSeconds = (payload && payload.timeout_seconds) || TIMEOUT_DEFAULT;
 
     if (typeof traceId !== 'string' || !TRACE_ID_RE.test(traceId)) {
@@ -208,6 +222,24 @@ app.post(
       return res.status(400).json({ error: 'bad_request', reason: 'invalid_tool_profile' });
     }
 
+    // Validate target_repo against the configured worktree pools.
+    // Defends against typos (e.g. "logueos-console" vs "LogueOS-Console") that
+    // would otherwise silently fail at lease time with a hard-to-debug 503.
+    const knownRepos = listKnownRepos();
+    if (!knownRepos.includes(targetRepo)) {
+      log.warn('unknown_target_repo', {
+        trace_id: traceId,
+        target_repo: targetRepo,
+        known: knownRepos,
+      });
+      return res.status(400).json({
+        error: 'bad_request',
+        reason: 'unknown_target_repo',
+        target_repo: targetRepo,
+        known_repos: knownRepos,
+      });
+    }
+
     if (!isAllowed(worker)) {
       log.warn('allowlist_reject', { trace_id: traceId, worker });
       try {
@@ -235,22 +267,22 @@ app.post(
         ? toolProfile.trim()
         : 'standard_worker';
 
-    const slotPath = leaseSlot(traceId, worker);
+    const slotPath = leaseSlot(traceId, worker, targetRepo);
     if (slotPath === null) {
-      log.warn('no_worktree_available', { trace_id: traceId, worker });
+      log.warn('no_worktree_available', { trace_id: traceId, worker, target_repo: targetRepo });
       try {
         writeDlqEntry({
           traceId,
           worker,
           promptPath,
           exitCode: null,
-          stderrTail: 'no worktree slot available',
+          stderrTail: `no worktree slot available in pool: ${targetRepo}`,
           errorClass: 'no_worktree_available',
         });
       } catch (err) {
         log.error('dlq_write_failed', { error: err.message });
       }
-      return res.status(503).json({ error: 'no_worktree_available' });
+      return res.status(503).json({ error: 'no_worktree_available', target_repo: targetRepo });
     }
 
     try {
@@ -397,7 +429,7 @@ app.post(
 
     updateLeasePid(slotPath, result.pid);
 
-    res.status(202).json({
+    return res.status(202).json({
       trace_id: traceId,
       status: 'spawned',
       spawned_at: result.startedAt,
