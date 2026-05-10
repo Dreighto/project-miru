@@ -100,6 +100,16 @@ _UPDATE_FAILURE = {
     }
 }
 
+# A second active+archived issue on the same team (used for pagination tests).
+_ISSUE_ACTIVE_P2: dict[str, Any] = {
+    "id": "issue-005",
+    "identifier": "PRO-005",
+    "title": "Page-2 active archived ticket",
+    "archivedAt": "2026-05-01T00:00:00Z",
+    "team": {"id": "team-aaa", "name": "Project Miru"},
+    "state": {"id": "state-started", "name": "In Progress", "type": "started"},
+}
+
 
 def _make_gql_side_effect(
     *responses: Mapping[str, Any],
@@ -276,6 +286,69 @@ class TestSingleTicketFailureDoesNotAbortBatch(unittest.TestCase):
         self.assertEqual(count, 1)
         # All four GQL calls were made (no early abort).
         self.assertEqual(call_count["n"], 4)
+
+
+class TestPaginationHandling(unittest.TestCase):
+    """Multi-page cursor responses must all be fetched and processed."""
+
+    def test_pagination_fetches_all_pages(self):
+        page_1 = {
+            "issues": {
+                "pageInfo": {"hasNextPage": True, "endCursor": "cursor-abc"},
+                "nodes": [_ISSUE_ACTIVE_ARCHIVED],
+            }
+        }
+        page_2 = {
+            "issues": {
+                "pageInfo": {"hasNextPage": False, "endCursor": None},
+                "nodes": [_ISSUE_ACTIVE_P2],
+            }
+        }
+        # 2 page fetches + 1 state lookup (cached after first) + 2 mutations
+        responses = [page_1, page_2, _CANCELED_STATE_RESP, _UPDATE_SUCCESS, _UPDATE_SUCCESS]
+        with mock.patch.object(
+            lbh, "_gql", side_effect=_make_gql_side_effect(*responses)
+        ) as mock_gql:
+            count = lbh.run_hygiene(_FAKE_KEY, dry_run=False)
+
+        self.assertEqual(count, 2, "Both pages' tickets should be processed")
+        self.assertEqual(mock_gql.call_count, 5)
+
+
+class TestRateLimitRetry(unittest.TestCase):
+    """_gql retries once on HTTP 429 then succeeds."""
+
+    def test_rate_limit_retry_succeeds(self) -> None:
+        import sys
+        import types
+
+        mock_resp_429 = mock.MagicMock()
+        mock_resp_429.ok = False
+        mock_resp_429.status_code = 429
+
+        mock_resp_200 = mock.MagicMock()
+        mock_resp_200.ok = True
+        mock_resp_200.status_code = 200
+        mock_resp_200.json.return_value = {"data": {"retried": True}}
+
+        mock_requests = types.ModuleType("requests")
+        mock_requests.post = mock.MagicMock(  # type: ignore[attr-defined]
+            side_effect=[mock_resp_429, mock_resp_200]
+        )
+
+        class _RequestError(Exception):
+            pass
+
+        mock_requests.RequestException = _RequestError  # type: ignore[attr-defined]
+
+        with (
+            mock.patch.dict(sys.modules, {"requests": mock_requests}),
+            mock.patch.object(lbh, "time") as mock_time,
+        ):
+            result = lbh._gql("fake-key", "{ q }")
+
+        self.assertEqual(result, {"retried": True})
+        mock_time.sleep.assert_called_once_with(lbh._RATE_LIMIT_SLEEP_S)
 
 
 if __name__ == "__main__":
