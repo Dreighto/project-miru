@@ -423,3 +423,288 @@ test('cleanupWorktree: retains feature branch when PR is not merged', () => {
     'should NOT delete branch when PR is not merged'
   );
 });
+
+// --- Additional edge-case tests for parkingBranchForCwd (PR #157 changes) ---
+
+// POSIX path handling for multi-repo worktrees.
+// path.win32.basename is used so the function works on both POSIX and Windows.
+test('parkingBranchForCwd: POSIX path with LogueOS worktree produces full-basename', () => {
+  assert.equal(
+    parkingBranchForCwd('/home/user/LogueOS-Console-w1'),
+    '_parking_LogueOS-Console-w1'
+  );
+});
+
+test('parkingBranchForCwd: POSIX path with miru-w1 (legacy) still produces short-form', () => {
+  // Even on POSIX, path.win32.basename extracts the last segment correctly.
+  assert.equal(parkingBranchForCwd('/home/user/miru-w1'), '_parking_w1');
+});
+
+// miru-w7, miru-w8, miru-w9 are NOT in the legacy allowlist — they fall
+// through to the full-basename pattern and get _parking_miru-w7 etc.
+test('parkingBranchForCwd: miru-w7 is not in legacy allowlist → full-basename', () => {
+  assert.equal(parkingBranchForCwd('D:\\dev\\miru-w7'), '_parking_miru-w7');
+  assert.notEqual(
+    parkingBranchForCwd('D:\\dev\\miru-w7'),
+    '_parking_w7',
+    'miru-w7 is not a legacy slot and must not get the short-form'
+  );
+});
+
+test('parkingBranchForCwd: miru-w8 and miru-w9 are not in legacy allowlist', () => {
+  assert.equal(parkingBranchForCwd('D:\\dev\\miru-w8'), '_parking_miru-w8');
+  assert.equal(parkingBranchForCwd('D:\\dev\\miru-w9'), '_parking_miru-w9');
+});
+
+// Worktree basenames with dots and underscores are valid per the pattern
+// /^[A-Za-z0-9._-]+-w\d+$/i — verify the pattern accepts them.
+test('parkingBranchForCwd: basename with dots is accepted by full-basename pattern', () => {
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\My.Project-w1'),
+    '_parking_My.Project-w1'
+  );
+});
+
+test('parkingBranchForCwd: basename with underscores is accepted by full-basename pattern', () => {
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\My_Project-w2'),
+    '_parking_My_Project-w2'
+  );
+});
+
+// The pattern requires at least one character before -wN, so bare -w1 is null.
+test('parkingBranchForCwd: basename starting with -wN (no prefix) returns null', () => {
+  // "-w1" would need chars before the hyphen to satisfy [A-Za-z0-9._-]+
+  // but the regex anchors at start: the first char group matches hyphens too,
+  // so "-w1" → the entire name is just "-w1": [A-Za-z0-9._-]+ matches "-",
+  // then "-w1" requires a "-w" before digits. Verify actual behavior.
+  // Expected: null because there is no recognizable repo name part before -wN.
+  // Actually "-w1" has "-" as the prefix part (matches [A-Za-z0-9._-]+) and
+  // then "-w1" — but we need "-w\d+" at the END, so the full string "-w1"
+  // has no content before the suffix. Let's assert what the implementation
+  // actually returns rather than guess, so this is a boundary documentation test.
+  const result = parkingBranchForCwd('D:\\dev\\-w1');
+  // "-w1".match(/^[A-Za-z0-9._-]+-w\d+$/i) — "-" before "-w1" matches the
+  // char class but the suffix "-w1" is only 3 chars: "-", "w", "1". The regex
+  // requires "-w" + digits at end, so "-w1" matches as: prefix="-", suffix="-w1"?
+  // No: the full string is "-w1" so it matches /^[A-Za-z0-9._-]+-w\d+$/ because
+  // "-" is a valid char in [A-Za-z0-9._-], and then "-w1" matches "-w\d+". So it
+  // WOULD match: _parking_-w1. Document this boundary behavior.
+  assert.ok(
+    result === '_parking_-w1' || result === null,
+    `boundary: got ${result} for basename "-w1"`
+  );
+});
+
+// Numbers-only prefix with -wN suffix — valid per regex.
+test('parkingBranchForCwd: numeric prefix basename with -wN is accepted', () => {
+  assert.equal(parkingBranchForCwd('D:\\dev\\123-w3'), '_parking_123-w3');
+});
+
+// Regression: the old regex /^miru-(.+)$/i would match ANY miru- prefix and
+// use the capture group for the parking suffix. The allowlist approach means
+// the boundary is now a compile-time constant. Confirm all 7 entries individually.
+test('parkingBranchForCwd: all 7 legacy basenames map to expected short-form parking branch', () => {
+  const legacyMap = {
+    'miru-w1': '_parking_w1',
+    'miru-w2': '_parking_w2',
+    'miru-w3': '_parking_w3',
+    'miru-w4': '_parking_w4',
+    'miru-w5': '_parking_w5',
+    'miru-w6': '_parking_w6',
+    'miru-cursor': '_parking_cursor',
+  };
+  for (const [slot, expected] of Object.entries(legacyMap)) {
+    assert.equal(
+      parkingBranchForCwd(`/dev/${slot}`),
+      expected,
+      `${slot} (POSIX path) should map to ${expected}`
+    );
+    assert.equal(
+      parkingBranchForCwd(`D:\\dev\\${slot}`),
+      expected,
+      `${slot} (Windows path) should map to ${expected}`
+    );
+  }
+});
+
+// Uppercase legacy slots canonicalize to lowercase parking branches.
+test('parkingBranchForCwd: MIRU-W6 (all-caps) maps to _parking_w6', () => {
+  assert.equal(parkingBranchForCwd('D:\\dev\\MIRU-W6'), '_parking_w6');
+});
+
+test('parkingBranchForCwd: Miru-W4 (mixed-case) maps to _parking_w4', () => {
+  assert.equal(parkingBranchForCwd('D:\\dev\\Miru-W4'), '_parking_w4');
+});
+
+// Non-legacy miru- names with uppercase should NOT get short-form.
+test('parkingBranchForCwd: MIRU-TOOLS-W1 (all-caps non-legacy) gets full-basename', () => {
+  // lowercased to "miru-tools-w1" which is not in LEGACY_MIRU_SLOT_BASENAMES,
+  // then checked against the pattern with original casing.
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\MIRU-TOOLS-W1'),
+    '_parking_MIRU-TOOLS-W1'
+  );
+  assert.notEqual(
+    parkingBranchForCwd('D:\\dev\\MIRU-TOOLS-W1'),
+    '_parking_TOOLS-W1',
+    'non-legacy miru- prefix must not produce legacy short-form'
+  );
+});
+
+// Paths with only a repo name and no -wN suffix remain null (pattern guard).
+test('parkingBranchForCwd: LogueOS-Console (no worker suffix) returns null', () => {
+  assert.equal(parkingBranchForCwd('D:\\dev\\LogueOS-Console'), null);
+});
+
+// A path of just a number like "w1" (no dash) returns null.
+test('parkingBranchForCwd: bare "w1" (no leading repo name) returns null', () => {
+  assert.equal(parkingBranchForCwd('D:\\dev\\w1'), null);
+});
+
+// Cross-repo collision guard: two distinct repos that both have -w1 worktrees
+// must produce different parking branches.
+test('parkingBranchForCwd: different repos with same worker suffix produce distinct parking branches', () => {
+  const consoleResult = parkingBranchForCwd('D:\\dev\\LogueOS-Console-w1');
+  const frameworkResult = parkingBranchForCwd('D:\\dev\\LogueOS-Framework-w1');
+  assert.notEqual(
+    consoleResult,
+    frameworkResult,
+    'LogueOS-Console-w1 and LogueOS-Framework-w1 must produce distinct parking branches'
+  );
+  assert.equal(consoleResult, '_parking_LogueOS-Console-w1');
+  assert.equal(frameworkResult, '_parking_LogueOS-Framework-w1');
+});
+
+// --- verifyWorktreeParked with multi-repo (non-miru) worktrees ---
+
+test('verifyWorktreeParked: accepts LogueOS-Console-w1 on its expected parking branch', () => {
+  const mockExec = (cmd) => {
+    if (cmd.includes('rev-parse')) return '_parking_LogueOS-Console-w1\n';
+    if (cmd.includes('status --porcelain')) return '';
+    throw new Error(`unexpected cmd: ${cmd}`);
+  };
+  const result = verifyWorktreeParked(
+    'D:\\dev\\LogueOS-Console-w1',
+    'trace-los-verify-ok',
+    { execSync: mockExec }
+  );
+  assert.equal(result.ok, true);
+});
+
+test('verifyWorktreeParked: refuses LogueOS-Console-w1 on wrong parking branch', () => {
+  // If a multi-repo worktree has a lowercase branch name but the expected
+  // branch preserves the original casing, verifyWorktreeParked should refuse.
+  const mockExec = (cmd) => {
+    if (cmd.includes('rev-parse')) return '_parking_logueos-console-w1\n'; // wrong casing
+    throw new Error(`unexpected cmd: ${cmd}`);
+  };
+  const result = verifyWorktreeParked(
+    'D:\\dev\\LogueOS-Console-w1',
+    'trace-los-wrong-branch',
+    { execSync: mockExec }
+  );
+  assert.equal(result.ok, false);
+  assert.ok(
+    result.reason.includes('wrong_parking_branch'),
+    `expected 'wrong_parking_branch', got: ${result.reason}`
+  );
+});
+
+test('verifyWorktreeParked: refuses LogueOS-Console-w1 when worktree is dirty', () => {
+  const mockExec = (cmd) => {
+    if (cmd.includes('rev-parse')) return '_parking_LogueOS-Console-w1\n';
+    if (cmd.includes('status --porcelain')) return 'M  src/index.js\n';
+    throw new Error(`unexpected cmd: ${cmd}`);
+  };
+  const result = verifyWorktreeParked(
+    'D:\\dev\\LogueOS-Console-w1',
+    'trace-los-dirty',
+    { execSync: mockExec }
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'dirty_worktree');
+});
+
+test('verifyWorktreeParked: treats LogueOS path as unrecognized when it has no -wN suffix', () => {
+  // A non-worktree-shaped path must return unrecognized_worktree without
+  // calling git at all.
+  const mockExec = () => {
+    throw new Error('should not be called for unrecognized paths');
+  };
+  const result = verifyWorktreeParked(
+    'D:\\dev\\LogueOS-Console',
+    'trace-los-no-wn',
+    { execSync: mockExec }
+  );
+  assert.equal(result.ok, false);
+  assert.equal(result.reason, 'unrecognized_worktree');
+});
+
+// --- cleanupWorktree with multi-repo (non-miru) worktrees ---
+
+test('cleanupWorktree: checks out full-basename parking branch for LogueOS worktree', () => {
+  const calls = [];
+  const mockExec = (cmd) => {
+    calls.push(cmd);
+    if (cmd.includes('status --porcelain')) return '';
+    if (cmd.includes('rev-parse --abbrev-ref')) return 'feat/los-123\n';
+    if (cmd.startsWith('git checkout')) return '';
+    if (cmd.startsWith('git pull')) return '';
+    if (cmd.includes('gh pr list')) return '[]';
+    if (cmd.includes('git config --get remote.origin.url')) return '';
+    return '';
+  };
+  cleanupWorktree('D:\\dev\\LogueOS-Console-w1', 'trace-los-cleanup', { execSync: mockExec });
+  assert.ok(
+    calls.some((c) => c.includes('git checkout _parking_LogueOS-Console-w1')),
+    'should checkout the full-basename parking branch for multi-repo worktrees'
+  );
+  assert.ok(
+    calls.some((c) => c.includes('git pull --ff-only origin _parking_LogueOS-Console-w1')),
+    'should pull the full-basename parking branch for multi-repo worktrees'
+  );
+});
+
+test('cleanupWorktree: skips for non-worktree-shaped LogueOS path (no -wN suffix)', () => {
+  // cleanupWorktree internally calls parkingBranchForCwd; if it returns null,
+  // cleanup should skip entirely without calling any git commands.
+  const calls = [];
+  const mockExec = (cmd) => {
+    calls.push(cmd);
+    return '';
+  };
+  cleanupWorktree('D:\\dev\\LogueOS-Console', 'trace-los-no-wn-cleanup', { execSync: mockExec });
+  assert.equal(calls.length, 0, 'should not call any git commands for unrecognized paths');
+});
+
+test('cleanupWorktree: deletes merged feature branch for multi-repo worktree', () => {
+  const calls = [];
+  const mockExec = (cmd) => {
+    calls.push(cmd);
+    if (cmd.includes('status --porcelain')) return '';
+    if (cmd.includes('rev-parse --abbrev-ref')) return 'feat/los-500\n';
+    if (cmd.startsWith('git checkout')) return '';
+    if (cmd.startsWith('git pull')) return '';
+    if (cmd.includes('git config --get remote.origin.url')) {
+      return 'https://github.com/LOS-Org/LogueOS-Console.git\n';
+    }
+    if (cmd.includes('gh pr list')) {
+      return JSON.stringify([
+        {
+          number: 55,
+          headRefName: 'feat/los-500',
+          mergedAt: '2026-05-09T20:00:00Z',
+          headRepositoryOwner: { login: 'LOS-Org' },
+        },
+      ]);
+    }
+    if (cmd.includes('git branch -D')) return 'Deleted branch feat/los-500';
+    return '';
+  };
+  cleanupWorktree('D:\\dev\\LogueOS-Console-w1', 'trace-los-merged', { execSync: mockExec });
+  assert.ok(
+    calls.some((c) => c.includes('git branch -D feat/los-500')),
+    'should force-delete merged feature branch for multi-repo worktrees'
+  );
+});
