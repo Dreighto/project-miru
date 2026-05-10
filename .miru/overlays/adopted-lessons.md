@@ -198,9 +198,11 @@ Concrete recipe (built into every frontend ticket's done-when checklist from now
 ```text
 mcp__playwright__browser_resize { width: 440, height: 956 }   # iPhone 16 Pro Max (CSS pixels / "points")
 mcp__playwright__browser_navigate { url: <production/tailnet URL, NOT localhost> }
-mcp__playwright__browser_take_screenshot
+mcp__playwright__browser_take_screenshot { filename: "los-N-iphone-verified.png" }
 mcp__playwright__browser_console_messages { level: "error" }
 ```
+
+The `filename:` parameter is mandatory — leaving it default produces `page-{timestamp}.png` artifacts that are hard to correlate with a specific dispatch. Use the same filename token (`los-N-iphone-verified.png`, where N is the ticket number) in both this recipe AND in the terminal-state output so the audit trail stays consistent.
 
 **Viewport size matters and the easy-to-confuse numbers are a real trap.** iPhone 16 Pro Max is 440×956 CSS pixels (6.9" display). Do NOT use 430×932 — that's the iPhone 16 Plus / 15 Pro Max / 15 Plus (6.7" display). Ask-the-cause: this canon was first written with 430×932 because the author conflated the two; CodeRabbit caught it on PR #172. If the operator changes phones, update this canon AND every dispatched prompt that copies the recipe.
 
@@ -239,11 +241,16 @@ If the screenshot shows a 500/blank/error page, OR if console_messages returns A
 
 ```text
 Before declaring CONFIRMED_WORKING:
-1. On feature branch: `git fetch origin && git diff origin/main..HEAD --stat`. Confirm every file you intended to ship is listed.
-2. After squash merge to main: ALWAYS exercise the running app against the change.
+1. On feature branch (pre-push): `git fetch origin && git diff origin/main..HEAD --stat`. Confirm every file you intended to ship is listed.
+2. After squash merge to main (post-merge): capture the merge commit SHA via
+   `gh pr view <N> --json mergeCommit --jq .mergeCommit.oid`
+   then run
+   `git fetch origin && git show --stat <merge-sha>`
+   to confirm every file from step 1 is also in the squash diff. (squash merges can silently drop files between PR open and main; this catches the drop)
+3. After step 2 passes: ALWAYS exercise the running app against the change.
    - Frontend: run the Playwright iPhone gate (440x956) against the operator-facing URL.
    - Backend: hit the affected endpoint/script against the live service and confirm behavior.
-   Squash merges can silently drop files between PR open and main; `git show --stat <merge-sha>` showing your files is NOT proof they reached production. Only the running app is ground truth.
+   `git show --stat <merge-sha>` is necessary but NOT sufficient — file existence in the squash diff does not prove the change reached production. Mark CONFIRMED_WORKING only after steps 1, 2, AND 3 all pass; the running app is the ground truth.
 ```
 
 LOS-5 (PR #5) is the canonical motivating example — gemini emitted CONFIRMED_WORKING based on git status in its branch, but the squash on the operator's side merged only 2 of 6 files (`+page.server.ts` + `+layout.svelte`); the new component, types, API endpoint, and replaced `+page.svelte` all silently disappeared. The dashboard rendered the original placeholder for 7 hours before Playwright iPhone verification caught it.
