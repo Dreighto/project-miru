@@ -139,7 +139,7 @@ try {
     }
 
     Write-InstallLog "shortcut_created=$shortcutPath"
-    Write-InstallLog "target=$resolvedPowershell args='$expectedArgs'"
+    Write-InstallLog "target=$resolvedWscript args='$expectedArgs'"
     Write-InstallLog "action=install_success"
     Write-InstallLog "NEXT_STEP: log off and back on (or reboot) so the shortcut fires in your interactive session"
 
