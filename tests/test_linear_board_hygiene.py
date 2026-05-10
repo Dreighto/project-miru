@@ -193,6 +193,22 @@ class TestDoneOrCanceledTicketSkipped(unittest.TestCase):
         self.assertEqual(mock_gql.call_count, 1)
         self.assertEqual(count, 0)
 
+    def test_non_archived_is_not_mutated(self):
+        non_archived = {
+            "id": "issue-010",
+            "identifier": "PRO-010",
+            "title": "Active but not archived",
+            "archivedAt": None,
+            "team": {"id": "team-aaa", "name": "Project Miru"},
+            "state": {"id": "state-unstarted", "name": "Todo", "type": "unstarted"},
+        }
+        page = self._page_with(non_archived)
+        with mock.patch.object(lbh, "_gql", side_effect=_make_gql_side_effect(page)) as mock_gql:
+            count = lbh.run_hygiene(_FAKE_KEY, dry_run=False)
+
+        self.assertEqual(mock_gql.call_count, 1, "Only the issues list query should run")
+        self.assertEqual(count, 0)
+
 
 class TestSingleTicketFailureDoesNotAbortBatch(unittest.TestCase):
     """A RuntimeError on one ticket's mutation must not abort the rest."""
