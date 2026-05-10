@@ -4,7 +4,7 @@
 Overlay: workflow-completion
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: reaching a terminal task state, emitting heartbeats, or signalling a stall.
-Last reviewed: 2026-05-09
+Last reviewed: 2026-05-10
 ```
 
 This overlay carries the rules for finishing tasks: completion marker schema,
@@ -22,6 +22,14 @@ terminal state once you have one.
 When CC completes a task with `CONFIRMED WORKING` status, CC MUST append one structured row to `data/cc_completion_log.jsonl` immediately before reporting completion to the operator in chat.
 
 This is how the orchestrator (CC acting as verifier while CH is offline; CH when CH returns) verifies completion without the operator manually relaying CC's chat report. The file is append-only — never edit, never truncate.
+
+**Committing the marker (post-2026-05-09 branch protection):** main is now branch-protected and direct push is blocked. The append goes through a one-line PR on a `chore/<ticket>-completion-marker` branch. Pattern set by PRs #158 + #161:
+
+1. After the worker exits, the marker line is already written to `data/cc_completion_log.jsonl` in the worker's worktree (the worker called `tools/emit_completion.py`).
+2. From the orchestrator session, on `main` (clean): `git checkout -b chore/<ticket>-completion-marker`, `git add data/cc_completion_log.jsonl && git commit && git push -u origin <branch>`.
+3. `gh pr create` — title: `chore(log): append <TICKET> completion marker (...)`. Body documents trace_id + the corresponding feature PR's merge_commit_sha.
+4. CI runs the append-only pre-commit hook (`tests/test_jsonl_append_only_invariant.py`) which validates pure-append diff. Squash merge.
+5. CodeRabbit assertive sometimes flags the new line with "consider editing the row to backfill `merge_commit_sha`" — that violates the append-only invariant; **dismiss with the canonical message** (the row is canonical historical record at the time of emission). PRO-339 (PR #159) tightened `.coderabbit.yaml` to suppress these false positives going forward.
 
 ### Schema (one JSON object per line, no array wrapping)
 

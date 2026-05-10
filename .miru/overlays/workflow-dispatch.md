@@ -4,13 +4,53 @@
 Overlay: workflow-dispatch
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: orchestrating dispatch, configuring gateway profiles, working on W2 routing, or creating Linear tickets.
-Last reviewed: 2026-05-09
+Last reviewed: 2026-05-10
 ```
 
 This overlay carries the rules for orchestration: orchestrator decision
 authority (CC + Hermes shadow predictor while CH offline), gateway tool
 profile enforcement, ingress classifier behavior, orchestrator-side modules,
 and the Linear `projectId` requirement.
+
+---
+
+## Multi-Repo Dispatch (set 2026-05-09)
+
+Workers can be dispatched against multiple repos via the `target_repo` parameter on the `dispatch_worker` MCP tool. Two repos are active today:
+
+| `target_repo`     | Repo                              | Worktree pool                                             | Active for                                              |
+| ----------------- | --------------------------------- | --------------------------------------------------------- | ------------------------------------------------------- |
+| `project-miru`    | `Dreighto/project-miru` (default) | `D:\dev\miru-w1` … `D:\dev\miru-w6`, `D:\dev\miru-cursor` | All Python backend, dispatch, gateway, n8n, etc.        |
+| `LogueOS-Console` | `Dreighto/LogueOS-Console`        | `D:\dev\LogueOS-Console-w1`                               | SvelteKit dashboard for the dispatch loop (LOS tickets) |
+
+Backward compat: callers omitting `target_repo` land in `project-miru`. The listener log line captures the explicit routing decision either way.
+
+**Ground truth for the allowlist:**
+
+- Server-side enforcement: `WORKTREE_POOLS` keys in `services/dispatch_listener/src/worktree.js`.
+- Client-side fast-fail: `_APPROVED_TARGET_REPOS` frozenset in `tools/miru_mcp_gateway/dispatch_tools.py`.
+- Parity test: `tests/test_dispatch_tools_target_repo_parity.py` (CI fails if the two sets diverge).
+
+**Adding a new target repo (5 steps — full checklist tracked in PRO-340):**
+
+1. **Worktree on disk** — clone the new repo to `D:\dev\<RepoName>\`, then `git worktree add D:\dev\<RepoName>-w1` parked on a new orphan branch `_parking_<RepoName>-w1`.
+2. **Pool registration** — add an entry to `WORKTREE_POOLS` in `worktree.js`, keyed by the repo name, with the slot path(s). Env-overridable via `<UPPER_REPO_NAME>_WORKTREE_SLOT_N`.
+3. **Client allowlist** — add the same string to `_APPROVED_TARGET_REPOS` in `dispatch_tools.py`. The parity test enforces this.
+4. **Repo-side config (in the new repo on `main`):**
+   - `.gitignore` MUST exclude `.mcp.json` and `mcp.json` — the dispatch_listener writes these per-spawn; tracking them breaks every subsequent dispatch with `dirty_worktree` refusal. Got bit on LOS-1 bootstrap.
+   - `.gemini/settings.json` MUST exist as a **workspace-tier** file with the miru-gateway MCP server. Without it, dispatched gemini workers have ZERO MCPs and hang trying to use shell to read tickets. Gemini-cli has **no `--mcp-config` CLI flag** (verified gemini-cli issue #4674 closed as duplicate of #3470) — file-based discovery only. Template lives at `data/templates/multi-repo/dot-gemini-settings.json` (PRO-340).
+5. **Restart + smoke test** — restart `dispatch_listener`. Smoke-test with both workers (claude-code AND gemini) calling `dispatch_worker(worker=..., target_repo="<RepoName>", tool_profile="drift_executor", prompt="print pwd, git remote -v, branch")`. Both must reach `STATUS: CONFIRMED_WORKING` before the repo is considered live.
+
+**Parking branch naming** (PR #157):
+
+- Legacy miru slots use the short-form `_parking_w<N>` / `_parking_cursor` — explicit allowlist in `LEGACY_MIRU_SLOT_BASENAMES` Set in `spawn.js`. Frozen at exactly 7 names (`miru-w1` through `miru-w6` plus `miru-cursor`).
+- Everything else uses full-basename `_parking_<basename>` (e.g. `_parking_LogueOS-Console-w1`). Cross-repo collision-safe.
+- A hypothetical future `miru-tools-w1` (would-be-misclassified by a regex) gets full-basename `_parking_miru-tools-w1` because it's NOT in the legacy allowlist. Verified via 7 dedicated tests in `services/dispatch_listener/test/worktree_cleanup.test.js`.
+
+**Cross-repo placement guidance:**
+
+- SvelteKit dashboard files belong in `Dreighto/LogueOS-Console`, NOT in project-miru.
+- Worker rule canon (CLAUDE.md, AGENTS.md, .miru/, miru-context/) lives in project-miru and is shared. Workers operating in LogueOS-Console-w1 still load canon from `D:\dev\miru\` per the source-of-truth meta-rule.
 
 ---
 

@@ -34,10 +34,11 @@ other rule below assumes you obey this one.
 
 ## Repo Boundary
 
-- Canonical repo: `Dreighto/project-miru`. Local checkouts under `D:\dev\miru*`.
-- Worktrees (e.g. `D:\dev\miru-w1`, `D:\dev\miru-cursor`) are in scope.
-- Never read, modify, or write files outside `D:\dev\miru*` without explicit operator authorization.
-- If a task requires leaving the repo: STOP and ask.
+- **Primary repo:** `Dreighto/project-miru`. Local checkouts under `D:\dev\miru*`. Worktrees (e.g. `D:\dev\miru-w1`, `D:\dev\miru-cursor`) are in scope.
+- **Second canonical repo (added 2026-05-09):** `Dreighto/LogueOS-Console`. Local checkout at `D:\dev\LogueOS-Console`, worktree pool at `D:\dev\LogueOS-Console-w*`. SvelteKit dashboard for the dispatch loop. Workers reach this via `dispatch_worker(target_repo="LogueOS-Console", ...)`. Worker rule canon (this file, AGENTS.md, .miru/, miru-context/) still lives in project-miru and is shared across both repos per the source-of-truth meta-rule.
+- The full multi-repo allowlist is enforced server-side at `WORKTREE_POOLS` in `services/dispatch_listener/src/worktree.js` and client-side at `_APPROVED_TARGET_REPOS` in `tools/miru_mcp_gateway/dispatch_tools.py` — see `.miru/overlays/workflow-dispatch.md` for the 5-step procedure to add a third.
+- Never read, modify, or write files outside the active worktree without explicit operator authorization.
+- If a task requires leaving the worktree: STOP and ask.
 
 ## Pre-Flight Gate 1 — Kill Switch
 
@@ -121,7 +122,7 @@ branch is checked out — that worker is in violation.
 - Owns: Python backend files, tests, verification scripts, post-ticket canon maintenance, `vp_ops_verify_ticket`.
 - Acting canon owner while CH offline (2026-05-07 onward): full edit authority on CLAUDE.md, AGENTS.md, .miru/overlays/, .miru/reference/, miru-context/. Authority returns to CH when CH is back in the loop.
 - Standing Notion write authority for factual/maintenance updates (see `.miru/overlays/domain-ops.md`).
-- Restarts services autonomously (gateway, dispatch_listener, PM, Miru AI) — don't ask operator for routine restarts. See `.miru/reference/restart-procedures.md` for the dispatch_listener Session 0 caveat (PRO-336 will close the gap permanently).
+- Restarts services autonomously (gateway, dispatch_listener, PM, Miru AI) — don't ask operator for routine restarts. See `.miru/reference/restart-procedures.md` for the dispatch_listener launch path (PRO-336 shipped 2026-05-09: `windows\install_dispatch_listener_startup_shortcut.ps1` puts the listener in Session 1+ via shell:startup shortcut, eliminating the Session 0 cross-session-kill wall).
 - Files Linear loop tickets directly via `linear_create_issue` (not file-then-paste; that pattern is for benched workers like Codex).
 - Never touches: HTML/CSS/JS templates, `.mcp.json`, `card_catalog.db`.
 

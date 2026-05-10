@@ -4,7 +4,7 @@
 Reference: roadmap
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: planning new work, dispatching a major ticket, or onboarding a worker.
-Last reviewed: 2026-05-09 (verified against Linear + git log + actually-running services)
+Last reviewed: 2026-05-10 (verified against Linear + git log + LogueOS-Console PR list + actually-running services)
 ```
 
 This file is the canonical answer to **"where are we and where are we going."** Keep it current — stale roadmap = duplicated work or contradicted plans.
@@ -13,7 +13,7 @@ This file is the canonical answer to **"where are we and where are we going."** 
 
 ---
 
-## Current State (2026-05-09, verified)
+## Current State (2026-05-10, verified)
 
 ### Substrate — DGAS (Deterministic Governed Autonomous System) — SHIPPED
 
@@ -67,22 +67,50 @@ A custom model `miru-router:latest` (9 GB, derived from one of the qwens) exists
 
 ### Loop hardening — Q2 SHIPPED
 
-The dispatch loop is reliable enough to run unattended for routine work as of 2026-05-09:
+The dispatch loop is reliable enough to run unattended for routine work as of 2026-05-10:
 
 - **PRO-330** (terminal spawn-state logging) — DONE. Worker terminal taxonomy: `spawned`, `exited_clean`, `exited_failed`, `timed_out`, `killed`, `spawn_failed`, `no_output`.
 - **PRO-331** (Linear label + state intake tools) — DONE (PR #147). CC can now move tickets to Todo + add labels via gateway tools (no raw GraphQL fallback).
 - **PRO-334** (worktree contamination fix) — DONE (PR #150 squash 4663fbae). Pre-spawn dirty refusal + post-worker cleanup with stash-failure-aborts-cleanup + fork-safe merged-PR detection.
 - **PRO-335** (worker status pattern + ESCALATE diagnostic capture) — DONE (PR #149 squash 31b9aa71). All four canonical statuses recognized; diagnostic block captured into `result.json` with `summary` + `escalation_category`.
+- **PRO-336** (Session 0 boot fix) — DONE 2026-05-09 (PRs #154 + #155). Listener now boots into Session 1+ via `windows\install_dispatch_listener_startup_shortcut.ps1` shell:startup shortcut. Wrapper has self-check that exits 1 if `SessionId == 0`. Eliminates the cross-session kill wall that previously required operator-elevated relaunch after every reboot.
+- **PRO-338** (clean_worktree.py multi-repo support) — DONE 2026-05-10 (PR #160). Added `--cwd <PATH>` flag; spawn.js now invokes the script via absolute `execFileSync` from REPO_ROOT (not from worker cwd). Eliminates `worktree_auto_clean_failed` warnings on every dispatch into a non-miru worktree. 14 Python tests + 7 JS tests.
+- **PRO-339** (.coderabbit.yaml append-only declaration) — DONE 2026-05-10 (PR #159, dispatched manually to Codex). Added `path_filters` excluding the 9 append-only `data/*.jsonl` files from line-by-line review + `path_instructions` block telling CodeRabbit never to suggest in-place edits to those files. Prevents the false-positive "rewrite the row_hash chain" comments that wasted review cycles on PR #158.
 
-### Active tickets (2026-05-09)
+### Multi-repo dispatch infrastructure — SHIPPED 2026-05-09
 
-| Ticket  | State            | Notes                                                                                                                                              |
-| ------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| PRO-336 | Backlog          | Boot dispatch_listener into Session 1+ (eliminate Session 0 cross-session kill wall). Operator-merge tier. Blocked on operator review of approach. |
-| PRO-333 | Backlog (PARKED) | LogueOS Console P1a — bootstrap SvelteKit shell + 5-tab nav. Ready for dispatch once PRO-336 lands.                                                |
-| PRO-326 | In Review        | parent_watcher `_evaluate_parent` unit tests. CC dispatched.                                                                                       |
-| PRO-327 | In Review        | parent_watcher `_is_forward_transition` edge case tests. CC dispatched.                                                                            |
-| PRO-292 | Todo             | E2E test ticket (do-not-dispatch flag). Audit deployment pipeline for stale env vars.                                                              |
+Dispatch loop now serves multiple repos via the `target_repo` parameter on `dispatch_worker`:
+
+- **PR #156** — Per-repo worktree pools (`WORKTREE_POOLS` map in `services/dispatch_listener/src/worktree.js`). Backward-compat: callers omitting `target_repo` land in `project-miru`. New `target_repo` parameter on `tools/miru_mcp_gateway/dispatch_tools.py` validated against `_APPROVED_TARGET_REPOS = frozenset({"project-miru", "LogueOS-Console"})`. Parity test (`tests/test_dispatch_tools_target_repo_parity.py`) ensures the Python allowlist and JS pool keys can't drift.
+- **PR #157** — Generalized `parkingBranchForCwd` for non-miru worktrees. Legacy basenames (`miru-w1`..`miru-w6`, `miru-cursor`) keep the short-form `_parking_w1` convention via an explicit `LEGACY_MIRU_SLOT_BASENAMES` Set; everything else maps to full-basename `_parking_<repo>-w<N>` (e.g. `_parking_LogueOS-Console-w1`).
+- First active second pool: `LogueOS-Console` (1 slot at `D:\dev\LogueOS-Console-w1`). LOS-1 + LOS-2 both shipped through it on 2026-05-10.
+
+### LogueOS Console — P1a + P1b SHIPPED 2026-05-10
+
+Operator-facing dashboard for the dispatch loop. Replaces "ask CC how the loop is doing" with a glance-able SvelteKit UI. Lives at `Dreighto/LogueOS-Console` (separate repo from project-miru).
+
+- **LOS-1 — P1a — bootstrap shell + 5-tab nav** — DONE (PR #1 squash e21ba0b8). SvelteKit 2 + Svelte 5 (runes) + Tailwind 4 + shadcn-svelte + lucide-svelte + LayerChart. 5 tabs in order: **Runs · Workers · Activity · Ask · Settings**. Locked design tokens: `bg #0D1117`, `surface #161B22`, `cta #A3E635`, Mona Sans body / IBM Plex Mono metadata. 480px max-width container. Chart isolation pattern in `src/lib/charts/`.
+- **LOS-2 — P1b — Runs tab data wiring** — DONE (PR #2 squash 8651bb0b). `/api/runs` server endpoint reads `D:\dev\miru\data\cc_completion_log.jsonl` via `$lib/server/config.ts`; `/api/runs?limit=N` returns the most recent N rows in reverse chronological order. RunCard component renders worker badge (5 worker identity colors), status icon (5 status colors with traffic-light semantics), trace_id chip, ticket_id, summary preview, duration, PR link. Polling pauses when tab is hidden via `document.visibilityState`.
+- **LOS-3 — P1c — Run detail view** — NOT YET FILED. Tap a run card → `/runs/[trace_id]` route showing full summary, branch, files_touched, full PR link. Will dispatch to gemini-cli with `target_repo=LogueOS-Console`. Next slice.
+
+### Active tickets (2026-05-10)
+
+| Ticket  | State     | Notes                                                                                                                                                                                      |
+| ------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PRO-340 | Triage    | Multi-repo dispatch onboarding checklist + `data/templates/multi-repo/` template directory. Captures the 5-step "adding a new repo" procedure scar tissue from LOS-1/LOS-2 dispatch chain. |
+| PRO-326 | In Review | parent_watcher `_evaluate_parent` unit tests. CC dispatched.                                                                                                                               |
+| PRO-327 | In Review | parent_watcher `_is_forward_transition` edge case tests. CC dispatched.                                                                                                                    |
+| PRO-292 | Todo      | E2E test ticket (do-not-dispatch flag). Audit deployment pipeline for stale env vars.                                                                                                      |
+| LOS-3   | NOT FILED | Next LogueOS Console slice — P1c Run detail view (`/runs/[trace_id]`). Dispatch to gemini-cli with `target_repo=LogueOS-Console`.                                                          |
+
+**Recently DONE (2026-05-09 + 2026-05-10):**
+
+- PRO-333 → reframed as LOS-1 + LOS-2 (LogueOS Console moved to its own repo + team). Original ticket cancelled.
+- PRO-336 (Session 0 boot fix) → Done, PRs #154 + #155.
+- PRO-338 (clean_worktree.py multi-repo support) → Done, PR #160.
+- PRO-339 (.coderabbit.yaml append-only declaration) → Done, PR #159 (operator dispatched manually to Codex; Codex still operator-routable for scoped tickets).
+- LOS-1 (Console P1a shell) → Done, PR #1 on LogueOS-Console.
+- LOS-2 (Console P1b Runs data) → Done, PR #2 on LogueOS-Console.
 
 ---
 
@@ -90,11 +118,10 @@ The dispatch loop is reliable enough to run unattended for routine work as of 20
 
 ### Near-term (this week — next week)
 
-1. **PRO-336 — Session 0 boot fix.** Move dispatch_listener startup to `shell:startup` shortcut so the Node listener always lands in operator's interactive session. Self-check at wrapper start: if `SessionId == 0`, exit 1. Operator-merge.
-2. **PRO-333 — LogueOS Console P1a.** SvelteKit dashboard for watching the loop in real time (worker status, recent dispatches, prediction-vs-actual comparison from Hermes Stage 1, completion log). Replaces the "ask CC for status" loop with a glance-able UI. Dispatch once PRO-336 lands.
-3. **Move PRO-329 → Done in Linear** (DONE 2026-05-09 — was stale at "Todo" while shipped).
-4. **Move PRO-336 → Backlog** (DONE 2026-05-09 — was in Triage where I just filed it).
-5. **MiruOpsDigest failing daily at 9 AM** — Last result: 1 (failed). Not blocking but worth diagnosing. File ticket if it's not a one-off.
+1. **LOS-3 — Console P1c Run detail view.** File and dispatch. `/runs/[trace_id]` route + RunDetail component showing full summary, branch, files_touched, PR link. Closes the inbox-then-detail UX pattern from the locked v1 spec. Gemini-cli, `target_repo=LogueOS-Console`.
+2. **PRO-340 — Multi-repo onboarding checklist.** Document the 5 steps + ship `data/templates/multi-repo/` so the next repo addition is checklist-driven, not trial-and-error. Tier: docs + templates only.
+3. **MiruOpsDigest failing daily at 9 AM** — Last result: 1 (failed). Not blocking but worth diagnosing. File ticket if it's not a one-off.
+4. **LOS Console P2/P3/P5 ticket pipeline** — once P1c lands, file LOS-4 (Workers tab), LOS-5 (Activity feed), LOS-6 (Settings + write actions). Each is its own gemini dispatch.
 
 ### Mid-term (next 2-4 weeks)
 
@@ -129,7 +156,8 @@ The dispatch loop is reliable enough to run unattended for routine work as of 20
 - Do NOT re-introduce the old workstreams (file browser, runtime control, repo browser) when wiring Phase 2 — Gatekeeper is dispatch-validation-only.
 - Do NOT trust the Gatekeeper bench's `cost_weighted_score` for model differentiation — confidence scoring is broken (numeric historical 0–1 vs enum predicted high/medium/low). Use validity + latency until synthetic corpus exists.
 - Do NOT commit `data/peer_reviews/` artifacts (operator's local research bundles, never in repo).
-- Do NOT dispatch PRO-333 (LogueOS Console) until PRO-336 (Session 0 fix) lands — the loop reliability gap would burn the dispatch.
+- Do NOT dispatch gemini-cli into a target repo that lacks `.gemini/settings.json` workspace-tier config — gemini will hang trying to use shell to read Linear/GitHub (no `--mcp-config` CLI flag exists, only file-based discovery). See `multi-repo-onboarding` checklist (PRO-340) for the 5-step setup.
+- Do NOT add a new `target_repo` to dispatch_tools.py without also adding the matching `WORKTREE_POOLS` entry in worktree.js — `tests/test_dispatch_tools_target_repo_parity.py` will fail CI, but the manifest-only error message is opaque if you don't know to look at both files.
 
 ---
 

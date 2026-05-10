@@ -4,7 +4,7 @@
 Reference: ports-and-services
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: you need a port number or service mapping.
-Last reviewed: 2026-05-09 (verified against actually-listening sockets)
+Last reviewed: 2026-05-10 (verified against actually-listening sockets; PRO-336 marked as shipped)
 ```
 
 ## Ports — Permanent Reference
@@ -29,6 +29,6 @@ Last reviewed: 2026-05-09 (verified against actually-listening sockets)
 
 ## Service ownership notes
 
-- **dispatch_listener (19100)** must run in the operator's interactive Windows session (Session 1+), not Session 0 — otherwise non-elevated workers cannot kill/restart it. See `.miru/reference/restart-procedures.md` and PRO-336 for the boot-path fix.
+- **dispatch_listener (19100)** must run in the operator's interactive Windows session (Session 1+), not Session 0 — otherwise non-elevated workers cannot kill/restart it. **PRO-336 shipped 2026-05-09 (PRs #154 + #155)**: the canonical boot path is now `windows\install_dispatch_listener_startup_shortcut.ps1`, which places a `shell:startup` shortcut that fires on logon in Session 1+. The wrapper has a self-check that exits 1 if `SessionId == 0`. Plus the gemini-cli `AttachConsole()` requirement: the wrapper must allocate a console (handled by start_dispatch_listener.ps1's `[W32.MiruHide]::ShowWindow(GetConsoleWindow(), 0)` — hides the window but keeps the console attached). See `.miru/reference/restart-procedures.md` for the full boot procedure and recovery steps.
 - **MCP Gateway (18766)** is the connector entry for remote workers and the claude.ai connector via Tailscale Funnel. Any middleware change here MUST be smoke-tested against a real claude.ai connector before merging — unit tests can pass while live access breaks (see `adopted-lessons.md`). Localhost-bind on `full_operator` profile shipped via DGAS Tier 1 (PR #136).
 - **Gatekeeper** runs IN-PROCESS in the gateway. No separate restart procedure — restart the gateway and the Gatekeeper restarts with it.

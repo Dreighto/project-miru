@@ -4,7 +4,7 @@
 Overlay: adopted-lessons
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: doing a non-trivial code change (more than typo or lint).
-Last reviewed: 2026-05-09
+Last reviewed: 2026-05-10
 ```
 
 Lessons promoted from Provisional to Adopted via the Lesson Promotion
@@ -110,7 +110,7 @@ Workers are dispatched into git worktrees (`miru-w1` through `miru-w6`). The `di
 
 ---
 
-## Dispatch_listener must boot into operator's interactive session (lesson, fix tracked PRO-336, adopted 2026-05-09)
+## Dispatch_listener must boot into operator's interactive session (lesson + fix shipped PRO-336 PR #154/#155 on 2026-05-09)
 
 When registering a Windows scheduled task or service that produces a long-running child process the operator's worker shell needs to manage, the spawned process MUST land in the operator's interactive Windows session — not Session 0.
 
@@ -141,3 +141,48 @@ All design context, priority, ordering hints, and "I'd suggest" notes belong **i
 **Why:** when CC ships a wrapper that says "here's PRO-X and PRO-Y; I'd suggest dispatching X first because of Z" the next session or sub-worker either re-reads the wrapper (slow) or misses it entirely (silent loss). The locked-design-in-Linear rule already says this for design — this lesson generalizes it to **all** dispatch context.
 
 **Applies to:** every ticket handoff CC produces, whether for operator paste, auto-dispatch, or manual relay.
+
+---
+
+## Gemini-cli requires .gemini/settings.json + console-allocated parent (set 2026-05-10)
+
+Two distinct gemini-cli requirements that **both** must be satisfied for `dispatch_worker(worker="gemini", ...)` to actually function in a target repo:
+
+**1. Workspace-tier `.gemini/settings.json` per repo.** Gemini-cli has **no `--mcp-config` CLI flag** (verified gemini-cli issue [#4674](https://github.com/google-gemini/gemini-cli/issues/4674) closed as duplicate of #3470). MCP servers are discovered via 4-tier `settings.json` files only: `SystemDefaults > User (~/.gemini/settings.json) > Workspace (<cwd>/.gemini/settings.json) > SystemOverrides`. The blocks merge by server-name across tiers. Without a workspace-tier file in a target repo, gemini lands with whatever the operator-level User config has — which is empty on this machine, so dispatched gemini hangs trying to use shell to read Linear tickets. Use `httpUrl` (not `url` — that's SSE) for the gateway. `${env:VAR}` substitution syntax is supported but Gemini silently leaves the literal string if the env var is missing (different from claude-code's fail-closed behavior — verify spawn.js exports `MIRU_TOOL_PROFILE` + `MIRU_TRACE_ID` before spawning).
+
+**2. Console-allocated parent process.** gemini-cli's `@lydell/node-pty/conpty_console_list_agent.js` calls Windows `AttachConsole()` at startup. If the parent process has no console allocated, AttachConsole fails and gemini-cli exits 1 immediately (in the child stderr: `Error: AttachConsole failed`). `dispatch_listener` launched via Task Scheduler with `windowsHide: true` does NOT have a console; the PRO-336 `shell:startup` shortcut path gives the wrapper an interactive Session 1+ context with a console allocated. `spawn.js` line ~689 sets `windowsHide: false` for gemini specifically so gemini inherits the wrapper's console. If you ever see "AttachConsole failed" in a gemini stderr trace: the listener was started without a console (e.g. via `Start-ScheduledTask MiruRestartDispatcher` instead of the shell:startup shortcut). Recovery: kill the listener and relaunch via `windows\start_dispatch_listener.ps1` from an interactive PowerShell.
+
+**Why both:** missing either one yields a silent hang (gemini alive, 0 file activity, ~0% CPU). Took ~30 minutes to diagnose during LOS-2 dispatch. Documented now so the next person doesn't re-tread it.
+
+**Applies to:** every new repo added to multi-repo dispatch; every change to listener launch path.
+
+---
+
+## Worktree contamination prevention for non-miru repos (set 2026-05-10)
+
+Every target repo (anything with a worktree pool in `WORKTREE_POOLS`) MUST gitignore `.mcp.json` AND `mcp.json` on its `main` branch. The dispatch_listener writes per-spawn config to `.mcp.json` in the worker's CWD; if the file is tracked, the worktree shows as "modified" on the next dispatch and `verifyWorktreeParked` refuses with `dirty_worktree: ?? .mcp.json`.
+
+**Bit on LOS-1 bootstrap:** PR #1's `git add .` committed the listener's `.mcp.json` before the new `.gitignore` rule landed (because SvelteKit's `npx sv create` overwrote my pre-bootstrap `.gitignore`). LOS-2 dispatch then failed with `pre_spawn_dirty_refusal: dirty_worktree`. Fix sequence: `git rm --cached .mcp.json` on `main`, sync to parking branch, retry dispatch. Both files in the patch: commit `e2543bf` (untrack) + `76a0764` (re-add `.gitignore` entry).
+
+**The single source for these gitignore lines:** `data/templates/multi-repo/dot-gitignore` (PRO-340, pending). Every new target repo should `cp` from this template.
+
+**Applies to:** every new target repo + any bootstrap that uses a generator (`npx sv create`, `create-react-app`, etc.) that may overwrite `.gitignore`.
+
+---
+
+## Completion-marker appends require their own one-line PR (set 2026-05-10)
+
+Branch protection on `main` blocks direct pushes. Worker `tools/emit_completion.py` calls write the marker to `data/cc_completion_log.jsonl` in the worker's worktree, but the orchestrator can't `git push` it directly to `main` afterwards. Pattern established by PR #158 (LOS-1 marker) + PR #161 (LOS-2 marker):
+
+1. After worker terminates, on `main` branch (clean), check out `chore/<ticket>-completion-marker`
+2. The marker line is already in `data/cc_completion_log.jsonl` (worker's emit landed there)
+3. `git add data/cc_completion_log.jsonl && git commit && git push`
+4. `gh pr create` with title `chore(log): append <ticket> completion marker (...)`. Body documents the worker, trace_id, merge_commit_sha of the corresponding feature PR.
+5. CI runs the append-only pre-commit hook (`tests/test_jsonl_append_only_invariant.py` validates pure-append diff). Squash merge.
+6. Sync local main, return to clean state.
+
+**CodeRabbit assertive will sometimes flag the new line** with "consider editing the row to backfill `merge_commit_sha`" — this is a textbook violation of the append-only invariant and MUST be dismissed with the canonical message. PRO-339 (PR #159) tightened `.coderabbit.yaml` `path_filters` + `path_instructions` to suppress these false positives going forward, but operator-side awareness still helps.
+
+**Why each marker gets its own PR (and not bundled):** the marker is the canonical proof-of-completion event in the DGAS audit chain; bundling it with feature work would conflate "feature shipped" with "feature shipping recorded." Keeping the chore commits one-per-marker also makes `git log -- data/cc_completion_log.jsonl` legible.
+
+**Applies to:** every dispatched ticket completion that emits a marker.

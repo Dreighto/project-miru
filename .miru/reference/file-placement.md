@@ -4,14 +4,26 @@
 Reference: file-placement
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: creating a new file and unsure where it goes.
-Last reviewed: 2026-05-08
+Last reviewed: 2026-05-10
 ```
 
 Every file created must go in the correct location. These rules are non-negotiable.
 
 ---
 
-## Service boundaries — files belong to their service
+## Cross-repo placement (added 2026-05-10)
+
+Project Miru is no longer single-repo. Workers may land in any worktree from `WORKTREE_POOLS`. Before creating a file, check which repo's worktree you're in:
+
+- `D:\dev\miru-w*` or `D:\dev\miru` → project-miru (rules below apply)
+- `D:\dev\LogueOS-Console-w*` or `D:\dev\LogueOS-Console` → SvelteKit dashboard repo. Files belong in `src/lib/`, `src/routes/`, `src/lib/components/`, `src/lib/server/`, `static/`, etc. — standard SvelteKit conventions. Do NOT place dispatch/gateway/n8n code here.
+- Any other path → STOP. You're outside the dispatch loop's known repo set; ask the operator.
+
+If you're editing in `D:\dev\miru*` and the file you're about to create is dashboard-shaped (Svelte component, +page route, /api endpoint), STOP — wrong repo. Dispatch the work to gemini-cli with `target_repo=LogueOS-Console` instead.
+
+---
+
+## Service boundaries — files belong to their service (project-miru)
 
 - `miru_ai/` — ALL code for the Miru AI service (port 18765): Python modules, workers, templates, static, tools, migrations
 - `pm/` — ALL code for the PM Dashboard (port 18080): app.py, templates, static
