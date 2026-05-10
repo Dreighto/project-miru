@@ -64,6 +64,7 @@ from miru_mcp_gateway import (
     vp_ops_tools,
     worker_tools,
 )
+from miru_mcp_gateway import canon_routes as canon_routes_mod
 from miru_mcp_gateway import config as gw_config
 from miru_mcp_gateway import redact as gw_redact
 from miru_mcp_gateway.trust_policy import (
@@ -126,6 +127,7 @@ def _build_server(cfg: gw_config.GatewayConfig):
             counts[name] = 0
 
     _register_health_route(mcp, cfg)
+    canon_routes_mod.register_canon_routes(mcp, cfg.repo_root)
 
     return mcp, counts
 
