@@ -91,6 +91,18 @@ function probeCanonManifestSync(opts = {}) {
     );
   }
 
+  // CodeRabbit R1: enforce the canonical format (lowercase hex, exactly 64
+  // chars — SHA-256 hex digest). A malformed id like "bad-id" or "abc"
+  // would slip past the previous "is string" check but indicates the
+  // gateway is misconfigured or compromised. Fail-closed.
+  if (!/^[0-9a-f]{64}$/.test(manifest.canon_snapshot_id)) {
+    throw new Error(
+      `canon_probe_failed: canon_snapshot_id is not a 64-char lowercase hex SHA-256 digest ` +
+        `(got ${JSON.stringify(manifest.canon_snapshot_id).slice(0, 80)}) from ${url} — ` +
+        `body: ${stdout.slice(0, 200)}`
+    );
+  }
+
   return manifest;
 }
 

@@ -130,6 +130,37 @@ test('probeBeforeSpawn: non-string canon_snapshot_id throws', () => {
   });
 });
 
+test('probeBeforeSpawn: malformed-string snapshot_id throws (CR R1: format check)', () => {
+  // A short or non-hex string passes the "is string" check but indicates the
+  // gateway is misconfigured or compromised. The format guard (64-char
+  // lowercase hex) must reject it before the spawn proceeds. CodeRabbit R1.
+  const cases = [
+    { id: 'bad-id', label: 'short+nonhex' },
+    { id: 'abc', label: 'tooshort' },
+    { id: 'A'.repeat(64), label: 'uppercase' },
+    { id: 'g'.repeat(64), label: 'right-length-nonhex' },
+    { id: 'a'.repeat(63), label: 'one-short' },
+    { id: 'a'.repeat(65), label: 'one-long' },
+  ];
+  for (const { id, label } of cases) {
+    const stubExecFile = () => JSON.stringify({ ok: true, canon_snapshot_id: id, file_count: 42 });
+    withCapturedLogs((logs) => {
+      assert.throws(
+        () =>
+          canonProbe.probeBeforeSpawn(`trace-test-malformed-${label}`, {
+            execFile: stubExecFile,
+          }),
+        /canon_probe_failed.*64-char lowercase hex/,
+        `should reject ${label}: ${id}`
+      );
+      assert.ok(
+        logs.find((l) => l.event === 'worker_spawn_refused_canon_unavailable'),
+        `should emit refusal log for ${label}`
+      );
+    });
+  }
+});
+
 test('probeCanonManifestSync: respects custom url + timeout', () => {
   let capturedArgs = null;
   const stubExecFile = (_bin, args) => {
