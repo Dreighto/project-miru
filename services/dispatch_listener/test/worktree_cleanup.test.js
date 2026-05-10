@@ -31,6 +31,38 @@ test('parkingBranchForCwd: canonicalizes uppercase suffix to lowercase', () => {
   assert.equal(parkingBranchForCwd('D:\\dev\\Miru-Cursor'), '_parking_cursor');
 });
 
+// Multi-repo support (added 2026-05-09 for LOS team).
+// Non-miru worktrees use full-basename parking branches because cross-repo
+// collisions are possible (LogueOS-Console-w1 vs LogueOS-Framework-w1 both
+// end in -w1 but must map to different parking branches).
+
+test('parkingBranchForCwd: maps LogueOS-Console-w1 to _parking_LogueOS-Console-w1', () => {
+  assert.equal(parkingBranchForCwd('D:\\dev\\LogueOS-Console-w1'), '_parking_LogueOS-Console-w1');
+});
+
+test('parkingBranchForCwd: preserves casing for non-miru worktree names', () => {
+  // Non-miru paths are NOT lowercased — the parking branch matches the worktree
+  // basename exactly (the `git worktree add` command was run with the cased name).
+  assert.equal(parkingBranchForCwd('D:\\dev\\LogueOS-Console-w1'), '_parking_LogueOS-Console-w1');
+  assert.notEqual(
+    parkingBranchForCwd('D:\\dev\\LogueOS-Console-w1'),
+    '_parking_logueos-console-w1',
+    'must preserve original casing for non-miru worktrees'
+  );
+});
+
+test('parkingBranchForCwd: still returns null for non-worktree-shaped paths', () => {
+  // Pattern guard: only match basenames that look like worktree slots (X-wN).
+  assert.equal(parkingBranchForCwd('/some/random/path'), null);
+  assert.equal(parkingBranchForCwd('D:\\dev\\not-a-worktree'), null);
+  assert.equal(parkingBranchForCwd('D:\\dev\\LogueOS-Console'), null); // no -wN suffix
+});
+
+test('parkingBranchForCwd: handles multi-digit worker numbers', () => {
+  assert.equal(parkingBranchForCwd('D:\\dev\\LogueOS-Console-w10'), '_parking_LogueOS-Console-w10');
+  assert.equal(parkingBranchForCwd('D:\\dev\\miru-w99'), '_parking_w99');
+});
+
 // --- verifyWorktreeParked ---
 
 test('verifyWorktreeParked: returns ok for parked clean worktree', () => {

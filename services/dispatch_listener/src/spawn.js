@@ -185,8 +185,19 @@ function cleanWorktree(cwd, traceId) {
 // `wrong_parking_branch` if the cwd happened to use uppercase casing.
 function parkingBranchForCwd(cwd) {
   const name = path.win32.basename(String(cwd));
-  const m = name.match(/^miru-(.+)$/i);
-  return m ? `_parking_${m[1].toLowerCase()}` : null;
+  // Legacy project-miru worktrees: miru-w1 → _parking_w1 (suffix only,
+  // lowercased for Windows case-insensitivity). The existing parking branches
+  // on the miru worktree pool use this short-form naming.
+  const miruMatch = name.match(/^miru-(.+)$/i);
+  if (miruMatch) return `_parking_${miruMatch[1].toLowerCase()}`;
+  // Multi-repo worktrees (added 2026-05-09 for LOS team and beyond):
+  // <RepoName>-w<N> → _parking_<RepoName>-w<N>. Full basename preserved
+  // because cross-repo collisions are possible (e.g., LogueOS-Console-w1 and
+  // LogueOS-Framework-w1 must produce different parking branches even though
+  // both end in -w1). Pattern guard ensures we only match worktree-shaped
+  // basenames (something-wN) — random paths still return null.
+  if (/^[A-Za-z0-9._-]+-w\d+$/i.test(name)) return `_parking_${name}`;
+  return null;
 }
 
 // PRO-334: Pre-spawn guard — verify the worktree is on its exact _parking_* branch
@@ -452,7 +463,7 @@ function probeWorkerBinary(binary, cwd) {
     const combined = String(err.stderr || err.stdout || err.message || '').trim();
     return {
       ok: false,
-      exit_code: err.status != null ? err.status : null,
+      exit_code: err.status !== null && err.status !== undefined ? err.status : null,
       signal: err.signal || null,
       output: combined.slice(0, 300),
     };
@@ -464,7 +475,11 @@ function spawnWorker({
   worker,
   promptText,
   timeoutSeconds,
-  useApiKey = false,
+  // Renamed to _useApiKey because the param is accepted from the dispatch
+  // payload but not currently wired through to the spawned worker (legacy
+  // caller contract). Prefix matches the no-unused-vars argsIgnorePattern.
+  // If/when this gets wired, drop the underscore.
+  useApiKey: _useApiKey = false,
   model = null,
   thinkingLevel = null,
   toolProfile = 'standard_worker',
@@ -675,13 +690,13 @@ function spawnWorker({
     trace_id: traceId,
     worker,
     pid: child.pid,
-    pid_defined: child.pid != null,
+    pid_defined: child.pid !== null && child.pid !== undefined,
     timeout_seconds: timeoutSeconds,
     model: model || null,
     thinking_level: thinkingLevel || null,
   });
 
-  if (child.pid == null) {
+  if (child.pid === null || child.pid === undefined) {
     log.error('spawn_pid_undefined', {
       trace_id: traceId,
       worker,
