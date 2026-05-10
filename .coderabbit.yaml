@@ -9,6 +9,16 @@ reviews:
   high_level_summary: true
   high_level_summary_placeholder: "@coderabbitai summary"
   poem: false
+  path_filters:
+    - "!data/cc_completion_log.jsonl"
+    - "!data/routing_history.jsonl"
+    - "!data/pending_callbacks.jsonl"
+    - "!data/dispatch_dlq.jsonl"
+    - "!data/cc_heartbeat_log.jsonl"
+    - "!data/vp_ops_supervision.jsonl"
+    - "!data/drift_scanner_log.jsonl"
+    - "!data/agent_decisions.jsonl"
+    - "!data/github_resource_ledger.jsonl"
   auto_review:
     enabled: true
     drafts: false
@@ -18,16 +28,18 @@ reviews:
   # Path-specific review instructions for project-specific rules
   path_instructions:
 
-    # Append-only JSONL files — any modification is a violation
-    - path: "data/**/*.jsonl"
+    # Append-only JSONL files — existing rows are immutable history
+    - path: "data/*.jsonl"
       instructions: |
-        These files are STRICTLY append-only. Flag ANY edit, truncation, deduplication,
-        sorting, or read-modify-write as a critical violation. The only allowed operation
-        is appending via fs.appendFileSync or shell >>. Never accept a diff that deletes
-        or rewrites existing lines in these files. Affected files include:
+        These files are strictly APPEND-ONLY per CLAUDE.md and are validated by
+        tests/test_jsonl_append_only_invariant.py. Never suggest in-place edits,
+        deletions, sorting, deduplication, hash-chain recomputation, or any mutation
+        of existing rows. Only fs.appendFileSync or shell >> is permitted. If you see
+        a "wrong" value in an existing row, it is the canonical historical record;
+        propose a follow-up event row, not an edit. Affected files include:
         cc_completion_log.jsonl, routing_history.jsonl, pending_callbacks.jsonl,
         dispatch_dlq.jsonl, cc_heartbeat_log.jsonl, vp_ops_supervision.jsonl,
-        drift_scanner_log.jsonl, agent_decisions.jsonl.
+        drift_scanner_log.jsonl, agent_decisions.jsonl, github_resource_ledger.jsonl.
 
     # n8n workflow JSON — JS boundary-crossing test required
     - path: "docker/n8n/workflows/**/*.json"
