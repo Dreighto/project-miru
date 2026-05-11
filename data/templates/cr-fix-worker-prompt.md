@@ -60,8 +60,8 @@ PROTOCOL (run in order)
 CLEANUP-BEFORE-EXIT (mandatory before ANY terminal state — CONFIRMED_WORKING,
 INCONCLUSIVE, FAILED, or ESCALATE):
 
-  # 1. If on a task branch with uncommitted changes:
-  git stash push -m "WIP: cleanup before exit" || git commit -am "WIP: cleanup before exit"
+  # 1. If on a task branch with uncommitted changes (include untracked files):
+  git stash push --include-untracked -m "WIP: cleanup before exit" || (git add -A && git commit -m "WIP: cleanup before exit")
 
   # 2. Return to main with a clean tree:
   git checkout main
