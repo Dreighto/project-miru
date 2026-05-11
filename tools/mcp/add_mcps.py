@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
-"""add_mcps.py — surgical add of Docker + PoshMCP entries to CC + Gemini configs.
+"""add_mcps.py — surgical add of Docker + PoshMCP entries to CC's config.
+
+NOTICE: This script targets Claude Code only. Direct edits to Gemini's
+.gemini/settings.json DO NOT work — Gemini CLI strips entries it didn't
+register through its own flow when it next launches. For Gemini, use:
+
+    pwsh -ExecutionPolicy Bypass -File tools/mcp/register_gemini_mcps.ps1
+
+which calls `gemini mcp add` for each entry — that persists.
+
+This script still handles Claude Code's ~/.claude.json correctly because
+CC reads its mcpServers list verbatim and doesn't strip unknown entries.
 
 Idempotent: re-running on a config that already has the entries is a no-op.
 Backups are written to <config>.backup-<timestamp> before each modification.
 
-Targets:
+Targets (CC only):
   - ~/.claude.json (mcpServers section)
-  - D:\\dev\\miru\\.gemini\\settings.json (mcpServers section)
 
 MCP additions:
   - docker          : uvx mcp-server-docker (ckreiling/mcp-server-docker)
@@ -27,7 +37,8 @@ import time
 from pathlib import Path
 
 CLAUDE_CONFIG = Path.home() / ".claude.json"
-GEMINI_CONFIG = Path("D:/dev/miru/.gemini/settings.json")
+# GEMINI_CONFIG intentionally removed — Gemini strips direct edits.
+# Use tools/mcp/register_gemini_mcps.ps1 instead.
 POSH_MCP_CONFIG = "D:\\dev\\miru\\tools\\mcp\\posh-mcp-config.json"
 
 DOCKER_ENTRY = {
@@ -106,14 +117,14 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"Mode: {'DRY-RUN' if args.dry_run else 'APPLY'}")
     print()
-    for target in [CLAUDE_CONFIG, GEMINI_CONFIG]:
-        _add_entries(target, args.dry_run)
-        print()
+    _add_entries(CLAUDE_CONFIG, args.dry_run)
+    print()
 
     print("Done. Operator action required:")
-    print("  - Restart Claude Code to load the new MCPs")
-    print("  - Restart Gemini CLI (or re-spawn it) to load the new MCPs")
-    print("  - First-time invocation of PoshMCP requires PowerShell 7 (pwsh)")
+    print("  - Restart Claude Code to load the new MCPs into CC's session.")
+    print("  - For Gemini, run the separate script (direct edits get stripped):")
+    print("      pwsh -ExecutionPolicy Bypass -File tools/mcp/register_gemini_mcps.ps1")
+    print("  - First-time invocation of PoshMCP requires PowerShell 7 (pwsh).")
     return 0
 
 
