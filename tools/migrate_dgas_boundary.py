@@ -154,7 +154,11 @@ def _walk_v1_chain_strict(path: Path) -> ChainSummary:
     terminal_hash: str | None = None
 
     with path.open("r", encoding="utf-8") as fh:
-        for idx, raw in enumerate(fh):
+        # CR R6 MINOR (PR #182): enumerate(fh) was 0-based, so chain
+        # failures reported "line 0: ..." for the first row — confusing
+        # because every editor / wc -l / git blame uses 1-based numbers.
+        # Use start=1 so the reported number matches the file.
+        for idx, raw in enumerate(fh, start=1):
             line = raw.strip()
             if not line:
                 continue
@@ -581,9 +585,23 @@ def migrate(
 
     # With --force on an unsigned rerun, proactively REMOVE stale sig artifacts
     # so they can't make the directory look signed when it isn't.
+    #
+    # CR R6 MAJOR (PR #182): previously this block ran even with --dry-run,
+    # which violated the contract that dry-run never touches the filesystem.
+    # `--dry-run --force` on a directory with stale sig artifacts would
+    # actually delete them, which is the exact opposite of what dry-run
+    # promises. Gate on `not dry_run`; under dry-run, report the would-be
+    # deletion via the verbose log instead.
     if force and signing_key is None:
         for p in (signature_path, allowed_signers_path):
             if p.exists():
+                if dry_run:
+                    if verbose:
+                        print(
+                            f"[migrate] --dry-run --force: WOULD remove stale {p}",
+                            file=sys.stderr,
+                        )
+                    continue
                 try:
                     p.unlink()
                     if verbose:
@@ -793,6 +811,17 @@ def main(argv: list[str] | None = None) -> int:
         # would see an unexpected non-1, non-0 exit). Surface as a single
         # stderr line + exit 1 to match the documented contract.
         print(f"[migrate_dgas_boundary] FAILED (I/O): {exc}", file=sys.stderr)
+        return 1
+    except subprocess.SubprocessError as exc:
+        # CR R6 MAJOR (PR #182): the git-tag helper makes three
+        # subprocess.run calls (tag -l, tag -s, rev-list). The previous
+        # code converted only `returncode != 0` to ValueError; any
+        # SubprocessError subclass (TimeoutExpired, CalledProcessError
+        # when called with check=True, etc.) escaped as an uncaught
+        # traceback, breaking the documented exit-1 contract the same
+        # way OSError did before R4. Catch the base class so any new
+        # subprocess use anywhere in migrate() gets the same treatment.
+        print(f"[migrate_dgas_boundary] FAILED (subprocess): {exc}", file=sys.stderr)
         return 1
 
     print(json.dumps(result, indent=2, sort_keys=True))
