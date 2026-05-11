@@ -229,7 +229,8 @@ const LEGACY_MIRU_SLOT_BASENAMES = new Set([
 ]);
 
 function parkingBranchForCwd(cwd) {
-  const name = path.win32.basename(String(cwd));
+  const cwdStr = String(cwd);
+  const name = path.win32.basename(cwdStr);
   // Legacy: only the exact basenames in the allowlist get the short-form
   // parking branch (`_parking_w1`). The lowercase normalization handles
   // case-insensitive Windows paths.
@@ -245,6 +246,27 @@ function parkingBranchForCwd(cwd) {
   // parking branches even though both end in -w1). Pattern guard ensures
   // we only match worktree-shaped basenames — random paths return null.
   if (/^[A-Za-z0-9._-]+-w\d+$/i.test(name)) return `_parking_${name}`;
+  // LOS-14 layout (added 2026-05-11): D:\dev\worktrees\<repo>\w<N> →
+  // _parking_<repo>-w<N>. Same parking-branch shape as the multi-repo
+  // pattern above, just derived from grandparent/parent/basename instead
+  // of just basename. We require ALL THREE guards:
+  //   - basename matches exactly w<N>
+  //   - parent dir name is a valid repo identifier
+  //   - grandparent dir basename is exactly "worktrees" (the LOS-14
+  //     pool root marker — without this, a bare `D:\dev\w1` could match
+  //     with parent=`dev` and create `_parking_dev-w1` which would be
+  //     wrong on every axis)
+  // The grandparent="worktrees" check is the layout anchor: it says
+  // "this path is part of the dispatch pool, not some random other
+  // checkout that happens to end in /w1".
+  if (/^w\d+$/i.test(name)) {
+    const parentDir = path.win32.dirname(cwdStr);
+    const parent = path.win32.basename(parentDir);
+    const grandparent = path.win32.basename(path.win32.dirname(parentDir));
+    if (parent && /^[A-Za-z0-9._-]+$/.test(parent) && grandparent.toLowerCase() === 'worktrees') {
+      return `_parking_${parent}-${name.toLowerCase()}`;
+    }
+  }
   return null;
 }
 

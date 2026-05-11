@@ -16,10 +16,26 @@ a new repository into the Miru dispatch loop. Templates live in
 ## 5-Step Onboarding Checklist
 
 **Step 1: WORKTREE** -- clone to `D:\dev\<RepoName>\`, add worktree at
-`D:\dev\<RepoName>-w1` parked on orphan branch `_parking_<RepoName>-w1`.
+`D:\dev\worktrees\<RepoName>\w1` parked on orphan branch
+`_parking_<RepoName>-w1`.
+
+> **LOS-14 layout (2026-05-11):** worktrees live under a centralized pool
+> root (`D:\dev\worktrees\<RepoName>\w<N>`) rather than as siblings of the
+> main checkout. The pool root is configurable via the
+> `LOGUEOS_WORKTREE_BASE` env var. `parkingBranchForCwd` recognizes BOTH
+> the LOS-14 layout AND the legacy `<RepoName>-w<N>` layout (for
+> backward compat during the migration window). Existing `miru-w1..w6`
+> and `LogueOS-Console-w1` still use the legacy paths until LOS-14 Part 2
+> migrates them post-LOS-10 cutover.
 
 **Step 2: POOL REGISTRATION** -- add entry to `WORKTREE_POOLS` in
 `services/dispatch_listener/src/worktree.js` keyed by `'<RepoName>'`.
+For new repos, use the `poolFor('<RepoName>', <slot_count>)` helper so
+paths derive automatically from `LOGUEOS_WORKTREE_BASE`. Example:
+
+```javascript
+'NASDOOM': poolFor('NASDOOM', 2),  // → D:\dev\worktrees\NASDOOM\w1, ...\w2
+```
 
 **Step 3: CLIENT-SIDE ALLOWLIST** -- add `'<RepoName>'` to `_APPROVED_TARGET_REPOS`
 in `tools/miru_mcp_gateway/dispatch_tools.py`. Parity enforced by

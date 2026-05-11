@@ -553,6 +553,51 @@ test('parkingBranchForCwd: different repos with same worker suffix produce disti
   assert.equal(frameworkResult, '_parking_LogueOS-Framework-w1');
 });
 
+// --- LOS-14 layout (D:\dev\worktrees\<repo>\w<N>) ---
+
+test('parkingBranchForCwd: LOS-14 layout LogueOS-Orchestrator\\w1 → _parking_LogueOS-Orchestrator-w1', () => {
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\worktrees\\LogueOS-Orchestrator\\w1'),
+    '_parking_LogueOS-Orchestrator-w1'
+  );
+});
+
+test('parkingBranchForCwd: LOS-14 layout multi-digit slot index', () => {
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\worktrees\\project-miru\\w12'),
+    '_parking_project-miru-w12'
+  );
+});
+
+test('parkingBranchForCwd: LOS-14 layout preserves repo casing (case-sensitive parent)', () => {
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\worktrees\\LogueOS-Console\\w3'),
+    '_parking_LogueOS-Console-w3'
+  );
+});
+
+test('parkingBranchForCwd: LOS-14 layout grandparent must be exactly "worktrees" (case-insensitive)', () => {
+  // Mixed case "Worktrees" should still match — the comparison is case-insensitive.
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\Worktrees\\LogueOS-Console\\w1'),
+    '_parking_LogueOS-Console-w1'
+  );
+});
+
+test('parkingBranchForCwd: LOS-14 anchor rejects bare D:\\dev\\<repo>\\w1 without worktrees parent', () => {
+  // Without the "worktrees" grandparent marker, a path like
+  // D:\dev\foo\w1 must NOT match LOS-14. This is the anchor that prevents
+  // accidental matches on unrelated paths with parent dirs that happen to
+  // look repo-shaped.
+  assert.equal(parkingBranchForCwd('D:\\dev\\foo\\w1'), null);
+});
+
+test('parkingBranchForCwd: LOS-14 layout rejects bare w1 with non-worktrees parent', () => {
+  // Same idea but with a parent that IS a real repo name. Without the
+  // worktrees anchor, the function still returns null.
+  assert.equal(parkingBranchForCwd('D:\\dev\\LogueOS-Console\\w1'), null);
+});
+
 // --- verifyWorktreeParked with multi-repo (non-miru) worktrees ---
 
 test('verifyWorktreeParked: accepts LogueOS-Console-w1 on its expected parking branch', () => {
