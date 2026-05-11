@@ -87,12 +87,23 @@ Get-ScheduledTask | Where-Object {
     -and $_.State -ne 'Disabled'
 } | ForEach-Object {
     $a = $_.Actions[0]
-    $hidden = if ($a.Arguments -match "-WindowStyle\s+Hidden") { "hidden" } else { "VISIBLE" }
-    $marker = if ($hidden -eq "VISIBLE" -and $a.Execute -notmatch "wscript|vbs") { "  ⚠️" } else { "    " }
-    "{0}{1} {2,-32} state={3,-8} window={4}" -f $marker, "", $_.TaskName, $_.State, $hidden
+    # wscript.exe doesn't allocate a console — those tasks are silent
+    # by default regardless of -WindowStyle Hidden. Label them as such
+    # so the audit doesn't yield false-positive VISIBLE entries.
+    $isWscript = $a.Execute -match "wscript"
+    $hasHiddenFlag = $a.Arguments -match "-WindowStyle\s+Hidden"
+    $windowLabel = if ($isWscript) { "hidden(wscript)" }
+                   elseif ($hasHiddenFlag) { "hidden" }
+                   else { "VISIBLE" }
+    "    {0,-32} state={1,-8} window={2}" -f $_.TaskName, $_.State, $windowLabel
 }
 Write-Host ""
 Write-Host "Notes:" -ForegroundColor White
-Write-Host "  - wscript.exe + .vbs wrappers (MiruBackup, MiruDispatchListener) are hidden by default."
-Write-Host "  - Tasks marked VISIBLE need a re-install via their respective register_*.ps1 script,"
-Write-Host "    or a manual schtasks edit. This script only updates the two tracked offenders."
+Write-Host "  - hidden(wscript): wscript.exe + .vbs wrappers don't allocate a console,"
+Write-Host "    so they're silent by default (MiruBackup, MiruDispatchListener)."
+Write-Host "  - hidden: powershell.exe with -WindowStyle Hidden flag."
+Write-Host "  - VISIBLE: still flashes a terminal. To fix the 4 periodic watchdog tasks"
+Write-Host "    (MiruN8nWatchdog, MiruSentinel, MiruServiceWatchdog, MiruStallRecovery),"
+Write-Host "    run from the same elevated shell:"
+Write-Host "      powershell -ExecutionPolicy Bypass -File windows\fix_task_window_flash.ps1"
+Write-Host "    That re-registers them with VBS wrappers (the canonical fix)."
