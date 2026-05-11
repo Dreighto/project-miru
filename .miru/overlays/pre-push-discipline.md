@@ -27,8 +27,15 @@ CR consistently flags so they don't reach CR in the first place.
 ### Step 1 -- run `tools/pre_pr_review.py` against the diff
 
 ```bash
-python tools/pre_pr_review.py --from-ref main --strict
+python tools/pre_pr_review.py --from-ref origin/main --strict
 ```
+
+We compare against `origin/main` (the actual merge target) rather than
+local `main` so the check catches anything pushed to remote main since
+the last `git fetch`. The pre-push git hook (below) uses the same ref,
+so manual runs and hook runs return the same findings. If you have not
+fetched recently, the hook will fall back to local `main`; do a `git
+fetch` first to avoid that asymmetry.
 
 If the tool returns any findings, fix them before pushing. If a finding
 is a clear false positive, harden the detector before suppressing the
@@ -143,12 +150,25 @@ The `@coderabbitai review` nudge triggers immediate CR re-review
 # Skips if --no-verify is passed (operator override).
 
 set -e
+
+# Fail closed if pre_pr_review.py isn't present.
+if [ ! -f "tools/pre_pr_review.py" ]; then
+    echo "[pre-push] BLOCKED: tools/pre_pr_review.py not found." >&2
+    exit 1
+fi
+
 python tools/pre_pr_review.py --from-ref origin/main --strict
 ```
 
 The hook intentionally compares against `origin/main` (the merge target)
 rather than just the working tree, so it catches anything new in your
 branch's history that hasn't been pushed yet.
+
+The hook **fails closed** when `tools/pre_pr_review.py` is missing
+rather than silently skipping — a missing tool on a stale checkout
+shouldn't bypass the gate. To override (e.g. on a branch predating the
+tool), use `git push --no-verify`, which keeps the bypass visible in
+shell history.
 
 ---
 

@@ -17,11 +17,17 @@
 
 set -e
 
-# Skip if pre_pr_review.py isn't present (clone of a branch before the
-# tool landed, or hook installed without the tool).
+# Fail closed if pre_pr_review.py isn't present. Skipping silently would
+# let any push through on a stale checkout where the tool was renamed
+# or deleted, defeating the whole point of the gate. If the tool truly
+# hasn't landed on this branch yet (rare), use `git push --no-verify`
+# explicitly so the bypass is visible in shell history.
 if [ ! -f "tools/pre_pr_review.py" ]; then
-    echo "[pre-push] tools/pre_pr_review.py not found; skipping" >&2
-    exit 0
+    echo "[pre-push] BLOCKED: tools/pre_pr_review.py not found." >&2
+    echo "[pre-push] The review tool is required to run this gate. Either:" >&2
+    echo "[pre-push]   - rebase onto a branch that has it, or" >&2
+    echo "[pre-push]   - push with --no-verify if you've verified manually." >&2
+    exit 1
 fi
 
 # Determine the merge-base with origin/main. If origin/main isn't
