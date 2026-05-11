@@ -544,14 +544,57 @@ def migrate(
     manifest_path = output_dir / MANIFEST_NAME
     v2_log_path = output_dir / V2_LOG_NAME
 
+    # Signature artifacts are written conditionally (only when --signing-key
+    # is passed). If a previous run left them behind and this run is unsigned,
+    # the output_dir would look signed but the .sig wouldn't match the new
+    # manifest. --require-signature would then fail late at verification time,
+    # which is a confusing way to find out the directory state is inconsistent.
+    # CR R4 minor finding: track them alongside the other artifacts so --force
+    # clears them too, AND refuse-without-force catches them.
+    signature_path = manifest_path.with_suffix(manifest_path.suffix + ".sig")
+    allowed_signers_path = output_dir / ALLOWED_SIGNERS_NAME
+
+    # Artifacts that count toward "directory is already populated":
+    #   - frozen_path / manifest_path / v2_log_path: always written
+    #   - signature_path / allowed_signers_path: written only when signing
+    # On an UNSIGNED rerun, leaving stale sig artifacts behind is dangerous
+    # (looks signed but isn't). So we include them in the overwrite check
+    # regardless of whether THIS run is signing. --force clears all of them.
+    artifact_paths = [frozen_path, manifest_path, v2_log_path]
+    if signing_key is None:
+        # Unsigned run — treat any pre-existing sig artifacts as stale.
+        artifact_paths.extend([signature_path, allowed_signers_path])
+
     # Refuse to overwrite existing artifacts unless --force
     if not force:
-        for p in (frozen_path, manifest_path, v2_log_path):
+        for p in artifact_paths:
             if p.exists():
-                raise ValueError(
-                    f"refusing to overwrite existing artifact: {p}. Pass --force to override "
-                    "(only use if you really mean to redo the cutover)."
-                )
+                hint = "Pass --force to override (only use if you really mean to redo the cutover)."
+                if signing_key is None and p in (signature_path, allowed_signers_path):
+                    hint = (
+                        "This run is UNSIGNED but a previous signed run left this file behind. "
+                        "Leaving it would make the directory look signed while the .sig no longer "
+                        "matches the new manifest. Pass --force to clear stale signature "
+                        "artifacts, or pass --signing-key to re-sign."
+                    )
+                raise ValueError(f"refusing to overwrite existing artifact: {p}. {hint}")
+
+    # With --force on an unsigned rerun, proactively REMOVE stale sig artifacts
+    # so they can't make the directory look signed when it isn't.
+    if force and signing_key is None:
+        for p in (signature_path, allowed_signers_path):
+            if p.exists():
+                try:
+                    p.unlink()
+                    if verbose:
+                        print(
+                            f"[migrate] --force unsigned rerun: removed stale {p}",
+                            file=sys.stderr,
+                        )
+                except OSError as exc:
+                    raise ValueError(
+                        f"failed to remove stale signature artifact {p}: {exc}"
+                    ) from exc
 
     result: dict[str, Any] = {
         "dry_run": dry_run,
@@ -740,6 +783,16 @@ def main(argv: list[str] | None = None) -> int:
         )
     except ValueError as exc:
         print(f"[migrate_dgas_boundary] FAILED: {exc}", file=sys.stderr)
+        return 1
+    except OSError as exc:
+        # CR R4 major: docstring + CLI help promise "file I/O failures → exit 1",
+        # but migrate() can raise OSError from _atomic_copy / _atomic_write_bytes
+        # / fsync / dir creation on permissions or disk failures. Without this
+        # handler, those escape as a Python traceback and break automation
+        # around the cutover gate (operators scripting against the exit code
+        # would see an unexpected non-1, non-0 exit). Surface as a single
+        # stderr line + exit 1 to match the documented contract.
+        print(f"[migrate_dgas_boundary] FAILED (I/O): {exc}", file=sys.stderr)
         return 1
 
     print(json.dumps(result, indent=2, sort_keys=True))

@@ -274,6 +274,79 @@ class TestMigrate(unittest.TestCase):
         )
         self.assertEqual(result["v1_summary"]["row_count"], 2)
 
+    def test_refuses_unsigned_rerun_when_stale_sig_present(self) -> None:
+        """CR R4 minor (PR #182): if a previous signed run left .sig and
+        allowed_signers behind, an unsigned rerun must REFUSE rather than
+        silently produce an inconsistent output_dir where the directory
+        looks signed but the .sig no longer matches the new manifest.
+
+        Test scenario: operator did a signed run, then manually deleted
+        frozen/manifest/v2 (or rolled them back) but forgot the sig
+        artifacts. An unsigned rerun then sees only sig + allowed_signers
+        as pre-existing. The new check refuses with a hint that mentions
+        the stale-signature situation.
+        """
+        self._seed_legacy(2)
+        # First run succeeds (unsigned — we won't have signing-key here,
+        # but to simulate sig artifacts from a previous signed run we'll
+        # plant them manually after deleting the standard artifacts).
+        result = migrate_mod.migrate(
+            legacy_log=self.legacy,
+            output_dir=self.outdir,
+            canon_snapshot_id=VALID_CANON_ID,
+            created_at_utc="2026-05-10T12:00:00Z",
+        )
+        manifest_path = Path(result["manifest_output"])
+        frozen_path = Path(result["frozen_log_output"])
+        v2_path = Path(result["v2_log_output"])
+        # Delete the standard artifacts (simulating an operator who
+        # cleaned up most of the previous run but missed the sig files).
+        frozen_path.unlink()
+        manifest_path.unlink()
+        v2_path.unlink()
+        # Plant stale sig artifacts from a hypothetical earlier signed run.
+        sig_path = manifest_path.with_suffix(manifest_path.suffix + ".sig")
+        sig_path.write_text("fake-stale-signature\n", encoding="utf-8")
+        signers_path = self.outdir / "allowed_signers"
+        signers_path.write_text("fake-stale-allowed-signers\n", encoding="utf-8")
+        # Unsigned rerun without --force must refuse with sig-specific hint
+        with self.assertRaises(ValueError) as ctx:
+            migrate_mod.migrate(
+                legacy_log=self.legacy,
+                output_dir=self.outdir,
+                canon_snapshot_id=VALID_CANON_ID,
+                created_at_utc="2026-05-10T13:00:00Z",
+            )
+        self.assertIn("UNSIGNED", str(ctx.exception))
+        self.assertIn("stale", str(ctx.exception).lower())
+
+    def test_force_unsigned_rerun_clears_stale_sig(self) -> None:
+        """CR R4 minor (PR #182): --force on an unsigned rerun should
+        proactively remove the stale .sig + allowed_signers so the
+        resulting directory accurately reflects the unsigned state."""
+        self._seed_legacy(2)
+        result = migrate_mod.migrate(
+            legacy_log=self.legacy,
+            output_dir=self.outdir,
+            canon_snapshot_id=VALID_CANON_ID,
+            created_at_utc="2026-05-10T12:00:00Z",
+        )
+        manifest_path = Path(result["manifest_output"])
+        sig_path = manifest_path.with_suffix(manifest_path.suffix + ".sig")
+        sig_path.write_text("fake-stale-signature\n", encoding="utf-8")
+        signers_path = self.outdir / "allowed_signers"
+        signers_path.write_text("fake-stale-allowed-signers\n", encoding="utf-8")
+        # --force unsigned rerun should succeed AND clear the stale sig artifacts
+        migrate_mod.migrate(
+            legacy_log=self.legacy,
+            output_dir=self.outdir,
+            canon_snapshot_id=VALID_CANON_ID,
+            created_at_utc="2026-05-10T13:00:00Z",
+            force=True,
+        )
+        self.assertFalse(sig_path.exists(), "stale .sig should have been removed")
+        self.assertFalse(signers_path.exists(), "stale allowed_signers should have been removed")
+
     def test_rejects_bad_canon_snapshot_id(self) -> None:
         self._seed_legacy(1)
         for bad in ["", "short", "A" * 64, "g" * 64, "a" * 63, "a" * 65]:
@@ -333,6 +406,43 @@ class TestMigrate(unittest.TestCase):
                 dry_run=True,
             )
         self.assertIn("no chained rows", str(ctx.exception))
+
+    def test_main_converts_oserror_to_exit_1(self) -> None:
+        """CR R4 major (PR #182): main() must catch OSError from atomic
+        file ops, not just ValueError. The CLI docstring promises file I/O
+        failures return exit 1, but uncaught OSError would surface as a
+        Python traceback + non-1 exit, breaking automation."""
+        self._seed_legacy(2)
+        # Patch _atomic_copy to raise OSError, then invoke main() through
+        # its argv path. Verify exit code 1 + clean stderr (no traceback).
+        import io as _io
+        from unittest.mock import patch as _patch
+
+        captured_stderr = _io.StringIO()
+
+        def _raise_oserror(*_args, **_kwargs):
+            raise OSError(13, "Permission denied (simulated)")
+
+        argv = [
+            "--legacy-log",
+            str(self.legacy),
+            "--output-dir",
+            str(self.outdir),
+            "--canon-snapshot-id",
+            VALID_CANON_ID,
+            "--created-at-utc",
+            "2026-05-10T12:00:00Z",
+        ]
+        with (
+            _patch.object(migrate_mod, "_atomic_copy", side_effect=_raise_oserror),
+            _patch.object(sys, "stderr", captured_stderr),
+        ):
+            exit_code = migrate_mod.main(argv)
+
+        self.assertEqual(exit_code, 1, "OSError must convert to exit 1")
+        stderr_text = captured_stderr.getvalue()
+        self.assertIn("FAILED", stderr_text)
+        self.assertNotIn("Traceback", stderr_text)
 
     def test_refuses_tampered_chain(self) -> None:
         self._seed_legacy(3)
