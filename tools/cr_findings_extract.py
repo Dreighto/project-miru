@@ -284,10 +284,14 @@ def _print_summary(findings: list[dict[str, Any]]) -> None:
         print("(no CR findings)")
         return
     for f in findings:
+        # CR R1 finding on PR #188: two adjacent f-strings were
+        # implicitly concatenated, which is a code-smell ruff flags and
+        # also brittle (e.g. f["submitted_at"] is None would crash with
+        # TypeError on the [:16] slice). Build a single f-string with
+        # a None-guarded timestamp slice.
         line = f["line"] if f["line"] is not None else "?"
-        print(
-            f"[{f['severity']:8s}] {f['path']}:{line}  {f['title']}  " f"({f['submitted_at'][:16]})"
-        )
+        ts = f["submitted_at"][:16] if f["submitted_at"] else "?"
+        print(f"[{f['severity']:8s}] {f['path']}:{line}  {f['title']}  ({ts})")
 
 
 class RepoAutodetectError(Exception):
