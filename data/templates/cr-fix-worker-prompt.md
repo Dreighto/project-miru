@@ -46,10 +46,12 @@ PROTOCOL (run in order)
 0. Run mandatory pre-flight gates:
 
    python tools/check_kill_switch.py
-   # exit 1 => run cleanup (below) then emit STATUS: ESCALATE: HUMAN-REQUIRED and exit
+   # exit 1 => run cleanup (below), then emit via emit_completion.py with
+   # --status ESCALATE and category HUMAN-REQUIRED in summary (see "ESCALATE
+   # emit example" near the success/INCONCLUSIVE/FAILED block), and exit.
 
    python tools/check_worktree_clean.py
-   # exit 1 => run cleanup (below) then emit STATUS: ESCALATE: HUMAN-REQUIRED and exit
+   # exit 1 => same cleanup + ESCALATE emit path as above.
 
    # TODO: Active-worker collision check (PRO-347) isn't yet
    # implemented. For now, dispatchers should serialize CR-fix
@@ -103,7 +105,7 @@ branch is checked out.
 
    python -m pytest tests/ -x --tb=short  # Python changes
    node --test services/dispatch_listener/test/*.test.js  # Node changes
-   pwsh -NoProfile -Command "& { try { [System.Management.Automation.PSParser]::Tokenize([System.IO.File]::ReadAllText('<path>'), [ref]\$null) } catch { Write-Host \"Parse error: \$(\$_.Exception.Message)\" } }"  # PowerShell syntax check
+   pwsh -NoProfile -Command "& { try { [System.Management.Automation.PSParser]::Tokenize([System.IO.File]::ReadAllText('<path>'), [ref]\$null) } catch { Write-Host \"Parse error: \$(\$_.Exception.Message)\"; exit 1 } }"  # PowerShell syntax check (exits 1 on parse error)
 
 5. Commit with a descriptive message naming the CR round + ticket:
 
@@ -159,6 +161,16 @@ branch is checked out.
      --ticket ${TICKET_ID} \
      --summary "PR #${PR_NUMBER} ${ROUND}: FAILED — <one-line cause + file/line if applicable>."
 
+   # Or, ESCALATE — needs a human decision before this can proceed (kill
+   # switch, merge conflict, canon edit, contradictory findings, etc.).
+   # Use this from Step 0 gate failures and any other "human needed" branch:
+   python tools/emit_completion.py \
+     --status ESCALATE \
+     --ticket ${TICKET_ID} \
+     --summary "PR #${PR_NUMBER} ${ROUND}: ESCALATE: <CATEGORY> — <one-line blocker>."
+   # Replace <CATEGORY> with one of: HUMAN-REQUIRED, SECURITY, SCOPE_EXPANSION,
+   # DESIGN_CHANGE, IRREVERSIBLE_OP, REPEATED_FAILURE.
+
 Terminal-state guidance (pick exactly one for the marker):
 - CONFIRMED_WORKING — all findings addressed (or explicitly skipped with reason), pushed, CR nudged.
 - INCONCLUSIVE — tried but couldn't finish; not human-blocked. Summary names the blocker.
@@ -184,8 +196,10 @@ HARD CONSTRAINTS
 
 ---
 
-ESCALATE -- exit immediately with a non-empty `STATUS: ESCALATE:
-HUMAN-REQUIRED` marker if:
+ESCALATE -- run the CLEANUP-BEFORE-EXIT block, then emit via
+`emit_completion.py --status ESCALATE` (see "ESCALATE emit example"
+above for the full invocation) with a non-empty summary naming both
+the category and the specific blocker. Exit cases:
 
 - The branch has merge conflicts with main.
 - A finding requires editing rule canon (CLAUDE.md, AGENTS.md,
@@ -196,7 +210,7 @@ HUMAN-REQUIRED` marker if:
 - The pre_pr_review.py gate fails on a pattern you can't resolve in
   3 minutes of inspection.
 
-The escalate marker must name the specific blocker (file path +
+The escalate summary must name the specific blocker (file path +
 reason) so CC can take over without re-deriving context.
 
 Distinct from INCONCLUSIVE: ESCALATE means "I need a human to make a
