@@ -1,0 +1,20 @@
+{
+  "_comment": "PoshMCP configuration — exposes a whitelisted set of PowerShell cmdlets as MCP tools. Loaded by 'Start-PoshMcp -ConfigPath ...'. Initial scope: scheduled-task management. New cmdlets require explicit operator approval — broadening this list expands the agent's blast radius.",
+  "serverInfo": {
+    "name": "posh-mcp-tasks",
+    "version": "1.0.0"
+  },
+  "modules": [
+    {
+      "name": "ScheduledTasks",
+      "cmdlets": [
+        "Get-ScheduledTask",
+        "Get-ScheduledTaskInfo",
+        "Start-ScheduledTask",
+        "Stop-ScheduledTask",
+        "Enable-ScheduledTask",
+        "Disable-ScheduledTask"
+      ]
+    }
+  ]
+}

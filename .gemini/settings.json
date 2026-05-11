@@ -87,6 +87,77 @@
         "YOUTUBE_API_KEY": "${env:YOUTUBE_API_KEY}"
       },
       "trust": false
+    },
+    "docker": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-docker"
+      ],
+      "env": {},
+      "trust": false
+    },
+    "scheduled-tasks": {
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-NoLogo",
+        "-NonInteractive",
+        "-WindowStyle",
+        "Hidden",
+        "-Command",
+        "Import-Module PoshMCP; Start-PoshMcp -ConfigPath 'D:\\dev\\miru\\tools\\mcp\\posh-mcp-config.json'"
+      ],
+      "env": {},
+      "trust": false
+    },
+    "svelte": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@sveltejs/mcp"
+      ],
+      "env": {},
+      "trust": false
+    },
+    "shadcn-svelte": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@jpisnice/shadcn-ui-mcp-server",
+        "--framework",
+        "svelte"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
+      },
+      "trust": false
+    },
+    "lucide-icons": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "lucide-icons-mcp"
+      ],
+      "env": {},
+      "trust": false
+    },
+    "a11y-scanner": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "mcp-accessibility-scanner"
+      ],
+      "env": {},
+      "trust": false
+    },
+    "vitest": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@djankies/vitest-mcp"
+      ],
+      "env": {},
+      "trust": false
     }
   }
 }
