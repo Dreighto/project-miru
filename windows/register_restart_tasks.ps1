@@ -98,7 +98,7 @@ $startupTask = Register-ScheduledTask `
     -Trigger    $startupTrigger `
     -Settings   $commonSettings `
     -Principal  $startupPrincipal `
-    -Description "Loads .env and self-registers watchdog/sentinel/backup tasks 30s after Windows boot. Managed by D:\dev\miru\windows\startup_all.ps1" `
+    -Description "Loads .env and self-registers watchdog/sentinel/backup tasks 30s after Windows boot. Managed by $startupScript" `
     -Force
 
 Write-Host "  OK: '$($startupTask.TaskName)'" -ForegroundColor Green
