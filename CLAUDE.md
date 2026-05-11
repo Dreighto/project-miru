@@ -145,6 +145,7 @@ reference file when you need the specific fact.
 - **`workflow-git.md`** — LOAD IF committing, opening, or merging a PR. Contains: merge policy decision tree, hygiene gate, automated PR review sequence, gh auth, WIP commits, post-merge cleanup.
 - **`workflow-completion.md`** — LOAD IF reaching a terminal task state. Contains: completion marker schema, heartbeat emission, stall classification.
 - **`workflow-dispatch.md`** — LOAD IF orchestrating dispatch, gateway profiles, or W2 routing. Contains: CH decision authority, gateway profile enforcement, ingress classifier, orchestrator modules, Linear `projectId` requirement.
+- **`dispatch-cr-fix.md`** — LOAD IF CR posts a CHANGES_REQUESTED review on an open PR. Contains: dispatch-vs-handle decision tree, required pre-flight, required prompt clauses, what NOT to delegate. Pairs with the prompt template at `data/templates/cr-fix-worker-prompt.md`. Adopted 2026-05-11.
 - **`domain-ui.md`** — LOAD IF touching frontend code (`pm/`, `miru_ai/static/`, templates). Contains: craft guide trigger list (when to read `docs/ui_ux/` and `docs/pm/` files).
 - **`domain-ops.md`** — LOAD IF touching scheduled tasks, services, Notion writes, or MCP config. Contains: scheduled-task focus rule, MCP usage rules, Notion read/write rules.
 - **`adopted-lessons.md`** — LOAD IF doing a non-trivial code change (more than typo or lint). Contains: workflow JSON test rule, design-in-Linear-ticket rule.
