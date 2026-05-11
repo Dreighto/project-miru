@@ -4,6 +4,7 @@ Substitute the `${...}` variables, then pass the result as the `prompt`
 parameter to `dispatch_worker(worker="gemini", tool_profile="standard_worker", ...)`.
 
 **Required substitutions:**
+
 - `${PR_NUMBER}` -- the PR number (e.g. 190)
 - `${BRANCH}` -- the PR's head branch (e.g. feat/mcp-toolkit-expansion)
 - `${TICKET_ID}` -- Linear ticket tracking this fix round (e.g. PRO-345)
@@ -11,6 +12,7 @@ parameter to `dispatch_worker(worker="gemini", tool_profile="standard_worker", .
 - `${FINDINGS_BLOCK}` -- structured list of findings (see "Findings format" below)
 
 **Optional substitutions:**
+
 - `${ROUND}` -- which CR round this is (R1, R2, R3...). Defaults to "the latest round"
 - `${REPO}` -- target repo. Defaults to project-miru.
 

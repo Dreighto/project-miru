@@ -54,17 +54,17 @@ Before calling `dispatch_worker`:
 0. **Load `.miru/overlays/workflow-dispatch.md`** to enforce gateway profile + Linear `projectId` requirements + W2 routing rules. This overlay is a delegation pattern; workflow-dispatch is the substrate.
 
 1. **Pull current CR findings** via `python tools/cr_findings_extract.py
-   <PR> --since <last-review-ts> --summary`. Capture the exact set the
+<PR> --since <last-review-ts> --summary`. Capture the exact set the
    worker is responsible for.
 
 2. **Verify each finding is still valid** against current code (`git
-   show <branch>:<path>`). If a finding refers to code that was already
+show <branch>:<path>`). If a finding refers to code that was already
    fixed in a later commit, exclude it from the dispatch prompt with a
    note.
 
 3. **File or update a Linear ticket** tracking this fix-round. Use the
    `Tooling / MCP Gateway` project (`cb5c362c-c1f4-4f55-b119-578fa017ca7d`)
-   for project-miru PRs, or the matching LogueOS project for LOS-* PRs.
+   for project-miru PRs, or the matching LogueOS project for LOS-\* PRs.
    Title format: `PR #<N> CR Rk fix: <one-line summary>`.
 
 4. **Compose the dispatch prompt** from the template at
@@ -111,6 +111,7 @@ non-negotiable.)
 5. **Update the Linear ticket** to Done with the merge commit SHA.
 
 If the worker bounced with INCONCLUSIVE or FAILED:
+
 - Inspect the marker's `stderr_tail` and `summary`.
 - Fix the blocker yourself or dispatch again with a narrower prompt.
 - Don't dispatch a third worker on the same finding -- CC takes over.
