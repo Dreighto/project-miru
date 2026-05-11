@@ -201,25 +201,17 @@ def _hash_v2_row(block_index: int, prev_hash: str | None, payload: dict[str, Any
     return hashlib.sha256(combined).hexdigest()
 
 
-def _read_last_v2_state(path: Path) -> tuple[str | None, int | None]:
-    """Return (last_row_hash, last_block_index) for a v2-chained file.
+def _scan_tail_for_last_v2(data: bytes) -> tuple[bool, str | None, int | None]:
+    """Walk a byte buffer (assumed to contain whole lines) backwards for v2.
 
-    Returns (None, None) for an empty/missing file. Walks from the tail like
-    _read_last_chained, but extracts both the row_hash AND the block_index
-    so the next append can increment correctly. The block_index is required
-    to compute the next v2 row hash.
+    Returns ``(found, rh, bi)``:
+        * ``(True, hash_str, block_index)`` if the last parseable JSON
+          object in the buffer carries both row_hash and block_index.
+        * ``(True, None, None)`` if the last parseable JSON object is
+          missing one of them (corrupt v2 row; caller refuses to append).
+        * ``(False, None, None)`` if no parseable JSON object was found
+          in the buffer at all (caller retries with a larger window).
     """
-    if not path.exists() or path.stat().st_size == 0:
-        return None, None
-    try:
-        size = path.stat().st_size
-        chunk = min(size, 65536)
-        with path.open("rb") as fh:
-            fh.seek(size - chunk)
-            data = fh.read()
-    except OSError:
-        return None, None
-
     text = data.decode("utf-8", errors="replace")
     for raw in reversed(text.splitlines()):
         line = raw.strip()
@@ -234,12 +226,54 @@ def _read_last_v2_state(path: Path) -> tuple[str | None, int | None]:
         rh = obj.get(CHAIN_FIELD_HASH)
         bi = obj.get(CHAIN_FIELD_BLOCK_INDEX)
         if isinstance(rh, str) and rh and isinstance(bi, int):
-            return rh, bi
-        # v2 files MUST have row_hash + block_index on every row; if we
-        # find a row without them, the file is corrupt. Return None to
-        # force the caller to handle it (typically: refuse to append).
+            return True, rh, bi
+        return True, None, None
+    return False, None, None
+
+
+def _read_last_v2_state(path: Path) -> tuple[str | None, int | None]:
+    """Return (last_row_hash, last_block_index) for a v2-chained file.
+
+    Returns (None, None) for an empty/missing file OR a corrupt last row.
+    Walks from the tail like _read_last_chained, but extracts both the
+    row_hash AND the block_index so the next append can increment correctly.
+
+    Reads a 64 KiB tail window first; if that doesn't contain a complete
+    parseable JSON object (e.g. a single v2 row exceeds 64 KiB — rare but
+    possible for verbose audit entries with large payloads), falls back
+    to reading the whole file. CR R3 (PR #182 combined): mirrors the
+    same fallback that _read_last_chained has for v1. Without this, a
+    >64 KiB last row would incorrectly return (None, None), causing the
+    next append to demand anchor parameters for what should be a normal
+    subsequent row.
+    """
+    if not path.exists() or path.stat().st_size == 0:
         return None, None
-    return None, None
+    try:
+        size = path.stat().st_size
+        chunk = min(size, 65536)
+        with path.open("rb") as fh:
+            fh.seek(size - chunk)
+            data = fh.read()
+    except OSError:
+        return None, None
+
+    found, rh, bi = _scan_tail_for_last_v2(data)
+    if found:
+        return rh, bi
+
+    # Tail window did not contain a complete parseable JSON object. Fall
+    # back to reading the whole file. Skip if we already read the whole
+    # thing on the first pass (chunk == size).
+    if chunk >= size:
+        return None, None
+    try:
+        with path.open("rb") as fh:
+            data = fh.read()
+    except OSError:
+        return None, None
+    _, rh, bi = _scan_tail_for_last_v2(data)
+    return rh, bi
 
 
 def append_v2_chained(

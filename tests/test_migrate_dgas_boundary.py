@@ -82,6 +82,35 @@ class TestAppendV2Chained(unittest.TestCase):
         self.assertEqual(rows[2]["prev_hash"], h2)
         self.assertEqual(rows[2]["row_hash"], h3)
 
+    def test_read_last_v2_state_whole_file_fallback(self) -> None:
+        """CR R3 (PR #182 combined): _read_last_v2_state must fall back to
+        whole-file read if the 64KiB tail window doesn't contain a complete
+        parseable line. Mirrors v1's _read_last_chained behavior. Without
+        the fallback, a >64KiB last row would return (None, None) and force
+        append_v2_chained to incorrectly demand anchor params."""
+        # Construct a v2 chain where the last row's payload exceeds 64KiB.
+        anchor_hash = "e" * 64
+        # First row: normal size.
+        audit_chain.append_v2_chained(
+            self.path,
+            {"event": "first", "small": True},
+            anchor_prev_hash=anchor_hash,
+            anchor_block_index=1,
+        )
+        # Second row: payload > 64KiB. The serialized line will exceed the
+        # tail window, forcing the whole-file fallback path.
+        big_payload = {"event": "huge", "padding": "x" * 80000}
+        audit_chain.append_v2_chained(self.path, big_payload)
+
+        # If the fallback works, a subsequent append should succeed (no
+        # anchor params needed; it reads the prior row's hash + block_index
+        # from the whole-file fallback).
+        rh3, bi3 = audit_chain.append_v2_chained(self.path, {"event": "third"})
+        self.assertEqual(bi3, 3)
+        # And the row chains from the huge row, not from anchor.
+        rows = [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(rows[2]["prev_hash"], rows[1]["row_hash"])
+
     def test_hash_formula_matches_verifier(self) -> None:
         # The writer's formula must produce a hash that the verifier
         # accepts. Recompute the expected hash by hand using the exact

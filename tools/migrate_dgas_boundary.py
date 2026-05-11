@@ -234,13 +234,40 @@ def _atomic_write_bytes(path: Path, data: bytes) -> None:
 
 
 def _atomic_copy(src: Path, dst: Path) -> int:
-    """Copy src to dst atomically. Returns byte_length of dst."""
+    """Copy src to dst atomically. Returns byte_length of dst.
+
+    CR R3 (PR #182 combined): fsync the temp file AND its containing
+    directory before rename, mirroring _atomic_write_bytes. Without
+    fsync, a crash between rename and page-cache flush could leave the
+    frozen legacy log truncated or corrupt — violating the immutable
+    boundary anchor guarantee. The directory fsync ensures the rename
+    metadata is durable too (some POSIX filesystems require it).
+    """
     if not src.exists():
         raise ValueError(f"source file does not exist: {src}")
     tmp = dst.with_suffix(dst.suffix + ".tmp")
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, tmp)
+    # fsync the data before the rename. Use os.open directly with O_RDWR
+    # so the descriptor supports fsync on both POSIX and Windows. A
+    # Python read-only file object's fileno() raises EBADF on os.fsync.
+    fd = os.open(str(tmp), os.O_RDWR)
+    try:
+        os.fsync(fd)
+    finally:
+        os.close(fd)
     os.replace(tmp, dst)
+    # fsync the directory so the rename is durable too. POSIX-only; on
+    # Windows this raises PermissionError or OSError — that's fine to
+    # ignore because NTFS journals the rename inherently.
+    try:
+        dir_fd = os.open(str(dst.parent), os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    except (OSError, PermissionError):
+        pass
     return dst.stat().st_size
 
 
