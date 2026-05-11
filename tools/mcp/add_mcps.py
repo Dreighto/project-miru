@@ -39,7 +39,12 @@ from pathlib import Path
 CLAUDE_CONFIG = Path.home() / ".claude.json"
 # GEMINI_CONFIG intentionally removed — Gemini strips direct edits.
 # Use tools/mcp/register_gemini_mcps.ps1 instead.
-POSH_MCP_CONFIG = "D:\\dev\\miru\\tools\\mcp\\posh-mcp-config.json"
+
+# POSH_MCP_CONFIG is derived from this script's location so any clone of
+# the repo gets a working path. Previously hardcoded as D:\dev\miru\... ,
+# which broke on machines or clone locations that didn't match. CR R1
+# finding on PR #190.
+POSH_MCP_CONFIG = str(Path(__file__).resolve().parent / "posh-mcp-config.json")
 
 DOCKER_ENTRY = {
     "command": "uvx",
@@ -78,13 +83,35 @@ def _backup(path: Path) -> Path:
 
 
 def _add_entries(path: Path, dry_run: bool) -> tuple[list[str], list[str]]:
-    """Add ENTRIES to path's mcpServers section. Returns (added, skipped)."""
+    """Add ENTRIES to path's mcpServers section. Returns (added, skipped).
+
+    Validates the JSON structure before mutating — if the file isn't an
+    object, or mcpServers isn't an object (e.g. someone made it an array),
+    we refuse rather than crash mid-mutation. CR R1 finding on PR #190.
+    """
     if not path.exists():
         print(f"[add_mcps] {path}: NOT FOUND — skipping", file=sys.stderr)
         return [], []
     with path.open("r", encoding="utf-8") as fh:
         data = json.load(fh)
-    mcp_servers = data.setdefault("mcpServers", {})
+    if not isinstance(data, dict):
+        print(
+            f"[add_mcps] {path}: ERROR — top-level JSON must be an object, "
+            f"got {type(data).__name__}. Refusing to modify.",
+            file=sys.stderr,
+        )
+        return [], []
+    existing_servers = data.get("mcpServers")
+    if existing_servers is None:
+        data["mcpServers"] = {}
+    elif not isinstance(existing_servers, dict):
+        print(
+            f"[add_mcps] {path}: ERROR — mcpServers exists but is not an object "
+            f"(got {type(existing_servers).__name__}). Refusing to modify.",
+            file=sys.stderr,
+        )
+        return [], []
+    mcp_servers = data["mcpServers"]
 
     added: list[str] = []
     skipped: list[str] = []
@@ -111,7 +138,10 @@ def _add_entries(path: Path, dry_run: bool) -> tuple[list[str], list[str]]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description="Add Docker + PoshMCP entries to CC + Gemini configs")
+    p = argparse.ArgumentParser(
+        description="Add Docker + PoshMCP entries to Claude Code's ~/.claude.json. "
+        "For Gemini, use tools/mcp/register_gemini_mcps.ps1 (direct edits are stripped by Gemini)."
+    )
     p.add_argument("--dry-run", action="store_true", help="Print changes without writing")
     args = p.parse_args(argv)
 

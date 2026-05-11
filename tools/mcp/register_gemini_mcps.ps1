@@ -28,6 +28,11 @@ if (-not (Get-Command gemini -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+# Track partial failures so we can exit non-zero at the end. CR R1 finding
+# on PR #190: previously the script logged FAIL but still exited 0, which
+# hid partial registration failures in automation.
+$script:FailedCount = 0
+
 function Add-McpServer {
     param(
         [Parameter(Mandatory=$true)][string]$Name,
@@ -53,9 +58,31 @@ function Add-McpServer {
     & gemini @cliArgs
     if ($LASTEXITCODE -ne 0) {
         Write-Host "    FAIL: gemini mcp add returned $LASTEXITCODE" -ForegroundColor Red
+        $script:FailedCount++
     } else {
         Write-Host "    OK" -ForegroundColor Green
     }
+}
+
+# CR R1 finding on PR #190: PoshMCP config path was hardcoded as
+# D:\dev\miru\... — broke on any clone or machine outside that exact path.
+# Derive from $PSScriptRoot so any clone location works.
+$PoshMcpConfigPath = Join-Path $PSScriptRoot 'posh-mcp-config.json'
+if (-not (Test-Path $PoshMcpConfigPath)) {
+    Write-Error "PoshMCP config not found at $PoshMcpConfigPath. Expected next to this script."
+    exit 1
+}
+
+# CR R1 finding on PR #190: GITHUB_TOKEN was passed as the literal string
+# '${env:GITHUB_TOKEN}' inside single quotes, which PowerShell does NOT
+# expand. That meant shadcn-svelte saw the literal placeholder instead of
+# the real token value. Expand it explicitly here so the hashtable carries
+# the actual token (or empty if unset, which downgrades shadcn to
+# rate-limited mode rather than breaking it).
+$GithubToken = if ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } else { '' }
+if (-not $GithubToken) {
+    Write-Host "Warning: GITHUB_TOKEN env var not set. shadcn-svelte will be rate-limited (60 req/hr)." -ForegroundColor Yellow
+    Write-Host "  Set it via: [System.Environment]::SetEnvironmentVariable('GITHUB_TOKEN', (gh auth token), 'User')" -ForegroundColor Gray
 }
 
 Write-Host ""
@@ -65,7 +92,7 @@ Write-Host "--- Infrastructure (CC + Gemini parity) ---"
 Add-McpServer -Name 'docker'          -Command 'uvx'     -ServerArgs @('mcp-server-docker')
 Add-McpServer -Name 'scheduled-tasks' -Command 'pwsh'    -ServerArgs @(
     '-NoProfile', '-NoLogo', '-NonInteractive', '-WindowStyle', 'Hidden',
-    '-Command', "Import-Module PoshMCP; Start-PoshMcp -ConfigPath 'D:\dev\miru\tools\mcp\posh-mcp-config.json'"
+    '-Command', ("Import-Module PoshMCP; Start-PoshMcp -ConfigPath '{0}'" -f $PoshMcpConfigPath)
 )
 
 Write-Host ""
@@ -73,13 +100,21 @@ Write-Host "--- Frontend (Gemini only — SvelteKit lane) ---"
 Add-McpServer -Name 'svelte'        -Command 'npx.cmd' -ServerArgs @('-y', '@sveltejs/mcp')
 Add-McpServer -Name 'shadcn-svelte' -Command 'npx.cmd' `
     -ServerArgs @('-y', '@jpisnice/shadcn-ui-mcp-server', '--framework', 'svelte') `
-    -Env @{ 'GITHUB_PERSONAL_ACCESS_TOKEN' = '${env:GITHUB_TOKEN}' }
+    -Env @{ 'GITHUB_PERSONAL_ACCESS_TOKEN' = $GithubToken }
 Add-McpServer -Name 'lucide-icons'  -Command 'npx.cmd' -ServerArgs @('-y', 'lucide-icons-mcp')
 Add-McpServer -Name 'a11y-scanner'  -Command 'npx.cmd' -ServerArgs @('-y', 'mcp-accessibility-scanner')
 Add-McpServer -Name 'vitest'        -Command 'npx.cmd' -ServerArgs @('-y', '@djankies/vitest-mcp')
 
 Write-Host ""
-Write-Host "=== Done ===" -ForegroundColor Cyan
+if ($script:FailedCount -gt 0) {
+    Write-Host ("=== Completed with {0} failure(s) ===" -f $script:FailedCount) -ForegroundColor Red
+    Write-Host "Inspect output above for FAIL lines. Common causes:" -ForegroundColor Yellow
+    Write-Host "  - gemini CLI not on PATH"
+    Write-Host "  - upstream npm package temporarily unavailable (npx -y fetch failed)"
+    Write-Host "  - PoshMCP requires PowerShell 7 (pwsh) on PATH"
+    exit 1
+}
+Write-Host "=== Done — all registrations succeeded ===" -ForegroundColor Cyan
 Write-Host "Next:"
 Write-Host "  1. Close any running Gemini CLI session"
 Write-Host "  2. Relaunch: cd D:\dev\miru && gemini"
