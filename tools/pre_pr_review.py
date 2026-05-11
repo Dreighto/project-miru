@@ -49,6 +49,12 @@ DETECTOR CATALOG (current — match DETECTORS list at the bottom):
                                   a corrupt-distinguishing flag.
     P9 (dash-only-not-rejected)— argument validation that only rejects `--*`
                                   values, missing single-dash flags like `-h`.
+    P10 (ps1-hardcoded-paths)  — a PowerShell `-Description "..."` argument
+                                  embeds a hardcoded absolute path under a
+                                  dev/work root. Caught by CR on PR #3 when
+                                  register_restart_tasks.ps1 embedded an
+                                  absolute path into a scheduled-task
+                                  description.
 
 NOT-YET-IMPLEMENTED (reserved identifiers — add detectors before re-listing):
 
@@ -77,6 +83,11 @@ import subprocess
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+# Shared byte-level encoding sniffer — used here for .ps1 file reads and also
+# imported by check_ps1_hardcoded_paths.py. CR R5 on PR #3 asked the duplicated
+# inline logic be extracted; both consumers now share one implementation.
+from _encoding_sniff import decode_bytes_with_utf16_sniffing
 
 if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
@@ -424,6 +435,88 @@ def _detect_corrupt_vs_empty(path: str, content: str) -> list[Finding]:
     return findings
 
 
+def _detect_ps1_hardcoded_paths(path: str, content: str) -> list[Finding]:
+    """P10 — a `-Description "..."` argument in a PowerShell script contains a
+    hardcoded absolute path. Caught by CR on PR #3 (LogueOS-Orchestrator) when
+    `register_restart_tasks.ps1` embedded `D:\\dev\\LogueOS-Orchestrator\\windows\\
+    startup_all.ps1` into a scheduled-task description — wrong on every machine
+    where the install lives elsewhere. The correct shape uses a dynamic
+    reference (`$startupScript`, `$PSScriptRoot`, `$windowsDir`).
+
+    Detection is intentionally narrow: only `-Description` args, only common
+    dev-root absolute paths. `Test-Path` / `Set-Content` / etc. with literal
+    absolute paths are NOT flagged (legitimate file-existence checks).
+    """
+    findings: list[Finding] = []
+    # CR R4 (PR #3): case-insensitive .ps1 suffix check — Windows file systems
+    # are case-insensitive, so `.PS1` / `.Ps1` are the same file as `.ps1` and
+    # must trigger the same detector path.
+    if not path.lower().endswith(".ps1"):
+        return findings
+    # CR R6 (PR #3): proper PowerShell quote semantics — accept `-Description`
+    # with either whitespace OR colon separator; handle backtick-escaped quotes
+    # inside double-quoted strings AND doubled-quote escapes inside single-
+    # quoted strings. Mutually-exclusive named groups so the body extraction
+    # below picks whichever quote form matched.
+    desc_re = re.compile(
+        r"""
+        -Description                            # parameter name
+        \s*[:\s]\s*                             # space or colon separator
+        (?:
+            "(?P<double>(?:[^"`]|`.)*)"         # double-quoted, backtick-escapes
+            |
+            '(?P<single>(?:[^']|'')*)'          # single-quoted, doubled-quote
+        )
+        """,
+        re.IGNORECASE | re.DOTALL | re.VERBOSE,
+    )
+    # CR R2 on PR #3: match both backslash and forward-slash Windows paths.
+    # `D:/dev/...` is legal and was previously a silent bypass.
+    win_path_re = re.compile(r"[A-Za-z]:[\\/]dev[\\/]\S+", re.IGNORECASE)
+    posix_path_re = re.compile(r"/(home|var|opt|tmp|Users)/\S+", re.IGNORECASE)
+    # CR R3 (PR #3): finditer over the whole content (not line-by-line) since
+    # DOTALL means the regex spans newlines. Line number is derived from the
+    # match's start offset.
+    for desc_m in desc_re.finditer(content):
+        body = (
+            desc_m.group("double") if desc_m.group("double") is not None else desc_m.group("single")
+        )
+        line_num = content.count("\n", 0, desc_m.start()) + 1
+        # Snippet: the matched -Description line itself (first line of the body
+        # if multi-line). Keeps the output familiar despite the underlying
+        # regex now being whole-content.
+        snippet_line = content[
+            content.rfind("\n", 0, desc_m.start()) + 1 : content.find("\n", desc_m.start())
+        ].strip()
+        findings.extend(
+            [
+                Finding(
+                    "P10",
+                    "high",
+                    path,
+                    line_num,
+                    f"-Description embeds hardcoded absolute path {m.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
+                    snippet_line,
+                )
+                for m in win_path_re.finditer(body)
+            ]
+        )
+        findings.extend(
+            [
+                Finding(
+                    "P10",
+                    "high",
+                    path,
+                    line_num,
+                    f"-Description embeds hardcoded absolute path {m.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
+                    snippet_line,
+                )
+                for m in posix_path_re.finditer(body)
+            ]
+        )
+    return findings
+
+
 DETECTORS = [
     _detect_path_traversal,
     _detect_fsync_rename,
@@ -431,6 +524,7 @@ DETECTORS = [
     _detect_relative_after_cd,
     _detect_dash_only_check,
     _detect_corrupt_vs_empty,
+    _detect_ps1_hardcoded_paths,
 ]
 
 
@@ -563,10 +657,25 @@ def main(argv: list[str] | None = None) -> int:
         path_str = str(file_path)
         if any(skip in path_str for skip in (".venv", "node_modules", "__pycache__")):
             continue
-        try:
-            content = file_path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
+        # CR R5 on PR #3: byte-level encoding sniff extracted to
+        # _encoding_sniff.decode_bytes_with_utf16_sniffing. Same logic as
+        # check_ps1_hardcoded_paths._read_text_robust now. .ps1 files go
+        # through the sniffer (BOM detect → null-byte LE/BE → utf-8 fallback);
+        # non-.ps1 files keep the lenient utf-8 + errors='replace' read since
+        # they aren't the regression surface and we don't want to misclassify
+        # legitimate binary blobs as UTF-16 by accident.
+        content: str | None = None
+        if path_str.lower().endswith(".ps1"):
+            try:
+                raw = file_path.read_bytes()
+            except OSError:
+                continue
+            content = decode_bytes_with_utf16_sniffing(raw)
+        else:
+            try:
+                content = file_path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
         for detector in DETECTORS:
             findings.extend(detector(path_str.replace("\\", "/"), content))
 
