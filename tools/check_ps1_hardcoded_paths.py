@@ -45,19 +45,39 @@ from pathlib import Path
 # is importable by its bare name. Same trick works for pre_pr_review.py.
 from _encoding_sniff import decode_bytes_with_utf16_sniffing
 
-# Capture every -Description <quoted-body> arg. PowerShell accepts both
-# double- and single-quoted strings here (and even back-tick-continued
-# multi-line strings), so we match either quote style and span across
-# newlines via re.DOTALL. The opening quote is captured in group(1) and
-# the closing quote is matched via backreference \1, which keeps the
-# body group(2) tight against mixed-quote false positives.
+# Capture every -Description <quoted-body> arg. CR R6 (PR #3) flagged that
+# the previous simple `(["'])(.*?)\1` pattern was naive about PowerShell's
+# actual quote rules:
 #
-# CR R3 (PR #3): only double quotes was previously a silent bypass for
-# any -Description '...' single-quoted variant — PowerShell scripts in
-# the wild use both forms. DOTALL adds multi-line coverage too.
+# 1. Parameter binding: `-Description "x"` AND `-Description:"x"` both work.
+#    The colon-separated form is legal; we accept either via `\s*[:\s]\s*`
+#    between the parameter name and the opening quote.
+#
+# 2. Double-quoted strings: backtick (`) escapes the next char, including
+#    inner quotes. `"foo `"bar`""` is one string with body `foo "bar"`.
+#    The naive regex would bail at the first inner `"`, missing any
+#    hardcoded paths after the escape.
+#    Pattern: `[^"`]` = any char that isn't `"` or `` ` ``;
+#             `` `. `` = backtick + any char.
+#
+# 3. Single-quoted strings: PowerShell escapes a single quote by doubling
+#    it. `'foo ''bar'''` has body `foo 'bar'`. Pattern: `[^']` = any
+#    non-quote char; `''` = doubled quote.
+#
+# Alternation: try double-quoted first, then single. Mutually exclusive at
+# each match site so exactly one of group("double") / group("single") is
+# populated; the other is None. Caller picks whichever is present.
 DESCRIPTION_RE = re.compile(
-    r"""-Description\s+(["'])(.*?)\1""",
-    re.IGNORECASE | re.DOTALL,
+    r"""
+    -Description                            # parameter name
+    \s*[:\s]\s*                             # space or colon separator
+    (?:
+        "(?P<double>(?:[^"`]|`.)*)"         # double-quoted, backtick-escapes
+        |
+        '(?P<single>(?:[^']|'')*)'          # single-quoted, doubled-quote
+    )
+    """,
+    re.IGNORECASE | re.DOTALL | re.VERBOSE,
 )
 
 # Windows absolute paths under <drive>:[\\/]dev[\\/]<...>. Tight on dev/ to avoid
@@ -107,7 +127,14 @@ def check_file(path: Path) -> list[tuple[int, str]]:
     # (not necessarily where the offending path is, but close enough for
     # operator triage).
     for desc_match in DESCRIPTION_RE.finditer(text):
-        body = desc_match.group(2)
+        # CR R6 (PR #3): the alternation in DESCRIPTION_RE populates exactly
+        # one of the named groups — `double` for `"..."`, `single` for `'...'`.
+        # The other is None. Pick whichever matched.
+        body = (
+            desc_match.group("double")
+            if desc_match.group("double") is not None
+            else desc_match.group("single")
+        )
         line_num = text.count("\n", 0, desc_match.start()) + 1
         for p in WIN_PATH_RE.finditer(body):
             findings.append((line_num, p.group(0)))

@@ -453,11 +453,23 @@ def _detect_ps1_hardcoded_paths(path: str, content: str) -> list[Finding]:
     # must trigger the same detector path.
     if not path.lower().endswith(".ps1"):
         return findings
-    # CR R3 (PR #3): regex now accepts either ' or " (PowerShell supports both)
-    # and DOTALL spans multi-line back-tick-continued descriptions. The opening
-    # quote is captured in group(1) and matched via backreference \1, so the
-    # body group(2) is tight against mixed-quote false positives.
-    desc_re = re.compile(r"""-Description\s+(["'])(.*?)\1""", re.IGNORECASE | re.DOTALL)
+    # CR R6 (PR #3): proper PowerShell quote semantics — accept `-Description`
+    # with either whitespace OR colon separator; handle backtick-escaped quotes
+    # inside double-quoted strings AND doubled-quote escapes inside single-
+    # quoted strings. Mutually-exclusive named groups so the body extraction
+    # below picks whichever quote form matched.
+    desc_re = re.compile(
+        r"""
+        -Description                            # parameter name
+        \s*[:\s]\s*                             # space or colon separator
+        (?:
+            "(?P<double>(?:[^"`]|`.)*)"         # double-quoted, backtick-escapes
+            |
+            '(?P<single>(?:[^']|'')*)'          # single-quoted, doubled-quote
+        )
+        """,
+        re.IGNORECASE | re.DOTALL | re.VERBOSE,
+    )
     # CR R2 on PR #3: match both backslash and forward-slash Windows paths.
     # `D:/dev/...` is legal and was previously a silent bypass.
     win_path_re = re.compile(r"[A-Za-z]:[\\/]dev[\\/]\S+", re.IGNORECASE)
@@ -466,7 +478,9 @@ def _detect_ps1_hardcoded_paths(path: str, content: str) -> list[Finding]:
     # DOTALL means the regex spans newlines. Line number is derived from the
     # match's start offset.
     for desc_m in desc_re.finditer(content):
-        body = desc_m.group(2)
+        body = (
+            desc_m.group("double") if desc_m.group("double") is not None else desc_m.group("single")
+        )
         line_num = content.count("\n", 0, desc_m.start()) + 1
         # Snippet: the matched -Description line itself (first line of the body
         # if multi-line). Keeps the output familiar despite the underlying

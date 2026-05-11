@@ -257,3 +257,60 @@ def test_uppercase_ps1_extension_still_scanned(tmp_path: Path) -> None:
     result = _run(f)
     assert result.returncode == 1, f"uppercase .PS1 should be scanned; stderr: {result.stderr}"
     assert "startup_all.ps1" in result.stderr
+
+
+def test_colon_separated_description_parameter(tmp_path: Path) -> None:
+    """CR R6 on PR #3: PowerShell accepts `-Description:"value"` (colon
+    separator) as a legal alternative to the space-separated form. The
+    previous regex only matched `\\s+` between parameter and quote, so the
+    colon form was a silent bypass."""
+    f = tmp_path / "colon.ps1"
+    f.write_text(
+        'Register-ScheduledTask -TaskName:"Foo" '
+        '-Description:"Managed by D:\\dev\\miru\\windows\\startup_all.ps1"\n',
+        encoding="utf-8",
+    )
+    result = _run(f)
+    assert result.returncode == 1, (
+        f"colon-separated -Description should be scanned; stderr: {result.stderr}"
+    )
+    assert "startup_all.ps1" in result.stderr
+
+
+def test_backtick_escaped_quote_in_double_quoted_description(tmp_path: Path) -> None:
+    """CR R6 on PR #3: PowerShell double-quoted strings allow backtick to
+    escape inner quotes. `"foo `"bar`""` is one string with body `foo "bar"`.
+    The previous regex `(["'])(.*?)\\1` would have stopped at the first
+    unescaped `"`, missing any hardcoded path after the escape."""
+    f = tmp_path / "backtick_escape.ps1"
+    # The description string is: 'Help: see `"D:\dev\...`"' — body contains
+    # backtick-escaped quotes around the path. Old regex would have bailed
+    # at the first backtick-quoted `"`, missing the path.
+    f.write_text(
+        'Register-ScheduledTask -TaskName "Foo" '
+        '-Description "Help: see `"D:\\dev\\miru\\windows\\startup_all.ps1`""\n',
+        encoding="utf-8",
+    )
+    result = _run(f)
+    assert result.returncode == 1, (
+        f"backtick-escaped quote should not bypass scan; stderr: {result.stderr}"
+    )
+    assert "startup_all.ps1" in result.stderr
+
+
+def test_doubled_single_quote_escape_in_single_quoted_description(tmp_path: Path) -> None:
+    """CR R6 on PR #3: PowerShell single-quoted strings escape a single quote
+    by doubling it. `'foo ''bar'''` has body `foo 'bar'`. The previous
+    `(.*?)` non-greedy match would have stopped at the first inner `'`,
+    treating the rest as a separate string and missing the hardcoded path."""
+    f = tmp_path / "doubled_quote.ps1"
+    f.write_text(
+        "Register-ScheduledTask -TaskName 'Foo' "
+        "-Description 'See ''D:\\dev\\miru\\windows\\startup_all.ps1'' here'\n",
+        encoding="utf-8",
+    )
+    result = _run(f)
+    assert result.returncode == 1, (
+        f"doubled-quote escape should not bypass scan; stderr: {result.stderr}"
+    )
+    assert "startup_all.ps1" in result.stderr
