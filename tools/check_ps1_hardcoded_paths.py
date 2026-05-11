@@ -43,23 +43,45 @@ from pathlib import Path
 # also matches. Captures the body between the quotes.
 DESCRIPTION_RE = re.compile(r'-Description\s+"([^"]*)"', re.IGNORECASE)
 
-# Windows absolute paths under \dev\<...>. Tight on \dev\ to avoid false positives
-# on paths like C:\Windows\System32 that legitimately appear in help text.
-WIN_PATH_RE = re.compile(r"[A-Za-z]:\\dev\\\S+", re.IGNORECASE)
+# Windows absolute paths under <drive>:[\\/]dev[\\/]<...>. Tight on dev/ to avoid
+# false positives on paths like C:\Windows\System32 that legitimately appear in
+# help text. Matches both backslash form (D:\dev\...) and forward-slash form
+# (D:/dev/...) — both are legal Windows paths and CR flagged that the
+# forward-slash variant was a silent bypass on PR #3.
+WIN_PATH_RE = re.compile(r"[A-Za-z]:[\\/]dev[\\/]\S+", re.IGNORECASE)
 
 # POSIX absolute paths under the common user-facing roots. Same false-positive
 # discipline — we look for paths that would belong to a developer's working dir,
 # not arbitrary system paths.
 POSIX_PATH_RE = re.compile(r"/(home|var|opt|tmp|Users)/\S+", re.IGNORECASE)
 
+# PowerShell on Windows commonly writes .ps1 files as UTF-16 (especially when
+# created via Out-File without -Encoding). UTF-8 read fails with
+# UnicodeDecodeError on those files, which would silently bypass this hook.
+# CR caught this gap on PR #3 — try UTF-16-LE then UTF-16-BE before giving up.
+_ENCODINGS_TO_TRY = ("utf-8", "utf-16", "utf-16-le", "utf-16-be")
+
+
+def _read_text_robust(path: Path) -> str | None:
+    """Try the common PowerShell-on-Windows encodings in order. Returns the
+    decoded text on first success, or None if every attempt fails."""
+    for encoding in _ENCODINGS_TO_TRY:
+        try:
+            return path.read_text(encoding=encoding)
+        except UnicodeDecodeError:
+            continue
+        except OSError:
+            return None
+    return None
+
 
 def check_file(path: Path) -> list[tuple[int, str]]:
     """Return list of (line_num, offending_match) tuples for one file."""
     findings: list[tuple[int, str]] = []
-    try:
-        text = path.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        # Unreadable file; treat as clean and let other hooks complain.
+    text = _read_text_robust(path)
+    if text is None:
+        # Unreadable file (genuine OSError, or no supported encoding worked);
+        # treat as clean and let other hooks complain.
         return findings
     for i, line in enumerate(text.splitlines(), 1):
         for desc_match in DESCRIPTION_RE.finditer(line):

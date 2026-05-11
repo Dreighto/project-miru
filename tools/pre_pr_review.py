@@ -446,7 +446,9 @@ def _detect_ps1_hardcoded_paths(path: str, content: str) -> list[Finding]:
     if not path.endswith(".ps1"):
         return findings
     desc_re = re.compile(r'-Description\s+"([^"]*)"', re.IGNORECASE)
-    win_path_re = re.compile(r"[A-Za-z]:\\dev\\\S+", re.IGNORECASE)
+    # CR R2 on PR #3: match both backslash and forward-slash Windows paths.
+    # `D:/dev/...` is legal and was previously a silent bypass.
+    win_path_re = re.compile(r"[A-Za-z]:[\\/]dev[\\/]\S+", re.IGNORECASE)
     posix_path_re = re.compile(r"/(home|var|opt|tmp|Users)/\S+", re.IGNORECASE)
     for i, line in enumerate(content.splitlines(), 1):
         for desc_m in desc_re.finditer(line):
@@ -620,6 +622,19 @@ def main(argv: list[str] | None = None) -> int:
             content = file_path.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
+        # CR R2 on PR #3: PowerShell scripts on Windows are often saved as
+        # UTF-16. The utf-8 + errors=replace read above doesn't fail but
+        # corrupts the bytes into U+FFFD replacement chars — detectors that
+        # match string content would silently miss findings. For .ps1 files,
+        # detect a UTF-16 BOM (or sentinel pattern) and re-read with the
+        # right encoding.
+        if path_str.endswith(".ps1") and content.startswith("��"):
+            for enc in ("utf-16", "utf-16-le", "utf-16-be"):
+                try:
+                    content = file_path.read_text(encoding=enc)
+                    break
+                except (OSError, UnicodeDecodeError):
+                    continue
         for detector in DETECTORS:
             findings.extend(detector(path_str.replace("\\", "/"), content))
 

@@ -129,3 +129,37 @@ def test_case_insensitive_description_match(tmp_path: Path) -> None:
     )
     result = _run(f)
     assert result.returncode == 1
+
+
+def test_utf16_ps1_still_scanned(tmp_path: Path) -> None:
+    """CR R2 on PR #3: PowerShell scripts on Windows are commonly saved as
+    UTF-16 (default for `Out-File`). The previous read used encoding="utf-8"
+    and caught UnicodeDecodeError, silently bypassing the hook on UTF-16
+    files. Verify the robust read tries UTF-16 and still detects the same
+    bad pattern."""
+    f = tmp_path / "bad_utf16.ps1"
+    content = (
+        'Register-ScheduledTask -TaskName "Foo" '
+        '-Description "Managed by D:\\dev\\miru\\windows\\startup_all.ps1"\n'
+    )
+    # UTF-16 with BOM — what `Out-File` produces on Windows by default.
+    f.write_text(content, encoding="utf-16")
+    result = _run(f)
+    assert result.returncode == 1, f"UTF-16 file should still be scanned; stderr: {result.stderr}"
+    assert "startup_all.ps1" in result.stderr
+
+
+def test_windows_forward_slash_path_in_description_fails(tmp_path: Path) -> None:
+    """CR R2 on PR #3: `D:/dev/...` is a legal Windows path notation (PowerShell
+    accepts both `\\` and `/` as separators). The previous regex matched only
+    backslashes, so forward-slash variants were a silent bypass."""
+    f = tmp_path / "bad_win_slash.ps1"
+    f.write_text(
+        'Register-ScheduledTask -TaskName "Foo" '
+        '-Description "Managed by D:/dev/miru/windows/startup_all.ps1"\n',
+        encoding="utf-8",
+    )
+    result = _run(f)
+    assert result.returncode == 1
+    assert "hardcoded absolute path" in result.stderr
+    assert "startup_all.ps1" in result.stderr
