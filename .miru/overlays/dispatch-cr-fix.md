@@ -65,7 +65,7 @@ show <branch>:<path>`). If a finding refers to code that was already
 3. **File or update a Linear ticket** tracking this fix-round. Use the
    `Tooling / MCP Gateway` project (`cb5c362c-c1f4-4f55-b119-578fa017ca7d`)
    for project-miru PRs, or the matching LogueOS project for LOS-\* PRs.
-   Title format: `PR #<N> CR Rk fix: <one-line summary>`.
+   Title format: `PR #<N> CR R<k> fix: <one-line summary>`.
 
 4. **Compose the dispatch prompt** from the template at
    `data/templates/cr-fix-worker-prompt.md`. Substitute the variables;

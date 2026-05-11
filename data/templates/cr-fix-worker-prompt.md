@@ -135,7 +135,8 @@ HARD CONSTRAINTS
 
 ---
 
-ESCALATE -- exit immediately with a non-empty INCONCLUSIVE marker if:
+ESCALATE -- exit immediately with a non-empty `STATUS: ESCALATE:
+HUMAN-REQUIRED` marker if:
 
 - The branch has merge conflicts with main.
 - A finding requires editing rule canon (CLAUDE.md, AGENTS.md,
@@ -146,8 +147,13 @@ ESCALATE -- exit immediately with a non-empty INCONCLUSIVE marker if:
 - The pre_pr_review.py gate fails on a pattern you can't resolve in
   3 minutes of inspection.
 
-The INCONCLUSIVE marker must name the specific blocker
-(file path + reason) so CC can take over without re-deriving context.
+The escalate marker must name the specific blocker (file path +
+reason) so CC can take over without re-deriving context.
+
+Distinct from INCONCLUSIVE: ESCALATE means "I need a human to make a
+decision before this can proceed." Use INCONCLUSIVE only for "I tried,
+ran out of options, but the work isn't blocked on a human" -- e.g. all
+fixes applied but tests are flaky in a way I can't diagnose.
 ```
 
 ---
