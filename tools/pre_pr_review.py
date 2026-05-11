@@ -29,7 +29,7 @@ USAGE:
     # JSON output instead of human-readable
     python tools/pre_pr_review.py --json
 
-DETECTOR CATALOG (current):
+DETECTOR CATALOG (current — match DETECTORS list at the bottom):
 
     P1 (path-traversal)        — user-controlled strings used in filenames
                                   without validation. Pattern: f-string into
@@ -41,24 +41,25 @@ DETECTOR CATALOG (current):
                                   rename durability.
     P3 (fsync-fd)              — os.fsync called on a file object opened
                                   read-only. Raises EBADF on Windows.
-    P4 (hardcoded-env)         — string literal that looks like an env-derived
-                                  constant (e.g. 'worktrees', '127.0.0.1')
-                                  used in a position where a configurable
-                                  value is expected.
     P5 (relative-after-cd)     — variable assigned a relative path BEFORE a
                                   `cd` in shell, then referenced AFTER.
-    P6 (origin-clash)          — `cp -r ... .git`-style operations followed by
-                                  `git remote add origin` later, without
-                                  removing/renaming the inherited origin.
-    P7 (untracked-not-caught)  — bash `git diff --quiet && git diff --cached
-                                  --quiet` patterns that miss untracked files.
-                                  Should use `git status --porcelain`.
     P8 (corrupt-vs-empty)      — return tuple shape that conflates "file
                                   empty" with "file corrupt". Both cases
                                   return same sentinel (None, None) without
                                   a corrupt-distinguishing flag.
     P9 (dash-only-not-rejected)— argument validation that only rejects `--*`
                                   values, missing single-dash flags like `-h`.
+
+NOT-YET-IMPLEMENTED (reserved identifiers — add detectors before re-listing):
+
+    P4 (hardcoded-env)         — string literal that looks like an env-derived
+                                  constant (e.g. 'worktrees', '127.0.0.1')
+                                  used where a configurable value is expected.
+    P6 (origin-clash)          — `cp -r ... .git`-style operations followed by
+                                  `git remote add origin` without removing the
+                                  inherited origin.
+    P7 (untracked-not-caught)  — bash `git diff --quiet && git diff --cached
+                                  --quiet` patterns that miss untracked files.
 
 Exit codes:
     0 — clean (no findings) OR findings printed but --strict not set

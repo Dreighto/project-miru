@@ -62,6 +62,7 @@ import json
 import re
 import subprocess
 import sys
+from datetime import UTC, datetime
 from typing import Any
 
 # Force stdout to UTF-8 on Windows so curly quotes / emoji in CR's
@@ -184,15 +185,42 @@ def _parse_suggested_diff(body: str) -> str | None:
     return None
 
 
+def _parse_iso8601_utc(value: str) -> datetime:
+    """Parse an ISO-8601 timestamp into a timezone-aware UTC datetime.
+
+    Accepts the trailing-Z form GitHub returns (``2026-05-11T01:25:29Z``)
+    as well as explicit offsets like ``2026-05-11T01:25:29+00:00``. Raises
+    ``ValueError`` on anything else. CR R3 finding on PR #188 — the old
+    code compared raw strings, which silently dropped findings whenever
+    the two sides had different offset suffixes (e.g. ``...Z`` vs
+    ``...+00:00``) and gave the lexicographic illusion of a working filter.
+    """
+    raw = value.strip()
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    dt = datetime.fromisoformat(raw)
+    if dt.tzinfo is None:
+        # Bare local-time strings are ambiguous; refuse them so the caller
+        # can't accidentally drop findings whose timestamps are UTC just
+        # because the operator forgot to write the offset.
+        raise ValueError(f"timestamp lacks timezone: {value!r}")
+    return dt.astimezone(UTC)
+
+
 def fetch_findings(
     pr: int,
     repo: str,
     *,
     path_filter: str | None = None,
     min_severity: str | None = None,
-    since_iso: str | None = None,
+    since_dt: datetime | None = None,
 ) -> list[dict[str, Any]]:
-    """Fetch all CodeRabbit findings on a PR. Filters applied post-fetch."""
+    """Fetch all CodeRabbit findings on a PR. Filters applied post-fetch.
+
+    ``since_dt`` is a parsed timezone-aware datetime (validated upstream
+    by ``_parse_iso8601_utc``). Comparing parsed datetimes rather than
+    raw ISO strings avoids the offset-suffix mismatch bug. CR R3 finding.
+    """
     comments = _gh_api(f"repos/{repo}/pulls/{pr}/comments")
     findings: list[dict[str, Any]] = []
     min_sev_idx = SEVERITY_ORDER.index(min_severity.upper()) if min_severity else -1
@@ -215,8 +243,16 @@ def fetch_findings(
             except ValueError:
                 continue  # unknown severity, skip
 
-        if since_iso and (comment.get("created_at") or "") < since_iso:
-            continue
+        if since_dt is not None:
+            created_raw = comment.get("created_at") or ""
+            if not created_raw:
+                continue  # no timestamp; conservatively exclude
+            try:
+                created_dt = _parse_iso8601_utc(created_raw)
+            except ValueError:
+                continue  # malformed timestamp on the comment side
+            if created_dt < since_dt:
+                continue
 
         path = comment.get("path") or ""
         if path_filter and path != path_filter:
@@ -254,8 +290,26 @@ def _print_summary(findings: list[dict[str, Any]]) -> None:
         )
 
 
+class RepoAutodetectError(Exception):
+    """Raised when `gh repo view` cannot determine the current repo.
+
+    The previous behavior was to silently return a hardcoded
+    "Dreighto/project-miru" fallback, which made the script appear to
+    work but actually queried the wrong repo whenever it was run from
+    outside Miru. Failing fast forces the operator to pass --repo
+    explicitly instead of getting confusing "no findings" output on a
+    repo they didn't realize was being substituted. CR R3 finding on PR #188.
+    """
+
+
 def _detect_repo() -> str:
-    """Read the current repo's GitHub owner/name from git remote."""
+    """Read the current repo's GitHub owner/name from `gh repo view`.
+
+    Raises RepoAutodetectError if gh is missing, the call errors, or the
+    output is empty. The caller (main) catches and instructs the
+    operator to pass --repo. No silent fallback — that previously hid
+    "wrong repo" bugs that produced confusing zero-finding output.
+    """
     try:
         result = subprocess.run(
             ["gh", "repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"],
@@ -263,11 +317,17 @@ def _detect_repo() -> str:
             text=True,
             timeout=10,
         )
-    except (subprocess.SubprocessError, OSError):
-        return "Dreighto/project-miru"  # sensible fallback
-    if result.returncode == 0:
-        return result.stdout.strip() or "Dreighto/project-miru"
-    return "Dreighto/project-miru"
+    except (subprocess.SubprocessError, OSError) as exc:
+        raise RepoAutodetectError(f"gh invocation failed: {exc}") from exc
+    if result.returncode != 0:
+        raise RepoAutodetectError(
+            f"gh repo view returned {result.returncode}: "
+            f"{(result.stderr or '').strip() or '(no stderr)'}"
+        )
+    repo = (result.stdout or "").strip()
+    if not repo:
+        raise RepoAutodetectError("gh repo view returned empty output")
+    return repo
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -304,14 +364,48 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     args = p.parse_args(argv)
-    repo = args.repo or _detect_repo()
+
+    # Repo resolution: explicit --repo wins; otherwise autodetect, and
+    # fail loud on autodetect failure rather than silently substituting
+    # a default (which previously produced confusing "no findings" output
+    # when the script was run outside the intended repo). CR R3.
+    if args.repo:
+        repo = args.repo
+    else:
+        try:
+            repo = _detect_repo()
+        except RepoAutodetectError as exc:
+            print(
+                f"[cr_findings_extract] could not autodetect repo: {exc}\n"
+                f"[cr_findings_extract] pass --repo OWNER/NAME explicitly.",
+                file=sys.stderr,
+            )
+            return 2
+
+    # --since parsing: validate once, up front, in main() so a bad value
+    # exits with a clear usage error rather than silently filtering
+    # nothing. CR R3 finding — string-comparing ISO timestamps with
+    # different offsets (`...Z` vs `...+00:00`) gave the lexicographic
+    # illusion of filtering while quietly dropping matching findings.
+    since_dt = None
+    if args.since:
+        try:
+            since_dt = _parse_iso8601_utc(args.since)
+        except ValueError as exc:
+            print(
+                f"[cr_findings_extract] invalid --since timestamp {args.since!r}: {exc}\n"
+                f"[cr_findings_extract] expected ISO-8601 with timezone, e.g. "
+                f"2026-05-11T01:00:00Z or 2026-05-11T01:00:00+00:00",
+                file=sys.stderr,
+            )
+            return 2
 
     findings = fetch_findings(
         args.pr,
         repo,
         path_filter=args.path,
         min_severity=args.min_severity,
-        since_iso=args.since,
+        since_dt=since_dt,
     )
 
     if args.summary:
