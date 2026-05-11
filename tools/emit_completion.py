@@ -62,6 +62,19 @@ from audit_chain import append_chained
 # are lowercase hex only and cannot match [A-Z]+).
 _TRACE_ID_TICKET_RE = re.compile(r"(?:^|-)([A-Z]+-\d+)(?:-|$)")
 
+# canon_snapshot_id must be a 64-char lowercase hex SHA-256 digest. Mirrors
+# the format check in services/dispatch_listener/src/canon_probe.js. CodeRabbit
+# R2 finding on PR #181: if LOGUEOS_CANON_SNAPSHOT_ID is set in the worker env
+# but contains a malformed value, refuse to write it onto the marker (don't
+# silently corrupt the audit row with bad provenance). Emit a stderr warning
+# so the operator sees the discrepancy.
+_CANON_SNAPSHOT_ID_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _is_valid_canon_snapshot_id(snap_id: str) -> bool:
+    """Return True iff snap_id is a 64-char lowercase hex SHA-256 digest."""
+    return bool(_CANON_SNAPSHOT_ID_RE.fullmatch(snap_id))
+
 
 def _ticket_id_from_trace(trace_id):
     """Extract a Linear ticket identifier from a worker trace_id, if encoded.
@@ -133,6 +146,47 @@ def main() -> None:
             inferred = _ticket_id_from_trace(env_trace)
             if inferred:
                 data["ticket_id"] = inferred
+
+    # LOS-10 Step 2 / LOS-13: stamp canon_snapshot_id from env.
+    # The dispatch listener probes /canon-manifest before spawn and passes
+    # LOGUEOS_CANON_SNAPSHOT_ID into the worker's env. Recording it on every
+    # marker makes the canon-that-was-in-force deterministically queryable
+    # for any historical row.
+    #
+    # CodeRabbit R1: env value is AUTHORITATIVE. The dispatch listener
+    # observed the canon at spawn; if a worker submits a different value in
+    # its marker, that's almost certainly a bug or tampering. Env always
+    # wins. If the marker had a different value, emit a stderr warning so
+    # audits can see the discrepancy.
+    #
+    # CodeRabbit R2: validate env_canon format BEFORE accepting. If the env
+    # value is malformed (not 64-char lowercase hex), refuse to write it
+    # onto the marker — corrupting an audit row's provenance is worse than
+    # leaving the prior value (which at least was caller-supplied). Emit
+    # a stderr warning so the operator sees the misconfiguration.
+    #
+    # Naming: LOGUEOS_CANON_SNAPSHOT_ID uses the FUTURE post-rename style
+    # per Step 6 rename map.
+    env_canon = os.environ.get("LOGUEOS_CANON_SNAPSHOT_ID", "").strip()
+    if env_canon:
+        if not _is_valid_canon_snapshot_id(env_canon):
+            print(
+                f"[emit_completion] WARN: env LOGUEOS_CANON_SNAPSHOT_ID={env_canon!r} "
+                f"is not a 64-char lowercase hex SHA-256 digest; ignoring (marker keeps "
+                f"its existing canon_snapshot_id field if any). Fix the dispatch listener's "
+                f"canon probe to emit only valid digests.",
+                file=sys.stderr,
+            )
+        else:
+            prior = data.get("canon_snapshot_id")
+            if prior and prior != env_canon:
+                print(
+                    f"[emit_completion] WARN: marker submitted canon_snapshot_id={prior!r} "
+                    f"but env LOGUEOS_CANON_SNAPSHOT_ID={env_canon!r}; env wins (dispatch-"
+                    f"listener-observed value at spawn time, treated as authoritative).",
+                    file=sys.stderr,
+                )
+            data["canon_snapshot_id"] = env_canon
 
     log_path = Path(_repo_root()) / "data" / "cc_completion_log.jsonl"
     # DGAS Tier 2 #6 Part B: chain every new row. Existing legacy rows at the

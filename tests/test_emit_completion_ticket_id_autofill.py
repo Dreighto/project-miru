@@ -198,6 +198,92 @@ class MainAutofillTests(unittest.TestCase):
         self.assertIsNone(result["ticket_id"])
         self.assertEqual(result["trace_id"], "no-ticket-here")
 
+    # ------------------------------------------------------------------
+    # CR R2 (PR #181): canon_snapshot_id validation tests
+    # ------------------------------------------------------------------
+
+    def test_valid_env_canon_snapshot_id_is_authoritative(self) -> None:
+        """Env LOGUEOS_CANON_SNAPSHOT_ID with valid format wins over marker."""
+        marker = {
+            "timestamp": "2026-05-10T15:00:00Z",
+            "ticket_id": "LOS-10",
+            "status": "CONFIRMED_WORKING",
+            "summary": "test",
+            "canon_snapshot_id": "f" * 64,  # marker says one thing
+        }
+        result = self._run_main(
+            marker,
+            env_overrides={"LOGUEOS_CANON_SNAPSHOT_ID": "a" * 64},  # env says another
+        )
+        # Env value wins (it's authoritative).
+        self.assertEqual(result["canon_snapshot_id"], "a" * 64)
+
+    def test_malformed_env_canon_snapshot_id_is_rejected(self) -> None:
+        """CR R2: malformed env value must NOT be written onto the marker.
+        Marker's existing canon_snapshot_id (if any) is preserved instead."""
+        marker = {
+            "timestamp": "2026-05-10T15:00:00Z",
+            "ticket_id": "LOS-10",
+            "status": "CONFIRMED_WORKING",
+            "summary": "test",
+            "canon_snapshot_id": "f" * 64,
+        }
+        # env_canon is malformed (too short, non-hex chars).
+        result = self._run_main(
+            marker, env_overrides={"LOGUEOS_CANON_SNAPSHOT_ID": "bad-id-not-hex"}
+        )
+        # Marker's value is preserved; malformed env didn't clobber it.
+        self.assertEqual(result["canon_snapshot_id"], "f" * 64)
+
+    def test_malformed_env_canon_snapshot_id_no_marker_value_leaves_none(self) -> None:
+        """If env is malformed AND marker doesn't carry one, the field stays unset."""
+        marker = {
+            "timestamp": "2026-05-10T15:00:00Z",
+            "ticket_id": "LOS-10",
+            "status": "CONFIRMED_WORKING",
+            "summary": "test",
+        }
+        result = self._run_main(
+            marker, env_overrides={"LOGUEOS_CANON_SNAPSHOT_ID": "uppercase-fail-ABCDEF"}
+        )
+        # No canon_snapshot_id was set (marker didn't have one, env was rejected).
+        self.assertNotIn("canon_snapshot_id", result)
+
+    def test_no_env_canon_snapshot_id_marker_value_preserved(self) -> None:
+        """No env → marker's canon_snapshot_id passes through unchanged."""
+        marker = {
+            "timestamp": "2026-05-10T15:00:00Z",
+            "ticket_id": "LOS-10",
+            "status": "CONFIRMED_WORKING",
+            "summary": "test",
+            "canon_snapshot_id": "b" * 64,
+        }
+        result = self._run_main(marker, exclude_keys=("LOGUEOS_CANON_SNAPSHOT_ID",))
+        self.assertEqual(result["canon_snapshot_id"], "b" * 64)
+
+    def test_canon_snapshot_id_format_validator_table(self) -> None:
+        """Direct unit test on the validator helper. Cheaper than e2e."""
+        module = _import_emit_completion()
+        valid_cases = [
+            "a" * 64,
+            "0" * 64,
+            "9" * 64,
+            "abcdef0123456789" * 4,
+        ]
+        invalid_cases = [
+            "",
+            "a" * 63,
+            "a" * 65,
+            "A" * 64,  # uppercase
+            "g" * 64,  # non-hex
+            "bad-id",
+            "12345",
+        ]
+        for ok in valid_cases:
+            self.assertTrue(module._is_valid_canon_snapshot_id(ok), f"expected valid: {ok!r}")
+        for bad in invalid_cases:
+            self.assertFalse(module._is_valid_canon_snapshot_id(bad), f"expected invalid: {bad!r}")
+
 
 if __name__ == "__main__":
     unittest.main()

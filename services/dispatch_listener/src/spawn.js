@@ -9,6 +9,7 @@ const { spec } = require('./allowlist');
 const { writeTerminalReceipt } = require('./receipt');
 const { writeDlqEntry } = require('./dlq');
 const { predictDispatchAsync } = require('./predict');
+const { probeBeforeSpawn } = require('./canon_probe');
 
 const STDERR_TAIL_BYTES = 4096;
 const STDOUT_SCAN_BYTES = 8192;
@@ -618,6 +619,15 @@ function spawnWorker({
     throw new Error(`pre_spawn_dirty_refusal: ${parkCheck.reason}`);
   }
 
+  // LOS-10 Step 2 / LOS-13: probe the gateway's /canon-manifest BEFORE spawning.
+  // Fail-closed: if the gateway is unreachable, refuse to spawn. Workers that
+  // can't fetch canon over HTTP would otherwise spawn with stale or missing
+  // rules — silent drift is the failure mode we're preventing. The snapshot_id
+  // also gets passed to the worker env (LOGUEOS_CANON_SNAPSHOT_ID) so the
+  // worker's completion marker can carry a deterministic pointer to the canon
+  // that was in force when the dispatch happened.
+  const canonProbe = probeBeforeSpawn(traceId);
+
   const stdoutPath = path.join(traceLogDir, `${traceId}.stdout.log`);
   const stderrPath = path.join(traceLogDir, `${traceId}.stderr.log`);
 
@@ -713,6 +723,14 @@ function spawnWorker({
   // dispatch → worker → marker → bridge is impossible.
   childEnv.MIRU_TRACE_ID = traceId;
   childEnv.MIRU_TOOL_PROFILE = toolProfile;
+
+  // LOS-10 Step 2 / LOS-13: pass the canon snapshot ID to the worker so its
+  // completion marker can record a deterministic pointer to the canon that
+  // was in force at spawn time. Uses the FUTURE name (LOGUEOS_*) per the
+  // Step 6 rename map — new env vars adopt the post-rename style now to
+  // avoid a second rename pass at cutover. Existing MIRU_* vars stay until
+  // Step 6.
+  childEnv.LOGUEOS_CANON_SNAPSHOT_ID = canonProbe.snapshot_id;
 
   log.info('spawn_auth_debug', {
     trace_id: traceId,
