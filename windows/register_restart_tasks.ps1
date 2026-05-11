@@ -1,31 +1,38 @@
-﻿# register_restart_tasks.ps1
+# register_restart_tasks.ps1
 # Run this ONCE from an ELEVATED (Administrator) PowerShell window.
-# It registers all five scheduled tasks for Project Miru:
+# Registers the Project Miru scheduled tasks:
 #
-#   1. OP Miru Startup        -- boot trigger, NAS\NAS S4U Limited, starts all 3 services
-#   2. MiruRestartDispatcher  -- on-demand, NAS\NAS Interactive Limited, port 19000
-#   3. MiruRestartPM          -- on-demand, NAS\NAS Interactive Limited, port 18080
-#   4. MiruRestartMiruAI      -- on-demand, NAS\NAS Interactive Limited, port 18765
-#   5. MiruRestartMcpGateway  -- on-demand, NAS\NAS Interactive Limited, port 18766
+#   1. OP Miru Startup        -- boot trigger, NAS\NAS S4U Limited, runs startup_all.ps1
+#   2. MiruRestartMcpGateway  -- on-demand,    NAS\NAS Interactive Limited, port 18766
 #
-# WHY Interactive + Limited for restart tasks:
+# WHY Interactive + Limited for the restart task:
 #   RunLevel=Highest tasks (even NAS\NAS-owned) cannot be triggered by a
 #   non-elevated shell -- Windows blocks the Start-ScheduledTask call.
 #   RunLevel=Limited + LogonType=Interactive tasks owned by NAS\NAS CAN be
 #   triggered from a non-elevated NAS\NAS shell without any UAC prompt.
-#   This is the same pattern used by the existing RestartMiruAIRelay and
-#   RestartMiruDashboardRelay tasks already in Task Scheduler.
 #
 # WHY S4U + Limited for the startup task:
 #   The startup task fires at boot before the user is logged in, so it cannot
 #   use Interactive logon. S4U allows it to run without a stored password.
-#   Limited means the Python processes it spawns are non-elevated, so that
-#   Claude Code (also non-elevated) can Stop-Process them without UAC.
+#   Limited means the python tasks it self-registers run non-elevated, so
+#   Claude Code (also non-elevated) can manage them without UAC.
 #
 # After registration, non-elevated code (Claude Code, Cursor shell) triggers
-# restarts via:
-#   Start-ScheduledTask -TaskName "MiruRestartDispatcher"
+# the gateway restart via:
+#   Start-ScheduledTask -TaskName "MiruRestartMcpGateway"
 # ...with no UAC prompt.
+#
+# Scope note (2026-05-11):
+#   This script previously registered five tasks. The three Miru-app restart
+#   tasks (MiruRestartDispatcher / MiruRestartPM / MiruRestartMiruAI for ports
+#   19000 / 18080 / 18765 respectively) were removed because those services
+#   were decommissioned in the same change. Their launcher scripts and
+#   scheduled-task helpers were deleted along with them.
+#
+#   If those task registrations exist locally from a previous run, unregister:
+#     Unregister-ScheduledTask -TaskName "MiruRestartDispatcher" -Confirm:$false
+#     Unregister-ScheduledTask -TaskName "MiruRestartPM"         -Confirm:$false
+#     Unregister-ScheduledTask -TaskName "MiruRestartMiruAI"     -Confirm:$false
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -56,13 +63,14 @@ $commonSettings = New-ScheduledTaskSettingsSet `
     -ExecutionTimeLimit (New-TimeSpan -Minutes 10) `
     -MultipleInstances IgnoreNew
 
+$userId = "$($env:UserDomain)\$($env:UserName)"
+
 # ════════════════════════════════════════════════════════════════════════════════
-# TASK 1 — OP Miru Startup (FIX 1)
-# Replaces the broken task that pointed to a deleted Codex worktree path.
-# Runs as NAS\NAS with S4U (no password prompt, survives reboots without login).
-# RunLevel = Limited so spawned Python processes are non-elevated.
-# Non-elevated processes can be killed by Stop-Process from a non-elevated shell
-# (Claude Code), which eliminates the UAC prompt on restarts.
+# TASK 1 — OP Miru Startup
+# Boot trigger for startup_all.ps1. After the 2026-05-11 cleanup,
+# startup_all.ps1 self-registers MiruServiceWatchdog / MiruStallRecovery /
+# MiruSentinel / MiruBackup and does not launch any service directly. The
+# task NAME is retained for operator continuity.
 # ════════════════════════════════════════════════════════════════════════════════
 Write-Host "Registering: OP Miru Startup..." -ForegroundColor Yellow
 
@@ -71,21 +79,14 @@ if (-not (Test-Path $startupScript)) {
     Write-Error "startup_all.ps1 not found at $startupScript"
 }
 
-# -WindowStyle Hidden + -NonInteractive: this task fires at boot (30s
-# delay) when no operator is at the console to dismiss popup windows.
-# Without these flags PowerShell spawns a visible terminal that flashes
-# onto the desktop and can interfere with login. Matches the hidden-args
-# convention used by the other Miru* restart tasks
-# (MiruOpsDigest / MiruRestartMcpGateway / MiruRestartMiruAI / etc.).
 $startupAction = New-ScheduledTaskAction `
     -Execute "powershell.exe" `
-    -Argument "-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$startupScript`"" `
+    -Argument "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$startupScript`"" `
     -WorkingDirectory $repoRoot
 
 $startupTrigger       = New-ScheduledTaskTrigger -AtStartup
 $startupTrigger.Delay = "PT30S"     # 30-second delay after boot
 
-$userId           = "$($env:UserDomain)\$($env:UserName)"
 $startupPrincipal = New-ScheduledTaskPrincipal `
     -UserId    $userId `
     -LogonType S4U `
@@ -97,7 +98,7 @@ $startupTask = Register-ScheduledTask `
     -Trigger    $startupTrigger `
     -Settings   $commonSettings `
     -Principal  $startupPrincipal `
-    -Description "Starts Dispatcher (19000), PM Dashboard (18080), and Miru AI (18765) 30s after Windows boot. Managed by D:\dev\miru\windows\startup_all.ps1" `
+    -Description "Loads .env and self-registers watchdog/sentinel/backup tasks 30s after Windows boot. Managed by D:\dev\miru\windows\startup_all.ps1" `
     -Force
 
 Write-Host "  OK: '$($startupTask.TaskName)'" -ForegroundColor Green
@@ -107,112 +108,8 @@ Write-Host "      Script    : $startupScript"
 Write-Host ""
 
 # ════════════════════════════════════════════════════════════════════════════════
-# TASK 2 — MiruRestartDispatcher (FIX 2)
-# RunLevel=Limited + LogonType=Interactive: the task runs as NAS\NAS with a
-# standard (non-elevated) token in the user's interactive session.
-# A non-elevated NAS\NAS shell CAN trigger Interactive/Limited tasks via
-# Start-ScheduledTask without any UAC prompt — this is the same pattern used
-# by the existing RestartMiruAIRelay and RestartMiruDashboardRelay tasks.
-# ════════════════════════════════════════════════════════════════════════════════
-Write-Host "Registering: MiruRestartDispatcher..." -ForegroundColor Yellow
-
-$dispatcherTaskScript = Join-Path $tasksDir "restart_dispatcher_task.ps1"
-if (-not (Test-Path $dispatcherTaskScript)) {
-    Write-Error "restart_dispatcher_task.ps1 not found at $dispatcherTaskScript"
-}
-
-$restartDispatcherAction = New-ScheduledTaskAction `
-    -Execute "powershell.exe" `
-    -Argument "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$dispatcherTaskScript`"" `
-    -WorkingDirectory $repoRoot
-
-# No automatic trigger — on-demand only via: Start-ScheduledTask -TaskName "MiruRestartDispatcher"
-$restartTrigger = New-ScheduledTaskTrigger -Once -At "2000-01-01T00:00:00"
-
-# Interactive + Limited: non-elevated user can trigger without UAC
-$restartPrincipal = New-ScheduledTaskPrincipal `
-    -UserId    $userId `
-    -LogonType Interactive `
-    -RunLevel  Limited
-
-$dispatcherTask = Register-ScheduledTask `
-    -TaskName   "MiruRestartDispatcher" `
-    -Action     $restartDispatcherAction `
-    -Trigger    $restartTrigger `
-    -Settings   $commonSettings `
-    -Principal  $restartPrincipal `
-    -Description "Restarts Dispatcher on port 19000. Trigger via: Start-ScheduledTask -TaskName 'MiruRestartDispatcher'" `
-    -Force
-
-Write-Host "  OK: '$($dispatcherTask.TaskName)'" -ForegroundColor Green
-Write-Host "      Principal : $userId (Interactive, RunLevel=Limited)"
-Write-Host "      Trigger   : on-demand only"
-Write-Host "      Script    : $dispatcherTaskScript"
-Write-Host ""
-
-# ════════════════════════════════════════════════════════════════════════════════
-# TASK 3 — MiruRestartPM (FIX 2)
-# ════════════════════════════════════════════════════════════════════════════════
-Write-Host "Registering: MiruRestartPM..." -ForegroundColor Yellow
-
-$pmTaskScript = Join-Path $tasksDir "restart_pm_task.ps1"
-if (-not (Test-Path $pmTaskScript)) {
-    Write-Error "restart_pm_task.ps1 not found at $pmTaskScript"
-}
-
-$restartPmAction = New-ScheduledTaskAction `
-    -Execute "powershell.exe" `
-    -Argument "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$pmTaskScript`"" `
-    -WorkingDirectory $repoRoot
-
-$pmTask = Register-ScheduledTask `
-    -TaskName   "MiruRestartPM" `
-    -Action     $restartPmAction `
-    -Trigger    $restartTrigger `
-    -Settings   $commonSettings `
-    -Principal  $restartPrincipal `
-    -Description "Restarts PM Dashboard on port 18080. Trigger via: Start-ScheduledTask -TaskName 'MiruRestartPM'" `
-    -Force
-
-Write-Host "  OK: '$($pmTask.TaskName)'" -ForegroundColor Green
-Write-Host "      Principal : $userId (Interactive, RunLevel=Limited)"
-Write-Host "      Trigger   : on-demand only"
-Write-Host "      Script    : $pmTaskScript"
-Write-Host ""
-
-# ════════════════════════════════════════════════════════════════════════════════
-# TASK 4 — MiruRestartMiruAI (FIX 2)
-# ════════════════════════════════════════════════════════════════════════════════
-Write-Host "Registering: MiruRestartMiruAI..." -ForegroundColor Yellow
-
-$miruAiTaskScript = Join-Path $tasksDir "restart_miru_ai_task.ps1"
-if (-not (Test-Path $miruAiTaskScript)) {
-    Write-Error "restart_miru_ai_task.ps1 not found at $miruAiTaskScript"
-}
-
-$restartMiruAiAction = New-ScheduledTaskAction `
-    -Execute "powershell.exe" `
-    -Argument "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$miruAiTaskScript`"" `
-    -WorkingDirectory $repoRoot
-
-$miruAiTask = Register-ScheduledTask `
-    -TaskName   "MiruRestartMiruAI" `
-    -Action     $restartMiruAiAction `
-    -Trigger    $restartTrigger `
-    -Settings   $commonSettings `
-    -Principal  $restartPrincipal `
-    -Description "Restarts Miru AI on port 18765. Trigger via: Start-ScheduledTask -TaskName 'MiruRestartMiruAI'" `
-    -Force
-
-Write-Host "  OK: '$($miruAiTask.TaskName)'" -ForegroundColor Green
-Write-Host "      Principal : $userId (Interactive, RunLevel=Limited)"
-Write-Host "      Trigger   : on-demand only"
-Write-Host "      Script    : $miruAiTaskScript"
-Write-Host ""
-
-# ════════════════════════════════════════════════════════════════════════════════
-# TASK 5 — MiruRestartMcpGateway (Stage 1 remote MCP gateway, port 18766)
-# Same Interactive + Limited principal as Tasks 2-4. Triggered by:
+# TASK 2 — MiruRestartMcpGateway (port 18766)
+# On-demand restart. Triggered by:
 #   Start-ScheduledTask -TaskName "MiruRestartMcpGateway"
 # ════════════════════════════════════════════════════════════════════════════════
 Write-Host "Registering: MiruRestartMcpGateway..." -ForegroundColor Yellow
@@ -227,13 +124,22 @@ $restartMcpGatewayAction = New-ScheduledTaskAction `
     -Argument "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$mcpGatewayTaskScript`"" `
     -WorkingDirectory $repoRoot
 
+# No automatic trigger — on-demand only via Start-ScheduledTask
+$restartTrigger = New-ScheduledTaskTrigger -Once -At "2000-01-01T00:00:00"
+
+# Interactive + Limited: non-elevated user can trigger without UAC
+$restartPrincipal = New-ScheduledTaskPrincipal `
+    -UserId    $userId `
+    -LogonType Interactive `
+    -RunLevel  Limited
+
 $mcpGatewayTask = Register-ScheduledTask `
     -TaskName   "MiruRestartMcpGateway" `
     -Action     $restartMcpGatewayAction `
     -Trigger    $restartTrigger `
     -Settings   $commonSettings `
     -Principal  $restartPrincipal `
-    -Description "Restarts MCP Gateway on port 18766. Trigger via: Start-ScheduledTask -TaskName 'MiruRestartMcpGateway'" `
+    -Description "Restarts the MCP Gateway on port 18766. Trigger via: Start-ScheduledTask -TaskName 'MiruRestartMcpGateway'" `
     -Force
 
 Write-Host "  OK: '$($mcpGatewayTask.TaskName)'" -ForegroundColor Green
@@ -243,37 +149,8 @@ Write-Host "      Script    : $mcpGatewayTaskScript"
 Write-Host ""
 
 # ── Summary ───────────────────────────────────────────────────────────────────
-Write-Host "=== All 5 tasks registered successfully (Interactive/Limited) ===" -ForegroundColor Cyan
+Write-Host "=== Registration complete (2 tasks) ===" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "To restart the Dispatcher (no elevation needed):" -ForegroundColor White
-Write-Host "  Start-ScheduledTask -TaskName 'MiruRestartDispatcher'" -ForegroundColor Gray
+Write-Host "To restart the MCP Gateway (no elevation needed):" -ForegroundColor White
+Write-Host "  Start-ScheduledTask -TaskName 'MiruRestartMcpGateway'" -ForegroundColor Gray
 Write-Host ""
-Write-Host "To restart PM Dashboard (no elevation needed):" -ForegroundColor White
-Write-Host "  Start-ScheduledTask -TaskName 'MiruRestartPM'" -ForegroundColor Gray
-Write-Host ""
-Write-Host "To restart Miru AI (no elevation needed):" -ForegroundColor White
-Write-Host "  Start-ScheduledTask -TaskName 'MiruRestartMiruAI'" -ForegroundColor Gray
-Write-Host ""
-Write-Host "IMPORTANT: Reply 'tasks registered' in the Claude Code chat to continue." -ForegroundColor Yellow
-Write-Host ""
-
-# ── dispatch_listener boot path (PRO-336) ────────────────────────────────────
-# The MiruDispatchListener scheduled task (registered by
-# windows\install_dispatch_listener.ps1, NOT by this script) fires at system
-# startup via S4U logon. At boot -- before the operator logs in -- the process
-# lands in Windows Session 0 (the non-interactive service session). A
-# non-elevated worker shell (Claude Code) cannot kill cross-session processes
-# without SeDebugPrivilege, which defeats routine restart operations.
-#
-# PRIMARY boot path (recommended): shell:startup shortcut installed by
-#   windows\install_dispatch_listener_startup_shortcut.ps1
-# This fires at LOGON so dispatch_listener spawns in Session 1+ where
-# non-elevated Stop-Process works without UAC.
-#
-# FALLBACK: MiruDispatchListener scheduled task (still registered). The
-# Session 0 self-check in start_dispatch_listener.ps1 causes it to exit 1
-# immediately if it fires in Session 0, surfacing the regression in the log.
-#
-# After running this script, also run (no elevation needed):
-#   powershell -ExecutionPolicy Bypass -File windows\install_dispatch_listener_startup_shortcut.ps1
-# ─────────────────────────────────────────────────────────────────────────────

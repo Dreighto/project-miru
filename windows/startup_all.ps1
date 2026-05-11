@@ -1,18 +1,23 @@
-﻿# startup_all.ps1 — Project Miru full-stack startup script
-# Starts all three services in order with delays between them.
+﻿# startup_all.ps1 — Project Miru boot-time startup hooks
 # Called by the "OP Miru Startup" scheduled task at boot.
 #
-# Services started (in order):
-#   1. Dispatcher   — port 19000  (dispatcher\task_dispatcher.py)
-#   2. PM Dashboard — port 18080  (pm\app.py)
-#   3. Miru AI      — port 18765  (python -m miru_ai.server)
+# What this script does today (2026-05-11):
+#   - Loads .env so child task processes inherit API keys.
+#   - Self-registers four scheduled tasks (idempotent — skips if already
+#     present and enabled): MiruServiceWatchdog, MiruStallRecovery,
+#     MiruSentinel, MiruBackup.
 #
-# IMPORTANT: This script uses Start-Process without -Verb RunAs so that
-# child processes inherit the caller's token. When registered under NAS\NAS
-# with RunLevel=Limited, all three services run as non-elevated NAS\NAS
-# processes. This ensures that subsequent restarts from a non-elevated
-# Claude Code shell (also NAS\NAS, non-elevated) can Stop-Process them
-# without triggering a UAC credential prompt.
+# What it NO LONGER does:
+#   The three legacy services (Dispatcher 19000, PM Dashboard 18080,
+#   Miru AI 18765) were decommissioned in this repo on 2026-05-11. Their
+#   launcher blocks and the associated launcher / scheduled-task helper
+#   scripts were removed in the same change. The orchestrator (MCP Gateway
+#   on 18766, dispatch_listener on 19100) is the active service set; the
+#   watchdog/stall-recovery/sentinel tasks below monitor those.
+#
+# Replacement strategy for the legacy services is intentionally deferred
+# (see operator note 2026-05-11): a new restart UX will be tied to the
+# LogueOS Console rather than re-built as PowerShell scripts.
 
 param()
 Set-StrictMode -Version Latest
@@ -57,139 +62,30 @@ if (Test-Path $commonPath) {
     Write-Log "WARNING: op_miru_common.ps1 not found at $commonPath"
 }
 
-# ── Resolve Python ────────────────────────────────────────────────────────────
+# ── Resolve Python (required by self-register blocks below) ───────────────────
 $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
 if (-not $pythonCmd) {
-    Write-Log "ERROR: python not found on PATH — cannot start any service"
-    exit 1
-}
-$pythonExe = $pythonCmd.Source
-Write-Log "python=$pythonExe"
-
-# ── Helper: kill any process listening on a port ──────────────────────────────
-function Stop-PortListeners {
-    param([int]$Port)
-    $pids = @(
-        Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
-            ForEach-Object { [int]$_.OwningProcess } | Where-Object { $_ -gt 0 } | Sort-Object -Unique
-    )
-    foreach ($p in $pids) {
-        try {
-            Stop-Process -Id $p -Force -ErrorAction Stop
-            Write-Log "port=$Port killed_pid=$p"
-        } catch {
-            Write-Log "port=$Port could_not_kill_pid=$p ($($_.Exception.Message))"
-        }
-    }
-    if ($pids.Count -gt 0) { Start-Sleep -Seconds 1 }
+    Write-Log "WARNING: python not found on PATH — self-register blocks may skip"
+} else {
+    $pythonExe = $pythonCmd.Source
+    Write-Log "python=$pythonExe"
 }
 
 # ════════════════════════════════════════════════════════════════════════════════
-# 1. DISPATCHER — port 19000
+# LEGACY SERVICES (Dispatcher 19000 / PM 18080 / Miru AI 18765) — REMOVED
+#
+# These three services were decommissioned in this repo on 2026-05-11. The
+# launcher blocks that previously lived here, along with their helper scripts
+# (windows/start_dispatcher.ps1, windows/restart_dispatcher.ps1,
+# windows/start_all_services.ps1, windows/restart_pm.ps1,
+# windows/restart_miru_ai.ps1, windows/start_miru_ai_dev.ps1,
+# windows/start_project_miru_dashboard.ps1, windows/install_dispatcher_startup.ps1,
+# windows/op_dispatcher_bootstrap.cmd, and the
+# windows/tasks/restart_{dispatcher,pm,miru_ai}_task.ps1 scheduled-task helpers),
+# were removed in the same change. Active services (MCP Gateway 18766,
+# dispatch_listener 19100) live in the LogueOS-Orchestrator repo and boot via
+# its own startup mechanisms.
 # ════════════════════════════════════════════════════════════════════════════════
-Write-Log "--- Starting Dispatcher (port 19000) ---"
-try {
-    Stop-PortListeners -Port 19000
-
-    $dispatcherScript  = Join-Path $repoRoot "dispatcher\task_dispatcher.py"
-    $dispatcherWorkDir = Join-Path $repoRoot "dispatcher"
-    $dispatcherStdout  = Join-Path $logDir   "dispatcher_stdout.log"
-    $dispatcherStderr  = Join-Path $logDir   "dispatcher_stderr.log"
-
-    if (-not (Test-Path $dispatcherScript)) {
-        Write-Log "ERROR: Dispatcher script not found at $dispatcherScript"
-    } else {
-        Set-Content -Path $dispatcherStdout -Value "" -Encoding UTF8 -ErrorAction SilentlyContinue
-        Set-Content -Path $dispatcherStderr -Value "" -Encoding UTF8 -ErrorAction SilentlyContinue
-
-        $proc = Start-Process `
-            -FilePath $pythonExe `
-            -ArgumentList @($dispatcherScript) `
-            -WorkingDirectory $dispatcherWorkDir `
-            -RedirectStandardOutput $dispatcherStdout `
-            -RedirectStandardError  $dispatcherStderr `
-            -WindowStyle Hidden `
-            -PassThru
-
-        Write-Log "Dispatcher started pid=$($proc.Id)"
-    }
-} catch {
-    Write-Log "ERROR starting Dispatcher: $($_.Exception.Message)"
-}
-
-Write-Log "Waiting 5s before PM Dashboard..."
-Start-Sleep -Seconds 5
-
-# ════════════════════════════════════════════════════════════════════════════════
-# 2. PM DASHBOARD — port 18080
-# ════════════════════════════════════════════════════════════════════════════════
-Write-Log "--- Starting PM Dashboard (port 18080) ---"
-try {
-    Stop-PortListeners -Port 18080
-
-    $pmScript  = Join-Path $repoRoot "pm\app.py"
-    $pmStdout  = Join-Path $logDir   "pm_stdout.log"
-    $pmStderr  = Join-Path $logDir   "pm_stderr.log"
-
-    if (-not (Test-Path $pmScript)) {
-        Write-Log "ERROR: PM script not found at $pmScript"
-    } else {
-        Set-Content -Path $pmStdout -Value "" -Encoding UTF8 -ErrorAction SilentlyContinue
-        Set-Content -Path $pmStderr -Value "" -Encoding UTF8 -ErrorAction SilentlyContinue
-
-        $env:PORT                        = "18080"
-        $env:PROJECT_MIRU_DASHBOARD_PORT = "18080"
-        $env:MIRU_MAIN_RUNTIME_ROOT      = $repoRoot
-        $env:MIRU_DASHBOARD_NO_RELOAD    = "1"
-        [Environment]::SetEnvironmentVariable("WERKZEUG_SERVER_FD",  $null, "Process")
-        [Environment]::SetEnvironmentVariable("WERKZEUG_RUN_MAIN",   $null, "Process")
-
-        $proc = Start-Process `
-            -FilePath $pythonExe `
-            -ArgumentList @($pmScript) `
-            -WorkingDirectory $repoRoot `
-            -RedirectStandardOutput $pmStdout `
-            -RedirectStandardError  $pmStderr `
-            -WindowStyle Hidden `
-            -PassThru
-
-        Write-Log "PM Dashboard started pid=$($proc.Id)"
-    }
-} catch {
-    Write-Log "ERROR starting PM Dashboard: $($_.Exception.Message)"
-}
-
-Write-Log "Waiting 5s before Miru AI..."
-Start-Sleep -Seconds 5
-
-# ════════════════════════════════════════════════════════════════════════════════
-# 3. MIRU AI — port 18765
-# ════════════════════════════════════════════════════════════════════════════════
-Write-Log "--- Starting Miru AI (port 18765) ---"
-try {
-    Stop-PortListeners -Port 18765
-
-    $miruAiStdout = Join-Path $logDir "miru_ai_stdout.log"
-    $miruAiStderr = Join-Path $logDir "miru_ai_stderr.log"
-
-    Set-Content -Path $miruAiStdout -Value "" -Encoding UTF8 -ErrorAction SilentlyContinue
-    Set-Content -Path $miruAiStderr -Value "" -Encoding UTF8 -ErrorAction SilentlyContinue
-
-    $proc = Start-Process `
-        -FilePath $pythonExe `
-        -ArgumentList @("-m", "miru_ai.server", "--host", "0.0.0.0", "--port", "18765") `
-        -WorkingDirectory $repoRoot `
-        -RedirectStandardOutput $miruAiStdout `
-        -RedirectStandardError  $miruAiStderr `
-        -WindowStyle Hidden `
-        -PassThru
-
-    Write-Log "Miru AI started pid=$($proc.Id)"
-} catch {
-    Write-Log "ERROR starting Miru AI: $($_.Exception.Message)"
-}
-
-Start-Sleep -Seconds 3
 
 # ════════════════════════════════════════════════════════════════════════════════
 # SELF-REGISTER: MiruServiceWatchdog (PRO-238)
