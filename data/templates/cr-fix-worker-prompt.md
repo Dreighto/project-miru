@@ -46,10 +46,10 @@ PROTOCOL (run in order)
 0. Run mandatory pre-flight gates:
 
    python tools/check_kill_switch.py
-   # exit 1 => emit STATUS: ESCALATE: HUMAN-REQUIRED and stop immediately
+   # exit 1 => run cleanup (below) then emit STATUS: ESCALATE: HUMAN-REQUIRED and exit
 
    python tools/check_worktree_clean.py
-   # exit 1 => emit STATUS: ESCALATE: HUMAN-REQUIRED and stop immediately
+   # exit 1 => run cleanup (below) then emit STATUS: ESCALATE: HUMAN-REQUIRED and exit
 
    # TODO: Active-worker collision check (PRO-347) isn't yet
    # implemented. For now, dispatchers should serialize CR-fix
@@ -57,10 +57,22 @@ PROTOCOL (run in order)
 
 ---
 
-BEFORE ANY TERMINAL EXIT (ESCALATE/INCONCLUSIVE/FAILED):
-You must ensure the worker leaves the repo on `main` with a clean
-tree. If you have uncommitted changes on the task branch, stash them
-or make a WIP commit, then `git checkout main`.
+CLEANUP-BEFORE-EXIT (mandatory before ANY terminal state — CONFIRMED_WORKING,
+INCONCLUSIVE, FAILED, or ESCALATE):
+
+  # 1. If on a task branch with uncommitted changes:
+  git stash push -m "WIP: cleanup before exit" || git commit -am "WIP: cleanup before exit"
+
+  # 2. Return to main with a clean tree:
+  git checkout main
+  git pull --ff-only
+  git status  # must be clean
+
+  # 3. Only AFTER cleanup, emit the terminal marker via emit_completion.py.
+
+This applies to Step 0 gate-failure paths AND to the later success/failure paths.
+Never exit on a feature branch — that leaves the next worker blind to which
+branch is checked out.
 
 ---
 
@@ -134,11 +146,27 @@ or make a WIP commit, then `git checkout main`.
      --ticket ${TICKET_ID} \
      --summary "PR #${PR_NUMBER} ${ROUND}: applied N findings, skipped M with reason. Pushed <new-sha>. CR re-review nudged."
 
-   # Or, if you can't reach success:
+   # Or, if you tried but ran out of options (no human decision needed):
    python tools/emit_completion.py \
      --status INCONCLUSIVE \
      --ticket ${TICKET_ID} \
      --summary "PR #${PR_NUMBER} ${ROUND}: INCONCLUSIVE — <specific blocker>."
+
+   # Or, if the work hit a fatal error (subprocess crashed, file system
+   # I/O failure, etc.) that's neither human-blockable nor recoverable:
+   python tools/emit_completion.py \
+     --status FAILED \
+     --ticket ${TICKET_ID} \
+     --summary "PR #${PR_NUMBER} ${ROUND}: FAILED — <one-line cause + file/line if applicable>."
+
+Terminal-state guidance (pick exactly one for the marker):
+- CONFIRMED_WORKING — all findings addressed (or explicitly skipped with reason), pushed, CR nudged.
+- INCONCLUSIVE — tried but couldn't finish; not human-blocked. Summary names the blocker.
+- FAILED — fatal error (crash / I/O / unrecoverable). Summary names the cause.
+- ESCALATE: <category> — needs a human decision before proceeding. Categories per CLAUDE.md
+  (HUMAN-REQUIRED, SECURITY, SCOPE_EXPANSION, DESIGN_CHANGE, IRREVERSIBLE_OP, REPEATED_FAILURE).
+
+All four terminal states require a non-empty one-line --summary.
 
 ---
 
