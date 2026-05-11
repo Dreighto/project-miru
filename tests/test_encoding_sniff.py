@@ -18,7 +18,6 @@ sys.path.insert(0, str(REPO_ROOT / "tools"))
 
 from _encoding_sniff import decode_bytes_with_utf16_sniffing  # noqa: E402
 
-
 SAMPLE = "Register-ScheduledTask -Description 'Managed by D:\\dev\\miru\\x.ps1'\n"
 
 

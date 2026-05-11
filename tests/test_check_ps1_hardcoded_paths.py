@@ -31,8 +31,7 @@ def test_clean_description_passes(tmp_path: Path) -> None:
     """A -Description that references a $variable should pass."""
     f = tmp_path / "clean.ps1"
     f.write_text(
-        'Register-ScheduledTask -TaskName "Foo" '
-        '-Description "Managed by $startupScript"\n',
+        'Register-ScheduledTask -TaskName "Foo" -Description "Managed by $startupScript"\n',
         encoding="utf-8",
     )
     result = _run(f)
@@ -74,9 +73,7 @@ def test_absolute_path_outside_description_ignored(tmp_path: Path) -> None:
     checks, examples in help text, etc."""
     f = tmp_path / "elsewhere.ps1"
     f.write_text(
-        'if (Test-Path "D:\\dev\\miru\\windows\\startup_all.ps1") {\n'
-        '    Write-Host "found"\n'
-        '}\n',
+        'if (Test-Path "D:\\dev\\miru\\windows\\startup_all.ps1") {\n    Write-Host "found"\n}\n',
         encoding="utf-8",
     )
     result = _run(f)
@@ -206,9 +203,9 @@ def test_multiline_description_with_backtick_continuation(tmp_path: Path) -> Non
     f = tmp_path / "multiline.ps1"
     f.write_text(
         "Register-ScheduledTask -TaskName 'Foo' `\n"
-        "    -Description \"Step 1: do thing.\n"
+        '    -Description "Step 1: do thing.\n'
         "Step 2: managed by D:\\dev\\miru\\windows\\startup_all.ps1\n"
-        "Step 3: done.\"\n",
+        'Step 3: done."\n',
         encoding="utf-8",
     )
     result = _run(f)
