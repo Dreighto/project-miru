@@ -1,4 +1,4 @@
-# register_gemini_mcps.ps1 — register MCP servers in Gemini CLI via its
+﻿# register_gemini_mcps.ps1 — register MCP servers in Gemini CLI via its
 # official `gemini mcp add` command.
 #
 # Why this exists: editing .gemini/settings.json directly DOES NOT WORK.
@@ -17,9 +17,11 @@
 #   - Relaunch Gemini CLI (close any open session, then `gemini` again)
 #   - Type `/mcp` inside Gemini to verify all entries show as Ready
 #
-# Scope is `project` (writes to <cwd>/.gemini/settings.json). Run from
-# the repo root you want to register against (cd to that repo's root
-# before invoking this script).
+# Scope is `project` (writes to <repo-root>/.gemini/settings.json). The
+# script auto-locates the repo root from $PSScriptRoot (tools/mcp/ is two
+# levels below the repo root) and cd's there before any `gemini mcp add
+# -s project` call. Invoking from outside the repo root no longer
+# mis-registers into the wrong .gemini/settings.json.
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -28,6 +30,21 @@ if (-not (Get-Command gemini -ErrorAction SilentlyContinue)) {
     Write-Error "gemini CLI not found on PATH. Install via: npm install -g @google/gemini-cli"
     exit 1
 }
+
+# CR R3 MAJOR finding on PR #190: `gemini mcp add -s project` writes to
+# CWD/.gemini/settings.json. Invoked from anywhere other than the repo
+# root, it lands in a stray .gemini/settings.json in the wrong directory.
+# Lock CWD to the repo root for the duration of the script — derived
+# from $PSScriptRoot since the script lives at <repo>/tools/mcp/.
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+if (-not (Test-Path -LiteralPath (Join-Path $repoRoot '.git') -ErrorAction SilentlyContinue)) {
+    Write-Error "Resolved repo root '$repoRoot' has no .git — script location moved? Refusing to project-register from an unverifiable root."
+    exit 1
+}
+$originalLocation = Get-Location
+Set-Location -LiteralPath $repoRoot
+Write-Host "Locked CWD to repo root: $repoRoot" -ForegroundColor Gray
+try {
 
 # Track partial failures so we can exit non-zero at the end. CR R1 finding
 # on PR #190: previously the script logged FAIL but still exited 0, which
@@ -117,11 +134,9 @@ if ($script:FailedCount -gt 0) {
 }
 Write-Host "=== Done — all registrations succeeded ===" -ForegroundColor Cyan
 # CR R2 (MINOR line 121): relaunch instructions previously hardcoded
-# 'cd D:\dev\miru && gemini' which is workstation-specific. Compute
-# the repo root from this script's location (tools/mcp/ -> repo root
-# is two levels up) so the printed instructions match whatever clone
-# location the operator is actually running from.
-$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+# 'cd D:\dev\miru && gemini' which is workstation-specific. $repoRoot
+# was already computed above so the instructions match the operator's
+# actual clone location.
 Write-Host "Next:"
 Write-Host "  1. Close any running Gemini CLI session"
 Write-Host ("  2. Relaunch from this repo: cd '{0}'; gemini" -f $repoRoot)
@@ -132,3 +147,9 @@ Write-Host ""
 Write-Host "shadcn-svelte specifically needs GITHUB_TOKEN env var set to avoid"
 Write-Host "rate limits. To set it from gh CLI auth:"
 Write-Host "  [System.Environment]::SetEnvironmentVariable('GITHUB_TOKEN', (gh auth token), 'User')"
+} finally {
+    # CR R3 MAJOR (PR #190): always restore the operator's original CWD
+    # so the script doesn't leave them stranded at $repoRoot when they
+    # invoked it from elsewhere. Runs on success, error, and ctrl-C.
+    Set-Location -LiteralPath $originalLocation
+}
