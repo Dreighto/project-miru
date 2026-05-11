@@ -152,7 +152,11 @@ def _walk_v1_chain(path: Path) -> tuple[str | None, int, int, list[str]]:
     seen_chained = False
 
     with path.open("r", encoding="utf-8") as fh:
-        for idx, raw in enumerate(fh):
+        # CR R6 MINOR carry-over (PR #182): same fix as migrate_dgas_boundary.py
+        # — enumerate(fh) was 0-based, so the first row showed up as
+        # "line 0" in error messages, which no editor or git tool agrees
+        # with. start=1 makes the reported number match wc -l / vim / VS Code.
+        for idx, raw in enumerate(fh, start=1):
             line = raw.strip()
             if not line:
                 continue
@@ -237,7 +241,11 @@ def _walk_v2_chain(
     expected_block_index: int = expected_first_block
 
     with path.open("r", encoding="utf-8") as fh:
-        for idx, raw in enumerate(fh):
+        # CR R6 MINOR carry-over (PR #182): same fix as migrate_dgas_boundary.py
+        # — enumerate(fh) was 0-based, so the first row showed up as
+        # "line 0" in error messages, which no editor or git tool agrees
+        # with. start=1 makes the reported number match wc -l / vim / VS Code.
+        for idx, raw in enumerate(fh, start=1):
             line = raw.strip()
             if not line:
                 continue
