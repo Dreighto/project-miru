@@ -148,6 +148,7 @@ reference file when you need the specific fact.
 - **`domain-ui.md`** — LOAD IF touching frontend code (`pm/`, `miru_ai/static/`, templates). Contains: craft guide trigger list (when to read `docs/ui_ux/` and `docs/pm/` files).
 - **`domain-ops.md`** — LOAD IF touching scheduled tasks, services, Notion writes, or MCP config. Contains: scheduled-task focus rule, MCP usage rules, Notion read/write rules.
 - **`adopted-lessons.md`** — LOAD IF doing a non-trivial code change (more than typo or lint). Contains: workflow JSON test rule, design-in-Linear-ticket rule.
+- **`pre-push-discipline.md`** — LOAD IF about to push commits to a branch with an open PR (or about to open a new PR). Contains: the 5-step pre-push protocol, the adversarial checklist, the failure-mode catalog of patterns CR consistently flags. Goal: 1 CR round per PR, not 3+.
 
 ### Reference — `.miru/reference/`
 

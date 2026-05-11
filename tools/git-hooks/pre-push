@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# pre-push hook -- block local pushes that fail the pre-PR static review.
+#
+# Install: git config core.hooksPath tools/git-hooks
+# Bypass: git push --no-verify  (use only when the hook itself is broken)
+#
+# The hook runs `tools/pre_pr_review.py --strict` against the merge-base
+# with origin/main. Any HIGH-severity finding blocks the push; the
+# worker must address it locally before retrying.
+#
+# Why pre-push, not pre-commit:
+#   - pre-commit fires on every commit, including WIP/checkpoint commits
+#     that the worker hasn't finished thinking through. Too noisy.
+#   - pre-push fires once per push, against the cumulative diff. Right
+#     granularity: the worker has committed, the diff is final, and
+#     pushing means "ready for CR." Block at that gate.
+
+set -e
+
+# Skip if pre_pr_review.py isn't present (clone of a branch before the
+# tool landed, or hook installed without the tool).
+if [ ! -f "tools/pre_pr_review.py" ]; then
+    echo "[pre-push] tools/pre_pr_review.py not found; skipping" >&2
+    exit 0
+fi
+
+# Determine the merge-base with origin/main. If origin/main isn't
+# reachable (rare; offline + first fetch hasn't happened), fall back to
+# the local main ref. If neither exists, scan the working tree.
+BASE_REF=""
+if git rev-parse --verify origin/main >/dev/null 2>&1; then
+    BASE_REF="origin/main"
+elif git rev-parse --verify main >/dev/null 2>&1; then
+    BASE_REF="main"
+fi
+
+if [ -n "$BASE_REF" ]; then
+    echo "[pre-push] running tools/pre_pr_review.py --from-ref $BASE_REF --strict" >&2
+    if ! python tools/pre_pr_review.py --from-ref "$BASE_REF" --strict; then
+        echo "" >&2
+        echo "[pre-push] BLOCKED: pre_pr_review.py found issues. Fix them or push with --no-verify." >&2
+        echo "[pre-push] See .miru/overlays/pre-push-discipline.md for the protocol." >&2
+        exit 1
+    fi
+else
+    echo "[pre-push] No main ref found; scanning working tree instead" >&2
+    if ! python tools/pre_pr_review.py --strict; then
+        echo "" >&2
+        echo "[pre-push] BLOCKED: pre_pr_review.py found issues. Fix them or push with --no-verify." >&2
+        echo "[pre-push] See .miru/overlays/pre-push-discipline.md for the protocol." >&2
+        exit 1
+    fi
+fi
+
+echo "[pre-push] OK" >&2
+exit 0
