@@ -17,11 +17,43 @@
 #   - Relaunch Gemini CLI (close any open session, then `gemini` again)
 #   - Type `/mcp` inside Gemini to verify all entries show as Ready
 #
-# Scope is `project` (writes to <repo-root>/.gemini/settings.json). The
-# script auto-locates the repo root from $PSScriptRoot (tools/mcp/ is two
-# levels below the repo root) and cd's there before any `gemini mcp add
-# -s project` call. Invoking from outside the repo root no longer
+# Default scope is `project` (writes to <repo-root>/.gemini/settings.json).
+# The script auto-locates the repo root from $PSScriptRoot (tools/mcp/ is
+# two levels below the repo root) and cd's there before any `gemini mcp
+# add -s project` call. Invoking from outside the repo root no longer
 # mis-registers into the wrong .gemini/settings.json.
+#
+# ┌─────────────────────────────────────────────────────────────────────┐
+# │ SECURITY — PLAINTEXT SECRETS WARNING (CR R4 finding on PR #190)     │
+# │                                                                     │
+# │ `gemini mcp add ... -Env @{ KEY=$value }` persists $value LITERALLY │
+# │ into the target settings.json. The GitHub token used here ends up   │
+# │ as plaintext in either:                                             │
+# │   - project scope: <repo>/.gemini/settings.json  (DEFAULT)          │
+# │   - user scope:    ~/.gemini/settings.json       (-UserScope)       │
+# │                                                                     │
+# │ DO NOT commit the post-registration .gemini/settings.json. The      │
+# │ tracked version in this repo contains placeholders like             │
+# │ "${env:GITHUB_TOKEN}" only — but gemini will rewrite it with the    │
+# │ resolved literal value after this script runs.                      │
+# │                                                                     │
+# │ User scope (-UserScope) keeps the token OUT of the repo working     │
+# │ tree (lower commit risk) but makes it readable to gemini from any   │
+# │ project on this machine — choose based on your threat model.        │
+# │                                                                     │
+# │ Tracked as architectural cleanup: see LOS-15-adjacent ticket for    │
+# │ "untrack .gemini/settings.json + add template + pre-commit secret   │
+# │ scan" follow-up.                                                    │
+# └─────────────────────────────────────────────────────────────────────┘
+
+[CmdletBinding()]
+param(
+    # When set, registers with `-s user` instead of `-s project`. Tokens
+    # end up in ~/.gemini/settings.json (outside the repo working tree)
+    # rather than .gemini/settings.json (inside it). Still plaintext —
+    # but no risk of `git add .gemini/` slipping a secret in.
+    [switch]$UserScope
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -31,14 +63,30 @@ if (-not (Get-Command gemini -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+# Resolve effective scope for downstream `gemini mcp add` calls.
+$geminiScope = if ($UserScope) { 'user' } else { 'project' }
+if ($UserScope) {
+    Write-Host ""
+    Write-Host "Scope: USER (writes to ~/.gemini/settings.json, outside the repo)" -ForegroundColor Yellow
+    Write-Host "  - Token stays out of the repo working tree (no accidental git add)" -ForegroundColor Gray
+    Write-Host "  - But: token is readable by gemini from ANY project on this machine" -ForegroundColor Gray
+} else {
+    Write-Host ""
+    Write-Host "Scope: PROJECT (writes to <repo>/.gemini/settings.json)" -ForegroundColor Yellow
+    Write-Host "  - DO NOT commit the post-registration .gemini/settings.json — it contains literal token values" -ForegroundColor Gray
+    Write-Host "  - Pass -UserScope to write to ~/.gemini/settings.json instead (outside the repo)" -ForegroundColor Gray
+}
+
 # CR R3 MAJOR finding on PR #190: `gemini mcp add -s project` writes to
 # CWD/.gemini/settings.json. Invoked from anywhere other than the repo
 # root, it lands in a stray .gemini/settings.json in the wrong directory.
 # Lock CWD to the repo root for the duration of the script — derived
 # from $PSScriptRoot since the script lives at <repo>/tools/mcp/.
+# (Still needed under -UserScope so that any relative paths inside the
+# registered MCP commands resolve consistently.)
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (-not (Test-Path -LiteralPath (Join-Path $repoRoot '.git') -ErrorAction SilentlyContinue)) {
-    Write-Error "Resolved repo root '$repoRoot' has no .git — script location moved? Refusing to project-register from an unverifiable root."
+    Write-Error "Resolved repo root '$repoRoot' has no .git — script location moved? Refusing to register from an unverifiable root."
     exit 1
 }
 $originalLocation = Get-Location
@@ -63,8 +111,9 @@ function Add-McpServer {
 
     # Build the gemini mcp add invocation. The `--` separator forces all
     # subsequent tokens to be treated as args to <Command> rather than
-    # gemini's own flags.
-    $cliArgs = @('mcp', 'add', $Name, $Command, '-s', 'project')
+    # gemini's own flags. Scope is whatever the top-level $geminiScope
+    # resolved to ('project' by default, 'user' under -UserScope).
+    $cliArgs = @('mcp', 'add', $Name, $Command, '-s', $geminiScope)
     foreach ($k in $Env.Keys) {
         $cliArgs += @('-e', ('{0}={1}' -f $k, $Env[$k]))
     }
@@ -101,6 +150,14 @@ $GithubToken = if ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } else { '' }
 if (-not $GithubToken) {
     Write-Host "Warning: GITHUB_TOKEN env var not set. shadcn-svelte will be rate-limited (60 req/hr)." -ForegroundColor Yellow
     Write-Host "  Set it via: [System.Environment]::SetEnvironmentVariable('GITHUB_TOKEN', (gh auth token), 'User')" -ForegroundColor Gray
+    Write-Host "  Then re-run this script. (We do NOT prompt interactively — see header comment for why.)" -ForegroundColor Gray
+} else {
+    # CR R4 finding on PR #190: surface the plaintext-write at the point
+    # of action, not just in the header. The operator should see this
+    # the moment a real token is about to land in a settings.json.
+    Write-Host ""
+    Write-Host ("Note: GITHUB_TOKEN will be written PLAINTEXT into the {0}-scope .gemini/settings.json." -f $geminiScope) -ForegroundColor Yellow
+    Write-Host "      See the security warning in this script's header. -UserScope flips to user scope (outside repo)." -ForegroundColor Gray
 }
 
 Write-Host ""
