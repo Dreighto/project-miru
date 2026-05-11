@@ -63,12 +63,17 @@ if (Test-Path $commonPath) {
 }
 
 # ── Resolve Python (required by self-register blocks below) ───────────────────
+# CR R3 (PR #193): the top-level `$pythonExe = $pythonCmd.Source` assignment
+# was a leftover from the deleted legacy service launchers. The self-register
+# blocks (MiruStallRecovery, MiruSentinel) compute their own python path
+# locally — see the `$pythonExe = if (Test-Path $pythonwPath) { ... }` lines
+# inside each block. Log directly via $pythonCmd.Source to keep the diagnostic
+# breadcrumb without binding an unused outer variable.
 $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
 if (-not $pythonCmd) {
     Write-Log "WARNING: python not found on PATH — self-register blocks may skip"
 } else {
-    $pythonExe = $pythonCmd.Source
-    Write-Log "python=$pythonExe"
+    Write-Log "python=$($pythonCmd.Source)"
 }
 
 # ════════════════════════════════════════════════════════════════════════════════

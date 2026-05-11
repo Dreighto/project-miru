@@ -113,7 +113,7 @@ def test_non_ps1_files_skipped(tmp_path: Path) -> None:
     assert result.returncode == 0
 
 
-def test_no_input_files_passes(tmp_path: Path) -> None:
+def test_no_input_files_passes() -> None:
     """pre-commit may invoke the hook with no matching files. Hook must exit 0."""
     result = _run()
     assert result.returncode == 0
@@ -162,4 +162,55 @@ def test_windows_forward_slash_path_in_description_fails(tmp_path: Path) -> None
     result = _run(f)
     assert result.returncode == 1
     assert "hardcoded absolute path" in result.stderr
+    assert "startup_all.ps1" in result.stderr
+
+
+def test_single_quoted_description_fails(tmp_path: Path) -> None:
+    """CR R3 on PR #3: PowerShell accepts both 'literal' and \"interpolated\"
+    string forms. The previous regex matched only double quotes — a worker
+    could have bypassed the hook by writing the offending Description as a
+    single-quoted PowerShell literal."""
+    f = tmp_path / "bad_single_quote.ps1"
+    f.write_text(
+        "Register-ScheduledTask -TaskName 'Foo' "
+        "-Description 'Managed by D:\\dev\\miru\\windows\\startup_all.ps1'\n",
+        encoding="utf-8",
+    )
+    result = _run(f)
+    assert result.returncode == 1
+    assert "hardcoded absolute path" in result.stderr
+    assert "startup_all.ps1" in result.stderr
+
+
+def test_mixed_quote_styles_not_matched_as_one_description(tmp_path: Path) -> None:
+    """The regex captures the closing quote via backreference, so a stray
+    `-Description "...` followed later by `'...'` is NOT collapsed into one
+    multi-line description body. Defense against the backreference being
+    accidentally relaxed."""
+    f = tmp_path / "mixed.ps1"
+    f.write_text(
+        'Register-ScheduledTask -TaskName "First" '
+        "-Description 'safe single-quoted'\n"
+        'Register-ScheduledTask -TaskName "Second" '
+        '-Description "safe double-quoted"\n',
+        encoding="utf-8",
+    )
+    result = _run(f)
+    # Two clean descriptions, no offending paths → exit 0.
+    assert result.returncode == 0, f"unexpected stderr: {result.stderr}"
+
+
+def test_multiline_description_with_backtick_continuation(tmp_path: Path) -> None:
+    """PowerShell supports multi-line string literals; DOTALL coverage means
+    a path embedded across newlines should still be caught."""
+    f = tmp_path / "multiline.ps1"
+    f.write_text(
+        "Register-ScheduledTask -TaskName 'Foo' `\n"
+        "    -Description \"Step 1: do thing.\n"
+        "Step 2: managed by D:\\dev\\miru\\windows\\startup_all.ps1\n"
+        "Step 3: done.\"\n",
+        encoding="utf-8",
+    )
+    result = _run(f)
+    assert result.returncode == 1
     assert "startup_all.ps1" in result.stderr

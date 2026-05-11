@@ -39,9 +39,20 @@ import re
 import sys
 from pathlib import Path
 
-# Capture every -Description "..." arg. Case-insensitive so `-description "..."`
-# also matches. Captures the body between the quotes.
-DESCRIPTION_RE = re.compile(r'-Description\s+"([^"]*)"', re.IGNORECASE)
+# Capture every -Description <quoted-body> arg. PowerShell accepts both
+# double- and single-quoted strings here (and even back-tick-continued
+# multi-line strings), so we match either quote style and span across
+# newlines via re.DOTALL. The opening quote is captured in group(1) and
+# the closing quote is matched via backreference \1, which keeps the
+# body group(2) tight against mixed-quote false positives.
+#
+# CR R3 (PR #3): only double quotes was previously a silent bypass for
+# any -Description '...' single-quoted variant — PowerShell scripts in
+# the wild use both forms. DOTALL adds multi-line coverage too.
+DESCRIPTION_RE = re.compile(
+    r"""-Description\s+(["'])(.*?)\1""",
+    re.IGNORECASE | re.DOTALL,
+)
 
 # Windows absolute paths under <drive>:[\\/]dev[\\/]<...>. Tight on dev/ to avoid
 # false positives on paths like C:\Windows\System32 that legitimately appear in
@@ -83,13 +94,19 @@ def check_file(path: Path) -> list[tuple[int, str]]:
         # Unreadable file (genuine OSError, or no supported encoding worked);
         # treat as clean and let other hooks complain.
         return findings
-    for i, line in enumerate(text.splitlines(), 1):
-        for desc_match in DESCRIPTION_RE.finditer(line):
-            desc = desc_match.group(1)
-            for p in WIN_PATH_RE.finditer(desc):
-                findings.append((i, p.group(0)))
-            for p in POSIX_PATH_RE.finditer(desc):
-                findings.append((i, p.group(0)))
+    # CR R3 (PR #3): DOTALL-enabled regex spans newlines, so we finditer
+    # over the whole text rather than per-line. The match's start offset
+    # is mapped back to a 1-indexed line number by counting newlines
+    # before it — gives the line where the -Description token appears
+    # (not necessarily where the offending path is, but close enough for
+    # operator triage).
+    for desc_match in DESCRIPTION_RE.finditer(text):
+        body = desc_match.group(2)
+        line_num = text.count("\n", 0, desc_match.start()) + 1
+        for p in WIN_PATH_RE.finditer(body):
+            findings.append((line_num, p.group(0)))
+        for p in POSIX_PATH_RE.finditer(body):
+            findings.append((line_num, p.group(0)))
     return findings
 
 

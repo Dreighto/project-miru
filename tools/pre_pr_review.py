@@ -445,36 +445,49 @@ def _detect_ps1_hardcoded_paths(path: str, content: str) -> list[Finding]:
     findings: list[Finding] = []
     if not path.endswith(".ps1"):
         return findings
-    desc_re = re.compile(r'-Description\s+"([^"]*)"', re.IGNORECASE)
+    # CR R3 (PR #3): regex now accepts either ' or " (PowerShell supports both)
+    # and DOTALL spans multi-line back-tick-continued descriptions. The opening
+    # quote is captured in group(1) and matched via backreference \1, so the
+    # body group(2) is tight against mixed-quote false positives.
+    desc_re = re.compile(r"""-Description\s+(["'])(.*?)\1""", re.IGNORECASE | re.DOTALL)
     # CR R2 on PR #3: match both backslash and forward-slash Windows paths.
     # `D:/dev/...` is legal and was previously a silent bypass.
     win_path_re = re.compile(r"[A-Za-z]:[\\/]dev[\\/]\S+", re.IGNORECASE)
     posix_path_re = re.compile(r"/(home|var|opt|tmp|Users)/\S+", re.IGNORECASE)
-    for i, line in enumerate(content.splitlines(), 1):
-        for desc_m in desc_re.finditer(line):
-            body = desc_m.group(1)
-            for hit in win_path_re.finditer(body):
-                findings.append(
-                    Finding(
-                        "P10",
-                        "high",
-                        path,
-                        i,
-                        f"-Description embeds hardcoded absolute path {hit.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
-                        line.strip(),
-                    )
+    # CR R3 (PR #3): finditer over the whole content (not line-by-line) since
+    # DOTALL means the regex spans newlines. Line number is derived from the
+    # match's start offset.
+    for desc_m in desc_re.finditer(content):
+        body = desc_m.group(2)
+        line_num = content.count("\n", 0, desc_m.start()) + 1
+        # Snippet: the matched -Description line itself (first line of the body
+        # if multi-line). Keeps the output familiar despite the underlying
+        # regex now being whole-content.
+        snippet_line = content[
+            content.rfind("\n", 0, desc_m.start()) + 1 : content.find("\n", desc_m.start())
+        ].strip()
+        for hit in win_path_re.finditer(body):
+            findings.append(
+                Finding(
+                    "P10",
+                    "high",
+                    path,
+                    line_num,
+                    f"-Description embeds hardcoded absolute path {hit.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
+                    snippet_line,
                 )
-            for hit in posix_path_re.finditer(body):
-                findings.append(
-                    Finding(
-                        "P10",
-                        "high",
-                        path,
-                        i,
-                        f"-Description embeds hardcoded absolute path {hit.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
-                        line.strip(),
-                    )
+            )
+        for hit in posix_path_re.finditer(body):
+            findings.append(
+                Finding(
+                    "P10",
+                    "high",
+                    path,
+                    line_num,
+                    f"-Description embeds hardcoded absolute path {hit.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
+                    snippet_line,
                 )
+            )
     return findings
 
 
@@ -618,23 +631,32 @@ def main(argv: list[str] | None = None) -> int:
         path_str = str(file_path)
         if any(skip in path_str for skip in (".venv", "node_modules", "__pycache__")):
             continue
-        try:
-            content = file_path.read_text(encoding="utf-8", errors="replace")
-        except OSError:
-            continue
-        # CR R2 on PR #3: PowerShell scripts on Windows are often saved as
-        # UTF-16. The utf-8 + errors=replace read above doesn't fail but
-        # corrupts the bytes into U+FFFD replacement chars — detectors that
-        # match string content would silently miss findings. For .ps1 files,
-        # detect a UTF-16 BOM (or sentinel pattern) and re-read with the
-        # right encoding.
-        if path_str.endswith(".ps1") and content.startswith("��"):
-            for enc in ("utf-16", "utf-16-le", "utf-16-be"):
+        # CR R3 (PR #3): for .ps1 files always try the UTF-8 → UTF-16 fallback
+        # chain explicitly. The previous sentinel check (content.startswith("��"))
+        # depended on errors="replace" producing replacement chars in the first
+        # two bytes — that misses UTF-16 LE/BE files without a BOM, and is
+        # fragile to substitution-char variation. For .ps1 we now read without
+        # errors="replace" so UnicodeDecodeError actually surfaces, then walk
+        # the encoding chain. Non-.ps1 files keep the lenient utf-8+replace
+        # read since they're not the regression surface.
+        content: str | None = None
+        if path_str.endswith(".ps1"):
+            for enc in ("utf-8", "utf-16", "utf-16-le", "utf-16-be"):
                 try:
                     content = file_path.read_text(encoding=enc)
                     break
-                except (OSError, UnicodeDecodeError):
+                except UnicodeDecodeError:
                     continue
+                except OSError:
+                    content = None
+                    break
+            if content is None:
+                continue
+        else:
+            try:
+                content = file_path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
         for detector in DETECTORS:
             findings.extend(detector(path_str.replace("\\", "/"), content))
 
