@@ -123,9 +123,10 @@ def dispatch_worker(
         multi-repo dispatch). One of: 'project-miru' (default), 'LogueOS-Console',
         or 'LogueOS-Orchestrator' (added 2026-05-10 for LOS-10 Step 7 prep).
         Workers landing in non-default repos must pass this explicitly. PRO-team
-        tickets stay on 'project-miru'; LOS-team tickets default to 'LogueOS-Console'
-        unless they target the dispatch loop substrate (LOS-10 Step 6+) in which
-        case use 'LogueOS-Orchestrator'.
+        tickets stay on 'project-miru'; LOS-team tickets should route to
+        'LogueOS-Console', unless they target the dispatch loop substrate, in which
+        case route to 'LogueOS-Orchestrator'. Runtime default remains 'project-miru'
+        when this parameter is omitted.
     Returns JSON: ok, trace_id, worker, ticket_id, http_status, listener_response.
     """
     cfg = _CFG
