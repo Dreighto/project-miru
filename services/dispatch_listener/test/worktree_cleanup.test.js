@@ -598,6 +598,56 @@ test('parkingBranchForCwd: LOS-14 layout rejects bare w1 with non-worktrees pare
   assert.equal(parkingBranchForCwd('D:\\dev\\LogueOS-Console\\w1'), null);
 });
 
+test('parkingBranchForCwd: LOS-14 anchor follows LOGUEOS_WORKTREE_BASE override (CR R1)', () => {
+  // CR R1 on PR #187: the LOS-14 anchor used to be hardcoded to 'worktrees',
+  // so operators who set LOGUEOS_WORKTREE_BASE to a non-default path
+  // (e.g. D:\custom\disp-pool) would silently get null from
+  // parkingBranchForCwd because the anchor mismatched. Now the anchor
+  // derives from the basename of LOGUEOS_WORKTREE_BASE at module load.
+  //
+  // To exercise the override, we reload spawn.js with a different env
+  // value. Done via require-cache deletion + restore so the test is
+  // self-contained.
+  const SPAWN_PATH = require.resolve('../src/spawn');
+  const originalBase = process.env.LOGUEOS_WORKTREE_BASE;
+  const originalCache = require.cache[SPAWN_PATH];
+  delete require.cache[SPAWN_PATH];
+  try {
+    process.env.LOGUEOS_WORKTREE_BASE = 'D:\\custom\\disp-pool';
+    // Re-require with the override in effect.
+    const { parkingBranchForCwd: reloaded } = require('../src/spawn');
+    // Custom path matches the new anchor:
+    assert.equal(
+      reloaded('D:\\custom\\disp-pool\\LogueOS-Console\\w1'),
+      '_parking_LogueOS-Console-w1',
+      'custom pool root should produce correct parking branch'
+    );
+    // Default 'worktrees' path NO LONGER matches because the anchor is
+    // now 'disp-pool', not 'worktrees':
+    assert.equal(
+      reloaded('D:\\dev\\worktrees\\LogueOS-Console\\w1'),
+      null,
+      'with custom anchor, the default worktrees path should NOT match'
+    );
+  } finally {
+    // Restore original env + module cache so subsequent tests use the
+    // default anchor.
+    if (originalBase === undefined) {
+      delete process.env.LOGUEOS_WORKTREE_BASE;
+    } else {
+      process.env.LOGUEOS_WORKTREE_BASE = originalBase;
+    }
+    delete require.cache[SPAWN_PATH];
+    if (originalCache) {
+      require.cache[SPAWN_PATH] = originalCache;
+    } else {
+      // Re-require with the original env so the cache is repopulated with
+      // the default-anchor module that the rest of the suite expects.
+      require('../src/spawn');
+    }
+  }
+});
+
 // --- verifyWorktreeParked with multi-repo (non-miru) worktrees ---
 
 test('verifyWorktreeParked: accepts LogueOS-Console-w1 on its expected parking branch', () => {

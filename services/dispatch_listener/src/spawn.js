@@ -228,6 +228,20 @@ const LEGACY_MIRU_SLOT_BASENAMES = new Set([
   'miru-cursor',
 ]);
 
+// LOS-14 anchor for the centralized worktree pool. Derived from the basename
+// of LOGUEOS_WORKTREE_BASE so this matches whatever pool root the operator
+// configured. Default: 'worktrees' (basename of D:\dev\worktrees).
+//
+// CR R1 on PR #187: previously hardcoded as 'worktrees', which silently broke
+// parkingBranchForCwd if LOGUEOS_WORKTREE_BASE pointed somewhere whose
+// basename wasn't 'worktrees' (e.g. D:\custom\disp-pool). Spawning a worker
+// in such a worktree would then trigger pre_spawn_dirty_refusal because
+// parkingBranchForCwd returned null. Reading from env at module load
+// matches how WORKTREE_POOLS in worktree.js consumes LOGUEOS_WORKTREE_BASE.
+const LOS14_POOL_ANCHOR = path.win32
+  .basename(path.win32.normalize(process.env.LOGUEOS_WORKTREE_BASE || 'D:\\dev\\worktrees'))
+  .toLowerCase();
+
 function parkingBranchForCwd(cwd) {
   const cwdStr = String(cwd);
   const name = path.win32.basename(cwdStr);
@@ -246,24 +260,31 @@ function parkingBranchForCwd(cwd) {
   // parking branches even though both end in -w1). Pattern guard ensures
   // we only match worktree-shaped basenames — random paths return null.
   if (/^[A-Za-z0-9._-]+-w\d+$/i.test(name)) return `_parking_${name}`;
-  // LOS-14 layout (added 2026-05-11): D:\dev\worktrees\<repo>\w<N> →
+  // LOS-14 layout (added 2026-05-11): <LOGUEOS_WORKTREE_BASE>\<repo>\w<N> →
   // _parking_<repo>-w<N>. Same parking-branch shape as the multi-repo
   // pattern above, just derived from grandparent/parent/basename instead
   // of just basename. We require ALL THREE guards:
   //   - basename matches exactly w<N>
   //   - parent dir name is a valid repo identifier
-  //   - grandparent dir basename is exactly "worktrees" (the LOS-14
-  //     pool root marker — without this, a bare `D:\dev\w1` could match
-  //     with parent=`dev` and create `_parking_dev-w1` which would be
-  //     wrong on every axis)
-  // The grandparent="worktrees" check is the layout anchor: it says
-  // "this path is part of the dispatch pool, not some random other
-  // checkout that happens to end in /w1".
+  //   - grandparent dir basename matches LOS14_POOL_ANCHOR (= basename
+  //     of LOGUEOS_WORKTREE_BASE, default 'worktrees'). Without this
+  //     anchor, a bare `D:\dev\w1` could match with parent=`dev` and
+  //     create `_parking_dev-w1` which would be wrong on every axis.
+  // The anchor check says "this path is part of the dispatch pool, not
+  // some random other checkout that happens to end in /w1". CR R1 on
+  // PR #187: anchor is now derived from LOGUEOS_WORKTREE_BASE rather
+  // than hardcoded to 'worktrees', so an operator who overrides the
+  // pool root to a non-default location (e.g. D:\custom\disp-pool)
+  // still gets correct parking-branch derivation.
   if (/^w\d+$/i.test(name)) {
     const parentDir = path.win32.dirname(cwdStr);
     const parent = path.win32.basename(parentDir);
     const grandparent = path.win32.basename(path.win32.dirname(parentDir));
-    if (parent && /^[A-Za-z0-9._-]+$/.test(parent) && grandparent.toLowerCase() === 'worktrees') {
+    if (
+      parent &&
+      /^[A-Za-z0-9._-]+$/.test(parent) &&
+      grandparent.toLowerCase() === LOS14_POOL_ANCHOR
+    ) {
       return `_parking_${parent}-${name.toLowerCase()}`;
     }
   }
