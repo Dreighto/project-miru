@@ -160,6 +160,7 @@ reference file when you need the specific fact.
 - **`database-rules.md`** — FETCH IF reading or proposing changes to `card_catalog.db`.
 - **`restart-procedures.md`** — FETCH IF restarting a service.
 - **`multi-repo-onboarding.md`** — FETCH IF adding a new repo to the dispatch loop.
+- **`los-10-rename-map.md`** — FETCH IF planning, executing, or auditing the LOS-10 cutover. Contains the locked rename map for paths, services, env vars, and identifiers that the Step 6 filter-repo pass applies. New `LOGUEOS_*` env vars introduced after 2026-05-09 should already be using the post-rename style.
 
 If you cannot tell which overlay applies, see the Fail-Closed Directive at the
 top of this file: stop and ask.
