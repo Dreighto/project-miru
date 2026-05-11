@@ -84,6 +84,11 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+# Shared byte-level encoding sniffer — used here for .ps1 file reads and also
+# imported by check_ps1_hardcoded_paths.py. CR R5 on PR #3 asked the duplicated
+# inline logic be extracted; both consumers now share one implementation.
+from _encoding_sniff import decode_bytes_with_utf16_sniffing
+
 if sys.platform == "win32" and hasattr(sys.stdout, "buffer"):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
@@ -634,36 +639,20 @@ def main(argv: list[str] | None = None) -> int:
         path_str = str(file_path)
         if any(skip in path_str for skip in (".venv", "node_modules", "__pycache__")):
             continue
-        # CR R4 (PR #193 + PR #3): for .ps1 files, byte-level encoding
-        # sniffing. The previous ordered-fallback chain (utf-8, utf-16,
-        # utf-16-le, utf-16-be) DOES NOT detect BOM-less UTF-16: utf-8
-        # decode of UTF-16 bytes succeeds silently with garbage because
-        # U+0000 is a valid UTF-8 codepoint. Instead: check for BOM,
-        # then null-byte density at odd vs even positions to discriminate
-        # LE / BE / UTF-8. Non-.ps1 files keep the lenient utf-8+replace
-        # read since they're not the regression surface and we don't want
-        # to misclassify legitimate binary blobs as UTF-16 by accident.
+        # CR R5 on PR #3: byte-level encoding sniff extracted to
+        # _encoding_sniff.decode_bytes_with_utf16_sniffing. Same logic as
+        # check_ps1_hardcoded_paths._read_text_robust now. .ps1 files go
+        # through the sniffer (BOM detect → null-byte LE/BE → utf-8 fallback);
+        # non-.ps1 files keep the lenient utf-8 + errors='replace' read since
+        # they aren't the regression surface and we don't want to misclassify
+        # legitimate binary blobs as UTF-16 by accident.
         content: str | None = None
         if path_str.lower().endswith(".ps1"):
             try:
                 raw = file_path.read_bytes()
             except OSError:
                 continue
-            if raw.startswith(b"\xff\xfe"):
-                content = raw[2:].decode("utf-16-le", errors="replace")
-            elif raw.startswith(b"\xfe\xff"):
-                content = raw[2:].decode("utf-16-be", errors="replace")
-            elif raw.count(b"\x00") > len(raw) // 4:
-                # BOM-less UTF-16 — decide LE vs BE by null-byte positions.
-                odd_nulls = sum(1 for i in range(1, len(raw), 2) if raw[i] == 0)
-                even_nulls = sum(1 for i in range(0, len(raw), 2) if raw[i] == 0)
-                enc = "utf-16-le" if odd_nulls > even_nulls else "utf-16-be"
-                content = raw.decode(enc, errors="replace")
-            else:
-                try:
-                    content = raw.decode("utf-8")
-                except UnicodeDecodeError:
-                    content = raw.decode("utf-8", errors="replace")
+            content = decode_bytes_with_utf16_sniffing(raw)
         else:
             try:
                 content = file_path.read_text(encoding="utf-8", errors="replace")

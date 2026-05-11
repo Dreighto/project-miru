@@ -39,6 +39,12 @@ import re
 import sys
 from pathlib import Path
 
+# When this script is invoked as `python tools/check_ps1_hardcoded_paths.py`
+# (the pre-commit framework's `entry: python tools/...py` form), Python adds
+# the script's directory (tools/) to sys.path, so the sibling helper module
+# is importable by its bare name. Same trick works for pre_pr_review.py.
+from _encoding_sniff import decode_bytes_with_utf16_sniffing
+
 # Capture every -Description <quoted-body> arg. PowerShell accepts both
 # double- and single-quoted strings here (and even back-tick-continued
 # multi-line strings), so we match either quote style and span across
@@ -70,44 +76,20 @@ POSIX_PATH_RE = re.compile(r"/(home|var|opt|tmp|Users)/\S+", re.IGNORECASE)
 # utf-8-first ordered fallback does NOT work for UTF-16-LE/BE without a BOM —
 # utf-8 decode of UTF-16 bytes succeeds with garbage (every other byte is
 # U+0000, which is a valid UTF-8 codepoint), so it never raises
-# UnicodeDecodeError. CR R4 on PR #193 caught the bypass. The correct
-# approach is byte-level sniffing: detect a BOM if present, otherwise count
-# null-byte positional density to distinguish UTF-16-LE / UTF-16-BE / UTF-8.
+# UnicodeDecodeError. CR R5 on PR #3 extracted the byte-level encoding sniffer
+# into the shared `_encoding_sniff` module; this function is a thin wrapper.
 
 
 def _read_text_robust(path: Path) -> str | None:
-    """Detect the right encoding for a PowerShell file via BOM + null-byte
-    heuristics, then decode. Returns the decoded text, or None on OSError.
-
-    Detection order:
-      1. UTF-16-LE BOM (FF FE)  → strip BOM, decode utf-16-le
-      2. UTF-16-BE BOM (FE FF)  → strip BOM, decode utf-16-be
-      3. > 25% null bytes total: BOM-less UTF-16. LE vs BE is decided by
-         counting null-byte density at odd vs even byte positions.
-         ASCII-encoded UTF-16-LE has 0x00 at every odd byte (the high byte
-         of each 16-bit word); UTF-16-BE has 0x00 at every even byte.
-      4. Otherwise: UTF-8 (with errors='replace' as a last resort so we
-         still scan most of the file even on partially-corrupt input).
-    """
+    """Read `path` as bytes, sniff its encoding, return decoded text. Returns
+    None only on OSError (file truly unreadable). The shared sniffer never
+    raises UnicodeDecodeError — falls back to utf-8 with errors='replace' so
+    even partially-corrupt files surface scannable text."""
     try:
         raw = path.read_bytes()
     except OSError:
         return None
-    if raw.startswith(b"\xff\xfe"):
-        return raw[2:].decode("utf-16-le", errors="replace")
-    if raw.startswith(b"\xfe\xff"):
-        return raw[2:].decode("utf-16-be", errors="replace")
-    null_count = raw.count(b"\x00")
-    if null_count > 0 and null_count > len(raw) // 4:
-        odd_nulls = sum(1 for i in range(1, len(raw), 2) if raw[i] == 0)
-        even_nulls = sum(1 for i in range(0, len(raw), 2) if raw[i] == 0)
-        if odd_nulls > even_nulls:
-            return raw.decode("utf-16-le", errors="replace")
-        return raw.decode("utf-16-be", errors="replace")
-    try:
-        return raw.decode("utf-8")
-    except UnicodeDecodeError:
-        return raw.decode("utf-8", errors="replace")
+    return decode_bytes_with_utf16_sniffing(raw)
 
 
 def check_file(path: Path) -> list[tuple[int, str]]:
