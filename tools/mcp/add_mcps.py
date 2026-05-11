@@ -73,6 +73,14 @@ ENTRIES = {
     "scheduled-tasks": POSH_MCP_ENTRY,
 }
 
+# Per-entry prerequisite files. The script refuses to write an entry
+# whose prerequisite is missing — pointing an MCP at a non-existent
+# config file just produces a server that exits immediately on every
+# launch, which is harder to debug than a missing entry.
+ENTRY_PREREQUISITES: dict[str, list[str]] = {
+    "scheduled-tasks": [POSH_MCP_CONFIG],
+}
+
 
 def _backup(path: Path) -> Path:
     """Copy path to path.backup-<timestamp> and return the backup path."""
@@ -82,35 +90,51 @@ def _backup(path: Path) -> Path:
     return backup
 
 
-def _add_entries(path: Path, dry_run: bool) -> tuple[list[str], list[str]]:
-    """Add ENTRIES to path's mcpServers section. Returns (added, skipped).
+def _missing_prereqs(name: str) -> list[str]:
+    """Return list of prerequisite files that are missing for entry `name`."""
+    prereqs = ENTRY_PREREQUISITES.get(name, [])
+    return [p for p in prereqs if not Path(p).exists()]
 
-    Validates the JSON structure before mutating — if the file isn't an
-    object, or mcpServers isn't an object (e.g. someone made it an array),
-    we refuse rather than crash mid-mutation. CR R1 finding on PR #190.
+
+def _add_entries(path: Path, dry_run: bool) -> tuple[list[str], list[str], list[str]]:
+    """Add ENTRIES to path's mcpServers section.
+
+    Returns (added, skipped, errors). `errors` is a non-empty list of
+    short strings if the config was unreadable, structurally invalid, or
+    an entry's prerequisite file was missing — these surface non-zero
+    exits via main(). CR R2 findings on PR #190 (MAJOR lines 66 + 113).
     """
+    errors: list[str] = []
+
     if not path.exists():
-        print(f"[add_mcps] {path}: NOT FOUND — skipping", file=sys.stderr)
-        return [], []
+        msg = f"{path}: NOT FOUND"
+        print(f"[add_mcps] {msg} — refusing to apply", file=sys.stderr)
+        errors.append(msg)
+        return [], [], errors
     with path.open("r", encoding="utf-8") as fh:
-        data = json.load(fh)
+        try:
+            data = json.load(fh)
+        except json.JSONDecodeError as exc:
+            msg = f"{path}: invalid JSON ({exc})"
+            print(f"[add_mcps] ERROR — {msg}. Refusing to modify.", file=sys.stderr)
+            errors.append(msg)
+            return [], [], errors
     if not isinstance(data, dict):
-        print(
-            f"[add_mcps] {path}: ERROR — top-level JSON must be an object, "
-            f"got {type(data).__name__}. Refusing to modify.",
-            file=sys.stderr,
-        )
-        return [], []
+        msg = f"{path}: top-level JSON must be an object, got {type(data).__name__}"
+        print(f"[add_mcps] ERROR — {msg}. Refusing to modify.", file=sys.stderr)
+        errors.append(msg)
+        return [], [], errors
     existing_servers = data.get("mcpServers")
     if existing_servers is None:
         data["mcpServers"] = {}
     elif not isinstance(existing_servers, dict):
-        print(
-            f"[add_mcps] {path}: ERROR — mcpServers exists but is not an object "
-            f"(got {type(existing_servers).__name__}). Refusing to modify.",
-            file=sys.stderr,
+        msg = (
+            f"{path}: mcpServers exists but is not an object "
+            f"(got {type(existing_servers).__name__})"
         )
-        return [], []
+        print(f"[add_mcps] ERROR — {msg}. Refusing to modify.", file=sys.stderr)
+        errors.append(msg)
+        return [], [], errors
     mcp_servers = data["mcpServers"]
 
     added: list[str] = []
@@ -118,6 +142,17 @@ def _add_entries(path: Path, dry_run: bool) -> tuple[list[str], list[str]]:
     for name, entry in ENTRIES.items():
         if name in mcp_servers:
             skipped.append(name)
+            continue
+        # CR R2 (MAJOR line 66): refuse to write an entry whose
+        # prerequisite file is missing. For scheduled-tasks that's the
+        # PoshMCP config; pointing the MCP at a missing path produces a
+        # silent immediate-exit server that's harder to debug than a
+        # gap in the config.
+        missing = _missing_prereqs(name)
+        if missing:
+            msg = f"{name}: missing prerequisite file(s): {missing}"
+            print(f"[add_mcps] ERROR — {msg}. Refusing to add this entry.", file=sys.stderr)
+            errors.append(msg)
             continue
         if not dry_run:
             mcp_servers[name] = entry
@@ -134,7 +169,7 @@ def _add_entries(path: Path, dry_run: bool) -> tuple[list[str], list[str]]:
     if skipped:
         print(f"[add_mcps] {path}: already present {skipped} — no change")
 
-    return added, skipped
+    return added, skipped, errors
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -147,8 +182,17 @@ def main(argv: list[str] | None = None) -> int:
 
     print(f"Mode: {'DRY-RUN' if args.dry_run else 'APPLY'}")
     print()
-    _add_entries(CLAUDE_CONFIG, args.dry_run)
+    _, _, errors = _add_entries(CLAUDE_CONFIG, args.dry_run)
     print()
+
+    if errors:
+        # CR R2 (MAJOR line 113): config-missing / structurally-invalid /
+        # missing-prereq must surface as a non-zero exit so automation
+        # doesn't silently treat a no-op or partial run as success.
+        print(f"FAILED with {len(errors)} error(s):", file=sys.stderr)
+        for err in errors:
+            print(f"  - {err}", file=sys.stderr)
+        return 1
 
     print("Done. Operator action required:")
     print("  - Restart Claude Code to load the new MCPs into CC's session.")

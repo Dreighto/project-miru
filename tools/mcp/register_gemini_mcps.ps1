@@ -18,7 +18,8 @@
 #   - Type `/mcp` inside Gemini to verify all entries show as Ready
 #
 # Scope is `project` (writes to <cwd>/.gemini/settings.json). Run from
-# D:\dev\miru to register against the Miru repo's config.
+# the repo root you want to register against (cd to that repo's root
+# before invoking this script).
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -115,9 +116,15 @@ if ($script:FailedCount -gt 0) {
     exit 1
 }
 Write-Host "=== Done — all registrations succeeded ===" -ForegroundColor Cyan
+# CR R2 (MINOR line 121): relaunch instructions previously hardcoded
+# 'cd D:\dev\miru && gemini' which is workstation-specific. Compute
+# the repo root from this script's location (tools/mcp/ -> repo root
+# is two levels up) so the printed instructions match whatever clone
+# location the operator is actually running from.
+$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Write-Host "Next:"
 Write-Host "  1. Close any running Gemini CLI session"
-Write-Host "  2. Relaunch: cd D:\dev\miru && gemini"
+Write-Host ("  2. Relaunch from this repo: cd '{0}'; gemini" -f $repoRoot)
 Write-Host "  3. In the Gemini prompt, type: /mcp"
 Write-Host "  4. All 7 new entries (docker, scheduled-tasks, svelte, shadcn-svelte,"
 Write-Host "     lucide-icons, a11y-scanner, vitest) should show as Ready."
