@@ -117,26 +117,40 @@ def _gh_api(endpoint: str) -> Any:
     if not out:
         return []
     # Split paginated arrays. `gh api --paginate` concatenates them like
-    # "[...][...]". Use a simple split-and-rejoin.
-    arrays = []
-    depth = 0
-    start = 0
-    for i, ch in enumerate(out):
-        if ch == "[":
-            if depth == 0:
-                start = i
-            depth += 1
-        elif ch == "]":
-            depth -= 1
-            if depth == 0:
-                arrays.append(out[start : i + 1])
+    # "[...][...]". CR R1 finding on PR #188: the previous bracket-counter
+    # approach treated `[` and `]` inside JSON strings as structural,
+    # which corrupts the split when comment bodies contain markdown
+    # link syntax or code-fenced bracket characters. The pagination of
+    # CR's own comments has plenty of those, so the splitter silently
+    # produced zero findings on certain PRs.
+    #
+    # Fix: use json.JSONDecoder.raw_decode to peel successive arrays off
+    # the buffer. raw_decode parses one JSON value from a string and
+    # returns (value, end_index). Iteratively skip whitespace, decode
+    # one array, advance past it, repeat. Quote-aware by virtue of being
+    # the real JSON parser.
+    decoder = json.JSONDecoder()
     combined: list[Any] = []
-    for arr_text in arrays:
+    idx = 0
+    while idx < len(out):
+        # Skip whitespace between concatenated arrays
+        while idx < len(out) and out[idx].isspace():
+            idx += 1
+        if idx >= len(out):
+            break
         try:
-            combined.extend(json.loads(arr_text))
+            value, end = decoder.raw_decode(out, idx)
         except json.JSONDecodeError as exc:
             print(f"[cr_findings_extract] pagination decode failed: {exc}", file=sys.stderr)
             sys.exit(1)
+        if not isinstance(value, list):
+            print(
+                f"[cr_findings_extract] unexpected non-array JSON value at offset {idx}",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        combined.extend(value)
+        idx = end
     return combined
 
 
