@@ -164,10 +164,12 @@ Write-Host ""
 Write-Host "=== Registering MCP servers with Gemini CLI ===" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "--- Infrastructure (CC + Gemini parity) ---"
+# CR R5 finding: Escape apostrophes in the path for embedding in the single-quoted -Command string
 Add-McpServer -Name 'docker'          -Command 'uvx'     -ServerArgs @('mcp-server-docker')
+$escapedPoshMcpConfigPath = $PoshMcpConfigPath -replace "'", "''"
 Add-McpServer -Name 'scheduled-tasks' -Command 'pwsh'    -ServerArgs @(
     '-NoProfile', '-NoLogo', '-NonInteractive', '-WindowStyle', 'Hidden',
-    '-Command', ("Import-Module PoshMCP; Start-PoshMcp -ConfigPath '{0}'" -f $PoshMcpConfigPath)
+    '-Command', ("Import-Module PoshMCP; Start-PoshMcp -ConfigPath '{0}'" -f $escapedPoshMcpConfigPath)
 )
 
 Write-Host ""
