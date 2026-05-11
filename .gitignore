@@ -154,3 +154,4 @@ data/peer_reviews/
 # Hermes Stage 1 shadow predictor runtime log (added 2026-05-09, PRO-329)
 # Append-only runtime data, same pattern as the other DGAS append-only files above.
 data/hermes_predictions.jsonl
+.gemini/settings.json.backup-*
