@@ -45,7 +45,7 @@ _APPROVED_THINKING_LEVELS = frozenset({"extended", "none", "low", "medium", "hig
 #
 # Parity is enforced by tests/test_dispatch_tools_target_repo_parity.py — that
 # test fails if these two lists diverge. Per CodeRabbit feedback on PR #156.
-_APPROVED_TARGET_REPOS = frozenset({"project-miru", "LogueOS-Console"})
+_APPROVED_TARGET_REPOS = frozenset({"project-miru", "LogueOS-Console", "LogueOS-Orchestrator"})
 _DEFAULT_TARGET_REPO = "project-miru"
 _DEFAULT_TIMEOUT_S = 600
 _TIMEOUT_MIN = 1
@@ -120,9 +120,13 @@ def dispatch_worker(
     ``thinking_level``: 'extended' or 'none'; claude-code only (PRO-265).
     ``tool_profile``: Phase 3 subagent isolation profile (e.g. 'drift_executor').
     ``target_repo``: which worktree pool to lease from (added 2026-05-09 for
-        multi-repo dispatch). One of: 'project-miru' (default) or 'LogueOS-Console'.
+        multi-repo dispatch). One of: 'project-miru' (default), 'LogueOS-Console',
+        or 'LogueOS-Orchestrator' (added 2026-05-10 for LOS-10 Step 7 prep).
         Workers landing in non-default repos must pass this explicitly. PRO-team
-        tickets stay on 'project-miru'; LOS-team tickets go to 'LogueOS-Console'.
+        tickets stay on 'project-miru'; LOS-team tickets should route to
+        'LogueOS-Console', unless they target the dispatch loop substrate, in which
+        case route to 'LogueOS-Orchestrator'. Runtime default remains 'project-miru'
+        when this parameter is omitted.
     Returns JSON: ok, trace_id, worker, ticket_id, http_status, listener_response.
     """
     cfg = _CFG
