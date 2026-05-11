@@ -45,11 +45,19 @@ EXECUTE=0
 SOURCE_CLONE=""
 OUTPUT_DIR="${LOS_10_OUTPUT_DIR:-/tmp/los-10-import}"
 
-LIVE_REPO_PATHS=(
-    "/d/dev/miru"
-    "D:/dev/miru"
-    "D:\\dev\\miru"
-)
+# The "live" project-miru tree. Identified by the common git dir of its
+# checkout — that's the same identity for the main worktree AND every
+# attached worktree (miru-w1, miru-w2, etc.). CR R3: the previous
+# string-match on three literal path spellings missed attached worktrees,
+# which share the same `.git` common dir and would let an operator
+# accidentally rewrite history from a stale worker checkout.
+#
+# Resolution is done at runtime against the source_clone's git-common-dir
+# (see refusal block below). The constant below is the path of the LIVE
+# main worktree — its common-dir is computed once and compared by realpath
+# against the source_clone's. Hardcoded fallback for clarity in error
+# messages.
+LIVE_REPO_MAIN_TREE="/d/dev/miru"
 
 usage() {
     sed -n '2,40p' "$0" >&2
@@ -61,10 +69,14 @@ usage() {
 # silently absorb the next flag as its value (CR R2). Under `set -u`,
 # missing values otherwise produce a non-actionable "unbound variable"
 # error rather than "X requires a value".
+#
+# CR R3: rejects ANY leading dash, not just `--`. Previously `--source-clone
+# -h` consumed `-h` as a path and failed later with a misleading repo error
+# instead of the intended usage failure.
 require_value() {
     local flag="$1"
     local value="${2:-}"
-    if [[ -z "$value" || "$value" == --* ]]; then
+    if [[ -z "$value" || "$value" == -* ]]; then
         echo "[los_10_filter_repo] ERROR: $flag requires a value" >&2
         usage
     fi
@@ -101,18 +113,58 @@ if [[ -z "$SOURCE_CLONE" ]]; then
     usage
 fi
 
-# Refusal: source must be a real git repo
-if [[ ! -d "$SOURCE_CLONE/.git" ]]; then
+# Refusal: source must be a real git repo. CR R3: accept BOTH a .git
+# directory (main worktree) AND a .git file (attached worktree gitlink).
+# Use `git rev-parse --is-inside-work-tree` for the canonical check —
+# it succeeds in either case.
+if ! (cd "$SOURCE_CLONE" 2>/dev/null && [[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" == "true" ]]); then
     echo "[los_10_filter_repo] ERROR: $SOURCE_CLONE is not a git repository" >&2
     exit 1
 fi
 
-# Refusal: source must not be the live tree (we operate on clones only)
+# Refusal: source must not be the live tree (we operate on clones only).
+# CR R3: identity check, not path check. Compares git-common-dir (which
+# is the same for the main worktree AND every attached worktree) so an
+# operator can't accidentally invoke this from /d/dev/miru-w1 (or any
+# worker checkout) and have it silently pass.
 SOURCE_ABS="$(cd "$SOURCE_CLONE" && pwd)"
+SOURCE_COMMON_DIR="$(cd "$SOURCE_CLONE" && git rev-parse --git-common-dir 2>/dev/null || true)"
+if [[ -n "$SOURCE_COMMON_DIR" ]]; then
+    # Resolve to absolute path for a reliable comparison
+    SOURCE_COMMON_DIR="$(cd "$SOURCE_CLONE" && cd "$SOURCE_COMMON_DIR" && pwd)"
+fi
+
+LIVE_COMMON_DIR=""
+if [[ -d "$LIVE_REPO_MAIN_TREE" ]]; then
+    LIVE_COMMON_DIR="$(cd "$LIVE_REPO_MAIN_TREE" && git rev-parse --git-common-dir 2>/dev/null || true)"
+    if [[ -n "$LIVE_COMMON_DIR" ]]; then
+        LIVE_COMMON_DIR="$(cd "$LIVE_REPO_MAIN_TREE" && cd "$LIVE_COMMON_DIR" && pwd)"
+    fi
+fi
+
+if [[ -n "$SOURCE_COMMON_DIR" && -n "$LIVE_COMMON_DIR" && "$SOURCE_COMMON_DIR" == "$LIVE_COMMON_DIR" ]]; then
+    echo "[los_10_filter_repo] ERROR: refusing to run on the live project-miru tree (or one of its attached worktrees)." >&2
+    echo "    source_clone:   $SOURCE_ABS" >&2
+    echo "    git-common-dir: $SOURCE_COMMON_DIR" >&2
+    echo "    matches live:   $LIVE_COMMON_DIR" >&2
+    echo "" >&2
+    echo "    Clone to a throwaway path first:" >&2
+    echo "    git clone --no-local $LIVE_REPO_MAIN_TREE /tmp/project-miru-clone" >&2
+    exit 1
+fi
+
+# Fallback path-match (only fires if git rev-parse failed above, e.g.
+# the LIVE_REPO_MAIN_TREE isn't on this machine). Keeps the prior
+# defense-in-depth refusal for the literal path spellings.
+LIVE_REPO_PATHS=(
+    "/d/dev/miru"
+    "D:/dev/miru"
+    "D:\\dev\\miru"
+)
 for live in "${LIVE_REPO_PATHS[@]}"; do
     if [[ "$SOURCE_ABS" == "$live" ]]; then
         echo "[los_10_filter_repo] ERROR: refusing to run on the live tree ($live). Clone first:" >&2
-        echo "    git clone --no-local /d/dev/miru /tmp/project-miru-clone" >&2
+        echo "    git clone --no-local $LIVE_REPO_MAIN_TREE /tmp/project-miru-clone" >&2
         exit 1
     fi
 done
@@ -126,15 +178,21 @@ if ! (cd "$SOURCE_CLONE" && [[ -z "$(git status --porcelain --untracked-files=al
     exit 1
 fi
 
-# Refusal: git filter-repo must be installed
-if ! command -v git-filter-repo >/dev/null 2>&1; then
+# Refusal: git-filter-repo must be installed (only for actual execution).
+# Dry-runs don't invoke filter-repo, so the install check shouldn't gate
+# them — operators rehearsing the plan on a machine without the tool
+# should still be able to see what would happen.
+if [[ $EXECUTE -eq 1 ]] && ! command -v git-filter-repo >/dev/null 2>&1; then
     echo "[los_10_filter_repo] ERROR: git-filter-repo not on PATH" >&2
     echo "    Install: pip install git-filter-repo" >&2
     exit 1
 fi
 
-# Refusal: output dir must not exist
-if [[ -e "$OUTPUT_DIR" ]]; then
+# Refusal: output dir must not exist when actually executing.
+# CR R3: previously this fired unconditionally, blocking dry-runs on a
+# leftover /tmp/los-10-import from a prior cutover attempt. Dry-runs
+# don't write anything, so a stale output_dir shouldn't gate them.
+if [[ $EXECUTE -eq 1 && -e "$OUTPUT_DIR" ]]; then
     echo "[los_10_filter_repo] ERROR: output dir already exists: $OUTPUT_DIR" >&2
     echo "    Pick a fresh path or delete the existing one." >&2
     exit 1
