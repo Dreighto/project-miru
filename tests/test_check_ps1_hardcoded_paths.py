@@ -271,9 +271,9 @@ def test_colon_separated_description_parameter(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     result = _run(f)
-    assert result.returncode == 1, (
-        f"colon-separated -Description should be scanned; stderr: {result.stderr}"
-    )
+    assert (
+        result.returncode == 1
+    ), f"colon-separated -Description should be scanned; stderr: {result.stderr}"
     assert "startup_all.ps1" in result.stderr
 
 
@@ -292,9 +292,9 @@ def test_backtick_escaped_quote_in_double_quoted_description(tmp_path: Path) -> 
         encoding="utf-8",
     )
     result = _run(f)
-    assert result.returncode == 1, (
-        f"backtick-escaped quote should not bypass scan; stderr: {result.stderr}"
-    )
+    assert (
+        result.returncode == 1
+    ), f"backtick-escaped quote should not bypass scan; stderr: {result.stderr}"
     assert "startup_all.ps1" in result.stderr
 
 
@@ -310,7 +310,7 @@ def test_doubled_single_quote_escape_in_single_quoted_description(tmp_path: Path
         encoding="utf-8",
     )
     result = _run(f)
-    assert result.returncode == 1, (
-        f"doubled-quote escape should not bypass scan; stderr: {result.stderr}"
-    )
+    assert (
+        result.returncode == 1
+    ), f"doubled-quote escape should not bypass scan; stderr: {result.stderr}"
     assert "startup_all.ps1" in result.stderr
