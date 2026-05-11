@@ -136,10 +136,8 @@ def check_file(path: Path) -> list[tuple[int, str]]:
             else desc_match.group("single")
         )
         line_num = text.count("\n", 0, desc_match.start()) + 1
-        for p in WIN_PATH_RE.finditer(body):
-            findings.append((line_num, p.group(0)))
-        for p in POSIX_PATH_RE.finditer(body):
-            findings.append((line_num, p.group(0)))
+        findings.extend([(line_num, m.group(0)) for m in WIN_PATH_RE.finditer(body)])
+        findings.extend([(line_num, m.group(0)) for m in POSIX_PATH_RE.finditer(body)])
     return findings
 
 

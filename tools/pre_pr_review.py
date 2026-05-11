@@ -488,28 +488,28 @@ def _detect_ps1_hardcoded_paths(path: str, content: str) -> list[Finding]:
         snippet_line = content[
             content.rfind("\n", 0, desc_m.start()) + 1 : content.find("\n", desc_m.start())
         ].strip()
-        for hit in win_path_re.finditer(body):
-            findings.append(
-                Finding(
-                    "P10",
-                    "high",
-                    path,
-                    line_num,
-                    f"-Description embeds hardcoded absolute path {hit.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
-                    snippet_line,
-                )
+        findings.extend([
+            Finding(
+                "P10",
+                "high",
+                path,
+                line_num,
+                f"-Description embeds hardcoded absolute path {m.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
+                snippet_line,
             )
-        for hit in posix_path_re.finditer(body):
-            findings.append(
-                Finding(
-                    "P10",
-                    "high",
-                    path,
-                    line_num,
-                    f"-Description embeds hardcoded absolute path {hit.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
-                    snippet_line,
-                )
+            for m in win_path_re.finditer(body)
+        ])
+        findings.extend([
+            Finding(
+                "P10",
+                "high",
+                path,
+                line_num,
+                f"-Description embeds hardcoded absolute path {m.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
+                snippet_line,
             )
+            for m in posix_path_re.finditer(body)
+        ])
     return findings
 
 
