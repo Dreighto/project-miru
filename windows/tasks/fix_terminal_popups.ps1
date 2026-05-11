@@ -1,4 +1,4 @@
-# fix_terminal_popups.ps1 — apply -WindowStyle Hidden to Miru* scheduled tasks
+# fix_terminal_popups.ps1 -- apply -WindowStyle Hidden to Miru* scheduled tasks
 # that pop visible PowerShell terminals onto the desktop when they fire.
 #
 # Run from an elevated PowerShell window:
@@ -37,10 +37,17 @@ if (-not (Test-IsAdmin)) {
 
 $hiddenArgs = "-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass"
 
+# CR R1 finding on PR #189: paths were hardcoded as D:\dev\miru\... which
+# breaks on any clone or machine outside that exact location. Derive from
+# this script's path: <repo>\windows\tasks\fix_terminal_popups.ps1, so
+# $repoRoot is two levels up.
+$windowsDir = Split-Path -Parent $PSScriptRoot   # windows\
+$repoRoot   = Split-Path -Parent $windowsDir     # repo root
+
 # Tasks to update: name -> (script path)
 $tasksToFix = @{
-    "MiruWorkerUpdater" = "D:\dev\miru\tools\update_workers.ps1"
-    "OP Miru Startup"   = "D:\dev\miru\windows\startup_all.ps1"
+    "MiruWorkerUpdater" = Join-Path $repoRoot 'tools\update_workers.ps1'
+    "OP Miru Startup"   = Join-Path $repoRoot 'windows\startup_all.ps1'
 }
 
 foreach ($taskName in $tasksToFix.Keys) {
@@ -57,13 +64,36 @@ foreach ($taskName in $tasksToFix.Keys) {
     $action = $task.Actions[0]
     Write-Host "  Current args: $($action.Arguments)"
 
-    if ($action.Arguments -match "-WindowStyle\s+Hidden") {
-        Write-Host "  Already has -WindowStyle Hidden — no change" -ForegroundColor Green
+    # CR R1 finding on PR #189: previous idempotency check only required
+    # -WindowStyle Hidden, missing -NonInteractive. A task that already had
+    # -WindowStyle Hidden but lacked -NonInteractive would be wrongly
+    # skipped. Require BOTH flags to consider the task already fixed.
+    $argText = [string]$action.Arguments
+    $hasHidden = $argText -match "-WindowStyle\s+Hidden"
+    $hasNonInteractive = $argText -match "-NonInteractive\b"
+    if ($hasHidden -and $hasNonInteractive) {
+        Write-Host "  Already has -WindowStyle Hidden + -NonInteractive - no change" -ForegroundColor Green
         continue
     }
 
-    # Build new args, preserving the file path and any post-script args.
-    $newArgs = "$hiddenArgs -File `"$taskScript`""
+    # CR R1 finding on PR #189: previous code claimed to preserve
+    # post-script args but actually rebuilt from scratch. Parse the
+    # existing args to extract everything AFTER `-File "<script>"` so
+    # any task-specific trailing arguments are carried through. Common
+    # shape: `-Foo -Bar -File "<script>" arg1 arg2` -> we want `arg1 arg2`.
+    $postFileArgs = ""
+    if ($argText -match '-File\s+"[^"]+"(.*)$') {
+        $postFileArgs = $Matches[1].TrimStart()
+    } elseif ($argText -match "-File\s+'[^']+'(.*)$") {
+        $postFileArgs = $Matches[1].TrimStart()
+    } elseif ($argText -match '-File\s+\S+(.*)$') {
+        $postFileArgs = $Matches[1].TrimStart()
+    }
+    $newArgs = if ($postFileArgs) {
+        "$hiddenArgs -File `"$taskScript`" $postFileArgs"
+    } else {
+        "$hiddenArgs -File `"$taskScript`""
+    }
     Write-Host "  New args:     $newArgs"
 
     $newAction = New-ScheduledTaskAction `
@@ -87,7 +117,7 @@ Get-ScheduledTask | Where-Object {
     -and $_.State -ne 'Disabled'
 } | ForEach-Object {
     $a = $_.Actions[0]
-    # wscript.exe doesn't allocate a console — those tasks are silent
+    # wscript.exe doesn't allocate a console -- those tasks are silent
     # by default regardless of -WindowStyle Hidden. Label them as such
     # so the audit doesn't yield false-positive VISIBLE entries.
     $isWscript = $a.Execute -match "wscript"
