@@ -49,6 +49,12 @@ DETECTOR CATALOG (current — match DETECTORS list at the bottom):
                                   a corrupt-distinguishing flag.
     P9 (dash-only-not-rejected)— argument validation that only rejects `--*`
                                   values, missing single-dash flags like `-h`.
+    P10 (ps1-hardcoded-paths)  — a PowerShell `-Description "..."` argument
+                                  embeds a hardcoded absolute path under a
+                                  dev/work root. Caught by CR on PR #3 when
+                                  register_restart_tasks.ps1 embedded an
+                                  absolute path into a scheduled-task
+                                  description.
 
 NOT-YET-IMPLEMENTED (reserved identifiers — add detectors before re-listing):
 
@@ -424,6 +430,52 @@ def _detect_corrupt_vs_empty(path: str, content: str) -> list[Finding]:
     return findings
 
 
+def _detect_ps1_hardcoded_paths(path: str, content: str) -> list[Finding]:
+    """P10 — a `-Description "..."` argument in a PowerShell script contains a
+    hardcoded absolute path. Caught by CR on PR #3 (LogueOS-Orchestrator) when
+    `register_restart_tasks.ps1` embedded `D:\\dev\\LogueOS-Orchestrator\\windows\\
+    startup_all.ps1` into a scheduled-task description — wrong on every machine
+    where the install lives elsewhere. The correct shape uses a dynamic
+    reference (`$startupScript`, `$PSScriptRoot`, `$windowsDir`).
+
+    Detection is intentionally narrow: only `-Description` args, only common
+    dev-root absolute paths. `Test-Path` / `Set-Content` / etc. with literal
+    absolute paths are NOT flagged (legitimate file-existence checks).
+    """
+    findings: list[Finding] = []
+    if not path.endswith(".ps1"):
+        return findings
+    desc_re = re.compile(r'-Description\s+"([^"]*)"', re.IGNORECASE)
+    win_path_re = re.compile(r"[A-Za-z]:\\dev\\\S+", re.IGNORECASE)
+    posix_path_re = re.compile(r"/(home|var|opt|tmp|Users)/\S+", re.IGNORECASE)
+    for i, line in enumerate(content.splitlines(), 1):
+        for desc_m in desc_re.finditer(line):
+            body = desc_m.group(1)
+            for hit in win_path_re.finditer(body):
+                findings.append(
+                    Finding(
+                        "P10",
+                        "high",
+                        path,
+                        i,
+                        f"-Description embeds hardcoded absolute path {hit.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
+                        line.strip(),
+                    )
+                )
+            for hit in posix_path_re.finditer(body):
+                findings.append(
+                    Finding(
+                        "P10",
+                        "high",
+                        path,
+                        i,
+                        f"-Description embeds hardcoded absolute path {hit.group(0)!r} — replace with $startupScript / $PSScriptRoot / $windowsDir",
+                        line.strip(),
+                    )
+                )
+    return findings
+
+
 DETECTORS = [
     _detect_path_traversal,
     _detect_fsync_rename,
@@ -431,6 +483,7 @@ DETECTORS = [
     _detect_relative_after_cd,
     _detect_dash_only_check,
     _detect_corrupt_vs_empty,
+    _detect_ps1_hardcoded_paths,
 ]
 
 
