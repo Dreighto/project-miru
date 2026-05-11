@@ -96,7 +96,10 @@ repos:
         name: PowerShell -Description hardcoded path detector
         entry: python tools/check_ps1_hardcoded_paths.py
         language: system
-        files: \.ps1$
+        # CR R4 (PR #3): case-insensitive match. Windows file systems are
+        # case-insensitive so `.PS1` / `.Ps1` would silently bypass a
+        # case-sensitive regex.
+        files: (?i)\.ps1$
         pass_filenames: true
 
       # DGAS Tier 2 #8: pre-push gate that refuses force-push or branch-delete

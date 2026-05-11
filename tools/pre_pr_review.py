@@ -443,7 +443,10 @@ def _detect_ps1_hardcoded_paths(path: str, content: str) -> list[Finding]:
     absolute paths are NOT flagged (legitimate file-existence checks).
     """
     findings: list[Finding] = []
-    if not path.endswith(".ps1"):
+    # CR R4 (PR #3): case-insensitive .ps1 suffix check — Windows file systems
+    # are case-insensitive, so `.PS1` / `.Ps1` are the same file as `.ps1` and
+    # must trigger the same detector path.
+    if not path.lower().endswith(".ps1"):
         return findings
     # CR R3 (PR #3): regex now accepts either ' or " (PowerShell supports both)
     # and DOTALL spans multi-line back-tick-continued descriptions. The opening
@@ -631,27 +634,36 @@ def main(argv: list[str] | None = None) -> int:
         path_str = str(file_path)
         if any(skip in path_str for skip in (".venv", "node_modules", "__pycache__")):
             continue
-        # CR R3 (PR #3): for .ps1 files always try the UTF-8 → UTF-16 fallback
-        # chain explicitly. The previous sentinel check (content.startswith("��"))
-        # depended on errors="replace" producing replacement chars in the first
-        # two bytes — that misses UTF-16 LE/BE files without a BOM, and is
-        # fragile to substitution-char variation. For .ps1 we now read without
-        # errors="replace" so UnicodeDecodeError actually surfaces, then walk
-        # the encoding chain. Non-.ps1 files keep the lenient utf-8+replace
-        # read since they're not the regression surface.
+        # CR R4 (PR #193 + PR #3): for .ps1 files, byte-level encoding
+        # sniffing. The previous ordered-fallback chain (utf-8, utf-16,
+        # utf-16-le, utf-16-be) DOES NOT detect BOM-less UTF-16: utf-8
+        # decode of UTF-16 bytes succeeds silently with garbage because
+        # U+0000 is a valid UTF-8 codepoint. Instead: check for BOM,
+        # then null-byte density at odd vs even positions to discriminate
+        # LE / BE / UTF-8. Non-.ps1 files keep the lenient utf-8+replace
+        # read since they're not the regression surface and we don't want
+        # to misclassify legitimate binary blobs as UTF-16 by accident.
         content: str | None = None
-        if path_str.endswith(".ps1"):
-            for enc in ("utf-8", "utf-16", "utf-16-le", "utf-16-be"):
-                try:
-                    content = file_path.read_text(encoding=enc)
-                    break
-                except UnicodeDecodeError:
-                    continue
-                except OSError:
-                    content = None
-                    break
-            if content is None:
+        if path_str.lower().endswith(".ps1"):
+            try:
+                raw = file_path.read_bytes()
+            except OSError:
                 continue
+            if raw.startswith(b"\xff\xfe"):
+                content = raw[2:].decode("utf-16-le", errors="replace")
+            elif raw.startswith(b"\xfe\xff"):
+                content = raw[2:].decode("utf-16-be", errors="replace")
+            elif raw.count(b"\x00") > len(raw) // 4:
+                # BOM-less UTF-16 — decide LE vs BE by null-byte positions.
+                odd_nulls = sum(1 for i in range(1, len(raw), 2) if raw[i] == 0)
+                even_nulls = sum(1 for i in range(0, len(raw), 2) if raw[i] == 0)
+                enc = "utf-16-le" if odd_nulls > even_nulls else "utf-16-be"
+                content = raw.decode(enc, errors="replace")
+            else:
+                try:
+                    content = raw.decode("utf-8")
+                except UnicodeDecodeError:
+                    content = raw.decode("utf-8", errors="replace")
         else:
             try:
                 content = file_path.read_text(encoding="utf-8", errors="replace")

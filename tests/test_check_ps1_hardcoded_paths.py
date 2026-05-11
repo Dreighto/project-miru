@@ -214,3 +214,49 @@ def test_multiline_description_with_backtick_continuation(tmp_path: Path) -> Non
     result = _run(f)
     assert result.returncode == 1
     assert "startup_all.ps1" in result.stderr
+
+
+def test_utf16_le_no_bom_still_scanned(tmp_path: Path) -> None:
+    """CR R4 on PR #193: UTF-16 LE without a BOM is what `Out-File` produces
+    in certain PowerShell modes. The robust read must try utf-16-le even when
+    no BOM is present, otherwise the file decodes as garbage under utf-8 and
+    silently bypasses detection. Write raw bytes via .encode('utf-16-le')
+    which omits the BOM (.encode('utf-16') would include one)."""
+    f = tmp_path / "bad_utf16le_nobom.ps1"
+    line = (
+        'Register-ScheduledTask -TaskName "Foo" '
+        '-Description "Managed by D:\\dev\\miru\\windows\\startup_all.ps1"\n'
+    )
+    f.write_bytes(line.encode("utf-16-le"))
+    result = _run(f)
+    assert result.returncode == 1, f"UTF-16-LE no-BOM should be scanned; stderr: {result.stderr}"
+    assert "startup_all.ps1" in result.stderr
+
+
+def test_utf16_be_no_bom_still_scanned(tmp_path: Path) -> None:
+    """CR R4 on PR #193: same as the LE case for UTF-16 big-endian."""
+    f = tmp_path / "bad_utf16be_nobom.ps1"
+    line = (
+        'Register-ScheduledTask -TaskName "Foo" '
+        '-Description "Managed by D:\\dev\\miru\\windows\\startup_all.ps1"\n'
+    )
+    f.write_bytes(line.encode("utf-16-be"))
+    result = _run(f)
+    assert result.returncode == 1, f"UTF-16-BE no-BOM should be scanned; stderr: {result.stderr}"
+    assert "startup_all.ps1" in result.stderr
+
+
+def test_uppercase_ps1_extension_still_scanned(tmp_path: Path) -> None:
+    """CR R4 on PR #3: Windows file systems are case-insensitive, so `.PS1`
+    and `.Ps1` are the same file as `.ps1`. The hook must trigger on all
+    casings — the .pre-commit-config.yaml regex now uses `(?i)` and the
+    Python suffix check uses `.lower()`."""
+    f = tmp_path / "bad_uppercase.PS1"
+    f.write_text(
+        'Register-ScheduledTask -TaskName "Foo" '
+        '-Description "Managed by D:\\dev\\miru\\windows\\startup_all.ps1"\n',
+        encoding="utf-8",
+    )
+    result = _run(f)
+    assert result.returncode == 1, f"uppercase .PS1 should be scanned; stderr: {result.stderr}"
+    assert "startup_all.ps1" in result.stderr
