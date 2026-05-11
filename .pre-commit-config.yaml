@@ -84,6 +84,21 @@ repos:
         files: \.jsonl$
         pass_filenames: true
 
+      # 2026-05-11: CodeRabbit caught a regression on
+      # `windows/register_restart_tasks.ps1` where a scheduled-task
+      # `-Description` embedded a literal `D:\dev\miru\windows\startup_all.ps1`.
+      # That breaks on any machine where the install path differs. This
+      # hook is the structural guard against that class of bug — it rejects
+      # any -Description "..." string containing a Windows or POSIX absolute
+      # path under common dev/work roots. Coverage is intentionally narrow
+      # to keep false positives near zero.
+      - id: ps1-hardcoded-paths
+        name: PowerShell -Description hardcoded path detector
+        entry: python tools/check_ps1_hardcoded_paths.py
+        language: system
+        files: \.ps1$
+        pass_filenames: true
+
       # DGAS Tier 2 #8: pre-push gate that refuses force-push or branch-delete
       # on protected branches (main, master, release/*). Defense-in-depth
       # alongside the GitHub branch protection ruleset — local rejection
