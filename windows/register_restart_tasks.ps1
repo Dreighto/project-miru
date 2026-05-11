@@ -71,9 +71,15 @@ if (-not (Test-Path $startupScript)) {
     Write-Error "startup_all.ps1 not found at $startupScript"
 }
 
+# -WindowStyle Hidden + -NonInteractive: this task fires at boot (30s
+# delay) when no operator is at the console to dismiss popup windows.
+# Without these flags PowerShell spawns a visible terminal that flashes
+# onto the desktop and can interfere with login. Matches the hidden-args
+# convention used by the other Miru* restart tasks
+# (MiruOpsDigest / MiruRestartMcpGateway / MiruRestartMiruAI / etc.).
 $startupAction = New-ScheduledTaskAction `
     -Execute "powershell.exe" `
-    -Argument "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$startupScript`"" `
+    -Argument "-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$startupScript`"" `
     -WorkingDirectory $repoRoot
 
 $startupTrigger       = New-ScheduledTaskTrigger -AtStartup
