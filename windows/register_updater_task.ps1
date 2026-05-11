@@ -70,9 +70,14 @@ try {
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
     Write-Log "registering_as_user=$currentUser"
 
+    # -WindowStyle Hidden + -NonInteractive: the task runs on a daily timer
+    # with no operator interaction; without these flags the scheduler
+    # spawns a visible PowerShell terminal that flashes onto the desktop
+    # at 3am. The other Miru* tasks (MiruOpsDigest, MiruRestartMcpGateway,
+    # etc.) already use this hidden-args set; this aligns MiruWorkerUpdater.
     $action = New-ScheduledTaskAction `
         -Execute       "powershell.exe" `
-        -Argument      "-NoLogo -NoProfile -ExecutionPolicy Bypass -File `"$taskScript`"" `
+        -Argument      "-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$taskScript`"" `
         -WorkingDirectory $repoRoot
 
     # Nightly at 3:00am
