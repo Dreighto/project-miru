@@ -9,21 +9,52 @@ const log = require('./log');
 // the spawn never completed. Configurable so tests can inject a short TTL.
 const STALE_NULL_PID_MS = Number(process.env.WORKTREE_STALE_NULL_PID_MS) || 30 * 60 * 1000;
 
-// Multi-repo worktree pool (added 2026-05-09 for LOS team). Each entry maps a
-// `target_repo` string to its ordered list of worktree slot paths. Backward
-// compat: callers that don't pass target_repo land on 'project-miru' which uses
-// the same WORKTREE_SLOT_1..6 env vars and default paths as before.
+// Multi-repo worktree pool. Each entry maps a `target_repo` string to its
+// ordered list of worktree slot paths. The dispatch listener leases a slot
+// from the requested pool when spawning a worker; if the pool is exhausted,
+// the dispatch is parked.
 //
-// To add a new repo's pool:
-//   1. Add an entry below: `'<repo>': [ process.env.<REPO>_WORKTREE_SLOT_1 || '<path>', ... ]`
-//   2. Init the worktree(s) on disk parked on `_parking_<repo>-w<N>` from main
-//   3. Restart the dispatch_listener
+// LOS-14 (2026-05-11): repo-agnostic layout. Paths derive from
+// `LOGUEOS_WORKTREE_BASE` + bare repo name + slot index via the
+// `poolFor(repo, count)` helper. Adding a new repo to the dispatch loop is
+// now a one-line entry:
 //
-// New pools should always default to at least one slot. Single-slot pools are
-// fine for low-volume repos; expand as load demands.
+//   '<RepoName>': poolFor('<RepoName>', <slot_count>),
+//
+// Side benefit: dispatch-pool worktrees live under a dedicated root
+// (`D:\dev\worktrees\`) and are physically separated from operator-driven
+// workspaces like `D:\dev\miru-cursor`. The listener can never accidentally
+// pick one up because it's not under the pool root.
+//
+// Backward compat: project-miru and LogueOS-Console keep their pre-LOS-14
+// paths until LOS-14 Part 2 (post-LOS-10 cutover) migrates the live worktrees
+// to the new layout via `git worktree move`. Marked LEGACY_PRE_LOS_14 below.
 const DEFAULT_TARGET_REPO = 'project-miru';
 
+// LOS-14 worktree base. Override with LOGUEOS_WORKTREE_BASE env var.
+const WORKTREE_BASE = process.env.LOGUEOS_WORKTREE_BASE || 'D:\\dev\\worktrees';
+
+/**
+ * Build a pool of worktree slot paths for `repo` under the configured
+ * WORKTREE_BASE. Slot indices are 1-based.
+ *
+ *   poolFor('LogueOS-Console', 2)
+ *     => ['D:\\dev\\worktrees\\LogueOS-Console\\w1',
+ *         'D:\\dev\\worktrees\\LogueOS-Console\\w2']
+ *
+ * @param {string} repo  Bare GitHub repo name (e.g. 'project-miru').
+ * @param {number} count Number of slots in the pool.
+ * @returns {string[]}   Absolute paths for each slot.
+ */
+function poolFor(repo, count) {
+  return Array.from({ length: count }, (_, i) => path.join(WORKTREE_BASE, repo, `w${i + 1}`));
+}
+
 const WORKTREE_POOLS = {
+  // LEGACY_PRE_LOS_14: project-miru worktrees still live at D:\dev\miru-w<N>
+  // because they were created before the LOS-14 layout was adopted. Moved to
+  // poolFor('project-miru', 6) in LOS-14 Part 2 after the LOS-10 cutover, via
+  // `git worktree move` during a quiet window.
   'project-miru': [
     process.env.WORKTREE_SLOT_1 || 'D:\\dev\\miru-w1',
     process.env.WORKTREE_SLOT_2 || 'D:\\dev\\miru-w2',
@@ -32,15 +63,14 @@ const WORKTREE_POOLS = {
     process.env.WORKTREE_SLOT_5 || 'D:\\dev\\miru-w5',
     process.env.WORKTREE_SLOT_6 || 'D:\\dev\\miru-w6',
   ],
+  // LEGACY_PRE_LOS_14: same — moved in LOS-14 Part 2.
   'LogueOS-Console': [process.env.LOGUEOS_CONSOLE_WORKTREE_SLOT_1 || 'D:\\dev\\LogueOS-Console-w1'],
-  // LOS-10 Step 7 prep: added 2026-05-10. Pre-cutover, this pool is for
-  // scaffold work only (README/canon docs, no dispatch loop code yet).
-  // After cutover (Step 8), this becomes the active dispatch substrate and
-  // the listener itself runs from this repo. Single slot is sufficient for
-  // the migration window; expand if post-cutover dispatch volume demands it.
-  'LogueOS-Orchestrator': [
-    process.env.LOGUEOS_ORCHESTRATOR_WORKTREE_SLOT_1 || 'D:\\dev\\LogueOS-Orchestrator-w1',
-  ],
+  // LOS-10 Step 7 prep + LOS-14: pre-cutover, this pool is for scaffold work
+  // only (README/canon docs, no dispatch loop code yet). The worktree doesn't
+  // exist on disk yet, so we can adopt the LOS-14 layout from day one.
+  // Single slot is sufficient for the migration window; expand if
+  // post-cutover dispatch volume demands it.
+  'LogueOS-Orchestrator': poolFor('LogueOS-Orchestrator', 1),
 };
 
 // Flat list of every slot across every pool. Used for lease persistence
