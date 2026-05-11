@@ -55,6 +55,15 @@ foreach ($taskName in $tasksToFix.Keys) {
     Write-Host ""
     Write-Host "=== $taskName ===" -ForegroundColor Cyan
 
+    # CR R2 finding on PR #189: $taskScript was computed from $PSScriptRoot
+    # but never validated to exist on disk. Writing a scheduled task that
+    # points at a missing -File target produces a task that silently no-ops
+    # on every run. Fail fast: if the canonical script is missing from this
+    # checkout, the operator must restore it before we touch the scheduler.
+    if (-not (Test-Path -LiteralPath $taskScript -PathType Leaf)) {
+        throw "Resolved script path does not exist: $taskScript (task: $taskName). Refusing to write a scheduled task pointing at a missing file."
+    }
+
     $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
     if (-not $task) {
         Write-Host "  SKIP: task not registered" -ForegroundColor Yellow
