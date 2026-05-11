@@ -37,15 +37,19 @@ WORKTREE_JS = REPO_ROOT / "services" / "dispatch_listener" / "src" / "worktree.j
 def _extract_pool_keys_from_worktree_js() -> set[str]:
     """Parse worktree.js for the keys of WORKTREE_POOLS.
 
-    The expected shape is:
+    The expected shape (one of):
         const WORKTREE_POOLS = {
           'project-miru': [...],
           'LogueOS-Console': [...],
+          'LogueOS-Orchestrator': poolFor('LogueOS-Orchestrator', 1),
         };
 
-    We extract the quoted string at the start of each line within that block.
+    Pool values can be either an array literal (legacy, pre-LOS-14) or a
+    `poolFor(...)` call (LOS-14 derived layout). The regex accepts both
+    by matching only the key part and leaving the value shape unconstrained.
     Brittle to refactors that change the literal style; if the layout changes
-    the test will fail loudly and that's the signal to update this regex.
+    the test will fail loudly and that's the signal to update this regex
+    (or extract repo list into a shared config file).
     """
     text = WORKTREE_JS.read_text(encoding="utf-8")
 
@@ -62,8 +66,12 @@ def _extract_pool_keys_from_worktree_js() -> set[str]:
     )
 
     body = block_match.group("body")
-    # Each pool key starts a line: "  'name': [..."  or  '  "name": [...'
-    keys = re.findall(r"^\s*['\"]([^'\"]+)['\"]\s*:\s*\[", body, re.MULTILINE)
+    # Each pool key starts a line: "  'name': [..."  (array literal) or
+    # "  'name': poolFor(...)" (LOS-14 derived). Match key only; value
+    # shape is unconstrained. The lookahead `[\w[]` (identifier or `[`)
+    # ensures we don't match keys with no value, while still accepting
+    # both the array literal and the function-call form.
+    keys = re.findall(r"^\s*['\"]([^'\"]+)['\"]\s*:\s*[\w\[]", body, re.MULTILINE)
     return set(keys)
 
 

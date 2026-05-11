@@ -148,6 +148,7 @@ reference file when you need the specific fact.
 - **`domain-ui.md`** — LOAD IF touching frontend code (`pm/`, `miru_ai/static/`, templates). Contains: craft guide trigger list (when to read `docs/ui_ux/` and `docs/pm/` files).
 - **`domain-ops.md`** — LOAD IF touching scheduled tasks, services, Notion writes, or MCP config. Contains: scheduled-task focus rule, MCP usage rules, Notion read/write rules.
 - **`adopted-lessons.md`** — LOAD IF doing a non-trivial code change (more than typo or lint). Contains: workflow JSON test rule, design-in-Linear-ticket rule.
+- **`pre-push-discipline.md`** — LOAD IF about to push commits to a branch with an open PR (or about to open a new PR). Contains: the 5-step pre-push protocol, the adversarial checklist, the failure-mode catalog of patterns CR consistently flags. Goal: 1 CR round per PR, not 3+.
 
 ### Reference — `.miru/reference/`
 
@@ -159,6 +160,7 @@ reference file when you need the specific fact.
 - **`database-rules.md`** — FETCH IF reading or proposing changes to `card_catalog.db`.
 - **`restart-procedures.md`** — FETCH IF restarting a service.
 - **`multi-repo-onboarding.md`** — FETCH IF adding a new repo to the dispatch loop.
+- **`los-10-rename-map.md`** — FETCH IF planning, executing, or auditing the LOS-10 cutover. Contains the locked rename map for paths, services, env vars, and identifiers that the Step 6 filter-repo pass applies. New `LOGUEOS_*` env vars introduced after 2026-05-09 should already be using the post-rename style.
 
 If you cannot tell which overlay applies, see the Fail-Closed Directive at the
 top of this file: stop and ask.

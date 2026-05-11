@@ -228,8 +228,28 @@ const LEGACY_MIRU_SLOT_BASENAMES = new Set([
   'miru-cursor',
 ]);
 
+// LOS-14 anchor for the centralized worktree pool. Resolves to the full
+// absolute path of LOGUEOS_WORKTREE_BASE (default: 'D:\dev\worktrees'),
+// normalized + lowercased for case-insensitive Windows comparison.
+//
+// CR R1 on PR #187 (first attempt): I matched on the BASENAME of
+// LOGUEOS_WORKTREE_BASE. CR R2 (this attempt) caught that basename match
+// is too permissive — with LOGUEOS_WORKTREE_BASE=D:\custom\disp-pool,
+// an unrelated path like E:\tmp\disp-pool\foo\w1 would still match
+// because both end in `disp-pool\foo\w1`. verifyWorktreeParked +
+// cleanupWorktree could then run stash/checkout/pull/delete against an
+// unrelated checkout. Full-path comparison closes that hole.
+//
+// Implementation: capture the configured base as a normalized lowercase
+// path at module load. parkingBranchForCwd compares the cwd's
+// grandparent path (also normalized + lowercased) against this constant.
+const LOS14_POOL_BASE_PATH = path.win32
+  .normalize(process.env.LOGUEOS_WORKTREE_BASE || 'D:\\dev\\worktrees')
+  .toLowerCase();
+
 function parkingBranchForCwd(cwd) {
-  const name = path.win32.basename(String(cwd));
+  const cwdStr = String(cwd);
+  const name = path.win32.basename(cwdStr);
   // Legacy: only the exact basenames in the allowlist get the short-form
   // parking branch (`_parking_w1`). The lowercase normalization handles
   // case-insensitive Windows paths.
@@ -245,6 +265,26 @@ function parkingBranchForCwd(cwd) {
   // parking branches even though both end in -w1). Pattern guard ensures
   // we only match worktree-shaped basenames — random paths return null.
   if (/^[A-Za-z0-9._-]+-w\d+$/i.test(name)) return `_parking_${name}`;
+  // LOS-14 layout (added 2026-05-11): <LOGUEOS_WORKTREE_BASE>\<repo>\w<N> →
+  // _parking_<repo>-w<N>. Same parking-branch shape as the multi-repo
+  // pattern above, just derived from grandparent/parent/basename instead
+  // of just basename. We require ALL THREE guards:
+  //   - basename matches exactly w<N>
+  //   - parent dir name is a valid repo identifier
+  //   - grandparent FULL PATH matches LOS14_POOL_BASE_PATH (the absolute
+  //     normalized form of LOGUEOS_WORKTREE_BASE). CR R2 on PR #187:
+  //     basename match was too permissive — with base=D:\custom\disp-pool,
+  //     a path like E:\tmp\disp-pool\foo\w1 would have falsely matched
+  //     because both had grandparent basename `disp-pool`. Full-path
+  //     comparison rejects that case.
+  if (/^w\d+$/i.test(name)) {
+    const parentDir = path.win32.dirname(cwdStr);
+    const parent = path.win32.basename(parentDir);
+    const grandparentPath = path.win32.normalize(path.win32.dirname(parentDir)).toLowerCase();
+    if (parent && /^[A-Za-z0-9._-]+$/.test(parent) && grandparentPath === LOS14_POOL_BASE_PATH) {
+      return `_parking_${parent}-${name.toLowerCase()}`;
+    }
+  }
   return null;
 }
 

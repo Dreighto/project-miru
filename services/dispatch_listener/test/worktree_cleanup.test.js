@@ -553,6 +553,113 @@ test('parkingBranchForCwd: different repos with same worker suffix produce disti
   assert.equal(frameworkResult, '_parking_LogueOS-Framework-w1');
 });
 
+// --- LOS-14 layout (D:\dev\worktrees\<repo>\w<N>) ---
+
+test('parkingBranchForCwd: LOS-14 layout LogueOS-Orchestrator\\w1 → _parking_LogueOS-Orchestrator-w1', () => {
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\worktrees\\LogueOS-Orchestrator\\w1'),
+    '_parking_LogueOS-Orchestrator-w1'
+  );
+});
+
+test('parkingBranchForCwd: LOS-14 layout multi-digit slot index', () => {
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\worktrees\\project-miru\\w12'),
+    '_parking_project-miru-w12'
+  );
+});
+
+test('parkingBranchForCwd: LOS-14 layout preserves repo casing (case-sensitive parent)', () => {
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\worktrees\\LogueOS-Console\\w3'),
+    '_parking_LogueOS-Console-w3'
+  );
+});
+
+test('parkingBranchForCwd: LOS-14 layout grandparent must be exactly "worktrees" (case-insensitive)', () => {
+  // Mixed case "Worktrees" should still match — the comparison is case-insensitive.
+  assert.equal(
+    parkingBranchForCwd('D:\\dev\\Worktrees\\LogueOS-Console\\w1'),
+    '_parking_LogueOS-Console-w1'
+  );
+});
+
+test('parkingBranchForCwd: LOS-14 anchor rejects bare D:\\dev\\<repo>\\w1 without worktrees parent', () => {
+  // Without the "worktrees" grandparent marker, a path like
+  // D:\dev\foo\w1 must NOT match LOS-14. This is the anchor that prevents
+  // accidental matches on unrelated paths with parent dirs that happen to
+  // look repo-shaped.
+  assert.equal(parkingBranchForCwd('D:\\dev\\foo\\w1'), null);
+});
+
+test('parkingBranchForCwd: LOS-14 layout rejects bare w1 with non-worktrees parent', () => {
+  // Same idea but with a parent that IS a real repo name. Without the
+  // worktrees anchor, the function still returns null.
+  assert.equal(parkingBranchForCwd('D:\\dev\\LogueOS-Console\\w1'), null);
+});
+
+test('parkingBranchForCwd: LOS-14 anchor follows LOGUEOS_WORKTREE_BASE override', () => {
+  // CR R1 + R2 on PR #187: the LOS-14 anchor was originally hardcoded to
+  // 'worktrees' (broken for non-default LOGUEOS_WORKTREE_BASE values), then
+  // matched on basename only (still broken — let unrelated paths through
+  // if they happened to end in the same basename). Now the anchor is
+  // compared on FULL PATH, normalized + lowercased.
+  //
+  // To exercise the override, we reload spawn.js with a different env
+  // value. Done via require-cache deletion + restore so the test is
+  // self-contained.
+  const SPAWN_PATH = require.resolve('../src/spawn');
+  const originalBase = process.env.LOGUEOS_WORKTREE_BASE;
+  const originalCache = require.cache[SPAWN_PATH];
+  delete require.cache[SPAWN_PATH];
+  try {
+    process.env.LOGUEOS_WORKTREE_BASE = 'D:\\custom\\disp-pool';
+    // Re-require with the override in effect.
+    const { parkingBranchForCwd: reloaded } = require('../src/spawn');
+    // Custom path matches the new anchor:
+    assert.equal(
+      reloaded('D:\\custom\\disp-pool\\LogueOS-Console\\w1'),
+      '_parking_LogueOS-Console-w1',
+      'custom pool root should produce correct parking branch'
+    );
+    // Default 'worktrees' path NO LONGER matches:
+    assert.equal(
+      reloaded('D:\\dev\\worktrees\\LogueOS-Console\\w1'),
+      null,
+      'with custom anchor, the default worktrees path should NOT match'
+    );
+    // CR R2: a path with the SAME BASENAME as the configured base must
+    // still NOT match if the full path differs. This is the critical
+    // security property — basename-only match would let an unrelated
+    // E:\tmp\disp-pool\foo\w1 falsely match base=D:\custom\disp-pool.
+    assert.equal(
+      reloaded('E:\\tmp\\disp-pool\\LogueOS-Console\\w1'),
+      null,
+      'a path with same-basename-but-different-prefix must NOT falsely match'
+    );
+    // Also reject a deeper-prefix lookalike:
+    assert.equal(
+      reloaded('D:\\malicious\\custom\\disp-pool\\LogueOS-Console\\w1'),
+      null,
+      'a path with the base as a suffix-substring must NOT falsely match'
+    );
+  } finally {
+    // Restore original env + module cache so subsequent tests use the
+    // default anchor.
+    if (originalBase === undefined) {
+      delete process.env.LOGUEOS_WORKTREE_BASE;
+    } else {
+      process.env.LOGUEOS_WORKTREE_BASE = originalBase;
+    }
+    delete require.cache[SPAWN_PATH];
+    if (originalCache) {
+      require.cache[SPAWN_PATH] = originalCache;
+    } else {
+      require('../src/spawn');
+    }
+  }
+});
+
 // --- verifyWorktreeParked with multi-repo (non-miru) worktrees ---
 
 test('verifyWorktreeParked: accepts LogueOS-Console-w1 on its expected parking branch', () => {
