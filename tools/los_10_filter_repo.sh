@@ -56,13 +56,29 @@ usage() {
     exit 2
 }
 
+# Validate that an option flag has an accompanying value. Catches the
+# easy mistake `--source-clone --output-dir /x` where source_clone would
+# silently absorb the next flag as its value (CR R2). Under `set -u`,
+# missing values otherwise produce a non-actionable "unbound variable"
+# error rather than "X requires a value".
+require_value() {
+    local flag="$1"
+    local value="${2:-}"
+    if [[ -z "$value" || "$value" == --* ]]; then
+        echo "[los_10_filter_repo] ERROR: $flag requires a value" >&2
+        usage
+    fi
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --source-clone)
+            require_value "$1" "${2:-}"
             SOURCE_CLONE="$2"
             shift 2
             ;;
         --output-dir)
+            require_value "$1" "${2:-}"
             OUTPUT_DIR="$2"
             shift 2
             ;;
@@ -152,19 +168,28 @@ PATH_EXCLUDES=(
 # Identifier renames inside file contents. Applied via
 # git-filter-repo --replace-text. The replace-text file has one
 # `old==>new` per line, NO leading whitespace.
+#
+# CR R2: single source of truth. The previous code duplicated this list
+# between build_replace_text() and print_plan(). Drift between the two
+# would silently mean the plan shows one set of renames while the
+# execute path applies another. Now both paths iterate the same array.
+REPLACEMENT_RULES=(
+    "MIRU_ROUTING_KEY==>LOGUEOS_ROUTING_KEY"
+    "MIRU_TRACE_ID==>LOGUEOS_TRACE_ID"
+    "MIRU_MCP_GATEWAY_PORT==>LOGUEOS_MCP_GATEWAY_PORT"
+    "MIRU_MCP_GATEWAY_HOST==>LOGUEOS_MCP_GATEWAY_HOST"
+    "miru-gateway==>logueos-gateway"
+    "miru-dispatch-listener==>logueos-dispatch-listener"
+    "miru_mcp_gateway==>logueos_mcp_gateway"
+)
 REPLACE_TEXT_FILE="$OUTPUT_DIR/.filter-repo-replace-text"
 
 build_replace_text() {
     mkdir -p "$OUTPUT_DIR"
-    cat > "$REPLACE_TEXT_FILE" <<'EOF'
-MIRU_ROUTING_KEY==>LOGUEOS_ROUTING_KEY
-MIRU_TRACE_ID==>LOGUEOS_TRACE_ID
-MIRU_MCP_GATEWAY_PORT==>LOGUEOS_MCP_GATEWAY_PORT
-MIRU_MCP_GATEWAY_HOST==>LOGUEOS_MCP_GATEWAY_HOST
-miru-gateway==>logueos-gateway
-miru-dispatch-listener==>logueos-dispatch-listener
-miru_mcp_gateway==>logueos_mcp_gateway
-EOF
+    : > "$REPLACE_TEXT_FILE"
+    for rule in "${REPLACEMENT_RULES[@]}"; do
+        echo "$rule" >> "$REPLACE_TEXT_FILE"
+    done
 }
 
 print_plan() {
@@ -180,13 +205,12 @@ print_plan() {
     for r in "${PATH_RENAMES[@]}"; do echo "  $r"; done
     echo
     echo "Identifier renames (replace-text, applied in pass 2):"
-    echo "  MIRU_ROUTING_KEY → LOGUEOS_ROUTING_KEY"
-    echo "  MIRU_TRACE_ID → LOGUEOS_TRACE_ID"
-    echo "  MIRU_MCP_GATEWAY_PORT → LOGUEOS_MCP_GATEWAY_PORT"
-    echo "  MIRU_MCP_GATEWAY_HOST → LOGUEOS_MCP_GATEWAY_HOST"
-    echo "  miru-gateway → logueos-gateway"
-    echo "  miru-dispatch-listener → logueos-dispatch-listener"
-    echo "  miru_mcp_gateway → logueos_mcp_gateway"
+    for rule in "${REPLACEMENT_RULES[@]}"; do
+        # Display "old → new" instead of the raw "old==>new" filter-repo format
+        old="${rule%%==>*}"
+        new="${rule##*==>}"
+        echo "  $old → $new"
+    done
     echo
     echo "Refusal: NO push to remote performed by this script. Operator pushes manually."
     echo "======================================================================"
