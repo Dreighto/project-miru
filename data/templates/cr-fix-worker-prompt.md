@@ -18,7 +18,7 @@ parameter to `dispatch_worker(worker="gemini", tool_profile="standard_worker", .
 
 ## The prompt
 
-```
+```text
 You are a CR-fix worker for PR #${PR_NUMBER} on branch ${BRANCH}.
 Linear ticket: ${TICKET_ID}.
 
@@ -41,6 +41,14 @@ ${FINDINGS_BLOCK}
 ---
 
 PROTOCOL (run in order)
+
+0. Run mandatory pre-flight gates:
+
+   python tools/check_kill_switch.py
+   # exit 1 => emit STATUS: ESCALATE: HUMAN-REQUIRED and stop immediately
+
+   python tools/check_worktree_clean.py
+   # exit 1 => emit STATUS: ESCALATE: HUMAN-REQUIRED and stop immediately
 
 1. Check out the branch + pull latest:
 
@@ -146,7 +154,7 @@ The INCONCLUSIVE marker must name the specific blocker
 
 One finding per stanza, separated by blank lines:
 
-```
+```text
 Finding 1: <one-line title>
   Severity: MAJOR
   File: tools/foo.py

@@ -27,7 +27,7 @@ dispatches Gemini** to do the fix unless the finding is non-mechanical
 
 Run this on every CR CHANGES_REQUESTED review:
 
-```
+```text
 Are the findings...
   - Mechanical (renames, fsync calls, regex tweaks, error handling
     wrappers, 1-based indexing, etc.)?         -> DISPATCH GEMINI
@@ -50,6 +50,8 @@ the result before merging.
 ## Required pre-flight per dispatch
 
 Before calling `dispatch_worker`:
+
+0. **Load `.miru/overlays/workflow-dispatch.md`** to enforce gateway profile + Linear `projectId` requirements + W2 routing rules. This overlay is a delegation pattern; workflow-dispatch is the substrate.
 
 1. **Pull current CR findings** via `python tools/cr_findings_extract.py
    <PR> --since <last-review-ts> --summary`. Capture the exact set the
