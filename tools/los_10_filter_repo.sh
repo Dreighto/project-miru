@@ -240,10 +240,18 @@ REPLACEMENT_RULES=(
     "miru-dispatch-listener==>logueos-dispatch-listener"
     "miru_mcp_gateway==>logueos_mcp_gateway"
 )
-REPLACE_TEXT_FILE="$OUTPUT_DIR/.filter-repo-replace-text"
-
+# CR R4 finding: REPLACE_TEXT_FILE was previously a relative path under
+# $OUTPUT_DIR, but the script does `cd "$OUTPUT_DIR"` between writing the
+# file (build_replace_text) and consuming it (pass 2). After the cd, the
+# relative path resolves differently and filter-repo can't find it.
+# Resolve to an absolute path BEFORE writing so both producer and consumer
+# see the same location regardless of cwd.
 build_replace_text() {
     mkdir -p "$OUTPUT_DIR"
+    # `cd "$OUTPUT_DIR" && pwd` resolves to the absolute path on every shell
+    # (works on Git Bash + WSL + Linux). Captured AFTER mkdir so the
+    # directory definitely exists.
+    REPLACE_TEXT_FILE="$(cd "$OUTPUT_DIR" && pwd)/.filter-repo-replace-text"
     : > "$REPLACE_TEXT_FILE"
     for rule in "${REPLACEMENT_RULES[@]}"; do
         echo "$rule" >> "$REPLACE_TEXT_FILE"
@@ -300,6 +308,20 @@ build_replace_text
 
 cd "$OUTPUT_DIR"
 
+# CR R4 finding: the copied .git retains the source clone's `origin`
+# remote pointing at Dreighto/project-miru. Without action here, the
+# operator's later `git remote add origin <LogueOS-Orchestrator URL>`
+# would fail with "remote origin already exists". Rename the inherited
+# remote to `miru-source` so it stays available for forensics (e.g.
+# verifying the imported history's ancestry) but doesn't clash when
+# the operator wires up the new origin. The rename is best-effort —
+# silently skipped if origin doesn't exist (cloned with --bare or
+# fresh init).
+if git remote get-url origin >/dev/null 2>&1; then
+    echo "[los_10_filter_repo] renaming inherited origin → miru-source (preserves source ancestry, frees 'origin' for LogueOS-Orchestrator)" >&2
+    git remote rename origin miru-source
+fi
+
 # Pass 1: exclude Miru-specific paths via --invert-paths
 EXCLUDE_ARGS=( --invert-paths )
 for r in "${PATH_EXCLUDES[@]}"; do
@@ -324,9 +346,12 @@ echo "Output:           $OUTPUT_DIR"
 echo "Commit count:     $(git rev-list --count HEAD)"
 echo "Working dir size: $(du -sh .git 2>/dev/null | awk '{print $1}')"
 echo
+echo "Remotes (after the script ran 'git remote rename origin miru-source'):"
+echo "  miru-source = Dreighto/project-miru (preserved for ancestry forensics)"
+echo
 echo "Next:"
 echo "  1. Inspect the result: cd $OUTPUT_DIR && git log --oneline | head"
-echo "  2. Add LogueOS-Orchestrator as remote:"
+echo "  2. Add LogueOS-Orchestrator as the new origin:"
 echo "       git remote add origin https://github.com/Dreighto/LogueOS-Orchestrator.git"
 echo "  3. Push to migration-import branch (NEVER main directly):"
 echo "       git push -u origin HEAD:migration-import"
