@@ -366,6 +366,7 @@ def _verify_manifest_signature(manifest_path: Path, sig_path: Path | None) -> tu
                 capture_output=True,
                 text=True,
                 timeout=10,
+                check=False,
             )
         if result.returncode == 0:
             return True, "signature verified via ssh-keygen -Y verify"
