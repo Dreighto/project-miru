@@ -110,13 +110,14 @@ PROTOCOL (run in order)
 8. Return to main with a clean tree:
 
    git checkout main
+   git pull --ff-only
    git status  # should be clean
 
 9. Emit the completion marker:
 
-   python tools/emit_completion.py \\
-     --status CONFIRMED_WORKING \\
-     --ticket ${TICKET_ID} \\
+   python tools/emit_completion.py \
+     --status CONFIRMED_WORKING \
+     --ticket ${TICKET_ID} \
      --summary "PR #${PR_NUMBER} ${ROUND}: applied N findings, skipped M with reason. Pushed <new-sha>. CR re-review nudged."
 
 ---
