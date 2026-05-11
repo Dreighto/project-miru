@@ -71,8 +71,14 @@ GOVERNANCE_PATTERNS: tuple[str, ...] = (
 # Required PR body fields. Both must be present (case-insensitive) AND the
 # explanation section must have non-whitespace content under it.
 APPROVAL_TOKEN = "GOVERNANCE_CHANGE_APPROVED=true"
+# Tolerate CRLF line endings on the trailing `$`. GitHub stores PR-body
+# newlines as CRLF; when the `${{ github.event.pull_request.body }}` YAML
+# context expands into env, the CRLFs survive. Python's `re.MULTILINE` $
+# matches before `\n` but does NOT consume a preceding `\r`, so the strict
+# anchor wouldn't match. `\r?$` is the cheap fix — equivalent to the
+# original on LF input, tolerant of CRLF, and zero false-positive surface.
 EXPLANATION_HEADING_RE = re.compile(
-    r"(?im)^##\s*what\s+does\s+this\s+allow\s+that\s+wasn['’]t\s+allowed\s+before\??$"  # noqa: RUF001
+    r"(?im)^##\s*what\s+does\s+this\s+allow\s+that\s+wasn['’]t\s+allowed\s+before\??\r?$"  # noqa: RUF001
 )
 
 
