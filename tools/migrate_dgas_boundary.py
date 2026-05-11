@@ -220,8 +220,76 @@ def _validate_canon_snapshot_id(snap_id: str) -> None:
         )
 
 
+_ISO_UTC_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$")
+
+
+def _parse_iso_utc(value: str) -> _dt.datetime:
+    """Parse a strict ISO 8601 UTC timestamp (YYYY-MM-DDTHH:MM:SSZ).
+
+    CR R4 CRITICAL: the resulting datetime is what gets re-rendered into
+    the frozen-log filename. Strict regex match guarantees no `/`, no
+    `..`, no whitespace, no non-ASCII — so the value can be safely
+    interpolated into a filename without risk of escaping output_dir.
+
+    Raises ValueError on any deviation from the canonical shape, on any
+    out-of-range field (e.g. month 13), or on whitespace. The regex
+    itself rejects path separators; datetime() then catches semantic
+    out-of-range cases (Feb 30, etc.).
+    """
+    if not isinstance(value, str):
+        # ValueError is the function's single error vocabulary; callers
+        # catch ValueError, not TypeError. Matches the rest of this module.
+        raise ValueError(  # noqa: TRY004
+            f"created_at_utc must be a string in ISO 8601 UTC form "
+            f"(YYYY-MM-DDTHH:MM:SSZ), got {type(value).__name__}"
+        )
+    m = _ISO_UTC_RE.match(value)
+    if not m:
+        raise ValueError(
+            f"created_at_utc must match YYYY-MM-DDTHH:MM:SSZ exactly — got "
+            f"{value!r}. (Used to derive the frozen-log filename; loose "
+            "parsing would let path separators through.)"
+        )
+    yyyy, mm, dd, hh, mi, ss = (int(g) for g in m.groups())
+    try:
+        return _dt.datetime(yyyy, mm, dd, hh, mi, ss, tzinfo=_dt.UTC)
+    except ValueError as exc:
+        raise ValueError(
+            f"created_at_utc has out-of-range component(s): {value!r} — {exc}"
+        ) from exc
+
+
+def _fsync_dir(dir_path: Path) -> None:
+    """Best-effort directory fsync so a prior rename inside it is durable.
+
+    POSIX-only behavior: NTFS journals rename metadata inherently, so
+    os.fsync on a Windows directory handle raises PermissionError or
+    similar — that's fine to swallow. POSIX filesystems (ext4, xfs)
+    require this fsync for the rename to survive a power loss.
+
+    Centralized here so both _atomic_write_bytes and _atomic_copy
+    have identical crash semantics (CR R4: previously only _atomic_copy
+    fsynced the directory; _atomic_write_bytes did not).
+    """
+    try:
+        dir_fd = os.open(str(dir_path), os.O_RDONLY)
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)
+    except (OSError, PermissionError):
+        pass
+
+
 def _atomic_write_bytes(path: Path, data: bytes) -> None:
-    """Write to path.tmp then rename. Crash-safe on any POSIX or NTFS."""
+    """Write to path.tmp then rename. Crash-safe on any POSIX or NTFS.
+
+    CR R4 (PR #182 combined): added parent-directory fsync after rename.
+    Without it, on POSIX the rename metadata isn't durable until the
+    containing directory is fsynced — power loss could lose the manifest,
+    signature, allowed_signers, or the initialized v2 log even though the
+    data file itself was fsynced.
+    """
     tmp = path.with_suffix(path.suffix + ".tmp")
     path.parent.mkdir(parents=True, exist_ok=True)
     with tmp.open("wb") as fh:
@@ -231,17 +299,15 @@ def _atomic_write_bytes(path: Path, data: bytes) -> None:
     # On Windows, os.replace allows replacing an existing file atomically;
     # on POSIX, os.rename is atomic on same filesystem.
     os.replace(tmp, path)
+    _fsync_dir(path.parent)
 
 
 def _atomic_copy(src: Path, dst: Path) -> int:
     """Copy src to dst atomically. Returns byte_length of dst.
 
-    CR R3 (PR #182 combined): fsync the temp file AND its containing
-    directory before rename, mirroring _atomic_write_bytes. Without
-    fsync, a crash between rename and page-cache flush could leave the
-    frozen legacy log truncated or corrupt — violating the immutable
-    boundary anchor guarantee. The directory fsync ensures the rename
-    metadata is durable too (some POSIX filesystems require it).
+    Crash semantics: fsync data file before rename, then fsync parent
+    directory after rename so both file content + directory metadata
+    are durable. Identical pattern to _atomic_write_bytes (via _fsync_dir).
     """
     if not src.exists():
         raise ValueError(f"source file does not exist: {src}")
@@ -257,17 +323,7 @@ def _atomic_copy(src: Path, dst: Path) -> int:
     finally:
         os.close(fd)
     os.replace(tmp, dst)
-    # fsync the directory so the rename is durable too. POSIX-only; on
-    # Windows this raises PermissionError or OSError — that's fine to
-    # ignore because NTFS journals the rename inherently.
-    try:
-        dir_fd = os.open(str(dst.parent), os.O_RDONLY)
-        try:
-            os.fsync(dir_fd)
-        finally:
-            os.close(dir_fd)
-    except (OSError, PermissionError):
-        pass
+    _fsync_dir(dst.parent)
     return dst.stat().st_size
 
 
@@ -450,8 +506,20 @@ def migrate(
     _validate_canon_snapshot_id(canon_snapshot_id)
     legacy_log = legacy_log.resolve()
     output_dir = output_dir.resolve()
+    # CR R4 CRITICAL (PR #182 combined): validate created_at_utc as a real
+    # ISO 8601 UTC timestamp and re-derive it from the parsed datetime,
+    # rather than string-splicing the raw CLI argument into the output
+    # filename. An attacker (or careless operator) supplying a value like
+    # "2026-01-01T00:00:00Z/../escape" could otherwise produce a frozen_name
+    # containing path separators and escape output_dir.
     if created_at_utc is None:
         created_at_utc = _dt.datetime.now(tz=_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    else:
+        parsed_ts = _parse_iso_utc(created_at_utc)
+        # Canonicalize back to the strict ISO 8601 Z form. This both
+        # normalizes the value (drops microseconds, enforces 'Z' suffix)
+        # AND ensures the result has no path separators.
+        created_at_utc = parsed_ts.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Step 1: walk and validate the v1 chain
     if verbose:

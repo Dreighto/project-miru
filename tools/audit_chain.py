@@ -201,16 +201,39 @@ def _hash_v2_row(block_index: int, prev_hash: str | None, payload: dict[str, Any
     return hashlib.sha256(combined).hexdigest()
 
 
-def _scan_tail_for_last_v2(data: bytes) -> tuple[bool, str | None, int | None]:
+# V2 chain tail-read result sentinel. The two None/None cases must be
+# distinguishable because they require different caller behavior:
+#   _V2_TAIL_EMPTY   : file is empty/missing — caller may append the first
+#                      row using anchor params from the boundary manifest.
+#   _V2_TAIL_CORRUPT : file has content but the last parseable line is
+#                      missing row_hash or block_index — caller MUST refuse
+#                      to append (would fork the chain at a point where the
+#                      real corruption already exists).
+# These are module-level singletons so identity comparison (`is`) works.
+_V2_TAIL_EMPTY = ("empty", None, None)
+_V2_TAIL_CORRUPT = ("corrupt", None, None)
+
+
+def _scan_tail_for_last_v2(
+    data: bytes,
+) -> tuple[bool, str | None, int | None, bool]:
     """Walk a byte buffer (assumed to contain whole lines) backwards for v2.
 
-    Returns ``(found, rh, bi)``:
-        * ``(True, hash_str, block_index)`` if the last parseable JSON
-          object in the buffer carries both row_hash and block_index.
-        * ``(True, None, None)`` if the last parseable JSON object is
-          missing one of them (corrupt v2 row; caller refuses to append).
-        * ``(False, None, None)`` if no parseable JSON object was found
-          in the buffer at all (caller retries with a larger window).
+    Returns ``(found, rh, bi, corrupt)``:
+        * ``(True, hash_str, block_index, False)`` if the last parseable
+          JSON object in the buffer carries both row_hash and block_index.
+        * ``(True, None, None, True)`` if the last parseable JSON object
+          is missing row_hash or block_index — CORRUPT v2 row; caller
+          refuses to append.
+        * ``(False, None, None, False)`` if no parseable JSON object was
+          found in the buffer (caller retries with larger window).
+
+    CR R4 (PR #182 combined): previously `(True, None, None)` overloaded
+    the corrupt state, which `_read_last_v2_state` then collapsed to the
+    same `(None, None)` as "brand-new file". With anchor params provided
+    by the caller, a corrupt v2 log would silently accept an append at
+    the head, forking the chain and hiding the corruption. Distinct
+    `corrupt` flag fixes that.
     """
     text = data.decode("utf-8", errors="replace")
     for raw in reversed(text.splitlines()):
@@ -226,29 +249,32 @@ def _scan_tail_for_last_v2(data: bytes) -> tuple[bool, str | None, int | None]:
         rh = obj.get(CHAIN_FIELD_HASH)
         bi = obj.get(CHAIN_FIELD_BLOCK_INDEX)
         if isinstance(rh, str) and rh and isinstance(bi, int):
-            return True, rh, bi
-        return True, None, None
-    return False, None, None
+            return True, rh, bi, False
+        return True, None, None, True
+    return False, None, None, False
 
 
-def _read_last_v2_state(path: Path) -> tuple[str | None, int | None]:
-    """Return (last_row_hash, last_block_index) for a v2-chained file.
+def _read_last_v2_state(
+    path: Path,
+) -> tuple[str | None, int | None, bool]:
+    """Return (last_row_hash, last_block_index, corrupt) for a v2 file.
 
-    Returns (None, None) for an empty/missing file OR a corrupt last row.
-    Walks from the tail like _read_last_chained, but extracts both the
-    row_hash AND the block_index so the next append can increment correctly.
+    Three distinct outcomes:
+        * ``(rh, bi, False)`` — last chained row found; caller appends
+          row at block_index = bi + 1, prev_hash = rh.
+        * ``(None, None, False)`` — file empty/missing; caller may append
+          the FIRST v2 row using anchor params from the boundary manifest.
+        * ``(None, None, True)`` — file has content but the last parseable
+          line is corrupt (missing row_hash or block_index). Caller MUST
+          refuse to append; never silently fork the chain.
 
     Reads a 64 KiB tail window first; if that doesn't contain a complete
-    parseable JSON object (e.g. a single v2 row exceeds 64 KiB — rare but
-    possible for verbose audit entries with large payloads), falls back
-    to reading the whole file. CR R3 (PR #182 combined): mirrors the
-    same fallback that _read_last_chained has for v1. Without this, a
-    >64 KiB last row would incorrectly return (None, None), causing the
-    next append to demand anchor parameters for what should be a normal
-    subsequent row.
+    parseable JSON object (e.g. a single v2 row exceeds 64 KiB), falls
+    back to reading the whole file. Mirrors _read_last_chained's fallback
+    for v1 (CR R3, PR #182 combined).
     """
     if not path.exists() or path.stat().st_size == 0:
-        return None, None
+        return None, None, False
     try:
         size = path.stat().st_size
         chunk = min(size, 65536)
@@ -256,24 +282,31 @@ def _read_last_v2_state(path: Path) -> tuple[str | None, int | None]:
             fh.seek(size - chunk)
             data = fh.read()
     except OSError:
-        return None, None
+        # I/O error reading a non-empty file is treated as corrupt: we
+        # can't prove the last row is intact, so refusing to append is
+        # the safe choice.
+        return None, None, True
 
-    found, rh, bi = _scan_tail_for_last_v2(data)
+    found, rh, bi, corrupt = _scan_tail_for_last_v2(data)
     if found:
-        return rh, bi
+        return rh, bi, corrupt
 
     # Tail window did not contain a complete parseable JSON object. Fall
     # back to reading the whole file. Skip if we already read the whole
     # thing on the first pass (chunk == size).
     if chunk >= size:
-        return None, None
+        # Whole file is unparseable but non-empty -> corrupt.
+        return None, None, True
     try:
         with path.open("rb") as fh:
             data = fh.read()
     except OSError:
-        return None, None
-    _, rh, bi = _scan_tail_for_last_v2(data)
-    return rh, bi
+        return None, None, True
+    found, rh, bi, corrupt = _scan_tail_for_last_v2(data)
+    if not found:
+        # Even with the whole file, no parseable JSON object — corrupt.
+        return None, None, True
+    return rh, bi, corrupt
 
 
 def append_v2_chained(
@@ -309,7 +342,21 @@ def append_v2_chained(
         if k not in (CHAIN_FIELD_PREV, CHAIN_FIELD_HASH, CHAIN_FIELD_BLOCK_INDEX)
     }
 
-    last_hash, last_block_index = _read_last_v2_state(path)
+    last_hash, last_block_index, corrupt = _read_last_v2_state(path)
+    if corrupt:
+        # CR R4 (PR #182 combined): the file exists with content, but the
+        # tail row is missing row_hash or block_index (or the entire file
+        # is unparseable). Appending here would silently fork the chain
+        # at exactly the point where corruption already exists, hiding
+        # the real problem. Fail fast so the operator can inspect the
+        # corrupt file directly. NEVER recover automatically — the
+        # tamper-evidence property depends on this.
+        raise ValueError(
+            "append_v2_chained: tail of v2 log is corrupt (missing row_hash "
+            "or block_index, or unparseable). Refusing to append because it "
+            "would fork the chain at a point of existing corruption. Inspect "
+            f"{path} manually; do not auto-recover."
+        )
     if last_hash is None:
         # First row in this v2 file. The caller must supply the boundary anchor.
         if anchor_prev_hash is None or anchor_block_index is None:

@@ -111,6 +111,40 @@ class TestAppendV2Chained(unittest.TestCase):
         rows = [json.loads(line) for line in self.path.read_text(encoding="utf-8").splitlines()]
         self.assertEqual(rows[2]["prev_hash"], rows[1]["row_hash"])
 
+    def test_append_v2_refuses_on_corrupt_tail(self) -> None:
+        """CR R4 (PR #182 combined): if the file has content but the tail
+        row is missing row_hash or block_index, append_v2_chained MUST
+        refuse to append. Recovering silently would fork the chain at
+        the point of existing corruption."""
+        # Write a single line that is parseable JSON but missing both fields.
+        self.path.write_text(
+            json.dumps({"event": "looks-like-row-but-no-chain-fields"}) + "\n",
+            encoding="utf-8",
+        )
+        # Even with anchor params provided, the corrupt-tail check fires
+        # before the empty-file path is considered.
+        with self.assertRaises(ValueError) as ctx:
+            audit_chain.append_v2_chained(
+                self.path,
+                {"event": "new"},
+                anchor_prev_hash="f" * 64,
+                anchor_block_index=1,
+            )
+        self.assertIn("corrupt", str(ctx.exception).lower())
+
+    def test_append_v2_refuses_on_unparseable_tail(self) -> None:
+        """Companion: garbage content (no parseable JSON anywhere) must
+        also be treated as corrupt rather than 'empty file with junk'."""
+        self.path.write_text("not-json{{{\nmore-garbage\n", encoding="utf-8")
+        with self.assertRaises(ValueError) as ctx:
+            audit_chain.append_v2_chained(
+                self.path,
+                {"event": "new"},
+                anchor_prev_hash="f" * 64,
+                anchor_block_index=1,
+            )
+        self.assertIn("corrupt", str(ctx.exception).lower())
+
     def test_hash_formula_matches_verifier(self) -> None:
         # The writer's formula must produce a hash that the verifier
         # accepts. Recompute the expected hash by hand using the exact
@@ -250,6 +284,44 @@ class TestMigrate(unittest.TestCase):
                     canon_snapshot_id=bad,
                     dry_run=True,
                 )
+
+    def test_rejects_malformed_created_at_utc(self) -> None:
+        """CR R4 CRITICAL: created_at_utc gets embedded into frozen_name,
+        so it must be validated as a strict ISO 8601 UTC string before
+        use. Inputs containing path separators or `..` segments would
+        otherwise escape output_dir."""
+        self._seed_legacy(1)
+        bad_timestamps = [
+            "2026-01-01T00:00:00Z/../escape",  # path traversal attempt
+            "../../../../tmp/evil",  # raw path
+            "not-a-timestamp",
+            "2026-01-01 00:00:00",  # space instead of T
+            "2026-13-01T00:00:00Z",  # invalid month
+            "2026-02-30T00:00:00Z",  # invalid day
+            "",
+            "2026-01-01T00:00:00",  # missing Z
+        ]
+        for bad in bad_timestamps:
+            with self.assertRaises(ValueError, msg=f"should reject {bad!r}"):
+                migrate_mod.migrate(
+                    legacy_log=self.legacy,
+                    output_dir=self.outdir,
+                    canon_snapshot_id=VALID_CANON_ID,
+                    created_at_utc=bad,
+                    dry_run=True,
+                )
+
+    def test_accepts_canonical_iso_utc(self) -> None:
+        """Sanity: the canonical form must still pass."""
+        self._seed_legacy(1)
+        result = migrate_mod.migrate(
+            legacy_log=self.legacy,
+            output_dir=self.outdir,
+            canon_snapshot_id=VALID_CANON_ID,
+            created_at_utc="2026-05-10T12:34:56Z",
+            dry_run=True,
+        )
+        self.assertEqual(result["created_at_utc"], "2026-05-10T12:34:56Z")
 
     def test_refuses_empty_legacy_log(self) -> None:
         self.legacy.write_text("", encoding="utf-8")
