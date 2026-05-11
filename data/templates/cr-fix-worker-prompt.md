@@ -14,7 +14,6 @@ parameter to `dispatch_worker(worker="gemini", tool_profile="standard_worker", .
 **Optional substitutions:**
 
 - `${ROUND}` -- which CR round this is (R1, R2, R3...). Defaults to "the latest round"
-- `${REPO}` -- target repo. Defaults to project-miru.
 
 ---
 
@@ -52,6 +51,19 @@ PROTOCOL (run in order)
    python tools/check_worktree_clean.py
    # exit 1 => emit STATUS: ESCALATE: HUMAN-REQUIRED and stop immediately
 
+   # TODO: Active-worker collision check (PRO-347) isn't yet
+   # implemented. For now, dispatchers should serialize CR-fix
+   # dispatches (one at a time per PR).
+
+---
+
+BEFORE ANY TERMINAL EXIT (ESCALATE/INCONCLUSIVE/FAILED):
+You must ensure the worker leaves the repo on `main` with a clean
+tree. If you have uncommitted changes on the task branch, stash them
+or make a WIP commit, then `git checkout main`.
+
+---
+
 1. Check out the branch + pull latest:
 
    gh pr checkout ${PR_NUMBER}
@@ -79,10 +91,12 @@ PROTOCOL (run in order)
 
    python -m pytest tests/ -x --tb=short  # Python changes
    node --test services/dispatch_listener/test/*.test.js  # Node changes
-   pwsh -NoProfile -Command "& { try { [System.Management.Automation.PSParser]::Tokenize([System.IO.File]::ReadAllText('<path>'), [ref]\$null) } catch { ... } }"  # PowerShell syntax check
+   pwsh -NoProfile -Command "& { try { [System.Management.Automation.PSParser]::Tokenize([System.IO.File]::ReadAllText('<path>'), [ref]\$null) } catch { Write-Host \"Parse error: \$(\$_.Exception.Message)\" } }"  # PowerShell syntax check
 
 5. Commit with a descriptive message naming the CR round + ticket:
 
+   # Note: POSIX shells preserve newlines inside double quotes,
+   # so multi-line commit messages work as-is.
    git add <files>
    git commit -m "fix(<scope>): <summary> (CR ${ROUND})
 
@@ -119,6 +133,12 @@ PROTOCOL (run in order)
      --status CONFIRMED_WORKING \
      --ticket ${TICKET_ID} \
      --summary "PR #${PR_NUMBER} ${ROUND}: applied N findings, skipped M with reason. Pushed <new-sha>. CR re-review nudged."
+
+   # Or, if you can't reach success:
+   python tools/emit_completion.py \
+     --status INCONCLUSIVE \
+     --ticket ${TICKET_ID} \
+     --summary "PR #${PR_NUMBER} ${ROUND}: INCONCLUSIVE — <specific blocker>."
 
 ---
 
@@ -202,8 +222,7 @@ prompt = (Path("data/templates/cr-fix-worker-prompt.md").read_text()
           .replace("${TICKET_ID}", "PRO-345")
           .replace("${HEAD_SHA}", "b2173993")
           .replace("${ROUND}", "R2")
-          .replace("${FINDINGS_BLOCK}", findings_block)
-          .replace("${REPO}", "project-miru"))
+          .replace("${FINDINGS_BLOCK}", findings_block))
 
 dispatch_worker(
     worker="gemini",
