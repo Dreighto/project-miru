@@ -1,12 +1,27 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 # Project Miru — CodeRabbit configuration
 #
-# 2026-05-11: Switched from assertive→chill profile after multi-round nitpick
-# cycles consumed disproportionate operator + worker tokens. The trade-off is
-# explicit: CR catches fewer surface-level style issues automatically; we rely
-# on local hooks (pre-commit framework + tools/pre_pr_review.py CR-pattern
-# detector suite + tools/check_ps1_hardcoded_paths.py) to enforce hygiene at
-# commit/push time before code ever reaches CR.
+# 2026-05-11 (morning): Switched from assertive→chill profile after multi-round
+# nitpick cycles consumed disproportionate operator + worker tokens. The
+# trade-off is explicit: CR catches fewer surface-level style issues
+# automatically; we rely on local hooks (pre-commit framework +
+# tools/pre_pr_review.py CR-pattern detector suite +
+# tools/check_ps1_hardcoded_paths.py) to enforce hygiene at commit/push time
+# before code ever reaches CR.
+#
+# 2026-05-11 (evening): CR AUTOFIX BETA IS OFF — DO NOT INVOKE.
+# Two data points from today (LogueOS-Orchestrator PRs):
+#   - PR #9: autofix touched 1 file, fixed exactly the precedence bug we
+#     described. Tight, correct, helpful.
+#   - PR #11: autofix touched 24 unrelated files (gatekeeper modules,
+#     dashboard tests, sentinel health) from 2 review comments. Scope
+#     explosion, and ruff STILL failed afterwards. Recovery required a
+#     hard reset of the branch.
+# Operator directive: leave autofix off until CR's behavior is predictable
+# enough that the scope-explosion failure mode cannot recur. Manually apply
+# CR's suggestions on files YOU touched in the PR — never invoke autofix.
+# DO NOT comment `@coderabbitai apply` or click the autofix UI button on
+# any PR in this repo until this policy is revised.
 #
 # What changed vs the previous config:
 #   - profile: assertive → chill
