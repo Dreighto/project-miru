@@ -232,6 +232,33 @@ def main() -> int:
             "permitted before. See synthesis item #6 for context.",
             file=sys.stderr,
         )
+        # Paste-ready PR body addition. Concrete file paths inlined so the
+        # operator (or the next worker) doesn't have to re-derive what was
+        # touched — they can copy the block, fill the two <placeholders>,
+        # and re-push the PR body via `gh pr edit <N> --body ...`.
+        files_list = "\n".join(f"- `{path}`" for path, _pattern in hits)
+        print(
+            "\n---\nPaste this into your PR body (replace each <placeholder> with"
+            " concrete prose, then `gh pr edit <PR_NUMBER> --body \"$(cat <<'EOF'"
+            ' ... EOF)"`):\n'
+            "\n"
+            "================================================================\n"
+            f"{APPROVAL_TOKEN}\n"
+            "\n"
+            "## What does this allow that wasn't allowed before?\n"
+            "\n"
+            "The changes to:\n"
+            f"{files_list}\n"
+            "permit <what new behavior, trust expansion, or rule loosening this enables>.\n"
+            "Before this PR the rule was <prior state>; after this PR <new state>.\n"
+            "This is necessary because <why the operator needs this expansion>.\n"
+            "================================================================\n"
+            "\n"
+            "Note: if the change is a pure documentation / canon expansion that\n"
+            "doesn't loosen any rule, say so explicitly — that still counts as a\n"
+            "valid explanation and satisfies the gate.",
+            file=sys.stderr,
+        )
         return 1
 
     print(
