@@ -58,13 +58,14 @@ PRO-180 shipped cleanly via ticket-only dispatch in 3 minutes. The Linear ticket
 
 ---
 
-## Required clauses in every dispatch_worker prompt (set 2026-05-08)
+## Required clauses in every dispatch_worker prompt (set 2026-05-08, updated 2026-05-12)
 
-Every prompt CC writes for a `dispatch_worker` MCP call MUST include both clauses below. They are workarounds for two recurring loop bugs (empty-INCONCLUSIVE bounce + runaway-fix loop). PRO-335 (status pattern + ESCALATE diagnostic capture) shipped 2026-05-09 and closes the empty-summary side of the gap; the prompt-side guards stay until the orchestrator-side enforcement is validated in production.
+Every prompt CC writes for a `dispatch_worker` MCP call MUST include all clauses below. Clauses 1–3 are guards against recurring loop failure modes (empty-INCONCLUSIVE bounce, runaway-fix loop, missing operator-facing summary). PRO-335 (status pattern + ESCALATE diagnostic capture) shipped 2026-05-09 and closes the empty-summary side of the gap; the prompt-side guards stay until the orchestrator-side enforcement is validated in production. Clause 4 (added 2026-05-12 after the LOS-32 Phase 0 day-1 validation found zero organic emissions in 24h — see `data/peer_reviews/2026-05-12_los-32-phase-0-validation-day-1.md`) is a proactive emission rule that bootstraps the organizational-learning corpus.
 
 1. **Max 3 review-fix rounds.** "After at most 3 rounds of CodeRabbit/Bugbot fixes, declare a terminal state. If actionable findings still exist after round 3, emit `STATUS: ESCALATE: REPEATED_FAILURE` with a non-empty summary listing what's still outstanding."
 2. **Non-empty summary on INCONCLUSIVE.** "If you cannot complete the work, emit `STATUS: INCONCLUSIVE` with a non-empty summary that names what was tried, why each attempt failed, and one specific question that would unblock you. An empty INCONCLUSIVE summary will be treated as a worker failure and bounced."
 3. **Operator-facing summary format on every output that reaches the operator.** "Begin every operator-facing output (chat reports, completion summaries, escalations) with a one- or two-sentence plain-English summary that states the terminal STATUS and the key outcome. Follow with a single line containing only `---` and then all technical detail (file paths, commit SHAs, test output, JSON). The plain-English summary must be non-empty. This mirrors the Operator Communication Standard in AGENTS.md — codified here so dispatch prompts enforce it explicitly rather than relying on AGENTS.md being loaded mid-task."
+4. **Emit an observation if the task surfaced a non-obvious lesson.** "If this task surfaced a non-obvious lesson (anti-pattern caught, surprise outcome, routing mistake, workflow improvement worth recording), populate the `observations` block on your completion marker per the LOS-32 Phase 0 schema, or invoke `tools/emit_observation.py` directly. Skip if the task was trivial or its lessons are already canonical. Phase 0 is observation-only (no synthesis yet) so the bar is 'one or two sentences of action + outcome that future workers reading the log would find useful.'"
 
 **Applies to:** every `dispatch_worker` MCP invocation. Operator-relayed manual prompts (Cursor, Codex) follow the same convention.
 
