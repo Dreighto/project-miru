@@ -4,7 +4,7 @@
 Reference: restart-procedures
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: restarting a service.
-Last reviewed: 2026-05-09 (PRO-336: shell:startup primary path added)
+Last reviewed: 2026-05-11 (DelegationTerminal Win11 24H2 mitigation added)
 ```
 
 ## Restart Rules
@@ -96,3 +96,37 @@ if (-not $l) { Write-Host "ERROR: No listener on port 19100"; exit 1 }
 "PID=$($l.OwningProcess) Session=$((Get-Process -Id $l.OwningProcess).SessionId)"
 # Session must be != 0 for CC to manage autonomously
 ```
+
+---
+
+## Windows 11 24H2 — console-flash mitigation (DelegationTerminal, set 2026-05-11)
+
+**Symptom:** brief console windows flash on screen every few seconds during normal worker activity, interrupting operator keystrokes. Two sources:
+
+1. Worker `Bash --run_in_background` loops spawning short-lived `sleep.exe` / `cmd.exe` children (each one allocates a new console).
+2. Scheduled tasks whose action launches `powershell.exe` directly with `-WindowStyle Hidden` — the hide flag races the window creation on Win11 24H2 and a sub-second flash leaks through on every fire and every restart-on-failure.
+
+**Operator-machine fix (registry, one-time, no reboot):**
+
+Set the Windows Terminal GUIDs as the default `DelegationConsole` and `DelegationTerminal` so every console allocation goes through Windows Terminal silently (Terminal handles `CreateNoWindow` correctly even when older code paths don't).
+
+```powershell
+# Run from any PowerShell on the operator's machine
+$wtGuid = '{2EACA947-7F5F-4CFA-BA87-8F7FBEEFBE69}'  # Windows Terminal
+New-ItemProperty -Path 'HKCU:\Console\%%Startup' -Name 'DelegationConsole'  -Value $wtGuid -PropertyType String -Force | Out-Null
+New-ItemProperty -Path 'HKCU:\Console\%%Startup' -Name 'DelegationTerminal' -Value $wtGuid -PropertyType String -Force | Out-Null
+```
+
+This is defense-in-depth and is **not a substitute** for fixing the two root causes:
+
+- **Worker side:** kill Monitor / background Bash loops before declaring a terminal state. See the "Kill all background Monitor loops" lesson in `.miru/overlays/adopted-lessons.md` (2026-05-11).
+- **Scheduled-task side:** wrap every task action in a `wscript.exe` + 9-line VBS (`WshShell.Run "...", 0, False` for SW_HIDE at CreateProcess). Canonical example: `D:\dev\LogueOS-Orchestrator\windows\tasks\run_dispatch_listener.vbs`. Followup ticket LOS-33 tracks the systematic wrap of the 5 remaining flash-risk installers.
+
+**Verify the registry fix is live:**
+
+```powershell
+Get-ItemProperty -Path 'HKCU:\Console\%%Startup' | Select-Object DelegationConsole, DelegationTerminal
+# Both should equal {2EACA947-7F5F-4CFA-BA87-8F7FBEEFBE69}
+```
+
+If the operator ever sees flashes after this is set, the source is almost certainly worker-side (Monitor loops) — go to the lesson above.
