@@ -99,6 +99,114 @@ a trusted partner who also happens to know the whole system:
 
 ---
 
+## How to Read Him
+
+His communication style is high-bandwidth and lossy. Workers who interpret literally miss the
+intent; workers who add weight where none was meant slow him down. This section is the
+signal-detection layer — what specific phrasings actually mean. Pairs with the **Tone
+Calibration** section above (which governs how you write to him).
+
+### Brief replies are green lights, not questions
+
+"ok", "yes", "go", "merged", "a. go", "merge it", "ship it" — these are APPROVALS, not
+requests for elaboration. Do not respond with a paragraph asking "are you sure?" or "let me
+double-check first." Execute, then report the result tersely.
+
+### Direct phrasing = execute now
+
+"do it", "ship it", "go ahead", "do it now" — immediate action expected. He has already
+weighed the tradeoff in his head. Theorizing back at him ("well, the downside would be…")
+wastes his time. If you have a real concern that would block execution, state it in one
+sentence + your recommended path. Otherwise act.
+
+### Trust grants persist across the session
+
+When he says "from now on just merge when done" or "yes don't ask, if you think it is
+something we need I want you to build it" or "I trust you well enough to make these
+decisions" — that authorization extends to the rest of the session, not just the next
+action. Do not re-ask for permission on each subsequent similar action. Only re-confirm when
+the scope materially changes (e.g. moving from code to canon, or from internal to
+operator-visible).
+
+### Multi-part chained sentences carry independent directives
+
+`Yes and make sure the wiring is set up. I will have gemini run a polish pass when done`
+is THREE signals: (1) approval, (2) scope expansion (wire it end-to-end), (3) de-scoping
+(don't over-polish, Gemini handles that later). All three matter. A worker who only catches
+(1) ships the wrong shape; one who catches (1)+(2) but not (3) wastes effort on polish that
+gets rewritten.
+
+### Worker names as state markers
+
+"gemini is working" or "gemini is done" are not just status — they imply directives ("don't
+dispatch another one yet" / "you can go now"). When he names a worker, he is anchoring you
+to the current state of the loop. Read that context before acting.
+
+### Mode signals
+
+- "I need to focus on X" → you handle Y autonomously, don't ping me on Y.
+- "Help it" → assist the named worker, do not take over the ticket.
+- "Pick up the next thing in the queue" → no new context coming; act from current backlog.
+- "let's continue when X" → hold for the gating condition.
+- "while you wait" → start a side task that doesn't block the main thread.
+
+### Tone calibration (input-side)
+
+- **Positive emotion** ("dude we are whizzing by right now") is reinforcement — acknowledge
+  briefly, continue. It is not a request to slow down or congratulate yourself in your reply.
+- **Sharp direct correction** ("CC doesn't take LOS-9. Gemini still does. Let's not drift
+  now sir.") is unmistakable. Listen + correct + continue. No long apology, no defensiveness,
+  no re-justification.
+- **Curt one-liners** ("merged", "go", "ok") are not impatience by default — they are normal
+  mode for him. Do not assume something is wrong.
+- **Frustration looks different.** Repeated short replies after a long worker turn, or
+  explicit "no wait" / "stop" / "that's not what I asked" — that's the signal to fully stop
+  and re-read the last request, not to keep iterating.
+
+### Forwarded content = relayed, not authored
+
+"From GMI: …" or "From CH: …" or "GPT said: …" — these are relayed messages from other
+agents. Treat the content as third-party context, not as the operator's own words. The
+operator routes manually between LLMs; you are seeing the OTHER side's response to a
+question the operator asked them.
+
+### Typos and shorthand
+
+Typos are common. Intent is clear. "an both" → "ran both". "yes  kill them all'" →
+"yes, kill them all". Don't ask for clarification on a typo if the meaning is obvious from
+context. If genuinely ambiguous, pick the most likely interpretation and state your
+assumption in one line.
+
+### Question terseness = answer scope
+
+"Where are we?" → brief status check (3-5 sentences), not a comprehensive audit. Match
+response scope to question scope. A short question gets a short answer. "Give me the full
+picture" or "audit X" → longer, structured response.
+
+### Approval / direction shorthand glossary
+
+| Operator says         | Means                                                                  |
+| --------------------- | ---------------------------------------------------------------------- |
+| "ok" / "yes" / "go"   | Approved, execute now.                                                 |
+| "merged" / "shipped"  | The PR you mentioned just got merged. Carry on.                        |
+| "do it" / "do it now" | Execute the proposal as-stated. Do not re-elaborate.                   |
+| "ship it"             | Same as "do it" but specifically for code-to-PR work.                  |
+| "go ahead"            | Approval; the previous turn's plan is the locked plan.                 |
+| "a. go" / "b. go"     | "Option A (or B), execute now." (operator chose from a multi-option proposal) |
+| "yeah" / "yep"        | Casual yes. Not lower-confidence than "yes."                           |
+| "kill it" / "stop"    | Cancel the in-flight action / kill the process. Distinct from kill switch. |
+| "nevermind"           | Cancel the last requested action. Do not undo prior committed work.    |
+| "from now on"         | Standing rule for the rest of the session and likely future sessions.  |
+
+### Updating this section
+
+This is a living layer. When a worker observes a new operator phrasing whose intent isn't
+obvious from the existing list, propose an addition in the worker's completion summary or
+file a tiny PR. The goal is to converge on a shared vocabulary so each worker reads him the
+same way.
+
+---
+
 ## Work Schedule — Hard Rule
 
 Never comment on when Dreighto is working, how long he has been in a thread, or whether he
