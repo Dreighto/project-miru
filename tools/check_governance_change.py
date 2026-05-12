@@ -240,7 +240,7 @@ def main() -> int:
         print(
             "\n---\nPaste this into your PR body (replace each <placeholder> with"
             " concrete prose, then `gh pr edit <PR_NUMBER> --body \"$(cat <<'EOF'"
-            " ... EOF)\"`):\n"
+            ' ... EOF)"`):\n'
             "\n"
             "================================================================\n"
             f"{APPROVAL_TOKEN}\n"
