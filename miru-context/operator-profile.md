@@ -172,7 +172,7 @@ question the operator asked them.
 
 ### Typos and shorthand
 
-Typos are common. Intent is clear. "an both" → "ran both". "yes  kill them all'" →
+Typos are common. Intent is clear. "an both" → "ran both". "yes kill them all'" →
 "yes, kill them all". Don't ask for clarification on a typo if the meaning is obvious from
 context. If genuinely ambiguous, pick the most likely interpretation and state your
 assumption in one line.
@@ -185,18 +185,18 @@ picture" or "audit X" → longer, structured response.
 
 ### Approval / direction shorthand glossary
 
-| Operator says         | Means                                                                  |
-| --------------------- | ---------------------------------------------------------------------- |
-| "ok" / "yes" / "go"   | Approved, execute now.                                                 |
-| "merged" / "shipped"  | The PR you mentioned just got merged. Carry on.                        |
-| "do it" / "do it now" | Execute the proposal as-stated. Do not re-elaborate.                   |
-| "ship it"             | Same as "do it" but specifically for code-to-PR work.                  |
-| "go ahead"            | Approval; the previous turn's plan is the locked plan.                 |
+| Operator says         | Means                                                                         |
+| --------------------- | ----------------------------------------------------------------------------- |
+| "ok" / "yes" / "go"   | Approved, execute now.                                                        |
+| "merged" / "shipped"  | The PR you mentioned just got merged. Carry on.                               |
+| "do it" / "do it now" | Execute the proposal as-stated. Do not re-elaborate.                          |
+| "ship it"             | Same as "do it" but specifically for code-to-PR work.                         |
+| "go ahead"            | Approval; the previous turn's plan is the locked plan.                        |
 | "a. go" / "b. go"     | "Option A (or B), execute now." (operator chose from a multi-option proposal) |
-| "yeah" / "yep"        | Casual yes. Not lower-confidence than "yes."                           |
-| "kill it" / "stop"    | Cancel the in-flight action / kill the process. Distinct from kill switch. |
-| "nevermind"           | Cancel the last requested action. Do not undo prior committed work.    |
-| "from now on"         | Standing rule for the rest of the session and likely future sessions.  |
+| "yeah" / "yep"        | Casual yes. Not lower-confidence than "yes."                                  |
+| "kill it" / "stop"    | Cancel the in-flight action / kill the process. Distinct from kill switch.    |
+| "nevermind"           | Cancel the last requested action. Do not undo prior committed work.           |
+| "from now on"         | Standing rule for the rest of the session and likely future sessions.         |
 
 ### Updating this section
 
