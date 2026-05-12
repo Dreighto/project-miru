@@ -4,7 +4,7 @@
 Overlay: adopted-lessons
 Architecture: MIRU-INSTRUCTIONS-v2
 Load when: doing a non-trivial code change (more than typo or lint).
-Last reviewed: 2026-05-10
+Last reviewed: 2026-05-11
 ```
 
 Lessons promoted from Provisional to Adopted via the Lesson Promotion
@@ -365,3 +365,31 @@ Always supply the `, 0px` fallback so older browsers without `env()` support don
 For container heights, use `100dvh` (dynamic viewport height) not `100vh` — `dvh` accounts for the iOS address bar contracting/expanding during scroll.
 
 **Applies to:** every SvelteKit/React app intended to be installed as an iOS home-screen PWA.
+
+---
+
+## Kill all background Monitor loops before a terminal state (2026-05-11 popup retro, adopted 2026-05-11)
+
+Every `Bash --run_in_background` task and every `Monitor` task you arm is a real bash.exe process on the host. They survive compaction. The task IDs you have for them (`blecb01pq`, `bvale5wja`, etc.) DO NOT survive compaction — but the bash processes do, with Claude Code's main PID as parent.
+
+**The trap:** an `until <poll>; do sleep 30; done` Monitor loop keeps running after compaction. Each `sleep 30` spawns a fresh `sleep.exe`. On Windows 11 24H2 (Terminal default), each `sleep.exe` allocates a brief console window unless `DelegationTerminal` registry routes are set. The operator sees popups every 30 s with no obvious source.
+
+**Today's specific incident (2026-05-11):** 6 Monitor loops armed earlier in the session (PR-poll watchers + a TEST OK callback watcher) survived a compaction. The session was diagnosing the `MiruRestartLogueOSConsole` task as the popup source. A `DelegationTerminal`/`DelegationConsole` registry fix was applied — correct as defense-in-depth — but popups continued. Root cause discovered only after a `wmic process` snapshot showed 5 `sleep.exe` invocations in 8 s with different parent PIDs.
+
+**Discipline:**
+
+1. **Before declaring any terminal state (CONFIRMED_WORKING / INCONCLUSIVE / FAILED),** run `tasklist | grep -iE "^(bash|sleep)"` and verify only your active diagnostic shells remain. Zero `sleep.exe` is the canonical clean state when no Monitor loops are running.
+2. **Before compaction or session handoff,** TaskStop every Monitor / background Bash task you armed. Even if you think the loop's `until` condition will fire soon, kill it explicitly.
+3. **Recovery procedure when popups surface and Monitor loops are suspected:**
+   ```bash
+   # Identify rogue bashes
+   powershell -Command "Get-CimInstance Win32_Process -Filter \"Name='bash.exe'\" | Select-Object ProcessId, ParentProcessId, CommandLine | Format-Table"
+   # Kill top-level loops (children die with parent)
+   taskkill //F //T //PID <pid>
+   # Verify zero respawn over one full sleep cycle (35 s for sleep 30)
+   sleep 35 && tasklist | grep -i sleep
+   ```
+
+**Why "before terminal state" not "at session end":** compaction can happen mid-task. Task IDs don't survive compaction. If you wait until session-end to clean up, the next compaction may strand the loops with no way to find them except by process inspection.
+
+**Applies to:** every CC session that arms background Bash tasks or Monitor loops, especially long polling loops watching PR state, CI checks, or callback files.
