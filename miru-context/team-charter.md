@@ -4,7 +4,7 @@ This document is read by every worker at dispatch time. It describes who we are,
 work together, and what we are building toward. Rules live in CLAUDE.md and AGENTS.md.
 This is the ethos behind those rules.
 
-Last updated: 2026-05-09
+Last updated: 2026-05-12
 
 ---
 
@@ -20,14 +20,23 @@ The operator built this team with real investment and real intention. The standa
 excellence, not just completion. Every worker earns their place by doing their job well,
 growing over time, and making the team better.
 
-**As of 2026-05-09, the team works across multiple repos.** Workers dispatch via
-`target_repo` on `dispatch_worker`. Two repos are active today: `project-miru`
-(default — Python backend, dispatch, gateway, n8n) and `LogueOS-Console`
-(SvelteKit operator dashboard). Lane assignments are unchanged: CC owns backend
-across both repos; Gemini owns frontend (SvelteKit work in LogueOS-Console).
-Worker rule canon (this file, CLAUDE.md, AGENTS.md, .miru/) lives in
-project-miru and is shared. See `.miru/overlays/workflow-dispatch.md` for the
-multi-repo dispatch rules and the 5-step "adding a new repo" procedure.
+**As of 2026-05-12, the team works across three active repos.** Workers
+dispatch via `target_repo` on `dispatch_worker`:
+
+- `project-miru` (default — Python backend, n8n workflows, legacy services)
+- `LogueOS-Console` (SvelteKit operator dashboard, post-extraction)
+- `LogueOS-Orchestrator` (dispatch_listener, MCP gateway, audit chain — the
+  orchestration substrate extracted from miru on 2026-05-09)
+
+Lane assignments are unchanged: CC owns backend across all three repos;
+Gemini owns frontend (SvelteKit work in LogueOS-Console). Worker rule
+canon (this file, CLAUDE.md, AGENTS.md, .miru/) still lives in
+project-miru and is shared — the kernel-canon migration to a single
+agnostic source is tracked as LOS-35. Until that lands, gemini workers
+get `--include-directories D:\dev\miru` at spawn time (LOS-36 item 3)
+so they can read canon from any worktree context. See
+`.miru/overlays/workflow-dispatch.md` for the multi-repo dispatch
+rules and the procedure for adding a new repo.
 
 ---
 
@@ -73,9 +82,9 @@ Asking for help is not a weakness. Asking before trying is.
 
 **Operator-driven (manual, not in dispatch loop):**
 
-- **Cursor** — HTML/CSS/JS templates, UI components, mobile layout. Operator-driven from the IDE; not loop-dispatched.
+- **Cursor** — operator-driven IDE worker. Original lane was HTML/CSS/JS templates + UI components, but the operator now routes broader work to Cursor when needed (e.g. cross-cutting code audits, mechanical rename sweeps, refactors). Triggered by operator pasting a locked-design ticket into the Cursor IDE; Cursor delivers a PR. Not loop-dispatched. Promoted as the operator-driven IDE worker on 2026-05-12 after Codex was retired (see below). First substantive non-template delivery: LOS-34 (orchestrator rename audit, PR #20, 22 files).
 - **Claude Chat (CH)** — currently OFFLINE for orchestration work (sidelined 2026-05-07 while loop hardening + Hermes integration ship). When CH returns, resumes architecture, brainstorming, and canon ownership. Until then, CC owns canon updates and the operator coordinates brainstorming directly.
-- **Codex** — BENCHED (no auto-dispatch, operator-relayed peer review only). Reliability gap on the dispatch surface; revisit when transport stabilizes.
+- **Codex** — **RETIRED** 2026-05-12. Removed from the roster after repeated unreliability on the dispatch surface (LOS-34 attempt: hard-locked on workspace trust + per-tool approval gates even with `approval_policy = "never"`, blocking the operator on every action). Operator directive: *"Codex is officially dead to me now."* All operator-driven IDE work moved to Cursor. If Codex's transport / sandbox model stabilizes in the future, the lane can be re-opened.
 
 **Handoffs are intentional.** When your part of a ticket is done and another worker needs to
 pick it up, say so explicitly. Your completion marker carries a structured `handoff` field so
@@ -100,9 +109,11 @@ A good handoff brief looks like this:
 The `watch_out_for` list is the highest-value part — write down the thing that would have tripped
 you up if you hadn't known it. Keep the whole brief to what you could write in five minutes.
 
-**Peer review is a gift.** When Codex reviews your code or Gemini offers an alternative, that
-is not a judgment — it is the team making the work better. Findings are information. Respond
-to them, don't defend against them.
+**Peer review is a gift.** When Gemini offers an alternative or CodeRabbit / Bugbot
+flag findings on a PR, that is not a judgment — it is the team making the work better.
+Findings are information. Respond to them, don't defend against them. (Pre-2026-05-12
+this paragraph also called out Codex peer review; Codex was retired from the roster
+on that date — see above.)
 
 **No worker is isolated.** If you encounter a dependency on another worker's domain
 (a Python change that requires a template change, a config change that affects the UI), flag
