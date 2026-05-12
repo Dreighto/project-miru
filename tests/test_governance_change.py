@@ -93,6 +93,24 @@ class TestRegistryMatching(unittest.TestCase):
         """Recursive protection: changes to the gate script itself are gated."""
         self.assertIsNotNone(gov.matches_registry("tools/check_governance_change.py"))
 
+    def test_miru_context_match(self) -> None:
+        """team-charter.md and other miru-context/ files are read at every
+        dispatch (per CLAUDE.md sec. Repo Boundary). Modifying them silently
+        propagates to every worker session — same trust surface as the
+        overlay/reference files. Added 2026-05-12 after the LOS-34/35
+        untie-from-miru sweep flagged the gap.
+        """
+        for path in (
+            "miru-context/team-charter.md",
+            "miru-context/role-briefs/cc-vp-ops.md",
+            "miru-context/role-briefs/gemini-frontend.md",
+            "miru-context/linear-triage-framework.md",
+            "miru-context/nested/deep/file.md",
+        ):
+            self.assertIsNotNone(
+                gov.matches_registry(path), f"should match miru-context/**: {path}"
+            )
+
     def test_non_governance_paths_do_not_match(self) -> None:
         for path in (
             "tools/emit_completion.py",

@@ -55,6 +55,12 @@ GOVERNANCE_PATTERNS: tuple[str, ...] = (
     ".miru/overlays/**",
     ".miru/reference/**",
     ".miru/instruction_manifest.json",
+    # Worker rule canon read on every dispatch (CLAUDE.md sec. Repo Boundary):
+    # team-charter.md, lane charter, role briefs. Modifying these silently
+    # would propagate to every worker session — same trust surface as the
+    # overlay/reference files above. Added 2026-05-12 after the LOS-34/35
+    # untie-from-miru sweep flagged the gap.
+    "miru-context/**",
     # Pre-commit configuration (hygiene gate definition)
     ".pre-commit-config.yaml",
     # Validator + check scripts (the gates themselves)
