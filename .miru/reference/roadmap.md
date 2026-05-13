@@ -19,12 +19,12 @@ This file is the canonical answer to **"where are we and where are we going."** 
 
 ### Three active repos + one dormant project
 
-| Repo | Role | Linear team | Worktree pool |
-| --- | --- | --- | --- |
-| `Dreighto/project-miru` | PM Storefront + Miru AI + card catalog. A **governed client** of LogueOS. Worker-rule canon (`CLAUDE.md`, `AGENTS.md`, `.miru/`, `miru-context/`) currently still lives here, shared across repos per the source-of-truth meta-rule (kernel-canon migration LOS-35 will move it). | `PRO-` | `D:\dev\worktrees\project-miru\w{N}` (legacy `D:\dev\miru-w*` basenames still recognized) |
-| `Dreighto/LogueOS-Orchestrator` | The extracted dispatch loop: listener, gateway, n8n routing, Gatekeeper, Hermes, recovery, worktree management. | `LOS-` (projects: "LogueOS Orchestrator", "LogueOS Migration") | per-repo pool |
-| `Dreighto/LogueOS-Console` | Operator-facing SvelteKit dashboard for the loop. | `LOS-` (project: "LogueOS Console") | `D:\dev\worktrees\LogueOS-Console\w{N}` |
-| `D:\nasdoom\` | **Dormant.** A planned SvelteKit PWA dashboard for a media/NAS stack (Plex/Sonarr/Radarr/SABnzbd/NZBGet/Tautulli). | `NAS-` (45 fully-spec'd backlog tickets, never started) | — |
+| Repo                            | Role                                                                                                                                                                                                                                                                              | Linear team                                                    | Worktree pool                                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `Dreighto/project-miru`         | PM Storefront + Miru AI + card catalog. A **governed client** of LogueOS. Worker-rule canon (`CLAUDE.md`, `AGENTS.md`, `.miru/`, `miru-context/`) currently still lives here, shared across repos per the source-of-truth meta-rule (kernel-canon migration LOS-35 will move it). | `PRO-`                                                         | `D:\dev\worktrees\project-miru\w{N}` (legacy `D:\dev\miru-w*` basenames still recognized) |
+| `Dreighto/LogueOS-Orchestrator` | The extracted dispatch loop: listener, gateway, n8n routing, Gatekeeper, Hermes, recovery, worktree management.                                                                                                                                                                   | `LOS-` (projects: "LogueOS Orchestrator", "LogueOS Migration") | per-repo pool                                                                             |
+| `Dreighto/LogueOS-Console`      | Operator-facing SvelteKit dashboard for the loop.                                                                                                                                                                                                                                 | `LOS-` (project: "LogueOS Console")                            | `D:\dev\worktrees\LogueOS-Console\w{N}`                                                   |
+| `D:\nasdoom\`                   | **Dormant.** A planned SvelteKit PWA dashboard for a media/NAS stack (Plex/Sonarr/Radarr/SABnzbd/NZBGet/Tautulli).                                                                                                                                                                | `NAS-` (45 fully-spec'd backlog tickets, never started)        | —                                                                                         |
 
 Worktree layout is repo-agnostic since LOS-14: `D:\dev\worktrees\<repo>\w{N}`. Per-repo pools enforced server-side (`WORKTREE_POOLS`) + client-side (approved-`target_repo` allowlist), kept in sync by a parity test. Adding a 4th repo: see `multi-repo-onboarding.md`.
 
@@ -54,14 +54,14 @@ Outcome: workers can't self-elevate, rewrite history, or leak secrets through PR
 
 ### Hermes — layered learning agent, partially live
 
-| Stage | Status | What it is |
-| --- | --- | --- |
-| 0 — Apprentice bridge | DONE (PRO-312) | `tools/hermes_apprentice.py`. Manual run, joins `routing_history.jsonl` + callbacks → `data/hermes_quality_labels.jsonl`. Read-only. |
-| 1 — Shadow predictor at spawn | DONE (PRO-329) | At every worker spawn, calls Ollama `qwen2.5:7b` → logs predicted route + confidence + risk to `data/hermes_predictions.jsonl`. Observation only, no authority, fire-and-forget. |
-| 1.5 — Cost-estimate signal | DONE (LOS-24 / LOS-30) | Shadow predictions enriched with a predicted cost-estimate alongside the route. |
-| 2 — Routing authority | NOT STARTED | Once Stage 1/1.5 has enough track record (signal-driven, not time-gated), Hermes makes the actual routing call; CC + operator override remain as backstop. Open: which JSONL owns the override audit trail. |
-| 3 — Learn from completion outcomes | NOT STARTED | Consume the completion log (success/failure per route), refine the model; likely fine-tuning once `hermes_quality_labels.jsonl` is large enough. |
-| N — NousResearch Hermes proper | INDEFINITE | Replace the Qwen substrate with the actual NousResearch fine-tuned model; hardware-bound. |
+| Stage                              | Status                 | What it is                                                                                                                                                                                                  |
+| ---------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — Apprentice bridge              | DONE (PRO-312)         | `tools/hermes_apprentice.py`. Manual run, joins `routing_history.jsonl` + callbacks → `data/hermes_quality_labels.jsonl`. Read-only.                                                                        |
+| 1 — Shadow predictor at spawn      | DONE (PRO-329)         | At every worker spawn, calls Ollama `qwen2.5:7b` → logs predicted route + confidence + risk to `data/hermes_predictions.jsonl`. Observation only, no authority, fire-and-forget.                            |
+| 1.5 — Cost-estimate signal         | DONE (LOS-24 / LOS-30) | Shadow predictions enriched with a predicted cost-estimate alongside the route.                                                                                                                             |
+| 2 — Routing authority              | NOT STARTED            | Once Stage 1/1.5 has enough track record (signal-driven, not time-gated), Hermes makes the actual routing call; CC + operator override remain as backstop. Open: which JSONL owns the override audit trail. |
+| 3 — Learn from completion outcomes | NOT STARTED            | Consume the completion log (success/failure per route), refine the model; likely fine-tuning once `hermes_quality_labels.jsonl` is large enough.                                                            |
+| N — NousResearch Hermes proper     | INDEFINITE             | Replace the Qwen substrate with the actual NousResearch fine-tuned model; hardware-bound.                                                                                                                   |
 
 ### Loop hardening — SHIPPED; loop reliable for routine unattended work
 
@@ -77,26 +77,26 @@ OPEN: **LOS-8** (P5 Settings tab with operator write actions — notification to
 
 ### In flight (2026-05-13)
 
-| Ticket | State | Notes |
-| --- | --- | --- |
-| PRO-361 | In Progress | Automated multi-project worktree selection & setup. gemini worker, project Miru Orchestration/Autonomy. |
-| LOS-19 | In Review | Capture token usage at worker exit; extend completion-marker schema with a telemetry block. (Foundation for LOS-21/22/23.) |
-| LOS-21 | In Review | Pricing-API integration + `cost_usd` computation on every marker. |
-| LOS-22 | In Review | Console `/usage` page (token visibility). Blocked on LOS-19/20/21. |
-| LOS-23 | In Review | Backend pattern detectors (Retry Storm, Prompt Bounce, Passive Observer) → anomalies log. Blocked on LOS-19. |
-| PRO-344 | Triage | Untrack `.gemini/settings.json` + add template + pre-commit secret scan. **Real security item** (plaintext `GITHUB_PERSONAL_ACCESS_TOKEN` written to a tracked file). |
-| PRO-345 | Triage | PR #190 R5 CR-fix: escape apostrophes in `$PoshMcpConfigPath` embedding. |
-| PRO-346 | Triage | PR #192 R1 CR-fix: markdown fences + workflow-dispatch prereq + pre-flight gates. (Confirm not already covered by the merged R4-R5 pass PRO-349 before re-dispatching.) |
-| PRO-347 | Triage | dispatch-cr-fix overlay: add active-worker collision check before dispatching (PR #192 R2 finding). |
-| LOS-8 | Triage | Console P5 Settings tab — see above. |
-| LOS-11 | Triage | n8n: generalize PRO-only filters + multi-repo PR URL in completion bridges. Was "blocked by LOS-10" — LOS-10 is DONE, so this is unblocked; move out of triage. |
-| LOS-15 | Triage | Drop "MCP" infix from gateway env var names (consistency with service rename). Low. |
-| LOS-16 | Triage | `los_10_filter_repo.sh` rename-`origin`-after-filter-repo ordering bug. In "LogueOS Migration"; LOS-10 migration is done — this one-shot tool has served its purpose; likely close, not High-priority. |
-| LOS-38 | Triage | dispatch_listener: fail-loud on missing worktree dir at startup (multi-repo onboarding gap). |
+| Ticket  | State       | Notes                                                                                                                                                                                                  |
+| ------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| PRO-361 | In Progress | Automated multi-project worktree selection & setup. gemini worker, project Miru Orchestration/Autonomy.                                                                                                |
+| LOS-19  | In Review   | Capture token usage at worker exit; extend completion-marker schema with a telemetry block. (Foundation for LOS-21/22/23.)                                                                             |
+| LOS-21  | In Review   | Pricing-API integration + `cost_usd` computation on every marker.                                                                                                                                      |
+| LOS-22  | In Review   | Console `/usage` page (token visibility). Blocked on LOS-19/20/21.                                                                                                                                     |
+| LOS-23  | In Review   | Backend pattern detectors (Retry Storm, Prompt Bounce, Passive Observer) → anomalies log. Blocked on LOS-19.                                                                                           |
+| PRO-344 | Triage      | Untrack `.gemini/settings.json` + add template + pre-commit secret scan. **Real security item** (plaintext `GITHUB_PERSONAL_ACCESS_TOKEN` written to a tracked file).                                  |
+| PRO-345 | Triage      | PR #190 R5 CR-fix: escape apostrophes in `$PoshMcpConfigPath` embedding.                                                                                                                               |
+| PRO-346 | Triage      | PR #192 R1 CR-fix: markdown fences + workflow-dispatch prereq + pre-flight gates. (Confirm not already covered by the merged R4-R5 pass PRO-349 before re-dispatching.)                                |
+| PRO-347 | Triage      | dispatch-cr-fix overlay: add active-worker collision check before dispatching (PR #192 R2 finding).                                                                                                    |
+| LOS-8   | Triage      | Console P5 Settings tab — see above.                                                                                                                                                                   |
+| LOS-11  | Triage      | n8n: generalize PRO-only filters + multi-repo PR URL in completion bridges. Was "blocked by LOS-10" — LOS-10 is DONE, so this is unblocked; move out of triage.                                        |
+| LOS-15  | Triage      | Drop "MCP" infix from gateway env var names (consistency with service rename). Low.                                                                                                                    |
+| LOS-16  | Triage      | `los_10_filter_repo.sh` rename-`origin`-after-filter-repo ordering bug. In "LogueOS Migration"; LOS-10 migration is done — this one-shot tool has served its purpose; likely close, not High-priority. |
+| LOS-38  | Triage      | dispatch_listener: fail-loud on missing worktree dir at startup (multi-repo onboarding gap).                                                                                                           |
 
 ### Backlog (LogueOS — the active lane)
 
-- **LOS-35** — Kernel-canon migration: workers in any repo resolve to ONE canon source (gateway `/canon/*`), retire the duplicate `.miru/` gates. High. *(This is what removes the drift note at the top of this file.)*
+- **LOS-35** — Kernel-canon migration: workers in any repo resolve to ONE canon source (gateway `/canon/*`), retire the duplicate `.miru/` gates. High. _(This is what removes the drift note at the top of this file.)_
 - **LOS-39** — Organizational learning layer, Phase 1: synthesis pathway Tier 0 → Tier 1. High. (Phase 0 signal-generation experiment LOS-32 done — it's the source of the dispatch-prompt "observation-emission" clause, PR #199.)
 - **LOS-31** — n8n workflow modularity refactor — plug-and-play worker integration. Medium.
 - **LOS-42** — Console as mobile operator co-working interface. Medium.
