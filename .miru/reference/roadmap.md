@@ -4,201 +4,157 @@
 Reference: roadmap
 Architecture: MIRU-INSTRUCTIONS-v2
 Fetch when: planning new work, dispatching a major ticket, or onboarding a worker.
-Last reviewed: 2026-05-10 (post-late-evening sweep — verified against Linear + git log + LogueOS-Console PR list)
+Last reviewed: 2026-05-13 (full sweep — verified against Linear PRO+LOS+NAS teams, `git log` to HEAD #199, board-hygiene script run)
 ```
 
 This file is the canonical answer to **"where are we and where are we going."** Keep it current — stale roadmap = duplicated work or contradicted plans.
 
-**This file is governed by `.miru/reference/source-of-truth.md`** — load that first when reconciling sources or deciding what gets logged where. Roadmap entries follow the truth hierarchy and refresh trigger taxonomy defined there.
+**This file is governed by `.miru/reference/source-of-truth.md`** — load that first when reconciling sources or deciding what gets logged where.
+
+> **Drift note (2026-05-13):** the orchestration layer was extracted into its own repo (`Dreighto/LogueOS-Orchestrator`) on 2026-05-11 (LOS-10 + LOS-18 cutover). `CLAUDE.md`, `AGENTS.md`, `.miru/overlays/`, and `miru-context/team-charter.md` still contain pre-extraction references (e.g. `services/dispatch_listener/src/worktree.js`, `tools/miru_mcp_gateway/`, `D:\dev\miru-w1`, "second canonical repo" singular). De-Miru-ification was started under LOS-26/27 and continues; the canon cleanup is part of the LogueOS-improvement work the operator is queuing for GMI. Until that lands, treat repo-internal path references in worker-rule files as approximate and verify against the orchestrator repo.
 
 ---
 
-## Current State (2026-05-10, verified)
+## Current State (2026-05-13, verified)
+
+### Three active repos + one dormant project
+
+| Repo | Role | Linear team | Worktree pool |
+| --- | --- | --- | --- |
+| `Dreighto/project-miru` | PM Storefront + Miru AI + card catalog. A **governed client** of LogueOS. Worker-rule canon (`CLAUDE.md`, `AGENTS.md`, `.miru/`, `miru-context/`) currently still lives here, shared across repos per the source-of-truth meta-rule (kernel-canon migration LOS-35 will move it). | `PRO-` | `D:\dev\worktrees\project-miru\w{N}` (legacy `D:\dev\miru-w*` basenames still recognized) |
+| `Dreighto/LogueOS-Orchestrator` | The extracted dispatch loop: listener, gateway, n8n routing, Gatekeeper, Hermes, recovery, worktree management. | `LOS-` (projects: "LogueOS Orchestrator", "LogueOS Migration") | per-repo pool |
+| `Dreighto/LogueOS-Console` | Operator-facing SvelteKit dashboard for the loop. | `LOS-` (project: "LogueOS Console") | `D:\dev\worktrees\LogueOS-Console\w{N}` |
+| `D:\nasdoom\` | **Dormant.** A planned SvelteKit PWA dashboard for a media/NAS stack (Plex/Sonarr/Radarr/SABnzbd/NZBGet/Tautulli). | `NAS-` (45 fully-spec'd backlog tickets, never started) | — |
+
+Worktree layout is repo-agnostic since LOS-14: `D:\dev\worktrees\<repo>\w{N}`. Per-repo pools enforced server-side (`WORKTREE_POOLS`) + client-side (approved-`target_repo` allowlist), kept in sync by a parity test. Adding a 4th repo: see `multi-repo-onboarding.md`.
 
 ### Substrate — DGAS (Deterministic Governed Autonomous System) — SHIPPED
 
-The trust foundation. Eleven PRs in one day (2026-05-08) hardened the loop substrate:
+The trust foundation (11 PRs on 2026-05-08, hardened since):
 
-- **Localhost-bind** on `full_operator` profile (PR #136). Blocks non-trusted origins from self-elevating.
-- **Hash-chained append-only JSONL audit logs** — 9 files, SHA-256 chain with daily anchor. Files: `cc_completion_log.jsonl`, `routing_history.jsonl`, `pending_callbacks.jsonl`, `dispatch_dlq.jsonl`, `cc_heartbeat_log.jsonl`, `vp_ops_supervision.jsonl`, `drift_scanner_log.jsonl`, `agent_decisions.jsonl`, `github_resource_ledger.jsonl`.
-- **Pre-commit secret scanner** (Gitleaks).
-- **Pre-push hook** refusing force-push and branch-delete on protected branches.
-- **Governance file registry** (`tools/check_governance_change.py` `GOVERNANCE_PATTERNS`) — PRs touching gates require `GOVERNANCE_CHANGE_APPROVED=true` + operator merge via CODEOWNERS.
-- **Fault-injection tests** for each gate, plus a meta-test that each registered gate has a fault-injection test.
-- **Governance metrics writer** — per-gate fired/blocked counts.
-- **DGAS verifier hardening** (PR #137) — fix silent-pass on row-1 break and `--files` empty trap.
+- Localhost-bind on `full_operator` profile. Hash-chained append-only JSONL audit logs (9 files, SHA-256 + daily anchor). Pre-commit secret scanner (Gitleaks). Pre-push hook refusing force-push/branch-delete on protected branches. Governance-file registry (`tools/check_governance_change.py`) — PRs touching gates need `GOVERNANCE_CHANGE_APPROVED=true` + CODEOWNERS operator merge. Fault-injection test per gate + a meta-test. Governance metrics writer. DGAS verifier hardening.
+- **LOS-28** — `project_id` is now stamped at worker boot and flows through the DGAS audit chain (multi-repo audit integrity).
+- **LOS-27** — kernel CI check for project-name leaks (canon contamination detector). **LOS-17** widened the filter-repo `PATH_EXCLUDES` after Miru business logic leaked into the orchestrator extraction.
 
-Outcome: workers cannot self-elevate, cannot rewrite history, cannot leak secrets through PRs without tripping a gate. The audit trail is intact.
+Outcome: workers can't self-elevate, rewrite history, or leak secrets through PRs without tripping a gate. Audit trail intact across repos.
 
-### Hybrid orchestration pivot — Phase 1 SHIPPED, Phase 2/3 PLANNED
+### LogueOS extraction — DONE (2026-05-11)
 
-**Phase 1 (SHIPPED 2026-05-06)** — Three coordinated PRs:
+- **LOS-10** — dispatch system extracted from project-miru into `LogueOS-Orchestrator`. Step 1 (gateway `/canon/*` + `/canon-manifest` HTTP routes, PR #177); Step 2 (workers fetch canon via gateway with fail-closed semantics, LOS-13); Step 6 filter-repo pass; Step 8 production cutover of gateway + listener (**LOS-18**).
+- **LOS-14** — project/repo-agnostic worktree layout. **LOS-26** — orchestrator canon de-Miru-ification (folder renames, version bump, governance cleanup). **LOS-34** — rename audit replacing `miru-*` identifiers in orchestrator code. **LOS-29** — gateway capability registry + per-project tool scoping. **LOS-36** — gemini-cli interactive-session dispatch path (fixed node-pty AttachConsole crash). **LOS-37** — orchestrator `GEMINI.md` repo-boundary fix.
+- Migration tooling (`los_10_filter_repo.sh`, rename map at `.miru/reference/los-10-rename-map.md`) is one-shot and has served its purpose.
 
-- PR #93 (PRO-300, Cursor): strip dead Cursor + Codex handlers from `dispatcher/handlers/`.
-- PR #94 (PRO-301, Codex): strip Flask UI + WebSocket + Slack-bolt from `task_dispatcher.py` (port 19000 decommissioned).
-- PR #95 (PRO-302, CC): extract `gatekeeper/gatekeeper.py` (760 lines) + `gatekeeper/frontmatter_parser.py` (173) + `gatekeeper/forwarder.py` (238). Replace `task_dispatcher.py` with a 60-line deprecation stub. Archive `jobs.db` as `jobs.db.legacy`.
+### Hybrid orchestration pivot — Phase 1 SHIPPED; Phase 2/3 PLANNED
 
-3-model bench (2026-05-06): qwen2.5:7b, mistral:7b-instruct, qwen2.5:14b. **Locked `DEFAULT_MODEL = qwen2.5:7b`** for Gatekeeper routing decisions — best balance of speed (p50=27.7s, p95=31s) + correct rejection-vocab usage. Bench evidence at `data/batch_reports/bench_*`.
+- **Phase 1 (2026-05-06):** stripped dead Cursor/Codex handlers + Flask UI/WebSocket/Slack-bolt from `task_dispatcher.py` (port 19000 decommissioned); extracted `gatekeeper.py` + `frontmatter_parser.py` + `forwarder.py`; `task_dispatcher.py` is now a 60-line deprecation stub; `jobs.db` archived. 3-model bench locked `DEFAULT_MODEL = qwen2.5:7b` for Gatekeeper routing-validation.
+- **Phase 2 (PLANNED — needs operator approval):** `cc_handoff` MCP tool invokes `gatekeeper.gate_dispatch()` instead of the caller hitting `dispatch_listener` directly; run in shadow mode (validate + log to `data/agent_decisions.jsonl`, don't gate yet). The `cc_handoff` tool exists; the gating path is not yet wired. Blocked on CH being back online OR CC fully owning the dispatch role first.
+- **Phase 3 (PLANNED — after Phase 2 validated):** remove `dispatch_worker` from CH's tool profile; self-serve loophole closes structurally.
 
-**Phase 2 (PLANNED — needs operator approval before implementation):**
+`miru-router:latest` (9 GB custom Qwen) is the Gatekeeper's routing-validation model — **separate from Hermes**. Gatekeeper validates + rejects bad dispatches; Hermes predicts + (eventually) routes good ones.
 
-- Add `cc_handoff` MCP tool that invokes `gatekeeper.gate_dispatch()` instead of CH calling `dispatch_listener` directly.
-- Run in **shadow mode** — Gatekeeper validates and logs decisions to `data/agent_decisions.jsonl` for calibration, but does NOT gate dispatch yet.
-- Additive on CH (`dispatch_worker` still present in tool profile during shadow).
-- Spec: Notion page `358c5d34-0141-817c-8dda-e2f91a50a9c5`.
-- **Blocked on:** CH being back online (or CC absorbing CH's dispatch role first).
+### Hermes — layered learning agent, partially live
 
-**Phase 3 (PLANNED — after Phase 2 validated):**
+| Stage | Status | What it is |
+| --- | --- | --- |
+| 0 — Apprentice bridge | DONE (PRO-312) | `tools/hermes_apprentice.py`. Manual run, joins `routing_history.jsonl` + callbacks → `data/hermes_quality_labels.jsonl`. Read-only. |
+| 1 — Shadow predictor at spawn | DONE (PRO-329) | At every worker spawn, calls Ollama `qwen2.5:7b` → logs predicted route + confidence + risk to `data/hermes_predictions.jsonl`. Observation only, no authority, fire-and-forget. |
+| 1.5 — Cost-estimate signal | DONE (LOS-24 / LOS-30) | Shadow predictions enriched with a predicted cost-estimate alongside the route. |
+| 2 — Routing authority | NOT STARTED | Once Stage 1/1.5 has enough track record (signal-driven, not time-gated), Hermes makes the actual routing call; CC + operator override remain as backstop. Open: which JSONL owns the override audit trail. |
+| 3 — Learn from completion outcomes | NOT STARTED | Consume the completion log (success/failure per route), refine the model; likely fine-tuning once `hermes_quality_labels.jsonl` is large enough. |
+| N — NousResearch Hermes proper | INDEFINITE | Replace the Qwen substrate with the actual NousResearch fine-tuned model; hardware-bound. |
 
-- Remove `dispatch_worker` from CH's tool profile entirely. CH only has `cc_handoff`.
-- Self-serve loophole closes structurally rather than instructionally.
+### Loop hardening — SHIPPED; loop reliable for routine unattended work
 
-### Hermes — layered architecture, partially live
+PRO-330 (terminal spawn-state taxonomy: `spawned / exited_clean / exited_failed / timed_out / killed / spawn_failed / no_output`), PRO-331 (Linear label+state intake tools), PRO-334 (worktree contamination fix — pre-spawn dirty refusal + post-worker cleanup + fork-safe merged-PR detection), PRO-335 (all four canonical statuses recognized + ESCALATE diagnostic block captured into `result.json`), PRO-336 (Session 0 boot fix — `shell:startup` shortcut, Session-0 self-check), PRO-338 (`clean_worktree.py --cwd` multi-repo support), PRO-339 (`.coderabbit.yaml` declares the 9 append-only files read-only to the reviewer), PRO-340 (multi-repo onboarding checklist + template dir), PRO-342 (false-CONFIRMED_WORKING when gemini skips `gh pr create`), PRO-326/327/328 (parent_watcher tests). LOS-38 (fail-loud on missing worktree dir at startup) is the remaining triage follow-up. LOS-33 hardened the remaining 5 scheduled-task installers (VBS-wrap, no-flash).
 
-| Stage                                                | Status                                  | What it is                                                                                                                                                                                                                                                                    |
-| ---------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Stage 0 — Apprentice bridge**                      | DONE (PRO-312)                          | `tools/hermes_apprentice.py` (24 tests). Manual-invocation Python script. Joins `routing_history.jsonl` + callbacks → produces structured "learning cases" in `data/hermes_quality_labels.jsonl` (120 rows backfilled). Read-only observer.                                   |
-| **Stage 1 — Shadow predictor at spawn**              | DONE (PRO-329, PR #144 squash 245a16a7) | `services/dispatch_listener/src/spawn.js:625`. Calls Ollama `qwen2.5:7b` at every worker spawn. Logs predicted route + confidence + risk to `data/hermes_predictions.jsonl` next to actual dispatch. Observation only. No routing authority. ~8-18s latency, fire-and-forget. |
-| **Stage 2 — Hermes assumes routing authority**       | NOT YET STARTED                         | Once Stage 1 builds enough track record, Hermes makes the actual routing decision (CC/operator override remains as backstop). Open question: which JSONL file owns the override audit trail.                                                                                  |
-| **Stage 3 — Hermes learns from completion outcomes** | NOT YET STARTED                         | Hermes consumes the completion log (success/failure per route) and refines its prediction model. Likely fine-tuning on `hermes_quality_labels.jsonl` once it's grown to ~1000+ rows.                                                                                          |
-| **Stage N — NousResearch Hermes proper**             | INDEFINITE                              | Replace Qwen substrate with the actual NousResearch Hermes fine-tuned model. Open: whether the local hardware (Ryzen 7 8745H + Radeon 780M, 32 GB DDR5) can run it at acceptable latency.                                                                                     |
+### LogueOS Console — P1a→P3 + deployment + hardening SHIPPED
 
-A custom model `miru-router:latest` (9 GB, derived from one of the qwens) exists locally and is used by the Gatekeeper for routing-validation decisions — **separate from Hermes**. Don't confuse them: the Gatekeeper validates + rejects bad dispatches; Hermes predicts + (eventually) routes good ones.
+SvelteKit 2 / Svelte 5 (runes) / Tailwind 4 / shadcn-svelte / lucide-svelte / LayerChart. 480px container. Tokens: `bg #0D1117`, `surface #161B22`, `cta #A3E635`, Mona Sans body / IBM Plex Mono metadata. 5 tabs: **Runs · Workers · Activity · Ask · Settings**.
 
-### Loop hardening — Q2 SHIPPED
+DONE: LOS-1 (shell+nav) · LOS-2 (Runs wired to `cc_completion_log.jsonl`) · LOS-3 (run detail `/runs/[trace_id]`) · LOS-4 (Workers tab, live from dispatch-log NDJSON) · LOS-5 (Activity tab, ops feed) · LOS-6 (persistent deployment — adapter-node + scheduled task) · LOS-7 (worker-classification + timestamp fixes) · LOS-9 (`/api/runs` trace_id dedupe) · LOS-20 (stale-data-path fix + full MCP toolkit in `.gemini/settings.json`) · LOS-25 (testing toolkit: Vitest + Playwright + axe-core) · Team Memory sidebar (PR #22 in-repo) · usage tracker (PR #23 in-repo) · LOS-40/41 (mobile PWA usage tracker + nav-bar density, retroactive tickets).
 
-The dispatch loop is reliable enough to run unattended for routine work as of 2026-05-10:
+OPEN: **LOS-8** (P5 Settings tab with operator write actions — notification toggles, worker enable/disable, kill switch, connection status — Triage, needs operator approval). **LOS-22** (`/usage` page: Sankey + Heatmap + Leaderboard + sparklines — In Review, blocked on LOS-19/20/21). **LOS-42** (evolve into mobile operator co-working interface: chat with CC/GMI + fire dispatch from the PWA — Backlog, needs planning pass).
 
-- **PRO-330** (terminal spawn-state logging) — DONE. Worker terminal taxonomy: `spawned`, `exited_clean`, `exited_failed`, `timed_out`, `killed`, `spawn_failed`, `no_output`.
-- **PRO-331** (Linear label + state intake tools) — DONE (PR #147). CC can now move tickets to Todo + add labels via gateway tools (no raw GraphQL fallback).
-- **PRO-334** (worktree contamination fix) — DONE (PR #150 squash 4663fbae). Pre-spawn dirty refusal + post-worker cleanup with stash-failure-aborts-cleanup + fork-safe merged-PR detection.
-- **PRO-335** (worker status pattern + ESCALATE diagnostic capture) — DONE (PR #149 squash 31b9aa71). All four canonical statuses recognized; diagnostic block captured into `result.json` with `summary` + `escalation_category`.
-- **PRO-336** (Session 0 boot fix) — DONE 2026-05-09 (PRs #154 + #155). Listener now boots into Session 1+ via `windows\install_dispatch_listener_startup_shortcut.ps1` shell:startup shortcut. Wrapper has self-check that exits 1 if `SessionId == 0`. Eliminates the cross-session kill wall that previously required operator-elevated relaunch after every reboot.
-- **PRO-338** (clean_worktree.py multi-repo support) — DONE 2026-05-10 (PR #160). Added `--cwd <PATH>` flag; spawn.js now invokes the script via absolute `execFileSync` from REPO_ROOT (not from worker cwd). Eliminates `worktree_auto_clean_failed` warnings on every dispatch into a non-miru worktree. 14 Python tests + 7 JS tests.
-- **PRO-339** (.coderabbit.yaml append-only declaration) — DONE 2026-05-10 (PR #159, dispatched manually to Codex). Added `path_filters` excluding the 9 append-only `data/*.jsonl` files from line-by-line review + `path_instructions` block telling CodeRabbit never to suggest in-place edits to those files. Prevents the false-positive "rewrite the row_hash chain" comments that wasted review cycles on PR #158.
+### In flight (2026-05-13)
 
-### Multi-repo dispatch infrastructure — SHIPPED 2026-05-09
+| Ticket | State | Notes |
+| --- | --- | --- |
+| PRO-361 | In Progress | Automated multi-project worktree selection & setup. gemini worker, project Miru Orchestration/Autonomy. |
+| LOS-19 | In Review | Capture token usage at worker exit; extend completion-marker schema with a telemetry block. (Foundation for LOS-21/22/23.) |
+| LOS-21 | In Review | Pricing-API integration + `cost_usd` computation on every marker. |
+| LOS-22 | In Review | Console `/usage` page (token visibility). Blocked on LOS-19/20/21. |
+| LOS-23 | In Review | Backend pattern detectors (Retry Storm, Prompt Bounce, Passive Observer) → anomalies log. Blocked on LOS-19. |
+| PRO-344 | Triage | Untrack `.gemini/settings.json` + add template + pre-commit secret scan. **Real security item** (plaintext `GITHUB_PERSONAL_ACCESS_TOKEN` written to a tracked file). |
+| PRO-345 | Triage | PR #190 R5 CR-fix: escape apostrophes in `$PoshMcpConfigPath` embedding. |
+| PRO-346 | Triage | PR #192 R1 CR-fix: markdown fences + workflow-dispatch prereq + pre-flight gates. (Confirm not already covered by the merged R4-R5 pass PRO-349 before re-dispatching.) |
+| PRO-347 | Triage | dispatch-cr-fix overlay: add active-worker collision check before dispatching (PR #192 R2 finding). |
+| LOS-8 | Triage | Console P5 Settings tab — see above. |
+| LOS-11 | Triage | n8n: generalize PRO-only filters + multi-repo PR URL in completion bridges. Was "blocked by LOS-10" — LOS-10 is DONE, so this is unblocked; move out of triage. |
+| LOS-15 | Triage | Drop "MCP" infix from gateway env var names (consistency with service rename). Low. |
+| LOS-16 | Triage | `los_10_filter_repo.sh` rename-`origin`-after-filter-repo ordering bug. In "LogueOS Migration"; LOS-10 migration is done — this one-shot tool has served its purpose; likely close, not High-priority. |
+| LOS-38 | Triage | dispatch_listener: fail-loud on missing worktree dir at startup (multi-repo onboarding gap). |
 
-Dispatch loop now serves multiple repos via the `target_repo` parameter on `dispatch_worker`:
+### Backlog (LogueOS — the active lane)
 
-- **PR #156** — Per-repo worktree pools (`WORKTREE_POOLS` map in `services/dispatch_listener/src/worktree.js`). Backward-compat: callers omitting `target_repo` land in `project-miru`. New `target_repo` parameter on `tools/miru_mcp_gateway/dispatch_tools.py` validated against `_APPROVED_TARGET_REPOS = frozenset({"project-miru", "LogueOS-Console"})`. Parity test (`tests/test_dispatch_tools_target_repo_parity.py`) ensures the Python allowlist and JS pool keys can't drift.
-- **PR #157** — Generalized `parkingBranchForCwd` for non-miru worktrees. Legacy basenames (`miru-w1`..`miru-w6`, `miru-cursor`) keep the short-form `_parking_w1` convention via an explicit `LEGACY_MIRU_SLOT_BASENAMES` Set; everything else maps to full-basename `_parking_<repo>-w<N>` (e.g. `_parking_LogueOS-Console-w1`).
-- First active second pool: `LogueOS-Console` (1 slot at `D:\dev\LogueOS-Console-w1`). LOS-1 + LOS-2 both shipped through it on 2026-05-10.
+- **LOS-35** — Kernel-canon migration: workers in any repo resolve to ONE canon source (gateway `/canon/*`), retire the duplicate `.miru/` gates. High. *(This is what removes the drift note at the top of this file.)*
+- **LOS-39** — Organizational learning layer, Phase 1: synthesis pathway Tier 0 → Tier 1. High. (Phase 0 signal-generation experiment LOS-32 done — it's the source of the dispatch-prompt "observation-emission" clause, PR #199.)
+- **LOS-31** — n8n workflow modularity refactor — plug-and-play worker integration. Medium.
+- **LOS-42** — Console as mobile operator co-working interface. Medium.
 
-### LogueOS Console — P1a through P3 + deployment hardening SHIPPED 2026-05-10
+### Backlog (project-miru — low activity)
 
-Operator-facing dashboard for the dispatch loop. Replaces "ask CC how the loop is doing" with a glance-able SvelteKit UI. Lives at `Dreighto/LogueOS-Console` (separate repo from project-miru).
-
-- **LOS-1 — P1a — bootstrap shell + 5-tab nav** — DONE (PR #1 squash e21ba0b8). SvelteKit 2 + Svelte 5 (runes) + Tailwind 4 + shadcn-svelte + lucide-svelte + LayerChart. 5 tabs in order: **Runs · Workers · Activity · Ask · Settings**. Locked design tokens: `bg #0D1117`, `surface #161B22`, `cta #A3E635`, Mona Sans body / IBM Plex Mono metadata. 480px max-width container. Chart isolation pattern in `src/lib/charts/`.
-- **LOS-2 — P1b — Runs tab data wiring** — DONE (PR #2 squash 8651bb0b). `/api/runs` server endpoint reads `D:\dev\miru\data\cc_completion_log.jsonl` via `$lib/server/config.ts`; `/api/runs?limit=N` returns the most recent N rows in reverse chronological order. RunCard component renders worker badge (5 worker identity colors), status icon (5 status colors with traffic-light semantics), trace_id chip, ticket_id, summary preview, duration, PR link. Polling pauses when tab is hidden via `document.visibilityState`.
-- **LOS-3 — P1c — Run detail view** — DONE (PR #3 squash a28d2e6). Tap a run card → `/runs/[trace_id]` route showing full summary, branch, files_touched, full PR link. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
-- **LOS-4 — P2 — Workers tab: live status from dispatch log** — DONE (PR #4). Workers tab reads live worker-state events from `logs/dispatch_listener_stdout.log` NDJSON; shows active/idle/error per worker with last-seen timestamps. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
-- **LOS-5 — P3 — Activity tab: recent ops events feed** — DONE. Activity tab wired to dispatch log NDJSON stream; surfaces `worker_spawned`, `worker_exited`, `pre_spawn_dirty_refusal`, `worktree_parked`, and error events in chronological feed. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
-- **P4** — Not scoped in the v1 spec. The locked phase sequence runs P1a→P1b→P1c→P2→P3→P5. P4 was deliberately omitted from the original plan.
-- **LOS-6 — persistent deployment (adapter-node + scheduled task)** — DONE (PR #6, completion marker PR #173). Switched from Vite dev mode to adapter-node build; start script + Windows scheduled task; mirrors PM/Miru AI pattern. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
-- **LOS-7 — fix worker classification + empty-timestamp on Run cards** — DONE (PR #8, completion marker PR #174). Trust `row.worker` when present, fall back to `deriveWorkerFromTraceId`; safe timestamp display fallback for null/NaN values. Gemini-cli dispatch, `target_repo=LogueOS-Console`.
-- **LOS-8 — P5 — Settings tab with operator write actions** — TRIAGE. Notification toggles, worker enable/disable, kill switch, connection status. Replaces the Settings placeholder tab. Gemini-cli dispatch, `target_repo=LogueOS-Console`. Needs operator approval to move to Todo.
-- **LOS-9 — /api/runs dedupe duplicate trace_id rows** — TRIAGE. LOS-2/3 each appear twice in Recent Runs due to duplicate append-log entries. Fix: dedupe by trace_id in the server endpoint. Gemini-cli dispatch, `target_repo=LogueOS-Console`. Needs operator approval to move to Todo.
-
-### Active tickets (2026-05-10, post-late-evening sweep)
-
-| Ticket  | State  | Notes                                                                                                                                                        |
-| ------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| PRO-292 | Todo   | E2E test ticket (do-not-dispatch flag). Audit deployment pipeline for stale env vars.                                                                        |
-| PRO-343 | Todo   | n8n W1 DNS error (transient). Labeled `triage` + `n8n-error-queue`. Needs operator decision: archive or investigate. CC cannot auto-dispatch (triage label). |
-| LOS-8   | Triage | Console P5 Settings tab. Needs operator approval → Todo before Gemini dispatch. `target_repo=LogueOS-Console`.                                               |
-| LOS-9   | Triage | Console /api/runs dedupe. Needs operator approval → Todo before Gemini dispatch. `target_repo=LogueOS-Console`.                                              |
-| LOS-10  | Done   | Step 1 (gateway `/canon/*` + `/canon-manifest` HTTP routes) shipped PR #177. Full orchestrator extraction plan underway — Steps 2-9 TBD per migration plan.  |
-
-**Recently DONE (2026-05-10, late-evening batch):**
-
-- LOS-6 (Console adapter-node deployment) → Done, PR #6 + completion marker PR #173.
-- LOS-7 (worker classification + timestamp fix) → Done, PR #8 + completion marker PR #174.
-- LOS-10 Step 1 (gateway canon HTTP routes) → Done, PR #177 + completion marker PR #179.
-- PR #175 (Playwright MCP added to dispatched-worker `.mcp.json`). Workers can now drive Chrome for UI testing.
-- PR #178 (LogueOS projects restructure — Migration vs Orchestrator). Created `LogueOS Migration` for the one-time extraction event; renamed `LogueOS Orchestration` → `LogueOS Orchestrator` for standing ongoing work. LOS-10 → Migration; LOS-11 → Orchestrator.
-
-**Recently DONE (2026-05-10, evening batch):**
-
-- PRO-322 (Linear board hygiene script) → Done, PR #166. `tools/linear_board_hygiene.py` + full test suite.
-- PRO-326 (parent_watcher `_evaluate_parent` unit tests) → Done, PR on 2026-05-10.
-- PRO-327 (parent_watcher `_is_forward_transition` edge case tests) → Done, PR #119.
-- PRO-340 (multi-repo onboarding checklist) → Done, PR #164. `data/templates/multi-repo/` + `.miru/reference/multi-repo-onboarding.md`.
-- LOS-3 (Console P1c Run detail) → Done, PR #3 (LogueOS-Console).
-- LOS-4 (Console P2 Workers tab) → Done, PR #4 (LogueOS-Console).
-- LOS-5 (Console P3 Activity tab) → Done (LogueOS-Console).
-
-**Recently DONE (2026-05-09 + early 2026-05-10):**
-
-- PRO-333 → reframed as LOS-1 + LOS-2 (LogueOS Console moved to its own repo + team). Original ticket cancelled.
-- PRO-336 (Session 0 boot fix) → Done, PRs #154 + #155.
-- PRO-338 (clean_worktree.py multi-repo support) → Done, PR #160.
-- PRO-339 (.coderabbit.yaml append-only declaration) → Done, PR #159 (operator dispatched manually to Codex; Codex still operator-routable for scoped tickets).
-- LOS-1 (Console P1a shell) → Done, PR #1 on LogueOS-Console.
-- LOS-2 (Console P1b Runs data) → Done, PR #2 on LogueOS-Console.
+- **PRO-315** — OpenClaw control-plane research + SOUL.md draft. Research only. Low.
+- **PRO-197** — Workers write to `miru_memory.db` on substantial completions (so future threads load execution context automatically). Medium.
+- **PM Storefront cluster — PARKED:** PRO-7 (deck-builder container shape decision), PRO-10 (OP01 verification audit), PRO-14 (route split), PRO-15 (DockContainer component). PM is deprioritized; the operator confirmed keeping these parked rather than cancelling (2026-05-13).
 
 ---
 
 ## Roadmap
 
-### Near-term (this week — next week)
+### Near-term
 
-1. **LOS-8 — Console P5 Settings + write actions.** Triage → operator approves → dispatch to Gemini-cli, `target_repo=LogueOS-Console`. Last planned Console slice from the v1 spec.
-2. **LOS-9 — Console /api/runs dedupe.** Triage → operator approves → dispatch to Gemini-cli, `target_repo=LogueOS-Console`. Cosmetic data bug but visible on dashboard.
-3. **LOS-10 Steps 2-9 — orchestrator extraction.** Step 1 (gateway HTTP routes) done. Next steps per the locked plan in `data/peer_reviews/2026-05-10_orchestrator-extraction-plan_gmi.md`. CC lane. File sub-tickets as each step is approved.
-4. **PRO-343 — n8n W1 DNS error triage.** Operator decision needed: one-time blip (archive) or systemic (investigate). Labeled `triage` + `n8n-error-queue`. CC cannot auto-dispatch (triage label).
-5. **MiruOpsDigest failing daily at 9 AM** — Last result: 1 (failed). Not blocking but worth diagnosing. File ticket if it's not a one-off.
+1. **GMI-led LogueOS improvement pass.** Operator is queuing work for Gemini to make the LogueOS system substantially better. Likely scope: kernel-canon migration (LOS-35), n8n modularity (LOS-31), de-Miru-ification cleanup of worker-rule canon, finishing the orchestrator extraction loose ends (LOS-11/15/16/38). File/triage sub-tickets as the operator scopes them.
+2. **Token/cost visibility initiative** — LOS-19 → LOS-21 → LOS-22 + LOS-23. All In Review; finish the chain and ship the `/usage` page.
+3. **LOS-8 — Console P5 Settings + write actions.** Operator approves → dispatch to gemini-cli, `target_repo=LogueOS-Console`. Last planned Console slice from the v1 spec.
+4. **PRO-344 — untrack `.gemini/settings.json` + secret scan.** Real security item; promote out of triage.
 
-### Mid-term (next 2-4 weeks)
+### Mid-term
 
-1. **Hermes Stage 2 — assume routing authority.** After Stage 1 builds 100+ predictions of track record (currently 2 entries, growing per dispatch), evaluate whether qwen2.5:7b's predictions would have routed correctly. If yes for ≥85% of cases, ship Stage 2: Hermes routes, CC overrides, operator approves overrides via Telegram.
-2. **Hybrid pivot Phase 2 — `cc_handoff` MCP tool in shadow mode.** CC absorbs CH's dispatch role (since CH is offline), then `cc_handoff` becomes the path. Gatekeeper validates + logs to `data/agent_decisions.jsonl`. Does not gate yet.
-3. **Hybrid pivot Phase 3 — remove `dispatch_worker` from CH profile.** Self-serve loophole closes structurally. **Blocked on:** CH being back online.
-4. **Parent_watcher n8n integration** — file ticket. The Python parent_watcher works (PRO-323 done) but isn't wired into n8n yet. Without integration it doesn't auto-fire.
-5. **Dispatcher toolkit packing wired into W4 prompt builder** — PRO-324 shipped the toolkit (13 signal rules, 34 tests) but it's not actually invoked from W4 yet. File ticket.
-6. **Linear transport unification** — Codex ticket (relay file `data/peer_reviews/2026-05-09_codex_ticket_linear_transport_unification.md`). Not yet filed in Linear. Decide whether to file or de-prioritize.
-7. **PRO-337+ — backfill canon discipline checks.** Add `tools/check_canon_freshness.py` that fails CI if any canon file's "Last reviewed" stamp is more than 7 days old. Codify the every-3-days rule in code, not just discipline.
+1. **LOS-35 — kernel-canon migration.** Single canon source via the gateway; retires `.miru/` duplicate gates. Removes the drift hazard between this repo's canon files and the orchestrator.
+2. **LOS-39 — org learning layer Phase 1.** Tier 0 → Tier 1 synthesis pathway, building on the LOS-32 signal corpus.
+3. **Hermes Stage 2 — routing authority.** Signal-driven on Stage 1/1.5 track record. When the shadow predictions would have routed correctly often enough, ship: Hermes routes, CC overrides, operator approves overrides via Telegram.
+4. **Hybrid pivot Phase 2** — `cc_handoff` gating in shadow mode. Blocked on CH return or CC fully owning dispatch.
+5. **LOS-42 — Console mobile co-working interface.** Operator works primarily from phone; this unifies Claude.ai + Gemini CLI + Linear + Console.
 
-### Long-term (next quarter)
+### Long-term
 
-1. **LogueOS extraction.** Move orchestration layer (dispatch_listener, worktree management, gateway, n8n routing, Gatekeeper, Hermes) out of `D:\dev\miru` into a standalone `D:\dev\LogueOS` repo. Project Miru becomes a tenant. LogueOS becomes a framework other projects (NASDOOM, future) can adopt. Framework docs already exist at `D:\dev\LogueOS\01_roles.md`..`07_file_conventions.md` + `workers/`.
-2. **OpenClaw Control Plane (PRO-315 research).** Self-hosted observability layer. Hybrid model with Telegram (Telegram for approvals, OpenClaw dashboard for auditing). Research-only today. Decide post-LogueOS-extraction whether to build.
-3. **NousResearch Hermes proper** — replace Qwen substrate. Open question: hardware capability + maintenance cost vs. Qwen's good-enough.
-4. **Integration steward + Unified PR.** Concept from the brainstorm backlog. Not ticketed. Depends on job splitter being battle-tested first.
-5. **CH return.** When CH is back in the loop: hand back Lead Architect / canon-promotion / Notion-default-writer roles. CC keeps backend / Python / test / verification ownership. Hand off the brief at `data/peer_reviews/2026-05-09_ch_role_brief.md`.
+1. **Hybrid pivot Phase 3** — remove `dispatch_worker` from CH's profile (blocked on CH back online + Phase 2 validated).
+2. **NASDOOM** — stand up the dormant PWA project when the operator chooses to start it (45 backlog tickets ready; triage framework configured).
+3. **OpenClaw control plane** (PRO-315) — decide whether to build the self-hosted observability layer, vs. the LogueOS Console already covering most of it.
+4. **NousResearch Hermes proper** — replace the Qwen substrate; hardware capability + maintenance cost vs. Qwen good-enough.
+5. **CH return** — hand back Lead Architect / canon-promotion / Notion-default-writer roles; CC keeps backend / Python / test / verification ownership. Brief at `data/peer_reviews/2026-05-09_ch_role_brief.md`.
 
-### Indefinite / parked
+### Parked / indefinite
 
-- **Multi-agent parallel dispatch** — operator runs Cursor Pro+ alongside autonomous workers. Third worker slot planned when Cursor CLI stabilizes (memory: `project_multi_agent_intent`).
-- **Codex unbench.** Revisit when MCP transport stabilizes (rmcp transport stalls were the bench reason).
-- **PRO-292** — E2E test for stale env-var audit. Do-not-dispatch flag is on; manual audit.
+- **Codex** — fully retired (2026-05-12 roster, PR #197). Not "benched, revisit" — removed from the gateway allowlist, W2 router, and roster canon (PRO-304). Re-add only on an explicit operator decision.
+- **Cursor** — operator-IDE-only; never in the auto-dispatch loop. Its headless-CLI plan (PRO-85 / PRO-253) was archived/cancelled.
+- **PM Storefront** — parked (see backlog above).
+- **PRO-242** (Miru-AI-runs-PM "Governed Autonomy" vision) — cancelled 2026-05-13.
 
 ---
 
 ## What NOT to do
 
-- Do NOT begin Hybrid Pivot Phase 2 implementation without explicit operator approval — planning only until then. (Reaffirmed 2026-05-09; was set 2026-05-06.)
-- Do NOT modify CH's tool profile (remove `dispatch_worker`) until Phase 2 is verified working in shadow mode.
+- Do NOT begin Hybrid Pivot Phase 2 implementation without explicit operator approval — planning only until then.
+- Do NOT modify CH's tool profile (remove `dispatch_worker`) until Phase 2 is verified in shadow mode.
 - Do NOT re-introduce the old workstreams (file browser, runtime control, repo browser) when wiring Phase 2 — Gatekeeper is dispatch-validation-only.
-- Do NOT trust the Gatekeeper bench's `cost_weighted_score` for model differentiation — confidence scoring is broken (numeric historical 0–1 vs enum predicted high/medium/low). Use validity + latency until synthetic corpus exists.
-- Do NOT commit `data/peer_reviews/` artifacts (operator's local research bundles, never in repo).
-- Do NOT dispatch gemini-cli into a target repo that lacks `.gemini/settings.json` workspace-tier config — gemini will hang trying to use shell to read Linear/GitHub (no `--mcp-config` CLI flag exists, only file-based discovery). See `multi-repo-onboarding` checklist (PRO-340) for the 5-step setup.
-- Do NOT add a new `target_repo` to dispatch_tools.py without also adding the matching `WORKTREE_POOLS` entry in worktree.js — `tests/test_dispatch_tools_target_repo_parity.py` will fail CI, but the manifest-only error message is opaque if you don't know to look at both files.
+- Do NOT commit `data/peer_reviews/` artifacts (operator's local research bundles; never in repo). Same for `.gemini/settings.json` once LOS-resolved (PRO-344).
+- Do NOT dispatch gemini-cli into a target repo lacking `.gemini/settings.json` workspace-tier config — gemini hangs trying to use shell to read Linear/GitHub (file-based MCP discovery only, no `--mcp-config` flag). See `multi-repo-onboarding.md` (5-step setup).
+- Do NOT add a new `target_repo` without also adding the matching `WORKTREE_POOLS` entry — the parity test fails CI but the error message is opaque if you don't know to look at both files.
+- Do NOT treat this file (or `CLAUDE.md` / `team-charter.md`) as guaranteed-current for repo-internal paths until the kernel-canon migration (LOS-35) lands — verify against the orchestrator repo.
 
 ---
 
 ## Verification cadence
 
-This file is part of the canon refresh discipline (`feedback_canon_refresh_cadence` memory). It MUST be re-verified:
-
-- Every 3 days minimum
-- After any ship that changes service topology, ticket states, or stage status
-- Before any session that needs to plan new work
-
-The verification is **not** "I think this is right" — it's checking against:
-
-1. Live service ports (`Get-NetTCPConnection`)
-2. Live Linear ticket states (`linear_get_issue` for each tracked ticket)
-3. Recent merged PRs (`gh pr list --state merged --limit 20`)
-4. The `decisions` table in `miru_memory.db` for entries since the last refresh
-5. The peer_reviews folder for unsynthesized research/relay content
+Part of the canon refresh discipline (`feedback_canon_refresh_cadence`). Re-verify: every 3 days minimum; after any ship that changes service topology, ticket states, or stage status; before any session that plans new work. "Verified" = checked against: (1) live service ports, (2) live Linear ticket states across PRO + LOS + NAS teams, (3) recent merged PRs (`gh pr list --state merged --limit 20` on each active repo), (4) the `decisions`/state tables in `miru_memory.db`, (5) the `peer_reviews/` folder for unsynthesized relay content.
