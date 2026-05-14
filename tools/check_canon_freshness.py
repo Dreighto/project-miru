@@ -33,9 +33,6 @@ Recognized date-field names (case-insensitive, first match wins):
 Files checked:
     CLAUDE.md
     AGENTS.md
-    miru-context/team-charter.md
-    .miru/overlays/*.md
-    .miru/reference/*.md
 
 Files explicitly excluded:
     data/peer_reviews/*       (local research bundles, not canon)
@@ -63,12 +60,12 @@ DEFAULT_THRESHOLD_DAYS = 7
 DEFAULT_WARN_DAYS = 5
 
 # Canon files (repo-relative paths). Globs supported.
+# miru-context/team-charter.md removed in Phase 4 migration (pruned to 4
+# product-specific files). .miru/overlays/ and .miru/reference/ retired in
+# Phase 5 — kernel canon now lives in LogueOS-Orchestrator/.logueos/.
 CANON_FILES: tuple[str, ...] = (
     "CLAUDE.md",
     "AGENTS.md",
-    "miru-context/team-charter.md",
-    ".miru/overlays/*.md",
-    ".miru/reference/*.md",
 )
 
 # Recognized date-field names. First match wins. Case-insensitive.
