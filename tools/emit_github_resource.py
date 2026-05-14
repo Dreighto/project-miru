@@ -63,7 +63,7 @@ def _repo_root() -> str:
 
 def validate(data: dict) -> None:
     if not isinstance(data, dict):
-        raise ValueError("payload must be a JSON object")
+        raise TypeError("payload must be a JSON object")
     missing = REQUIRED_FIELDS - data.keys()
     if missing:
         raise ValueError(f"missing required fields: {sorted(missing)}")

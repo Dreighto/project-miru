@@ -175,7 +175,7 @@ def _parse_context_arg(raw: str | None) -> dict[str, Any] | None:
     except json.JSONDecodeError as exc:
         raise ValueError(f"--context-json is not valid JSON: {exc}") from exc
     if not isinstance(parsed, dict):
-        raise ValueError("--context-json must be a JSON object")
+        raise TypeError("--context-json must be a JSON object")
     return parsed
 
 

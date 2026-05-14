@@ -193,6 +193,7 @@ def snapshot_file(rel_path: str, repo_root: Path) -> dict[str, Any]:
     # when size+mtime were stable across all reads. Bounded retry (2 attempts);
     # if the file keeps changing, we surface the race rather than write a
     # corrupted anchor.
+    result: dict[str, Any] | None = None
     try:
         for _attempt in range(2):
             before = full.stat()
@@ -201,7 +202,7 @@ def snapshot_file(rel_path: str, repo_root: Path) -> dict[str, Any]:
             last_hash = _last_chained_row_hash(full) if chain.ok else None
             after = full.stat()
             if before.st_size == after.st_size and before.st_mtime_ns == after.st_mtime_ns:
-                return {
+                result = {
                     "path": rel_path,
                     "exists": True,
                     "file_size": after.st_size,
@@ -213,19 +214,7 @@ def snapshot_file(rel_path: str, repo_root: Path) -> dict[str, Any]:
                     "chain_ok": chain.ok,
                     "error": chain.error,
                 }
-        # Two attempts both raced — surface the race.
-        return {
-            "path": rel_path,
-            "exists": True,
-            "file_size": None,
-            "file_sha256": None,
-            "total_rows": 0,
-            "chained_rows": 0,
-            "legacy_prefix_rows": 0,
-            "last_chained_row_hash": None,
-            "chain_ok": False,
-            "error": "file_modified_during_snapshot",
-        }
+                break
     except OSError as exc:
         return {
             "path": rel_path,
@@ -239,6 +228,21 @@ def snapshot_file(rel_path: str, repo_root: Path) -> dict[str, Any]:
             "chain_ok": False,
             "error": f"os_error: {exc}",
         }
+    if result is not None:
+        return result
+    # Two attempts both raced — surface the race.
+    return {
+        "path": rel_path,
+        "exists": True,
+        "file_size": None,
+        "file_sha256": None,
+        "total_rows": 0,
+        "chained_rows": 0,
+        "legacy_prefix_rows": 0,
+        "last_chained_row_hash": None,
+        "chain_ok": False,
+        "error": "file_modified_during_snapshot",
+    }
 
 
 def build_anchor_row(repo_root: Path, files: tuple[str, ...] = AUDIT_FILES) -> dict[str, Any]:
