@@ -30,6 +30,7 @@ from pathlib import Path
 # regardless of invocation mode.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from audit_chain import append_chained
+from data_paths import data_path as _data_path
 
 
 def _repo_root() -> str:
@@ -53,7 +54,7 @@ def _repo_root() -> str:
     return os.path.dirname(script_dir)
 
 
-HEARTBEAT_LOG = os.path.join(_repo_root(), "data", "cc_heartbeat_log.jsonl")
+HEARTBEAT_LOG = str(_data_path("cc_heartbeat_log.jsonl", repo_root_fn=_repo_root))
 
 
 def emit(
@@ -76,9 +77,15 @@ def emit(
         "stall_signal": stall_signal,
         "outputs": outputs or [],
     }
-    env_trace = os.environ.get("MIRU_TRACE_ID", "").strip()
+    env_trace = os.environ.get("LOGUEOS_TRACE_ID", "").strip()
     if env_trace:
         row["trace_id"] = env_trace
+    # LOS-28: stamp project_id from the worker's env (set at spawn time by
+    # services/dispatch_listener/src/projects.js). Heartbeats outside a
+    # dispatch context simply skip this.
+    env_project_id = os.environ.get("LOGUEOS_PROJECT_ID", "").strip()
+    if env_project_id and not row.get("project_id"):
+        row["project_id"] = env_project_id
     # DGAS Tier 2 #6 Part B: chain every heartbeat row.
     append_chained(Path(HEARTBEAT_LOG), row)
     print(f"[heartbeat] {json.dumps(row, separators=(',', ':'))}", file=sys.stderr)

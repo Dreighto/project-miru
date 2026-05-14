@@ -42,6 +42,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -268,7 +269,14 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    repo_root = _repo_root()
+    # Honor LOGUEOS_DATA_DIR if set (LOS-55): treat the override as a
+    # data-dir override and rebuild the canonical file list relative to it.
+    # This keeps emit_audit_anchor consistent with the other emitters.
+    # Anchor file_list expects strings rooted under repo_root; when the env
+    # var is set we use its parent as the synthetic repo_root so the
+    # "data/<file>" relative paths resolve correctly.
+    env_data_dir = os.environ.get("LOGUEOS_DATA_DIR")
+    repo_root = Path(env_data_dir).parent if env_data_dir else _repo_root()
     file_list = tuple(args.files) if args.files else AUDIT_FILES
 
     row = build_anchor_row(repo_root, file_list)

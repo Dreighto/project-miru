@@ -47,6 +47,7 @@ from pathlib import Path
 # regardless of invocation mode.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from audit_chain import append_chained
+from data_paths import data_path as _data_path
 
 # ---------------------------------------------------------------------------
 # Path resolution (worktree-safe; mirrors tools/emit_completion.py:74-90).
@@ -93,11 +94,11 @@ def _utc_iso() -> str:
 
 
 def _default_log_path() -> Path:
-    """Canonical log path. MIRU_DECISIONS_LOG_PATH env var overrides for tests."""
-    override = os.environ.get("MIRU_DECISIONS_LOG_PATH", "").strip()
+    """Canonical log path. LOGUEOS_DECISIONS_LOG_PATH env var overrides for tests."""
+    override = os.environ.get("LOGUEOS_DECISIONS_LOG_PATH", "").strip()
     if override:
         return Path(override)
-    return Path(_repo_root()) / "data" / "agent_decisions.jsonl"
+    return _data_path("agent_decisions.jsonl", repo_root_fn=_repo_root)
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +231,7 @@ def _autofill_identity(record):
     if not record.get("created_at"):
         record["created_at"] = _utc_iso()
 
-    env_trace = os.environ.get("MIRU_TRACE_ID", "").strip()
+    env_trace = os.environ.get("LOGUEOS_TRACE_ID", "").strip()
     if env_trace and not record.get("trace_id"):
         record["trace_id"] = env_trace
 
@@ -238,6 +239,13 @@ def _autofill_identity(record):
         inferred = _ticket_id_from_trace(record.get("trace_id"))
         if inferred:
             record["ticket_id"] = inferred
+
+    # LOS-28: stamp project_id from the worker's env (set at spawn time by
+    # services/dispatch_listener/src/projects.js). Decisions emitted outside
+    # a dispatch context simply skip this.
+    env_project_id = os.environ.get("LOGUEOS_PROJECT_ID", "").strip()
+    if env_project_id and not record.get("project_id"):
+        record["project_id"] = env_project_id
 
     return record
 

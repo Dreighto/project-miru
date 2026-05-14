@@ -58,6 +58,7 @@ from typing import Any
 _THIS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_THIS_DIR))
 from audit_chain import append_chained  # noqa: E402
+from data_paths import data_path as _data_path  # noqa: E402
 
 METRICS_LOG_REL = "data/governance_metrics.jsonl"
 
@@ -152,11 +153,17 @@ def emit(
         "subject": subject,
         "context": _truncate_context(context),
     }
-    env_trace = os.environ.get("MIRU_TRACE_ID", "").strip()
+    env_trace = os.environ.get("LOGUEOS_TRACE_ID", "").strip()
     if env_trace:
         row["trace_id"] = env_trace
+    # LOS-28: stamp project_id from the worker's env (set at spawn time by
+    # services/dispatch_listener/src/projects.js). Metrics emitted outside a
+    # dispatch context simply skip this.
+    env_project_id = os.environ.get("LOGUEOS_PROJECT_ID", "").strip()
+    if env_project_id and not row.get("project_id"):
+        row["project_id"] = env_project_id
 
-    target = log_path or (_repo_root() / METRICS_LOG_REL)
+    target = log_path or _data_path("governance_metrics.jsonl", repo_root_fn=_repo_root)
     return append_chained(target, row)
 
 
