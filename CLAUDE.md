@@ -78,21 +78,22 @@ file currently open in another worker's session.
 
 ## Append-Only Data Files
 
-Nine files in `data/` are strictly append-only. Never edit, truncate, sort,
-deduplicate, or read-modify-write. Only `fs.appendFileSync` (or shell `>>`).
+The orchestration append-only chains (`cc_completion_log`, `routing_history`,
+`pending_callbacks`, `dispatch_dlq`, `cc_heartbeat_log`, `vp_ops_supervision`,
+`drift_scanner_log`, `agent_decisions`, `github_resource_ledger`) **live in
+the orchestrator** at `D:\dev\LogueOS-Orchestrator\data\` (Migration Phase 3,
+LOS-55, 2026-05-14). They are not stored in this repo.
 
-```text
-data/cc_completion_log.jsonl       data/routing_history.jsonl
-data/pending_callbacks.jsonl       data/dispatch_dlq.jsonl
-data/cc_heartbeat_log.jsonl        data/vp_ops_supervision.jsonl
-data/drift_scanner_log.jsonl       data/agent_decisions.jsonl
-data/github_resource_ledger.jsonl
-```
+Workers in this worktree still call the local `tools/emit_completion.py`
+helper — the dispatch_listener sets `LOGUEOS_DATA_DIR` so every helper
+resolves the canonical orchestrator path automatically. Use the helpers
+(`tools/emit_completion.py`, `tools/emit_heartbeat.py`); never hand-roll the
+append.
 
-Use the helper scripts (`tools/emit_completion.py`, `tools/emit_heartbeat.py`)
-— do not hand-roll the append. Pre-commit hooks exclude these from
-`trailing-whitespace` and `end-of-file-fixer`. The invariant is enforced by
-`tests/test_jsonl_append_only_invariant.py`.
+The only append-only file that stays miru-side is `data/miru_worker_runs.jsonl`
+— miru-product specific, governed by `tests/test_jsonl_append_only_invariant.py`
+in this repo. Same rules: never edit, truncate, sort, dedupe, or
+read-modify-write.
 
 ## Completion Contract — Terminal States
 
