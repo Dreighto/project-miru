@@ -42,6 +42,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -192,6 +193,7 @@ def snapshot_file(rel_path: str, repo_root: Path) -> dict[str, Any]:
     # when size+mtime were stable across all reads. Bounded retry (2 attempts);
     # if the file keeps changing, we surface the race rather than write a
     # corrupted anchor.
+    result: dict[str, Any] | None = None
     try:
         for _attempt in range(2):
             before = full.stat()
@@ -200,7 +202,7 @@ def snapshot_file(rel_path: str, repo_root: Path) -> dict[str, Any]:
             last_hash = _last_chained_row_hash(full) if chain.ok else None
             after = full.stat()
             if before.st_size == after.st_size and before.st_mtime_ns == after.st_mtime_ns:
-                return {
+                result = {
                     "path": rel_path,
                     "exists": True,
                     "file_size": after.st_size,
@@ -212,19 +214,7 @@ def snapshot_file(rel_path: str, repo_root: Path) -> dict[str, Any]:
                     "chain_ok": chain.ok,
                     "error": chain.error,
                 }
-        # Two attempts both raced — surface the race.
-        return {
-            "path": rel_path,
-            "exists": True,
-            "file_size": None,
-            "file_sha256": None,
-            "total_rows": 0,
-            "chained_rows": 0,
-            "legacy_prefix_rows": 0,
-            "last_chained_row_hash": None,
-            "chain_ok": False,
-            "error": "file_modified_during_snapshot",
-        }
+                break
     except OSError as exc:
         return {
             "path": rel_path,
@@ -238,6 +228,21 @@ def snapshot_file(rel_path: str, repo_root: Path) -> dict[str, Any]:
             "chain_ok": False,
             "error": f"os_error: {exc}",
         }
+    if result is not None:
+        return result
+    # Two attempts both raced — surface the race.
+    return {
+        "path": rel_path,
+        "exists": True,
+        "file_size": None,
+        "file_sha256": None,
+        "total_rows": 0,
+        "chained_rows": 0,
+        "legacy_prefix_rows": 0,
+        "last_chained_row_hash": None,
+        "chain_ok": False,
+        "error": "file_modified_during_snapshot",
+    }
 
 
 def build_anchor_row(repo_root: Path, files: tuple[str, ...] = AUDIT_FILES) -> dict[str, Any]:
@@ -268,7 +273,14 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    repo_root = _repo_root()
+    # Honor LOGUEOS_DATA_DIR if set (LOS-55): treat the override as a
+    # data-dir override and rebuild the canonical file list relative to it.
+    # This keeps emit_audit_anchor consistent with the other emitters.
+    # Anchor file_list expects strings rooted under repo_root; when the env
+    # var is set we use its parent as the synthetic repo_root so the
+    # "data/<file>" relative paths resolve correctly.
+    env_data_dir = os.environ.get("LOGUEOS_DATA_DIR")
+    repo_root = Path(env_data_dir).parent if env_data_dir else _repo_root()
     file_list = tuple(args.files) if args.files else AUDIT_FILES
 
     row = build_anchor_row(repo_root, file_list)

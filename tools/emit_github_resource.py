@@ -34,6 +34,7 @@ from pathlib import Path
 # regardless of invocation mode.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from audit_chain import append_chained
+from data_paths import data_path as _data_path
 
 REQUIRED_FIELDS = {"ts", "trace_id", "resource_type", "resource_id", "intent", "status"}
 VALID_RESOURCE_TYPES = {"branch", "pr"}
@@ -62,7 +63,7 @@ def _repo_root() -> str:
 
 def validate(data: dict) -> None:
     if not isinstance(data, dict):
-        raise ValueError("payload must be a JSON object")
+        raise TypeError("payload must be a JSON object")
     missing = REQUIRED_FIELDS - data.keys()
     if missing:
         raise ValueError(f"missing required fields: {sorted(missing)}")
@@ -81,8 +82,22 @@ def validate(data: dict) -> None:
         raise ValueError(f"compensation must be one of {VALID_COMPENSATIONS}")
 
 
+def _stamp_project_id_from_env(data: dict) -> None:
+    """LOS-28: fill project_id from worker env if the caller didn't provide one.
+
+    The dispatch listener sets ``LOGUEOS_PROJECT_ID`` at spawn time (see
+    services/dispatch_listener/src/projects.js). Calls from outside a
+    dispatch context (manual ops scripts, tests) simply skip this — the
+    row stays as the caller wrote it.
+    """
+    env_project_id = os.environ.get("LOGUEOS_PROJECT_ID", "").strip()
+    if env_project_id and not data.get("project_id"):
+        data["project_id"] = env_project_id
+
+
 def append_entry(data: dict, ledger_path: str) -> None:
     validate(data)
+    _stamp_project_id_from_env(data)
     # DGAS Tier 2 #6 Part B: chain every ledger row. fsync=True because this
     # ledger tracks external GitHub-side resources — losing a row means an
     # orphan branch/PR with no compensation record.
@@ -101,7 +116,7 @@ def main() -> None:
         print(f"[emit_github_resource] error: invalid JSON — {e}", file=sys.stderr)
         sys.exit(1)
 
-    ledger_path = os.path.join(_repo_root(), "data", "github_resource_ledger.jsonl")
+    ledger_path = str(_data_path("github_resource_ledger.jsonl", repo_root_fn=_repo_root))
 
     try:
         append_entry(data, ledger_path)
