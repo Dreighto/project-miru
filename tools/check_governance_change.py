@@ -48,13 +48,8 @@ from pathlib import Path
 #
 # Source: synthesis item #6 (data/peer_reviews/2026-05-08_dgas_three_way_synthesis.md)
 GOVERNANCE_PATTERNS: tuple[str, ...] = (
-    # Gateway profile + dispatch validation
-    "tools/miru_mcp_gateway/profiles.py",
+    # Gatekeeper (dispatch validation)
     "gatekeeper/**",
-    # Instruction architecture overlays + reference data
-    ".miru/overlays/**",
-    ".miru/reference/**",
-    ".miru/instruction_manifest.json",
     # Worker rule canon read on every dispatch (CLAUDE.md sec. Repo Boundary):
     # team-charter.md, lane charter, role briefs. Modifying these silently
     # would propagate to every worker session — same trust surface as the
