@@ -558,4 +558,3 @@ return [pscustomobject]@{
     DockerProject = "op-miru-worktree"
     ComposeFiles = @($composeFile)
 }
-

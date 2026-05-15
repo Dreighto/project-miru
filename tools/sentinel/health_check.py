@@ -173,9 +173,10 @@ def _tail_jsonl(path: Path, n: int) -> list[dict]:
         for line in lines[-n:]:
             with contextlib.suppress(ValueError):
                 rows.append(json.loads(line))
-        return rows
     except OSError:
         return []
+    else:
+        return rows
 
 
 # ── OAuth credential probe ────────────────────────────────────────────────────
@@ -207,9 +208,10 @@ def _should_run_oauth_check(state: dict) -> bool:
     try:
         last_dt = datetime.datetime.fromisoformat(last.replace("Z", "+00:00"))
         hours_since = (datetime.datetime.now(datetime.UTC) - last_dt).total_seconds() / 3600
-        return hours_since >= _OAUTH_CHECK_INTERVAL_H
     except (ValueError, OverflowError):
         return True
+    else:
+        return hours_since >= _OAUTH_CHECK_INTERVAL_H
 
 
 # ── AI analysis ───────────────────────────────────────────────────────────────
@@ -438,10 +440,11 @@ def _send_telegram(token: str, chat_id: str, msg: str) -> bool:
         )
         conn.getresponse().read()
         conn.close()
-        return True
     except Exception as exc:
         _log(f"telegram_failed: {exc}")
         return False
+    else:
+        return True
 
 
 # ── Pushover ──────────────────────────────────────────────────────────────────
@@ -461,10 +464,11 @@ def _send_pushover(api_token: str, user_key: str, msg: str, title: str = "Miru S
         )
         conn.getresponse().read()
         conn.close()
-        return True
     except Exception as exc:
         _log(f"pushover_failed: {exc}")
         return False
+    else:
+        return True
 
 
 def _alert(
