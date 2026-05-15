@@ -36,14 +36,12 @@ _OAUTH_CHECK_INTERVAL_H = 24
 
 _HEALTH_ENDPOINTS = {
     "gateway": "http://127.0.0.1:18766/health",
-    "dispatch_listener": "http://127.0.0.1:19100/health",
     "pm": "http://127.0.0.1:18080/__pm_health",
     "miru_ai": "http://127.0.0.1:18765/api/health",
     "n8n": "http://127.0.0.1:15678/healthz",
 }
 
 _WATCH_LOGS = {
-    "dispatch_listener_stderr": _REPO_ROOT / "logs" / "dispatch_listener_stderr.log",
     "service_watchdog": _REPO_ROOT / "logs" / "service_watchdog.log",
     "stall_recovery": _REPO_ROOT / "logs" / "stall_recovery.log",
 }
@@ -222,10 +220,10 @@ You analyze service status and log snapshots and return a structured JSON assess
 
 ## WHAT MIRU LOOKS LIKE WHEN HEALTHY
 
-Miru runs 5 services: dispatch_listener (19100), gateway (18766), miru_ai (18765), pm (18080), n8n (15678).
+Miru runs 4 services: gateway (18766), miru_ai (18765), pm (18080), n8n (15678).
 When everything is fine:
 - All services show "up"
-- Logs contain normal cycle markers: listener_listening, worker_spawned, worker_exit, all_clear,
+- Logs contain normal cycle markers: all_clear,
   stall_recovery run, stalls_found=0, poll, GET /health 200, GET /api/health 200
 - DLQ new entries = 0
 - Heartbeat entries show IN_PROGRESS or completed work
@@ -267,18 +265,17 @@ Rules:
 
 ## FEW-SHOT EXAMPLES
 
-Input: services={gateway:up, dispatch_listener:up, pm:up, miru_ai:up, n8n:up}, DLQ new=0,
-logs show "stalls_found=0", "listener_listening", "all_clear"
+Input: services={gateway:up, pm:up, miru_ai:up, n8n:up}, DLQ new=0,
+logs show "stalls_found=0", "all_clear"
 Output: {"should_escalate": false, "reason": "All services up, normal idle cycle logs"}
 
-Input: services={gateway:up, dispatch_listener:up, pm:up, miru_ai:down (HTTPError), n8n:up}, DLQ new=0
+Input: services={gateway:up, pm:up, miru_ai:down (HTTPError), n8n:up}, DLQ new=0
 Output: {"should_escalate": true, "reason": "miru_ai is down (HTTPError)"}
 
 Input: services all up, logs show "WARNING: This is a development server", "Pushover missing keys"
 Output: {"should_escalate": false, "reason": "All clear; development server warnings are expected"}
 
-Input: services all up, stall_recovery log shows "stalls_found=0 no_stalls_detected",
-dispatch_listener_stderr shows "(no recent errors — prior startup-race artifact; service is healthy)"
+Input: services all up, stall_recovery log shows "stalls_found=0 no_stalls_detected"
 Output: {"should_escalate": false, "reason": "All services up, all logs show healthy idle patterns"}
 
 Input: services all up, DLQ new=5
@@ -601,19 +598,6 @@ def main() -> None:
     for name, path in _WATCH_LOGS.items():
         if name == "stall_recovery":
             pass  # handled as a programmatic hard alert below; excluded from AI context
-        elif name == "dispatch_listener_stderr" and services.get(
-            "dispatch_listener", ""
-        ).startswith("up"):
-            # If the listener is up and the log still contains EADDRINUSE/stack-trace
-            # content, the entire visible tail is a pre-fix crash-loop artifact.
-            # Replace it entirely so the AI doesn't alert on historical noise.
-            raw = _tail_file(path, _LOG_TAIL_LINES)
-            if "EADDRINUSE" in raw or "Unhandled 'error' event" in raw:
-                log_tails[name] = (
-                    "(no recent errors — prior startup-race artifact; service is healthy)"
-                )
-            else:
-                log_tails[name] = raw if raw.strip() else "(no recent errors)"
         else:
             log_tails[name] = _tail_file(path, _LOG_TAIL_LINES)
 

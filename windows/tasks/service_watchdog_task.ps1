@@ -1,6 +1,6 @@
 ﻿# service_watchdog_task.ps1
 # Called by the "MiruServiceWatchdog" scheduled task every 2 minutes.
-# Polls gateway (18766), dispatch listener (19100), and n8n (15678).
+# Polls gateway (18766) and n8n (15678).
 # If a service has been down for 2+ consecutive polls (>=90s), auto-restarts
 # it and sends a Telegram alert.
 # Ceiling: if a service restarts 3+ times within 10 minutes, stops retrying
@@ -95,9 +95,8 @@ function Test-Health {
 
 function Read-State {
     $empty = @{
-        gateway           = @{ first_fail_utc = $null; restart_count = 0; restart_window_start_utc = $null; escalated = $false }
-        dispatch_listener = @{ first_fail_utc = $null; restart_count = 0; restart_window_start_utc = $null; escalated = $false }
-        n8n               = @{ first_fail_utc = $null; restart_count = 0; restart_window_start_utc = $null; escalated = $false }
+        gateway = @{ first_fail_utc = $null; restart_count = 0; restart_window_start_utc = $null; escalated = $false }
+        n8n     = @{ first_fail_utc = $null; restart_count = 0; restart_window_start_utc = $null; escalated = $false }
     }
     if (-not (Test-Path $stateFile)) { return $empty }
     try {
@@ -173,13 +172,6 @@ $services = @(
         health_url     = "http://127.0.0.1:18766/health"
         restart_type   = "script"
         restart_script = (Join-Path $PSScriptRoot "restart_mcp_gateway_task.ps1")
-    },
-    @{
-        key          = "dispatch_listener"
-        label        = "Dispatch Listener (19100)"
-        health_url   = "http://127.0.0.1:19100/health"
-        restart_type = "task"
-        restart_task = "MiruDispatchListener"
     },
     @{
         key            = "n8n"

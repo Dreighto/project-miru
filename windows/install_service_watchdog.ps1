@@ -9,7 +9,7 @@
 # other Miru restart tasks so it can trigger Start-ScheduledTask without UAC.
 #
 # The task calls windows\tasks\service_watchdog_task.ps1 which:
-#   - polls gateway (18766) and dispatch listener (19100) health endpoints
+#   - polls gateway (18766) and n8n (15678) health endpoints
 #   - auto-restarts a service via its registered task if down for >= 90s
 #   - sends Telegram alerts on restart and recovery
 
@@ -89,7 +89,7 @@ try {
 
     $task = Register-ScheduledTask `
         -TaskName    $taskName `
-        -Description "Project Miru service watchdog. Polls gateway (18766) and dispatch listener (19100) every 2 min. Auto-restarts on failure, Telegram alerts on restart/recovery." `
+        -Description "Project Miru service watchdog. Polls gateway (18766) and n8n (15678) every 2 min. Auto-restarts on failure, Telegram alerts on restart/recovery." `
         -Action      $action `
         -Trigger     $trigger `
         -Settings    $settings `
