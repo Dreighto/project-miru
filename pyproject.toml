@@ -26,9 +26,7 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF", "TRY", "PT", "
 # TRY003 ignored: we use long exception messages intentionally for diagnostics.
 ignore = ["E501", "TRY003"]
 
-# server.py mutates sys.path before miru_mcp_gateway imports (script entrypoint).
 [tool.ruff.lint.per-file-ignores]
-"tools/miru_mcp_gateway/server.py" = ["E402"]
 # Legacy unittest-style tests (~2000 PT009/PT027 violations as of 2026-05-09).
 # Per-file-ignored to avoid forcing immediate conversion. New pytest-style tests
 # in tests/ won't trigger PT009/PT027 since they don't use unittest.TestCase.
