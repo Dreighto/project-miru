@@ -24,19 +24,6 @@ class ToolkitContext(TypedDict):
 
 _SIGNAL_RULES: list[dict[str, Any]] = [
     {
-        "name": "dispatch_listener",
-        "keywords": [r"\bdispatch", r"\blistener", r"\bspawn", r"\bworktree"],
-        "files": [
-            "services/dispatch_listener/src/index.js",
-            "services/dispatch_listener/src/spawn.js",
-            "services/dispatch_listener/src/worktree.js",
-            "services/dispatch_listener/src/receipt.js",
-            "services/dispatch_listener/src/allowlist.js",
-        ],
-        "tools": ["tools/orchestrator/stall_detector.py", "tools/orchestrator/recovery_router.py"],
-        "services": ["services/dispatch_listener/"],
-    },
-    {
         "name": "n8n_workflows",
         "keywords": [r"\bn8n\b", r"\bworkflow", r"\bwatcher\b.*workflow", r"\brouter\b"],
         "files": [],
@@ -136,7 +123,6 @@ GLOBAL_DONT_TOUCH = [
     ".env",
     ".mcp.json",
     "data/card_catalog.db",
-    "data/miru_memory.db",
     "card_catalog.db",
 ]
 

@@ -144,6 +144,9 @@ function Start-OpMiruWorktreeMiruAi {
         -RedirectStandardOutput $StdoutLog `
         -RedirectStandardError $StderrLog `
         -PassThru
+    if (-not $process) {
+        throw "Failed to start Miru AI process via Start-Process."
+    }
 
     [pscustomobject]@{
         pid = $process.Id
@@ -178,9 +181,12 @@ function Start-OpMiruWorktreeDashboardNative {
         -FilePath $pythonCommand.Source `
         -ArgumentList "pm\app.py" `
         -WorkingDirectory $RepoRoot `
-        -RedirectStandardOutput $StdoutLog `
-        -RedirectStandardError $StderrLog `
+        -RedirectStandardOutput $dashboardStdoutLog `
+        -RedirectStandardError $dashboardStderrLog `
         -PassThru
+    if (-not $process) {
+        throw "Failed to start dashboard process via Start-Process."
+    }
 
     [pscustomobject]@{
         pid          = $process.Id
@@ -552,4 +558,3 @@ return [pscustomobject]@{
     DockerProject = "op-miru-worktree"
     ComposeFiles = @($composeFile)
 }
-

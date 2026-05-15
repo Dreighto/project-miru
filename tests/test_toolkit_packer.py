@@ -26,11 +26,6 @@ class TestMatchKeywords:
 
 
 class TestPackToolkitSignals:
-    def test_dispatch_keyword_maps_to_listener(self):
-        ctx = pack_toolkit("Fix dispatch listener spawn bug")
-        assert any("dispatch_listener" in f for f in ctx["relevant_files"])
-        assert "services/dispatch_listener/" in ctx["service_boundaries"]
-
     def test_n8n_keyword_maps_to_workflows(self):
         ctx = pack_toolkit("Update the n8n workflow for routing")
         assert "docker/n8n/workflows/" in ctx["service_boundaries"]
@@ -127,7 +122,7 @@ class TestDontTouchAndReadOnly:
             assert item in ctx["read_only"]
 
     def test_no_secrets_in_context_block(self):
-        ctx = pack_toolkit("Fix the dispatch listener with API key handling")
+        ctx = pack_toolkit("Fix the miru_ai server with API key handling")
         block = ctx["context_block"]
         assert "LINEAR_API_KEY" not in block
         assert "ANTHROPIC_API_KEY" not in block
@@ -136,16 +131,16 @@ class TestDontTouchAndReadOnly:
 
 class TestContextBlock:
     def test_context_block_is_string(self):
-        ctx = pack_toolkit("Fix dispatch listener")
+        ctx = pack_toolkit("Fix miru_ai card lookup")
         assert isinstance(ctx["context_block"], str)
 
     def test_context_block_has_header(self):
-        ctx = pack_toolkit("Fix dispatch listener")
+        ctx = pack_toolkit("Fix miru_ai card lookup")
         assert "## Toolkit Context" in ctx["context_block"]
 
     def test_context_block_includes_matched_files(self):
-        ctx = pack_toolkit("Fix dispatch listener spawn")
-        assert "spawn.js" in ctx["context_block"]
+        ctx = pack_toolkit("Fix miru_ai card lookup timeout")
+        assert "miru_ai/" in ctx["context_block"]
 
     def test_context_block_includes_dont_touch(self):
         ctx = pack_toolkit("Any task")
@@ -164,11 +159,11 @@ class TestContextBlock:
 class TestDeduplication:
     def test_no_duplicate_files(self):
         ctx = pack_toolkit(
-            "Fix dispatch listener and spawn worktree issue",
-            ticket_description="dispatch spawn worktree",
+            "Fix miru_ai card lookup and scan worktree issue",
+            ticket_description="miru_ai scan worktree",
         )
         assert len(ctx["relevant_files"]) == len(set(ctx["relevant_files"]))
 
     def test_no_duplicate_services(self):
-        ctx = pack_toolkit("Fix dispatch", service_dirs=["services/dispatch_listener/"])
+        ctx = pack_toolkit("Fix miru_ai", service_dirs=["miru_ai/"])
         assert len(ctx["service_boundaries"]) == len(set(ctx["service_boundaries"]))

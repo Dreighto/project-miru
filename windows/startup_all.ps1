@@ -129,7 +129,7 @@ try {
 
             $wdTask = Register-ScheduledTask `
                 -TaskName    "MiruServiceWatchdog" `
-                -Description "Project Miru service watchdog. Polls gateway (18766) and dispatch listener (19100) every 2 min. Auto-restarts on failure, Telegram alerts on restart/recovery." `
+                -Description "Project Miru service watchdog. Polls gateway (18766) and n8n (15678) every 2 min. Auto-restarts on failure, Telegram alerts on restart/recovery." `
                 -Action      $wdAction `
                 -Trigger     $wdTrigger `
                 -Settings    $wdSettings `
