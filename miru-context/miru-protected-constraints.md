@@ -27,13 +27,11 @@ are NOT in this document. Use your judgment on those.
 | 18766 | MCP Gateway       | Active — do not bind anything else here                          |
 | 19100 | Dispatch Listener | Active — do not bind anything else here                          |
 | 15678 | n8n               | Active (Docker) — do not bind anything else here                 |
-| 19000 | Task Dispatcher   | RESERVED (decommissioned) — do not reuse                         |
 | 8080  | (Reserved)        | RESERVED — do not touch                                          |
 | 8765  | (Reserved)        | **NEVER TOUCH under any circumstances**                          |
 | 11434 | Ollama            | Local dependency — not Miru-owned; do not restart or reconfigure |
 
-**Why:** Port conflicts cause EADDRINUSE crash loops that are hard to diagnose. Reusing
-a decommissioned port risks conflicts if the old service is accidentally re-enabled.
+**Why:** Port conflicts cause EADDRINUSE crash loops that are hard to diagnose.
 
 ---
 
@@ -101,18 +99,17 @@ outside of MCP — but still read-only.
 
 Code belongs to its service. The file placement rules are non-negotiable.
 
-| Service                          | Directory                    |
-| -------------------------------- | ---------------------------- |
-| Miru AI backend                  | `miru_ai/`                   |
-| PM Dashboard backend             | `pm/`                        |
-| Task Dispatcher (decommissioned) | `dispatcher/` — no new files |
-| Windows operational scripts      | `windows/`                   |
-| Shared utilities (2+ services)   | `shared/`                    |
-| Tools and standalone scripts     | `tools/`                     |
-| Tests                            | `tests/`                     |
-| Documentation                    | `docs/`                      |
-| Config JSON                      | `config/`                    |
-| Runtime logs                     | `logs/` (gitignored)         |
+| Service                        | Directory            |
+| ------------------------------ | -------------------- |
+| Miru AI backend                | `miru_ai/`           |
+| PM Dashboard backend           | `pm/`                |
+| Windows operational scripts    | `windows/`           |
+| Shared utilities (2+ services) | `shared/`            |
+| Tools and standalone scripts   | `tools/`             |
+| Tests                          | `tests/`             |
+| Documentation                  | `docs/`              |
+| Config JSON                    | `config/`            |
+| Runtime logs                   | `logs/` (gitignored) |
 
 **Never create service code at the repo root.** Never create temp or debug files at
 the repo root. See CLAUDE.md "File Placement — Hard Rules" for the full list.

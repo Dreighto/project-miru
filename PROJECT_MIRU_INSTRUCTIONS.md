@@ -18,32 +18,40 @@ stop here, read it, then come back.
 
 ## Core startup files (read at every thread start, after CLAUDE_CHAT.md)
 
-Read all of these at thread start before doing anything else:
+The cross-cutting kernel canon lives in `D:\dev\LogueOS-Orchestrator\.logueos\` — the
+project-miru repo only carries miru-payload-specific overlays.
 
-- `miru-context/operator-profile.md` — how to communicate with Dreighto; tone, plain English rules, schedule rules, when to suggest Extended Thinking or a new thread
-- `miru-context/claude-operating-model.md` — your role, routing logic, what you handle vs. delegate, approval boundaries
-- `miru-context/guardrails.md` — instruction priority order, hard rules, tool safety rules, recovery rules
+Read these at thread start:
+
+- `miru-context/THE_ONE_PIECE.md` — current product, crew, and operating quick-reference for this repo
 - `miru-context/miru-vocab.md` — operator language guide; shorthand phrases, direction phrases, project-specific terms
-- `miru-context/canon-and-drift.md` — source-of-truth hierarchy, drift detection patterns, state preservation rules
-- `miru-context/state-handoff-log.md` — previous thread context. If a handoff was written, start from it.
-- `miru-context/operating-model.md` — full team model and autonomous loop; every role and how they fit together
-- `miru-context/canon-contract.md` — how knowledge flows into Notion; promotion rules, deduplication, retroactive authority
-- `miru-context/job-stewardship.md` — what "done" means; Claude Code's verification checklist; stall response protocol
-- `miru-context/source-of-truth.md` — which system wins when two systems disagree; conflict resolution rules
+- `D:\dev\LogueOS-Orchestrator\.logueos\context\operator-profile.md` — how to communicate with Dreighto
+- `D:\dev\LogueOS-Orchestrator\.logueos\context\claude-operating-model.md` — your role, routing logic, approval boundaries
+- `D:\dev\LogueOS-Orchestrator\.logueos\context\guardrails.md` — instruction priority, hard rules, tool safety
+- `D:\dev\LogueOS-Orchestrator\.logueos\context\canon-and-drift.md` — source-of-truth hierarchy, drift detection
+- `D:\dev\LogueOS-Orchestrator\.logueos\context\state-handoff-log.md` — previous thread context (start from latest handoff if one exists)
+- `D:\dev\LogueOS-Orchestrator\.logueos\context\source-of-truth.md` — conflict resolution when systems disagree
+- `D:\dev\LogueOS-Orchestrator\.logueos\context\job-stewardship.md` — what "done" means; verification checklist; stall response
 
-## Load-on-demand files (miru-context/)
+## Load-on-demand files
 
 Read these only when the situation calls for them — not at routine thread start:
 
-- `worker-roster.md` — read when routing a task to a worker, choosing an Ollama model, or checking cost bucket
+**Miru-specific (this repo, `miru-context/`):**
+
+- `miru-protected-constraints.md` — read before any infrastructure or architectural change to a miru-specific surface
+- `miru-service-catalog.md` — read for miru service definitions, ports, health endpoints
+
+**Kernel canon (`D:\dev\LogueOS-Orchestrator\.logueos\context\`):**
+
+- `worker-roster.md` — read when routing a task to a worker, choosing a model, or checking cost bucket
 - `concurrency-policy.md` — read when 2+ workers are active or you're evaluating parallel execution
 - `budget-governance.md` — read when budget state is Watch or Limit, or when model selection matters
 - `kill-switch.md` — read if dispatch is blocked or you suspect `data/system_halt` is present
-- `retry-backoff.md` — read before retrying a failed task; covers retry limits and side-effect risk
+- `retry-backoff.md` — read before retrying a failed task
 - `operator-translation.md` — read when drafting an escalation message or operator approval request
 - `coordination-contract.md` — read when two workers are active on related tickets
-- `miru-protected-constraints.md` — read before any infrastructure or architectural change
-- `worker-decision-layer.md` — read when a worker is blocked on an ambiguity and you need to classify it
+- `worker-decision-layer.md` — read when a worker is blocked on an ambiguity
 - `performance-scorecard.md` — read when reviewing worker outcomes over multiple jobs
 
 ## Canonical environment
@@ -59,7 +67,6 @@ Read these only when the situation calls for them — not at routine thread star
 
 - 18080 — Project Miru (PM) storefront, active
 - 18765 — Miru AI / Dev intelligence layer, active
-- 19000 — Task Dispatcher, decommissioned (PRO-234, merged 2026-04-30)
 - 18766 — MCP Gateway, active
 - 19100 — W4 Dispatch Listener (HMAC-gated), active
 - 15678 — n8n automation layer, active
@@ -75,7 +82,6 @@ Read these only when the situation calls for them — not at routine thread star
 - `windows\restart_dispatch_listener.ps1` — Dispatch Listener (port 19100)
 
 No alternates. No nssm restart. No elevation required for restarts.
-`windows\restart_dispatcher.ps1` — DECOMMISSIONED (PRO-234, 2026-04-30). Do not use.
 
 ## Source-of-truth check (run at thread start)
 
@@ -201,37 +207,33 @@ Because the loop only matures by getting real traffic on real work:
 | Worker           | Primary role                | Strong at                                                                        | Don't use for                  |
 | ---------------- | --------------------------- | -------------------------------------------------------------------------------- | ------------------------------ |
 | Claude Chat (me) | Lead Architect / Planner    | System design, prompts, decisions, Notion writes, repo doc writes (audit-logged) | Executing code                 |
-| Claude Code      | Heavy Executor              | Backend, refactors, scripts, full-task ownership                                 | Random UI tweaks, unsafe edits |
-| Cursor           | UI + Interactive Builder    | HTML/CSS, templates, quick Python, live testing                                  | Big architecture decisions     |
-| Codex            | Analyst / Reviewer          | Code analysis, architecture review, planning                                     | Direct execution by default    |
-| Gemini CLI       | Deep Reader                 | Repo scan, DB inspect, logs, large-context reads                                 | Editing code or templates      |
-| Copilot          | Inline Helper               | Single-function fixes, autocomplete                                              | Multi-file changes             |
-| Windsurf         | Backup / Overflow           | Tasks when I'm low on tokens or need a fallback                                  | Core production work           |
+| Claude Code      | Heavy Executor (backend)    | Backend, refactors, scripts, full-task ownership                                 | Random UI tweaks, unsafe edits |
+| Gemini CLI       | Frontend + Deep Reader      | UI/UX, HTML/CSS templates, large-context reads, multimodal input                 | Multi-file Python refactors    |
+| Cursor           | Operator IDE (not loop)     | Visual / mobile UI work the operator drives himself in the IDE                   | Loop dispatch — not wired      |
 | Gemini 3 Pro     | Peer Architect (chat app)   | Pressure-testing design, alt approaches, proposals                               | Execution, publishing truth    |
 | Perplexity       | Researcher (chat app + MCP) | Practitioner patterns, citations, real-world data                                | Making decisions alone         |
 | ChatGPT          | Second Opinion (chat app)   | Structuring, simplifying, orchestration help                                     | Source of truth                |
 
-**Active daily workers:** Claude Code, Cursor, Codex. Gemini CLI occasionally.
-**Peer review (chat apps, not dispatched):** Gemini 3 Pro, Perplexity, ChatGPT.
-**Not in active use:** Copilot, Windsurf — do not route work to them unless the operator explicitly enables them.
+**Loop-dispatched workers:** Claude Code, Gemini CLI.
+**Operator-driven (not in dispatch loop):** Cursor (IDE work the operator runs himself).
+**Peer review (chat apps, operator-relayed, not dispatched):** Gemini 3 Pro, Perplexity, ChatGPT.
 
 ## Fast pick (decision shortcut)
 
 - "Design / decide / plan" → Claude Chat
 - "Big change / risky / backend" → Claude Code (file Linear ticket, let loop route)
-- "Visual / UI / test on phone" → Cursor (file Linear ticket, let loop route)
-- "Need a second opinion" → ChatGPT
+- "Visual / UI / mobile layout" → Gemini CLI (file Linear ticket, let loop route)
+- "Need a second opinion" → ChatGPT or Gemini 3 Pro (operator relay)
 - "Understand the repo / big context" → Gemini CLI
-- "Is there a better way?" → Gemini 3 Pro (iPhone App)
-- "What do others do in the wild?" → Perplexity (iPhone App / Desktop App / MCP via PRO-161)
+- "What do others do in the wild?" → Perplexity (MCP or app)
 
 ## Notion and Linear access rules
 
 **Notion (canon):**
 
 - All workers READ Notion.
-- Claude Chat owns ALL Notion writes — small surgical edits AND big structural edits (multi-edit batches, new canon sections, list-item replacements, block-structure surgery). No more routing structural edits to Claude Code. Updated 2026-04-30.
-- All other workers (Claude Code, Cursor, Codex, Gemini CLI, Perplexity, ChatGPT, Gemini 3 Pro) are READ-ONLY (enforced via NOTION_TOKEN_READ at the API layer).
+- Claude Chat owns ALL Notion writes — small surgical edits AND big structural edits (multi-edit batches, new canon sections, list-item replacements, block-structure surgery). Updated 2026-04-30.
+- All other workers (Claude Code, Gemini CLI, Cursor, Perplexity, ChatGPT, Gemini 3 Pro) are READ-ONLY (enforced via NOTION_TOKEN_READ at the API layer).
 
 **Linear (tasks):**
 
@@ -241,7 +243,7 @@ Because the loop only matures by getting real traffic on real work:
 - All other workers are READ-ONLY.
 - Workflow states: Todo → In Progress → In Review → Done. (Note: Backlog tickets are invisible to W2's poll. Move to Todo to enter the loop.)
 - "In Review" means a worker reported done but I haven't verified. Only I (or Claude Chat with me) move things to Done.
-- Labels: Bug, Feature, Improvement, chore, design, research, blocked + claude-code, cursor, codex, gemini, operator.
+- Labels: Bug, Feature, Improvement, chore, design, research, blocked + claude-code, gemini, cursor, operator.
 
 ## Database rules
 
@@ -272,7 +274,7 @@ For the full discipline (deduplication, promotion test, retroactive authority, l
 
 ## Repo doc editing (Claude Chat, audit-logged)
 
-Stage 2 grants Claude Chat append/patch access to `.md` files via Miru filesystem MCP (audit-logged). Append/patch only, surgical edits, no code files. Worker rule files (CLAUDE.md, CURSOR.md, AGENTS.md, etc.) remain operator-owned — Stage 3 territory.
+Stage 2 grants Claude Chat append/patch access to `.md` files via Miru filesystem MCP (audit-logged). Append/patch only, surgical edits, no code files. Worker rule files (CLAUDE.md, AGENTS.md, GEMINI.md) remain operator-owned — Stage 3 territory.
 
 ## Peer Architecture Review (for big decisions)
 
@@ -319,7 +321,7 @@ Claude Chat operates as the operator's partner, not just an advisor. Access expa
 
 **Stage 3 (after proven Stage 2 behavior, per specific use case):**
 
-- Filesystem write on worker rule files (CLAUDE.md, CURSOR.md, etc.)
+- Filesystem write on worker rule files (CLAUDE.md, AGENTS.md, GEMINI.md)
 - GitHub: create PRs
 - n8n: trigger workflows (specific use cases only)
 

@@ -14,6 +14,17 @@ read the orchestrator's `CLAUDE.md` and `AGENTS.md` **first** — they hold the 
 file layers miru-product-specific rules on top. The orchestrator's kernel canon governs any
 rule not explicitly stated here.
 
+> ⚠️ **Kernel-rule duplication retained pending kernel boot-path fix — do not slim until that lands.**
+> Some sections below intentionally duplicate kernel canon (Fail-Closed Directive,
+> Pre-Flight Gates, Completion Contract, Return-to-Main, append-only file rules) as a
+> load-bearing safety net. Workers dispatched into project-miru worktrees do not reliably
+> reach the orchestrator's `CLAUDE.md` today — `dispatch_listener/src/index.js` does not
+> prepend kernel canon into the dispatch prompt, and Claude Code's auto-load doesn't walk
+> from `D:\dev\worktrees\project-miru\w{N}` up to `D:\dev\LogueOS-Orchestrator\`. Until
+> the kernel boot-path fix lands (separate ticket — prepend kernel `CLAUDE.md` + `AGENTS.md`
+> in the dispatch prompt), the duplication here is what workers actually run on. **Do not
+> slim the duplicated sections in this file until that fix is live and verified.**
+
 Read `AGENTS.md` for miru-specific behavioral constraints.
 Read `miru-context/THE_ONE_PIECE.md` on every dispatch for current product and service state.
 
