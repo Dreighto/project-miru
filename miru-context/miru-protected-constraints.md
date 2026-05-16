@@ -99,17 +99,17 @@ outside of MCP — but still read-only.
 
 Code belongs to its service. The file placement rules are non-negotiable.
 
-| Service                          | Directory                    |
-| -------------------------------- | ---------------------------- |
-| Miru AI backend                  | `miru_ai/`                   |
-| PM Dashboard backend             | `pm/`                        |
-| Windows operational scripts      | `windows/`                   |
-| Shared utilities (2+ services)   | `shared/`                    |
-| Tools and standalone scripts     | `tools/`                     |
-| Tests                            | `tests/`                     |
-| Documentation                    | `docs/`                      |
-| Config JSON                      | `config/`                    |
-| Runtime logs                     | `logs/` (gitignored)         |
+| Service                        | Directory            |
+| ------------------------------ | -------------------- |
+| Miru AI backend                | `miru_ai/`           |
+| PM Dashboard backend           | `pm/`                |
+| Windows operational scripts    | `windows/`           |
+| Shared utilities (2+ services) | `shared/`            |
+| Tools and standalone scripts   | `tools/`             |
+| Tests                          | `tests/`             |
+| Documentation                  | `docs/`              |
+| Config JSON                    | `config/`            |
+| Runtime logs                   | `logs/` (gitignored) |
 
 **Never create service code at the repo root.** Never create temp or debug files at
 the repo root. See CLAUDE.md "File Placement — Hard Rules" for the full list.

@@ -19,13 +19,13 @@ Last updated: 2026-05-02
 
 ## Service Index
 
-| Service           | Port  | Language                   | Status                               |
-| ----------------- | ----- | -------------------------- | ------------------------------------ |
-| Dispatch Listener | 19100 | Node.js                    | ACTIVE                               |
-| MCP Gateway       | 18766 | Python (FastMCP / uvicorn) | ACTIVE                               |
-| Miru AI           | 18765 | Python (Flask)             | ACTIVE                               |
-| PM Dashboard      | 18080 | Python (Flask + SvelteKit) | ACTIVE                               |
-| n8n               | 15678 | Node.js                    | ACTIVE                               |
+| Service           | Port  | Language                   | Status |
+| ----------------- | ----- | -------------------------- | ------ |
+| Dispatch Listener | 19100 | Node.js                    | ACTIVE |
+| MCP Gateway       | 18766 | Python (FastMCP / uvicorn) | ACTIVE |
+| Miru AI           | 18765 | Python (Flask)             | ACTIVE |
+| PM Dashboard      | 18080 | Python (Flask + SvelteKit) | ACTIVE |
+| n8n               | 15678 | Node.js                    | ACTIVE |
 
 ---
 

@@ -182,11 +182,11 @@ Routine single-file fixes, typo corrections, append-only log entries, and doc-on
 
 **Reviewer assignment:**
 
-| PR type                            | Reviewer | How                                                |
-| ---------------------------------- | -------- | -------------------------------------------------- |
-| Python backend, orchestrator tools | Gemini   | Operator relay — prepare brief, send Telegram ping |
-| Diff > 200 lines                   | Gemini   | Operator relay — prepare brief, send Telegram ping |
-| Cross-service or infra-touching    | Gemini + ChatGPT | Prepare both briefs for operator relay     |
+| PR type                            | Reviewer         | How                                                |
+| ---------------------------------- | ---------------- | -------------------------------------------------- |
+| Python backend, orchestrator tools | Gemini           | Operator relay — prepare brief, send Telegram ping |
+| Diff > 200 lines                   | Gemini           | Operator relay — prepare brief, send Telegram ping |
+| Cross-service or infra-touching    | Gemini + ChatGPT | Prepare both briefs for operator relay             |
 
 **Gemini / ChatGPT review (operator relay):**
 
@@ -307,19 +307,19 @@ Ask before acting when **any** of these apply:
 
 ## MCP tools — what to use for what
 
-| Tool (gateway)                  | Use it for                                               |
-| ------------------------------- | -------------------------------------------------------- |
+| Tool (gateway)                  | Use it for                                                     |
+| ------------------------------- | -------------------------------------------------------------- |
 | `cc_handoff`                    | Dispatching a task to a CLI worker (routes through Gatekeeper) |
-| `worker_status`                 | Checking if a worker is active right now                 |
-| `worker_availability`           | Checking which workers are reachable before dispatch     |
-| `activity_since`                | Reviewing what happened since your last session          |
-| `linear_get_issue`              | Reading a ticket before dispatch or completion check     |
-| `linear_update_issue_state`     | Updating ticket state (In Progress, In Review, Done)     |
-| `linear_add_comment`            | Logging decisions and outcomes in the ticket             |
-| `telegram_send_message`         | Alerting the operator or sending completion pings        |
-| `system_check_health_endpoints` | Verifying services are up before dispatch                |
-| `fs_read_text_file`             | Reading repo files (CLAUDE.md, logs, completion markers) |
-| `gateway_audit_tail`            | Tailing the gateway audit log for recent activity        |
+| `worker_status`                 | Checking if a worker is active right now                       |
+| `worker_availability`           | Checking which workers are reachable before dispatch           |
+| `activity_since`                | Reviewing what happened since your last session                |
+| `linear_get_issue`              | Reading a ticket before dispatch or completion check           |
+| `linear_update_issue_state`     | Updating ticket state (In Progress, In Review, Done)           |
+| `linear_add_comment`            | Logging decisions and outcomes in the ticket                   |
+| `telegram_send_message`         | Alerting the operator or sending completion pings              |
+| `system_check_health_endpoints` | Verifying services are up before dispatch                      |
+| `fs_read_text_file`             | Reading repo files (CLAUDE.md, logs, completion markers)       |
+| `gateway_audit_tail`            | Tailing the gateway audit log for recent activity              |
 
 Use `sequential-thinking` MCP before complex multi-step decisions — think first.
 
