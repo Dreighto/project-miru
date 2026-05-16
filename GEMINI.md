@@ -4,7 +4,9 @@
 
 - 18080 = Project Miru UI — ACTIVE
 - 18765 = Miru AI — ACTIVE
-- 19000 = Task Dispatcher — DECOMMISSIONED (PRO-234, 2026-04-30)
+- 18766 = MCP Gateway — ACTIVE
+- 19100 = Dispatch Listener (HMAC-gated) — ACTIVE
+- 15678 = n8n — ACTIVE
 - 8080 = RESERVED — do not touch
 - 8765 = NEVER TOUCH under any circumstances
 - 11434 = Ollama — local dependency, not Miru-owned
@@ -106,7 +108,7 @@ You can execute tasks end-to-end, but you're routed to Gemini specifically when:
 - Never be the primary execution worker for a complex multi-file Python refactor — that's Claude Code's strength
 - Never modify `.mcp.json` or any MCP config files
 - Never write to `card_catalog.db`
-- Never modify worker rule files (CLAUDE.md, CURSOR.md, CODEX.md, AGENTS.md)
+- Never modify worker rule files (CLAUDE.md, AGENTS.md, GEMINI.md)
 - Never use auto-approval mode for file writes unless the operator explicitly enables it
 
 ---

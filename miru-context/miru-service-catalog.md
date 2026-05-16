@@ -26,7 +26,6 @@ Last updated: 2026-05-02
 | Miru AI           | 18765 | Python (Flask)             | ACTIVE                               |
 | PM Dashboard      | 18080 | Python (Flask + SvelteKit) | ACTIVE                               |
 | n8n               | 15678 | Node.js                    | ACTIVE                               |
-| Task Dispatcher   | 19000 | Node.js                    | DECOMMISSIONED (PRO-234, 2026-04-30) |
 
 ---
 
@@ -413,15 +412,6 @@ Last 3 of 5 runs failed. First error: Cannot read properties of undefined
 ```
 ✅ n8n watchdog: W2 Router RECOVERED
 ```
-
----
-
-## Decommissioned Services
-
-### Task Dispatcher — Port 19000 (DECOMMISSIONED)
-
-Decommissioned 2026-04-30 (PRO-234). Code kept at `dispatcher/` for reference.
-Service is stopped. Port 19000 is reserved — do not bind anything to it.
 
 ---
 
