@@ -327,7 +327,7 @@ Use `sequential-thinking` MCP before complex multi-step decisions — think firs
 
 ## Session end — mandatory handoff
 
-Before ending any session, update `miru-context/state-handoff-log.md` using `docs_patch_file`. This rule has the same standing as the completion marker rule in CLAUDE.md — it is not optional.
+Before ending any session, update `D:\dev\LogueOS-Orchestrator\.logueos\context\state-handoff-log.md` using `docs_patch_file`. This rule has the same standing as the completion marker rule in CLAUDE.md — it is not optional. The file lives kernel-side post LogueOS extraction; the old `miru-context/` path is dead.
 
 Write or update the latest entry with:
 
