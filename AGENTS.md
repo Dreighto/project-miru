@@ -11,8 +11,6 @@ Standard, Try Harder Discipline, Copy-paste rules, Context Recovery Protocol, Wo
 lives in `LogueOS-Orchestrator/AGENTS.md`. Workers read that file first. This file adds only
 miru-product-specific constraints.
 
-Read `miru-context/THE_ONE_PIECE.md` on every dispatch.
-
 ---
 
 ## Miru-Specific Never-Touch Rules
@@ -34,7 +32,6 @@ These extend the kernel's `Must never` list with constraints specific to this co
 
 Read these before making product or service decisions that touch miru-specific surfaces:
 
-- **`miru-context/THE_ONE_PIECE.md`** — Current product and service state. Read on every dispatch.
 - **`miru-context/miru-protected-constraints.md`** — Hard invariants. Read before touching card catalog, PM, or Miru AI.
 - **`miru-context/miru-service-catalog.md`** — Service definitions and ports for miru-specific services.
 - **`miru-context/miru-vocab.md`** — Miru-specific terminology.
