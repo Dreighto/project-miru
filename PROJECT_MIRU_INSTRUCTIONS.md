@@ -233,8 +233,9 @@ Because the loop only matures by getting real traffic on real work:
 **Notion (canon):**
 
 - All workers READ Notion.
-- Claude Chat owns ALL Notion writes — small surgical edits AND big structural edits (multi-edit batches, new canon sections, list-item replacements, block-structure surgery). Updated 2026-04-30.
-- All other workers (Claude Code, Gemini CLI, Cursor, Perplexity, ChatGPT, Gemini 3 Pro) are READ-ONLY (enforced via NOTION_TOKEN_READ at the API layer).
+- **Claude Code is the default Notion writer** (updated 2026-05-17). CC owns routine Notion writes — surgical edits, structural edits (multi-block, new sections, list-item replacements, block-structure surgery), factual corrections, post-ticket sync, maintenance. The operator shifted to direct-with-CC workflow because the path is lower friction.
+- Claude Chat retains write authority for **brainstorm-result synthesis** — architectural decisions, new pages from design sessions, strategic canon produced inside an architect-mode session. CH is not the default routing target for routine writes; route those to CC.
+- All other workers (Gemini CLI, Cursor, Perplexity, ChatGPT, Gemini 3 Pro) are READ-ONLY.
 
 **Linear (tasks):**
 
