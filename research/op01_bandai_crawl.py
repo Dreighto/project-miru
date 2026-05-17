@@ -134,7 +134,7 @@ def parse_printings(markdown: str, queried_card: str) -> list[dict[str, Any]]:
         # Card name: line right after the header
         name = None
         if header:
-            tail = block[header.end():]
+            tail = block[header.end() :]
             lines = [ln.strip() for ln in tail.splitlines() if ln.strip()]
             if lines:
                 name = lines[0]
@@ -155,15 +155,17 @@ def parse_printings(markdown: str, queried_card: str) -> list[dict[str, Any]]:
         )
         image_url = img_full_url_match.group(0) if img_full_url_match else None
 
-        printings.append({
-            "card_number": base_code,
-            "print_id": print_id,
-            "full_id": full_id,
-            "name": name,
-            "rarity": rarity,
-            "card_set": card_set,
-            "image_url": image_url,
-        })
+        printings.append(
+            {
+                "card_number": base_code,
+                "print_id": print_id,
+                "full_id": full_id,
+                "name": name,
+                "rarity": rarity,
+                "card_set": card_set,
+                "image_url": image_url,
+            }
+        )
 
     return printings
 
@@ -219,7 +221,9 @@ def main() -> int:
         "printings": all_printings,
     }
     OUT_PATH.write_text(json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
-    log(f"DONE elapsed={elapsed:.1f}s printings={len(all_printings)} failures={len(failures)} out={OUT_PATH}")
+    log(
+        f"DONE elapsed={elapsed:.1f}s printings={len(all_printings)} failures={len(failures)} out={OUT_PATH}"
+    )
     return 0 if not failures else 2
 
 

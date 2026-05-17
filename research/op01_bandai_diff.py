@@ -77,8 +77,7 @@ def diff() -> dict[str, Any]:
         "candidate_phantom_count": len(candidate_phantom),
         "matched": matched_keys,
         "candidate_missing": [
-            {"card_number": k[0], "print_id": k[1], **crawl_keys[k]}
-            for k in candidate_missing
+            {"card_number": k[0], "print_id": k[1], **crawl_keys[k]} for k in candidate_missing
         ],
         "candidate_phantom": [
             {"card_number": k[0], "print_id": k[1], **db_bandai_format[k]}
@@ -96,15 +95,23 @@ def render_report(d: dict[str, Any]) -> str:
     lines.append("")
     lines.append(f"- Crawl printings total: **{d['crawl_total']}**")
     lines.append(f"- DB variants total (OP01-%): **{d['db_total']}**")
-    lines.append(f"  - Bandai-format print_id (`OP01-NNN` / `OP01-NNN_pN`): **{d['db_bandai_format']}**")
+    lines.append(
+        f"  - Bandai-format print_id (`OP01-NNN` / `OP01-NNN_pN`): **{d['db_bandai_format']}**"
+    )
     lines.append(f"  - Synthetic `::`-style print_id (legacy): **{d['db_synthetic']}**")
     lines.append("")
     lines.append("## Diff (on Bandai-format keys)")
     lines.append("")
     lines.append(f"- **Matched** (in both crawl and DB): **{d['matched_count']}**")
-    lines.append(f"- **Candidate missing** (in crawl, not in DB): **{d['candidate_missing_count']}**")
-    lines.append(f"- **Candidate phantom** (in DB Bandai-format, not in crawl): **{d['candidate_phantom_count']}**")
-    lines.append(f"- **Synthetic legacy** (DB non-Bandai-format, not part of diff key): **{d['db_synthetic']}**")
+    lines.append(
+        f"- **Candidate missing** (in crawl, not in DB): **{d['candidate_missing_count']}**"
+    )
+    lines.append(
+        f"- **Candidate phantom** (in DB Bandai-format, not in crawl): **{d['candidate_phantom_count']}**"
+    )
+    lines.append(
+        f"- **Synthetic legacy** (DB non-Bandai-format, not part of diff key): **{d['db_synthetic']}**"
+    )
     lines.append("")
     if d["candidate_missing"]:
         lines.append("## Candidate missing (Bandai has, DB doesn't)")
@@ -131,7 +138,9 @@ def render_report(d: dict[str, Any]) -> str:
     if d["synthetic_legacy_rows"]:
         lines.append("## Synthetic legacy rows (DB non-Bandai-format print_id)")
         lines.append("")
-        lines.append(f"_{d['db_synthetic']} rows. Not part of the (card_number, print_id) diff key —")
+        lines.append(
+            f"_{d['db_synthetic']} rows. Not part of the (card_number, print_id) diff key —"
+        )
         lines.append("these are legacy `::`-style entries that the three OP01 remediation passes")
         lines.append("will reconcile separately. Listed here for visibility._")
         lines.append("")
