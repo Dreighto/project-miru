@@ -46,7 +46,7 @@ Use `fs_read_text_file` (gateway tool) to read the following when starting a new
 picking up a task you don't have context on:
 
 1. `CLAUDE.md` — project-miru overlay (ports, boundaries, completion contract pointer)
-2. `miru-context/THE_ONE_PIECE.md` — current product and crew state for this repo
+2. `miru-context/miru-service-catalog.md` — current product and service state for this repo
 3. Check Linear via `linear_get_issue` or `linear_list_issues` for in-progress tickets
 4. Check `activity_since` for recent worker activity (what ran since your last session)
 5. Check `worker_status` to see what workers are currently active
@@ -369,6 +369,6 @@ The next Claude Chat session reads this file at step 2 of session start. If it i
 ---
 
 For ports, PR merge policy, append-only file rules, file placement, completion contract schema,
-and stall classification: see `CLAUDE.md` (project overlay) and `miru-context/THE_ONE_PIECE.md`
-(current crew + product state). This file is your identity and operating quick-reference;
-`CLAUDE.md` and the kernel canon in `D:\dev\LogueOS-Orchestrator\.logueos\` are the authority.
+and stall classification: see `CLAUDE.md` (project overlay) and the kernel canon in
+`D:\dev\LogueOS-Orchestrator\.logueos\`. This file is your identity and operating
+quick-reference; `CLAUDE.md` and the kernel canon are the authority.

@@ -26,7 +26,6 @@ rule not explicitly stated here.
 > slim the duplicated sections in this file until that fix is live and verified.**
 
 Read `AGENTS.md` for miru-specific behavioral constraints.
-Read `miru-context/THE_ONE_PIECE.md` on every dispatch for current product and service state.
 
 **When sources disagree, consult `.logueos/reference/source-of-truth.md` in the orchestrator.**
 The truth hierarchy is: Runtime > Audit logs > Linear > Repo (code/canon/DB) > Notion
@@ -151,7 +150,7 @@ branch is checked out — that worker is in violation.
 - **Cursor** — operator-driven from the IDE; not loop-dispatched.
 - **Claude Chat (CH)** — Lead Architect role (currently offline for orchestration work). When active: architecture decisions, planning, worker prompt authoring, Notion writes.
 
-See `miru-context/THE_ONE_PIECE.md` for current team and project state.
+See `miru-context/miru-service-catalog.md` for current service state and `miru-context/miru-protected-constraints.md` for the hard invariants.
 
 ---
 
@@ -189,7 +188,6 @@ the single source of cross-cutting kernel canon.
 
 ### Miru-product context — `miru-context/` (in this repo)
 
-- **`THE_ONE_PIECE.md`** — Current miru product and service state. Read on every dispatch.
 - **`miru-protected-constraints.md`** — Hard invariants for the miru product. Read before touching card catalog, PM, or Miru AI.
 - **`miru-service-catalog.md`** — Service definitions and ports for miru-specific services.
 - **`miru-vocab.md`** — Miru-specific terminology and domain vocabulary.

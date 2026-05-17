@@ -23,8 +23,9 @@ project-miru repo only carries miru-payload-specific overlays.
 
 Read these at thread start:
 
-- `miru-context/THE_ONE_PIECE.md` — current product, crew, and operating quick-reference for this repo
 - `miru-context/miru-vocab.md` — operator language guide; shorthand phrases, direction phrases, project-specific terms
+- `miru-context/miru-service-catalog.md` — current miru service definitions and ports
+- `miru-context/miru-protected-constraints.md` — hard invariants for the miru product (card catalog, PM, Miru AI)
 - `D:\dev\LogueOS-Orchestrator\.logueos\context\operator-profile.md` — how to communicate with Dreighto
 - `D:\dev\LogueOS-Orchestrator\.logueos\context\claude-operating-model.md` — your role, routing logic, approval boundaries
 - `D:\dev\LogueOS-Orchestrator\.logueos\context\guardrails.md` — instruction priority, hard rules, tool safety
