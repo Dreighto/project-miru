@@ -1,0 +1,365 @@
+{"pid": "OP01-001", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-001.png"}
+{"pid": "OP01-001::25th", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-001(25th).webp"}
+{"pid": "OP01-001::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-001(alt).webp"}
+{"pid": "OP01-001_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-001_p1.png"}
+{"pid": "OP01-001_p2", "cat": "bandai_canonical", "result": "missing", "image_path": "PCC25/parallel/OP01-001_p2.png"}
+{"pid": "OP01-002", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-002.png"}
+{"pid": "OP01-002::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-002(alt).webp"}
+{"pid": "OP01-002_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-002_p1.png"}
+{"pid": "OP01-003", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-003.png"}
+{"pid": "OP01-003::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-003(alt).webp"}
+{"pid": "OP01-003_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-003_p1.png"}
+{"pid": "OP01-004", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-004.png"}
+{"pid": "OP01-004::1st anniversary alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-004(1st anniversary alt).webp"}
+{"pid": "OP01-004::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-004(alt).webp"}
+{"pid": "OP01-004_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "ANN1EN/parallel/OP01-004_p1.png"}
+{"pid": "OP01-005", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-005.png"}
+{"pid": "OP01-005::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-005alt.webp"}
+{"pid": "OP01-005::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-005(alt2).webp"}
+{"pid": "OP01-005::film", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-005_Film.webp"}
+{"pid": "OP01-005::film2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-005_Film2.webp"}
+{"pid": "OP01-005_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "PCCFR/parallel/OP01-005_p1.png"}
+{"pid": "OP01-005_p2", "cat": "bandai_canonical", "result": "missing", "image_path": "GC01/parallel/OP01-005_p2.png"}
+{"pid": "OP01-006", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-006.png"}
+{"pid": "OP01-006::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-006(alt).webp"}
+{"pid": "OP01-006::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-006alt2.webp"}
+{"pid": "OP01-006::prb01alt1", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-006(PRB01alt1).webp"}
+{"pid": "OP01-006::prb01alt2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-006(PRB01alt2).webp"}
+{"pid": "OP01-006_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "ANN1JP/parallel/OP01-006_p1.png"}
+{"pid": "OP01-006_p3", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-006_p3.png"}
+{"pid": "OP01-006_p4", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-006_p4.png"}
+{"pid": "OP01-006_p5", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-006_p5.png"}
+{"pid": "OP01-006_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-006_r1.png"}
+{"pid": "OP01-007", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-007.png"}
+{"pid": "OP01-008", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-008.png"}
+{"pid": "OP01-008::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-008(alt).webp"}
+{"pid": "OP01-008_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\parallel\\OP01-008_p1.png"}
+{"pid": "OP01-009", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-009.png"}
+{"pid": "OP01-010", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-010.png"}
+{"pid": "OP01-011", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-011.png"}
+{"pid": "OP01-012", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-012.png"}
+{"pid": "OP01-013", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-013.png"}
+{"pid": "OP01-013::1st anniversary alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-013(1st anniversary alt).webp"}
+{"pid": "OP01-013::25th", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-013(25th).webp"}
+{"pid": "OP01-013::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-013(alt).webp"}
+{"pid": "OP01-013::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-013(alt2).webp"}
+{"pid": "OP01-013::alt art 3", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-013alt3.webp"}
+{"pid": "OP01-013::tr alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-013(TR-alt).webp"}
+{"pid": "OP01-013_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-013_p1.png"}
+{"pid": "OP01-013_p2", "cat": "bandai_canonical", "result": "missing", "image_path": "PCC25/parallel/OP01-013_p2.png"}
+{"pid": "OP01-013_p3", "cat": "bandai_canonical", "result": "missing", "image_path": "GC01/parallel/OP01-013_p3.png"}
+{"pid": "OP01-013_p4", "cat": "bandai_canonical", "result": "missing", "image_path": "ANN1EN/parallel/OP01-013_p4.png"}
+{"pid": "OP01-014", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-014.png"}
+{"pid": "OP01-014::film", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-014_Film.webp"}
+{"pid": "OP01-014::film2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-014_Film2.webp"}
+{"pid": "OP01-014_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "PCCFR/parallel/OP01-014_p1.png"}
+{"pid": "OP01-015", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-015.png"}
+{"pid": "OP01-015::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-015alt.webp"}
+{"pid": "OP01-015_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "ORP2024V3/parallel/OP01-015_p1.png"}
+{"pid": "OP01-016", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-016.png"}
+{"pid": "OP01-016::1st anniversary alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-016(1st anniversary alt).webp"}
+{"pid": "OP01-016::25th", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-016 25th.webp"}
+{"pid": "OP01-016::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-016alt.webp"}
+{"pid": "OP01-016::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-016(alt2).webp"}
+{"pid": "OP01-016::alt art 3", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-016alt3.webp"}
+{"pid": "OP01-016::alt art 4", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-016alt4.webp"}
+{"pid": "OP01-016::alt art 7", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-016alt7.webp"}
+{"pid": "OP01-016::manga alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-016( manga alt ).webp"}
+{"pid": "OP01-016::st10 alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-016(ST10 alt ).webp"}
+{"pid": "OP01-016_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-016_p1.png"}
+{"pid": "OP01-016_p2", "cat": "bandai_canonical", "result": "missing", "image_path": "PCC25/parallel/OP01-016_p2.png"}
+{"pid": "OP01-016_p3", "cat": "bandai_canonical", "result": "missing", "image_path": "OP01/parallel/OP01-016_p3.png"}
+{"pid": "OP01-016_p4", "cat": "bandai_canonical", "result": "missing", "image_path": "OP05/parallel/OP01-016_p4.png"}
+{"pid": "OP01-016_p5", "cat": "bandai_canonical", "result": "missing", "image_path": "GC01/parallel/OP01-016_p5.png"}
+{"pid": "OP01-016_p7", "cat": "bandai_canonical", "result": "missing", "image_path": "OP01/parallel/OP01-016_p7.png"}
+{"pid": "OP01-016_p8", "cat": "bandai_canonical", "result": "missing", "image_path": "OP01/parallel/OP01-016_p8.png"}
+{"pid": "OP01-017", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-017.png"}
+{"pid": "OP01-017::1st anniversary alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-017(1st anniversary alt).webp"}
+{"pid": "OP01-017::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-017(alt).webp"}
+{"pid": "OP01-017::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-017alt2.webp"}
+{"pid": "OP01-017::film", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-017_Film.webp"}
+{"pid": "OP01-017::film2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-017_Film2.webp"}
+{"pid": "OP01-017_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "PCCFR/parallel/OP01-017_p1.png"}
+{"pid": "OP01-017_p2", "cat": "bandai_canonical", "result": "missing", "image_path": "ANN1EN/parallel/OP01-017_p2.png"}
+{"pid": "OP01-018", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-018.png"}
+{"pid": "OP01-019", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-019.png"}
+{"pid": "OP01-020", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-020.png"}
+{"pid": "OP01-021", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-021.png"}
+{"pid": "OP01-021::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-021(Alt).webp"}
+{"pid": "OP01-021::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-021(alt2).webp"}
+{"pid": "OP01-021::film", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-021_Film.webp"}
+{"pid": "OP01-021::film2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-021_Film2.webp"}
+{"pid": "OP01-021::fullalt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-021(fullalt).webp"}
+{"pid": "OP01-021_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "PCCFR/parallel/OP01-021_p1.png"}
+{"pid": "OP01-021_p2", "cat": "bandai_canonical", "result": "missing", "image_path": "TP02/parallel/OP01-021_p2.png"}
+{"pid": "OP01-021_p3", "cat": "bandai_canonical", "result": "missing", "image_path": "GC01/parallel/OP01-021_p3.png"}
+{"pid": "OP01-022", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-022.png"}
+{"pid": "OP01-022::25th", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-022 25th.webp"}
+{"pid": "OP01-022_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "PCC25/parallel/OP01-022_p1.png"}
+{"pid": "OP01-023", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-023.png"}
+{"pid": "OP01-024", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-024.png"}
+{"pid": "OP01-024::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-024 (alt).webp"}
+{"pid": "OP01-024::prb01alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-024(PRB01alt).webp"}
+{"pid": "OP01-024_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-024_p1.png"}
+{"pid": "OP01-024_p3", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-024_p3.png"}
+{"pid": "OP01-024_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-024_r1.png"}
+{"pid": "OP01-025", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-025.png"}
+{"pid": "OP01-025::1st anniversary alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-025(1st anniversary alt).webp"}
+{"pid": "OP01-025::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-025(alt).webp"}
+{"pid": "OP01-025::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-025alt2.webp"}
+{"pid": "OP01-025::alt st10", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-025(alt-st10).webp"}
+{"pid": "OP01-025::winner alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-025 Winner_Alt.webp"}
+{"pid": "OP01-025_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-025_p1.png"}
+{"pid": "OP01-025_p2", "cat": "bandai_canonical", "result": "missing", "image_path": "OP01/parallel/OP01-025_p2.png"}
+{"pid": "OP01-025_p3", "cat": "bandai_canonical", "result": "missing", "image_path": "ANN1EN/parallel/OP01-025_p3.png"}
+{"pid": "OP01-026", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-026.png"}
+{"pid": "OP01-027", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-027.png"}
+{"pid": "OP01-028", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-028.png"}
+{"pid": "OP01-029", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-029.png"}
+{"pid": "OP01-029::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-029alt.webp"}
+{"pid": "OP01-029_p2", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-029_p2.png"}
+{"pid": "OP01-029_p3", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-029_p3.png"}
+{"pid": "OP01-029_p4", "cat": "bandai_canonical", "result": "missing", "image_path": "BCV1/parallel/OP01-029_p4.png"}
+{"pid": "OP01-029_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-029_r1.png"}
+{"pid": "OP01-030", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-030.png"}
+{"pid": "OP01-030::2nd anniversary alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-030(2nd Anniversary alt).webp"}
+{"pid": "OP01-030_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "ANN2JP/parallel/OP01-030_p1.png"}
+{"pid": "OP01-031", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-031.png"}
+{"pid": "OP01-031::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-031 (Alt).webp"}
+{"pid": "OP01-031_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-031_p1.png"}
+{"pid": "OP01-032", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-032.png"}
+{"pid": "OP01-033", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-033.png"}
+{"pid": "OP01-033::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-033 (Alt).webp"}
+{"pid": "OP01-033::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-033alt2.webp"}
+{"pid": "OP01-033::prb01alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-033(PRB01alt).webp"}
+{"pid": "OP01-033_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "TP02/parallel/OP01-033_p1.png"}
+{"pid": "OP01-033_p3", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-033_p3.png"}
+{"pid": "OP01-033_p4", "cat": "bandai_canonical", "result": "missing", "image_path": "PRB01/parallel/OP01-033_p4.png"}
+{"pid": "OP01-033_p5", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-033_p5.png"}
+{"pid": "OP01-033_p6", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\_unclassified\\parallel\\OP01-033_p6.png"}
+{"pid": "OP01-033_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-033_r1.png"}
+{"pid": "OP01-034", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-034.png"}
+{"pid": "OP01-034::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-034 (alt).webp"}
+{"pid": "OP01-034_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\parallel\\OP01-034_p1.png"}
+{"pid": "OP01-035", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-035.png"}
+{"pid": "OP01-035::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\op01-035alt.webp"}
+{"pid": "OP01-035::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-035alt2.webp"}
+{"pid": "OP01-035::s p", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-035SP.webp"}
+{"pid": "OP01-035_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "TP04/parallel/OP01-035_p1.png"}
+{"pid": "OP01-035_p2", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP07\\parallel\\OP01-035_p2.png"}
+{"pid": "OP01-035_p3", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\_unclassified\\parallel\\OP01-035_p3.png"}
+{"pid": "OP01-036", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-036.png"}
+{"pid": "OP01-037", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-037.png"}
+{"pid": "OP01-038", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-038.png"}
+{"pid": "OP01-039", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-039.png"}
+{"pid": "OP01-039::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-039alt.webp"}
+{"pid": "OP01-039_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB02\\parallel\\OP01-039_p1.png"}
+{"pid": "OP01-039_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB02/reprint/OP01-039_r1.png"}
+{"pid": "OP01-040", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-040.png"}
+{"pid": "OP01-040::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-040 (Alt).webp"}
+{"pid": "OP01-040_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-040_p1.png"}
+{"pid": "OP01-041", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-041.png"}
+{"pid": "OP01-041::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-041alt.webp"}
+{"pid": "OP01-041::prb01alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-041(PRB01alt).webp"}
+{"pid": "OP01-041::w inner alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-041Winner alt.webp"}
+{"pid": "OP01-041_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "TP07/parallel/OP01-041_p1.png"}
+{"pid": "OP01-041_p3", "cat": "bandai_canonical", "result": "missing", "image_path": "PRB01/parallel/OP01-041_p3.png"}
+{"pid": "OP01-041_p4", "cat": "bandai_canonical", "result": "missing", "image_path": "PRB01/parallel/OP01-041_p4.png"}
+{"pid": "OP01-041_p5", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-041_p5.png"}
+{"pid": "OP01-041_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-041_r1.png"}
+{"pid": "OP01-042", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-042.png"}
+{"pid": "OP01-043", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-043.png"}
+{"pid": "OP01-044", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-044.png"}
+{"pid": "OP01-045", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-045.png"}
+{"pid": "OP01-046", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-046.png"}
+{"pid": "OP01-047", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-047.png"}
+{"pid": "OP01-047::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-047 (alt).webp"}
+{"pid": "OP01-047::prb01alt2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-047(PRB01alt2).webp"}
+{"pid": "OP01-047::s p", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-047SP.webp"}
+{"pid": "OP01-047_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-047_p1.png"}
+{"pid": "OP01-047_p2", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP04\\parallel\\OP01-047_p2.png"}
+{"pid": "OP01-047_p4", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-047_p4.png"}
+{"pid": "OP01-047_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-047_r1.png"}
+{"pid": "OP01-048", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-048.png"}
+{"pid": "OP01-048::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-048 (alt).webp"}
+{"pid": "OP01-048_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\parallel\\OP01-048_p1.png"}
+{"pid": "OP01-049", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-049.png"}
+{"pid": "OP01-050", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-050.png"}
+{"pid": "OP01-051", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-051.png"}
+{"pid": "OP01-051::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-051 (Alt).webp"}
+{"pid": "OP01-051::prb01alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-051(PRB01alt).webp"}
+{"pid": "OP01-051::wanted", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-051 wanted.webp"}
+{"pid": "OP01-051_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-051_p1.png"}
+{"pid": "OP01-051_p2", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP03\\parallel\\OP01-051_p2.png"}
+{"pid": "OP01-051_p4", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-051_p4.png"}
+{"pid": "OP01-051_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-051_r1.png"}
+{"pid": "OP01-052", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-052.png"}
+{"pid": "OP01-052::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-052(alt).webp"}
+{"pid": "OP01-052::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-052alt2.webp"}
+{"pid": "OP01-052::prb01alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-052(PRB01alt).webp"}
+{"pid": "OP01-052_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "EP02/parallel/OP01-052_p1.png"}
+{"pid": "OP01-052_p3", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-052_p3.png"}
+{"pid": "OP01-052_p4", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-052_p4.png"}
+{"pid": "OP01-052_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-052_r1.png"}
+{"pid": "OP01-053", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-053.png"}
+{"pid": "OP01-054", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-054.png"}
+{"pid": "OP01-055", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-055.png"}
+{"pid": "OP01-055_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB02\\parallel\\OP01-055_p1.png"}
+{"pid": "OP01-055_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB02/reprint/OP01-055_r1.png"}
+{"pid": "OP01-056", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-056.png"}
+{"pid": "OP01-057", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-057.png"}
+{"pid": "OP01-057::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-057alt.webp"}
+{"pid": "OP01-057_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "BCV1/parallel/OP01-057_p1.png"}
+{"pid": "OP01-058", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-058.png"}
+{"pid": "OP01-059", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-059.png"}
+{"pid": "OP01-060", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-060.png"}
+{"pid": "OP01-060::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-060 (alt).webp"}
+{"pid": "OP01-060::st17alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-060(ST17alt).webp"}
+{"pid": "OP01-060_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-060_p1.png"}
+{"pid": "OP01-060_p2", "cat": "bandai_canonical", "result": "missing", "image_path": "ST17/parallel/OP01-060_p2.png"}
+{"pid": "OP01-061", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-061.png"}
+{"pid": "OP01-061::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-061 (alt).webp"}
+{"pid": "OP01-061_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-061_p1.png"}
+{"pid": "OP01-062", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-062.png"}
+{"pid": "OP01-062::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-062 (alt).webp"}
+{"pid": "OP01-062_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-062_p1.png"}
+{"pid": "OP01-063", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-063.png"}
+{"pid": "OP01-064", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-064.png"}
+{"pid": "OP01-064::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-064alt.webp"}
+{"pid": "OP01-064_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\parallel\\OP01-064_p1.png"}
+{"pid": "OP01-065", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-065.png"}
+{"pid": "OP01-066", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-066.png"}
+{"pid": "OP01-067", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-067.png"}
+{"pid": "OP01-067::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-067 (Alt).webp"}
+{"pid": "OP01-067_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-067_p1.png"}
+{"pid": "OP01-068", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-068.png"}
+{"pid": "OP01-069", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-069.png"}
+{"pid": "OP01-070", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-070.png"}
+{"pid": "OP01-070::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-070 (alt).webp"}
+{"pid": "OP01-070::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-070alt2.webp"}
+{"pid": "OP01-070::prb01alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-070(PRB01alt).webp"}
+{"pid": "OP01-070_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-070_p1.png"}
+{"pid": "OP01-070_p2", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\_unclassified\\parallel\\OP01-070_p2.png"}
+{"pid": "OP01-070_p4", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-070_p4.png"}
+{"pid": "OP01-070_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-070_r1.png"}
+{"pid": "OP01-071", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-071.png"}
+{"pid": "OP01-072", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-072.png"}
+{"pid": "OP01-073", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-073.png"}
+{"pid": "OP01-073::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-073 (Alt).webp"}
+{"pid": "OP01-073::s p", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-073SP.webp"}
+{"pid": "OP01-073_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-073_p1.png"}
+{"pid": "OP01-073_p2", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP07\\parallel\\OP01-073_p2.png"}
+{"pid": "OP01-073_r1", "cat": "r_variant", "result": "missing", "image_path": "ST17/reprint/OP01-073_r1.png"}
+{"pid": "OP01-074", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-074.png"}
+{"pid": "OP01-075", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-075.png"}
+{"pid": "OP01-076", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-076.png"}
+{"pid": "OP01-077", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-077.png"}
+{"pid": "OP01-077::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-077 (alt).webp"}
+{"pid": "OP01-077::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-077alt2.webp"}
+{"pid": "OP01-077::alt art 3", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-077Alt3.webp"}
+{"pid": "OP01-077_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\parallel\\OP01-077_p1.png"}
+{"pid": "OP01-078", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-078.png"}
+{"pid": "OP01-078::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-078 (Alt).webp"}
+{"pid": "OP01-078::prb01alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-078(PRB01alt).webp"}
+{"pid": "OP01-078::s p", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-078SP.webp"}
+{"pid": "OP01-078_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-078_p1.png"}
+{"pid": "OP01-078_p2", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP04\\parallel\\OP01-078_p2.png"}
+{"pid": "OP01-078_p4", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-078_p4.png"}
+{"pid": "OP01-078_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-078_r1.png"}
+{"pid": "OP01-079", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-079.png"}
+{"pid": "OP01-079::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-079(alt).webp"}
+{"pid": "OP01-080", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-080.png"}
+{"pid": "OP01-081", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-081.png"}
+{"pid": "OP01-082", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-082.png"}
+{"pid": "OP01-083", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-083.png"}
+{"pid": "OP01-084", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-084.png"}
+{"pid": "OP01-085", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-085.png"}
+{"pid": "OP01-086", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-086.png"}
+{"pid": "OP01-086_r1", "cat": "r_variant", "result": "missing", "image_path": "ST17/reprint/OP01-086_r1.png"}
+{"pid": "OP01-087", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-087.png"}
+{"pid": "OP01-088", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-088.png"}
+{"pid": "OP01-089", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-089.png"}
+{"pid": "OP01-090", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-090.png"}
+{"pid": "OP01-091", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-091.png"}
+{"pid": "OP01-091::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-091 (alt).webp"}
+{"pid": "OP01-091_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-091_p1.png"}
+{"pid": "OP01-092", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-092.png"}
+{"pid": "OP01-093", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-093.png"}
+{"pid": "OP01-093::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-093 (alt).webp"}
+{"pid": "OP01-093::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-093(alt2).webp"}
+{"pid": "OP01-093_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-093_p1.png"}
+{"pid": "OP01-094", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-094.png"}
+{"pid": "OP01-094::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-094 (alt).webp"}
+{"pid": "OP01-094::alt art 2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-094alt2.webp"}
+{"pid": "OP01-094_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-094_p1.png"}
+{"pid": "OP01-095", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-095.png"}
+{"pid": "OP01-096", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-096.png"}
+{"pid": "OP01-096::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-096 (Alt).webp"}
+{"pid": "OP01-096_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-096_p1.png"}
+{"pid": "OP01-097", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-097.png"}
+{"pid": "OP01-097_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-097_p1.png"}
+{"pid": "OP01-098", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-098.png"}
+{"pid": "OP01-099", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-099.png"}
+{"pid": "OP01-100", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-100.png"}
+{"pid": "OP01-101", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-101.png"}
+{"pid": "OP01-101::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-101(alt).webp"}
+{"pid": "OP01-101_p1", "cat": "bandai_canonical", "result": "missing", "image_path": "EP02/parallel/OP01-101_p1.png"}
+{"pid": "OP01-102", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-102.png"}
+{"pid": "OP01-102::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-102 (Alt).webp"}
+{"pid": "OP01-102_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-102_p1.png"}
+{"pid": "OP01-103", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-103.png"}
+{"pid": "OP01-104", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-104.png"}
+{"pid": "OP01-105", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-105.png"}
+{"pid": "OP01-106", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-106.png"}
+{"pid": "OP01-107", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-107.png"}
+{"pid": "OP01-108", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-108.png"}
+{"pid": "OP01-108::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-108(ALT).webp"}
+{"pid": "OP01-109", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-109.png"}
+{"pid": "OP01-109::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-109 (alt).webp"}
+{"pid": "OP01-109_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\parallel\\OP01-109_p1.png"}
+{"pid": "OP01-110", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-110.png"}
+{"pid": "OP01-111", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-111.png"}
+{"pid": "OP01-112", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-112.png"}
+{"pid": "OP01-113", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-113.png"}
+{"pid": "OP01-114", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-114.png"}
+{"pid": "OP01-114::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-114alt.webp"}
+{"pid": "OP01-115", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-115.png"}
+{"pid": "OP01-116", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-116.png"}
+{"pid": "OP01-117", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-117.png"}
+{"pid": "OP01-118", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\base\\OP01-118.png"}
+{"pid": "OP01-119", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-119.png"}
+{"pid": "OP01-120", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-120.png"}
+{"pid": "OP01-120::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-120 (alt).webp"}
+{"pid": "OP01-120::manga", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-120 Manga Rare.webp"}
+{"pid": "OP01-120::prb01alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-120(PRB01alt).webp"}
+{"pid": "OP01-120::s n", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-120sn.webp"}
+{"pid": "OP01-120_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-120_p1.png"}
+{"pid": "OP01-120_p2", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\parallel\\OP01-120_p2.png"}
+{"pid": "OP01-120_p5", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-120_p5.png"}
+{"pid": "OP01-120_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-120_r1.png"}
+{"pid": "OP01-120_r2", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-120_r2.png"}
+{"pid": "OP01-121", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP01\\OP01-121.png"}
+{"pid": "OP01-121::a t2", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-121at2.webp"}
+{"pid": "OP01-121::alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-121 (alt).webp"}
+{"pid": "OP01-121::prb01alt", "cat": "synthetic", "result": "found", "path": "D:\\OPTCG_Images\\thumbs\\OP01-121(PRB01alt).webp"}
+{"pid": "OP01-121_p1", "cat": "bandai_canonical", "result": "found", "path": "D:\\Miru_Assets\\OP01\\parallel\\OP01-121_p1.png"}
+{"pid": "OP01-121_p2", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\OP05\\parallel\\OP01-121_p2.png"}
+{"pid": "OP01-121_p4", "cat": "bandai_canonical", "result": "found", "path": "D:\\OPTCG_Images\\PRB01\\parallel\\OP01-121_p4.png"}
+{"pid": "OP01-121_r1", "cat": "r_variant", "result": "missing", "image_path": "PRB01/reprint/OP01-121_r1.png"}
+{"head_check": true, "pid": "OP01-006_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-006_r1.png?260305", "status": 200, "content_length": 187694}
+{"head_check": true, "pid": "OP01-024_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-024_r1.png?260305", "status": 200, "content_length": 155845}
+{"head_check": true, "pid": "OP01-029_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-029_r1.png?260305", "status": 200, "content_length": 149672}
+{"head_check": true, "pid": "OP01-033_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-033_r1.png?260305", "status": 200, "content_length": 119071}
+{"head_check": true, "pid": "OP01-039_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-039_r1.png?260305", "status": 200, "content_length": 1703606}
+{"head_check": true, "pid": "OP01-041_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-041_r1.png?260305", "status": 200, "content_length": 137968}
+{"head_check": true, "pid": "OP01-047_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-047_r1.png?260305", "status": 200, "content_length": 171127}
+{"head_check": true, "pid": "OP01-051_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-051_r1.png?260305", "status": 200, "content_length": 154608}
+{"head_check": true, "pid": "OP01-052_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-052_r1.png?260305", "status": 200, "content_length": 135973}
+{"head_check": true, "pid": "OP01-055_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-055_r1.png?260305", "status": 200, "content_length": 999387}
+{"head_check": true, "pid": "OP01-070_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-070_r1.png?260305", "status": 200, "content_length": 227947}
+{"head_check": true, "pid": "OP01-073_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-073_r1.png?260305", "status": 200, "content_length": 156003}
+{"head_check": true, "pid": "OP01-078_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-078_r1.png?260305", "status": 200, "content_length": 166747}
+{"head_check": true, "pid": "OP01-086_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-086_r1.png?260305", "status": 200, "content_length": 173942}
+{"head_check": true, "pid": "OP01-120_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-120_r1.png?260305", "status": 200, "content_length": 203229}
+{"head_check": true, "pid": "OP01-120_r2", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-120_r2.png?260305", "status": 200, "content_length": 186812}
+{"head_check": true, "pid": "OP01-121_r1", "url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-121_r1.png?260305", "status": 200, "content_length": 152009}

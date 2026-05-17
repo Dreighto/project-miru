@@ -135,7 +135,8 @@ branch is checked out — that worker is in violation.
 - Standing Notion write authority for factual/maintenance updates (see `.logueos/overlays/domain-ops.md`).
 - Restarts services autonomously (gateway, dispatch_listener, PM, Miru AI) — don't ask operator for routine restarts. See `.logueos/reference/restart-procedures.md` for service launch paths.
 - Files Linear loop tickets directly via `linear_create_issue` (not file-then-paste).
-- Never touches: HTML/CSS/JS templates, `.mcp.json`, `card_catalog.db`.
+- **`card_catalog.db` writes are in scope** when work requires them — set population (OP01–OP15), provenance backfills, meta-relevancy / insight columns, image-asset linkage. The earlier never-touch rule was situational to the schema-setup-and-initial-population phase and is no longer in force (operator 2026-05-17). Always `cp data/card_catalog.db data/card_catalog.db.bak.<timestamp>` before any UPDATE/INSERT/DELETE batch, log the change to a `data/*.log` file, and surface the diff in commit messages.
+- Never touches: HTML/CSS/JS templates, `.mcp.json`.
 
 ## Active Loop Workers
 
