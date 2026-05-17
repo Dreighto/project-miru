@@ -1,0 +1,2097 @@
+{
+  "schema_version": 1,
+  "ticket": "PRO-904",
+  "source": "https://en.onepiece-cardgame.com/cardlist/?search=true&freewords=OP01-NNN",
+  "queried_at": "2026-05-17T16:57:23Z",
+  "card_numbers_queried": 121,
+  "card_numbers_with_results": 121,
+  "total_printings": 218,
+  "failures": [],
+  "coverage": {
+    "OP01-001": 3,
+    "OP01-002": 2,
+    "OP01-003": 2,
+    "OP01-004": 2,
+    "OP01-005": 3,
+    "OP01-006": 5,
+    "OP01-007": 1,
+    "OP01-008": 2,
+    "OP01-009": 1,
+    "OP01-010": 1,
+    "OP01-011": 1,
+    "OP01-012": 1,
+    "OP01-013": 5,
+    "OP01-014": 2,
+    "OP01-015": 2,
+    "OP01-016": 8,
+    "OP01-017": 3,
+    "OP01-018": 1,
+    "OP01-019": 1,
+    "OP01-020": 1,
+    "OP01-021": 4,
+    "OP01-022": 2,
+    "OP01-023": 1,
+    "OP01-024": 3,
+    "OP01-025": 4,
+    "OP01-026": 1,
+    "OP01-027": 1,
+    "OP01-028": 1,
+    "OP01-029": 4,
+    "OP01-030": 2,
+    "OP01-031": 2,
+    "OP01-032": 1,
+    "OP01-033": 6,
+    "OP01-034": 2,
+    "OP01-035": 4,
+    "OP01-036": 1,
+    "OP01-037": 1,
+    "OP01-038": 1,
+    "OP01-039": 2,
+    "OP01-040": 2,
+    "OP01-041": 5,
+    "OP01-042": 1,
+    "OP01-043": 1,
+    "OP01-044": 1,
+    "OP01-045": 1,
+    "OP01-046": 1,
+    "OP01-047": 4,
+    "OP01-048": 2,
+    "OP01-049": 1,
+    "OP01-050": 1,
+    "OP01-051": 4,
+    "OP01-052": 4,
+    "OP01-053": 1,
+    "OP01-054": 1,
+    "OP01-055": 2,
+    "OP01-056": 1,
+    "OP01-057": 2,
+    "OP01-058": 1,
+    "OP01-059": 1,
+    "OP01-060": 3,
+    "OP01-061": 2,
+    "OP01-062": 2,
+    "OP01-063": 1,
+    "OP01-064": 2,
+    "OP01-065": 1,
+    "OP01-066": 1,
+    "OP01-067": 2,
+    "OP01-068": 1,
+    "OP01-069": 1,
+    "OP01-070": 4,
+    "OP01-071": 1,
+    "OP01-072": 1,
+    "OP01-073": 3,
+    "OP01-074": 1,
+    "OP01-075": 1,
+    "OP01-076": 1,
+    "OP01-077": 2,
+    "OP01-078": 4,
+    "OP01-079": 1,
+    "OP01-080": 1,
+    "OP01-081": 1,
+    "OP01-082": 1,
+    "OP01-083": 1,
+    "OP01-084": 1,
+    "OP01-085": 1,
+    "OP01-086": 1,
+    "OP01-087": 1,
+    "OP01-088": 1,
+    "OP01-089": 1,
+    "OP01-090": 1,
+    "OP01-091": 2,
+    "OP01-092": 1,
+    "OP01-093": 2,
+    "OP01-094": 2,
+    "OP01-095": 1,
+    "OP01-096": 2,
+    "OP01-097": 2,
+    "OP01-098": 1,
+    "OP01-099": 1,
+    "OP01-100": 1,
+    "OP01-101": 2,
+    "OP01-102": 2,
+    "OP01-103": 1,
+    "OP01-104": 1,
+    "OP01-105": 1,
+    "OP01-106": 1,
+    "OP01-107": 1,
+    "OP01-108": 1,
+    "OP01-109": 2,
+    "OP01-110": 1,
+    "OP01-111": 1,
+    "OP01-112": 1,
+    "OP01-113": 1,
+    "OP01-114": 1,
+    "OP01-115": 1,
+    "OP01-116": 1,
+    "OP01-117": 1,
+    "OP01-118": 1,
+    "OP01-119": 1,
+    "OP01-120": 4,
+    "OP01-121": 4
+  },
+  "printings": [
+    {
+      "card_number": "OP01-001",
+      "print_id": "base",
+      "full_id": "OP01-001",
+      "name": "Roronoa Zoro",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-001.png?260508"
+    },
+    {
+      "card_number": "OP01-001",
+      "print_id": "_p1",
+      "full_id": "OP01-001_p1",
+      "name": "Roronoa Zoro",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-001_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-001",
+      "print_id": "_p2",
+      "full_id": "OP01-001_p2",
+      "name": "Roronoa Zoro",
+      "rarity": "L",
+      "card_set": "Premium Card Collection -25th Edition-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-001_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-002",
+      "print_id": "base",
+      "full_id": "OP01-002",
+      "name": "Trafalgar Law",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-002.png?260508"
+    },
+    {
+      "card_number": "OP01-002",
+      "print_id": "_p1",
+      "full_id": "OP01-002_p1",
+      "name": "Trafalgar Law",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-002_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-003",
+      "print_id": "base",
+      "full_id": "OP01-003",
+      "name": "Monkey.D.Luffy",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-003.png?260508"
+    },
+    {
+      "card_number": "OP01-003",
+      "print_id": "_p1",
+      "full_id": "OP01-003_p1",
+      "name": "Monkey.D.Luffy",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-003_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-004",
+      "print_id": "base",
+      "full_id": "OP01-004",
+      "name": "Usopp",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-004.png?260508"
+    },
+    {
+      "card_number": "OP01-004",
+      "print_id": "_p1",
+      "full_id": "OP01-004_p1",
+      "name": "Usopp",
+      "rarity": "R",
+      "card_set": "English Version 1st Anniversary Set",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-004_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-005",
+      "print_id": "base",
+      "full_id": "OP01-005",
+      "name": "Uta",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-005.png?260508"
+    },
+    {
+      "card_number": "OP01-005",
+      "print_id": "_p1",
+      "full_id": "OP01-005_p1",
+      "name": "Uta",
+      "rarity": "R",
+      "card_set": "Premium Card Collection -FILM RED Edition-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-005_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-005",
+      "print_id": "_p2",
+      "full_id": "OP01-005_p2",
+      "name": "Uta",
+      "rarity": "R",
+      "card_set": "GIFT COLLECTION 2023 [GC-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-005_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-006",
+      "print_id": "base",
+      "full_id": "OP01-006",
+      "name": "Otama",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-006.png?260508"
+    },
+    {
+      "card_number": "OP01-006",
+      "print_id": "_p1",
+      "full_id": "OP01-006_p1",
+      "name": "Otama",
+      "rarity": "UC",
+      "card_set": "Japanese 1st Anniversary Set",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-006_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-006",
+      "print_id": "_p3",
+      "full_id": "OP01-006_p3",
+      "name": "Otama",
+      "rarity": "UC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-006_p3.png?260508"
+    },
+    {
+      "card_number": "OP01-006",
+      "print_id": "_p4",
+      "full_id": "OP01-006_p4",
+      "name": "Otama",
+      "rarity": "UC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-006_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-006",
+      "print_id": "_p5",
+      "full_id": "OP01-006_p5",
+      "name": "Otama",
+      "rarity": "UC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-006_p5.png?260508"
+    },
+    {
+      "card_number": "OP01-007",
+      "print_id": "base",
+      "full_id": "OP01-007",
+      "name": "Caribou",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-007.png?260508"
+    },
+    {
+      "card_number": "OP01-008",
+      "print_id": "base",
+      "full_id": "OP01-008",
+      "name": "Cavendish",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-008.png?260508"
+    },
+    {
+      "card_number": "OP01-008",
+      "print_id": "_p1",
+      "full_id": "OP01-008_p1",
+      "name": "Cavendish",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-008_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-009",
+      "print_id": "base",
+      "full_id": "OP01-009",
+      "name": "Carrot",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-009.png?260508"
+    },
+    {
+      "card_number": "OP01-010",
+      "print_id": "base",
+      "full_id": "OP01-010",
+      "name": "Komachiyo",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-010.png?260508"
+    },
+    {
+      "card_number": "OP01-011",
+      "print_id": "base",
+      "full_id": "OP01-011",
+      "name": "Gordon",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-011.png?260508"
+    },
+    {
+      "card_number": "OP01-012",
+      "print_id": "base",
+      "full_id": "OP01-012",
+      "name": "Sai",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-012.png?260508"
+    },
+    {
+      "card_number": "OP01-013",
+      "print_id": "base",
+      "full_id": "OP01-013",
+      "name": "Sanji",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-013.png?260508"
+    },
+    {
+      "card_number": "OP01-013",
+      "print_id": "_p1",
+      "full_id": "OP01-013_p1",
+      "name": "Sanji",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-013_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-013",
+      "print_id": "_p2",
+      "full_id": "OP01-013_p2",
+      "name": "Sanji",
+      "rarity": "R",
+      "card_set": "Premium Card Collection -25th Edition-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-013_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-013",
+      "print_id": "_p3",
+      "full_id": "OP01-013_p3",
+      "name": "Sanji",
+      "rarity": "R",
+      "card_set": "GIFT COLLECTION 2023 [GC-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-013_p3.png?260508"
+    },
+    {
+      "card_number": "OP01-013",
+      "print_id": "_p4",
+      "full_id": "OP01-013_p4",
+      "name": "Sanji",
+      "rarity": "R",
+      "card_set": "English Version 1st Anniversary Set",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-013_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-014",
+      "print_id": "base",
+      "full_id": "OP01-014",
+      "name": "Jinbe",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-014.png?260508"
+    },
+    {
+      "card_number": "OP01-014",
+      "print_id": "_p1",
+      "full_id": "OP01-014_p1",
+      "name": "Jinbe",
+      "rarity": "UC",
+      "card_set": "Premium Card Collection -FILM RED Edition-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-014_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-015",
+      "print_id": "base",
+      "full_id": "OP01-015",
+      "name": "Tony Tony.Chopper",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-015.png?260508"
+    },
+    {
+      "card_number": "OP01-015",
+      "print_id": "_p1",
+      "full_id": "OP01-015_p1",
+      "name": "Tony Tony.Chopper",
+      "rarity": "UC",
+      "card_set": "Offline Regional Participation Pack 2024 Vol. 3",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-015_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-016",
+      "print_id": "base",
+      "full_id": "OP01-016",
+      "name": "Nami",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-016.png?260508"
+    },
+    {
+      "card_number": "OP01-016",
+      "print_id": "_p1",
+      "full_id": "OP01-016_p1",
+      "name": "Nami",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-016_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-016",
+      "print_id": "_p2",
+      "full_id": "OP01-016_p2",
+      "name": "Nami",
+      "rarity": "R",
+      "card_set": "Premium Card Collection -25th Edition-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-016_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-016",
+      "print_id": "_p3",
+      "full_id": "OP01-016_p3",
+      "name": "Nami",
+      "rarity": "R",
+      "card_set": "-The Three Captains-[ST-10]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-016_p3.png?260508"
+    },
+    {
+      "card_number": "OP01-016",
+      "print_id": "_p5",
+      "full_id": "OP01-016_p5",
+      "name": "Nami",
+      "rarity": "R",
+      "card_set": "GIFT COLLECTION 2023 [GC-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-016_p5.png?260508"
+    },
+    {
+      "card_number": "OP01-016",
+      "print_id": "_p7",
+      "full_id": "OP01-016_p7",
+      "name": "Nami",
+      "rarity": "R",
+      "card_set": "English Version 1st Anniversary Set",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-016_p7.png?260508"
+    },
+    {
+      "card_number": "OP01-016",
+      "print_id": "_p8",
+      "full_id": "OP01-016_p8",
+      "name": "Nami",
+      "rarity": "R",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-016_p8.png?260508"
+    },
+    {
+      "card_number": "OP01-016",
+      "print_id": "_p4",
+      "full_id": "OP01-016_p4",
+      "name": "Nami",
+      "rarity": "SP CARD",
+      "card_set": "-AWAKENING OF THE NEW ERA-[OP05]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-016_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-017",
+      "print_id": "base",
+      "full_id": "OP01-017",
+      "name": "Nico Robin",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-017.png?260508"
+    },
+    {
+      "card_number": "OP01-017",
+      "print_id": "_p1",
+      "full_id": "OP01-017_p1",
+      "name": "Nico Robin",
+      "rarity": "R",
+      "card_set": "Premium Card Collection -FILM RED Edition-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-017_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-017",
+      "print_id": "_p2",
+      "full_id": "OP01-017_p2",
+      "name": "Nico Robin",
+      "rarity": "R",
+      "card_set": "English Version 1st Anniversary Set",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-017_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-018",
+      "print_id": "base",
+      "full_id": "OP01-018",
+      "name": "Hajrudin",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-018.png?260508"
+    },
+    {
+      "card_number": "OP01-019",
+      "print_id": "base",
+      "full_id": "OP01-019",
+      "name": "Bartolomeo",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-019.png?260508"
+    },
+    {
+      "card_number": "OP01-020",
+      "print_id": "base",
+      "full_id": "OP01-020",
+      "name": "Hyogoro",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-020.png?260508"
+    },
+    {
+      "card_number": "OP01-021",
+      "print_id": "base",
+      "full_id": "OP01-021",
+      "name": "Franky",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-021.png?260508"
+    },
+    {
+      "card_number": "OP01-021",
+      "print_id": "_p1",
+      "full_id": "OP01-021_p1",
+      "name": "Franky",
+      "rarity": "UC",
+      "card_set": "Premium Card Collection -FILM RED Edition-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-021_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-021",
+      "print_id": "_p2",
+      "full_id": "OP01-021_p2",
+      "name": "Franky",
+      "rarity": "UC",
+      "card_set": "Tournament Pack Vol.2",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-021_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-021",
+      "print_id": "_p3",
+      "full_id": "OP01-021_p3",
+      "name": "Franky",
+      "rarity": "UC",
+      "card_set": "GIFT COLLECTION 2023 [GC-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-021_p3.png?260508"
+    },
+    {
+      "card_number": "OP01-022",
+      "print_id": "base",
+      "full_id": "OP01-022",
+      "name": "Brook",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-022.png?260508"
+    },
+    {
+      "card_number": "OP01-022",
+      "print_id": "_p1",
+      "full_id": "OP01-022_p1",
+      "name": "Brook",
+      "rarity": "UC",
+      "card_set": "Premium Card Collection -25th Edition-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-022_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-023",
+      "print_id": "base",
+      "full_id": "OP01-023",
+      "name": "Marco",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-023.png?260508"
+    },
+    {
+      "card_number": "OP01-024",
+      "print_id": "base",
+      "full_id": "OP01-024",
+      "name": "Monkey.D.Luffy",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-024.png?260508"
+    },
+    {
+      "card_number": "OP01-024",
+      "print_id": "_p1",
+      "full_id": "OP01-024_p1",
+      "name": "Monkey.D.Luffy",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-024_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-024",
+      "print_id": "_p3",
+      "full_id": "OP01-024_p3",
+      "name": "Monkey.D.Luffy",
+      "rarity": "SR",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-024_p3.png?260508"
+    },
+    {
+      "card_number": "OP01-025",
+      "print_id": "base",
+      "full_id": "OP01-025",
+      "name": "Roronoa Zoro",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-025.png?260508"
+    },
+    {
+      "card_number": "OP01-025",
+      "print_id": "_p1",
+      "full_id": "OP01-025_p1",
+      "name": "Roronoa Zoro",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-025_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-025",
+      "print_id": "_p2",
+      "full_id": "OP01-025_p2",
+      "name": "Roronoa Zoro",
+      "rarity": "SR",
+      "card_set": "-The Three Captains-[ST-10]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-025_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-025",
+      "print_id": "_p3",
+      "full_id": "OP01-025_p3",
+      "name": "Roronoa Zoro",
+      "rarity": "SR",
+      "card_set": "English Version 1st Anniversary Set",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-025_p3.png?260508"
+    },
+    {
+      "card_number": "OP01-026",
+      "print_id": "base",
+      "full_id": "OP01-026",
+      "name": "Gum-Gum Fire-Fist Pistol Red Hawk",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-026.png?260508"
+    },
+    {
+      "card_number": "OP01-027",
+      "print_id": "base",
+      "full_id": "OP01-027",
+      "name": "Round Table",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-027.png?260508"
+    },
+    {
+      "card_number": "OP01-028",
+      "print_id": "base",
+      "full_id": "OP01-028",
+      "name": "Green Star Rafflesia",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-028.png?260508"
+    },
+    {
+      "card_number": "OP01-029",
+      "print_id": "base",
+      "full_id": "OP01-029",
+      "name": "Radical Beam!!",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-029.png?260508"
+    },
+    {
+      "card_number": "OP01-029",
+      "print_id": "_p2",
+      "full_id": "OP01-029_p2",
+      "name": "Radical Beam!!",
+      "rarity": "UC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-029_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-029",
+      "print_id": "_p3",
+      "full_id": "OP01-029_p3",
+      "name": "Radical Beam!!",
+      "rarity": "UC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-029_p3.png?260508"
+    },
+    {
+      "card_number": "OP01-029",
+      "print_id": "_p4",
+      "full_id": "OP01-029_p4",
+      "name": "Radical Beam!!",
+      "rarity": "UC",
+      "card_set": "Premium Card Collection -Best Selection-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-029_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-030",
+      "print_id": "base",
+      "full_id": "OP01-030",
+      "name": "In Two Years!! At the Sabaody Archipelago!!",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-030.png?260508"
+    },
+    {
+      "card_number": "OP01-030",
+      "print_id": "_p1",
+      "full_id": "OP01-030_p1",
+      "name": "In Two Years!! At the Sabaody Archipelago!!",
+      "rarity": "UC",
+      "card_set": "Japanese 2nd Anniversary Set",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-030_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-031",
+      "print_id": "base",
+      "full_id": "OP01-031",
+      "name": "Kouzuki Oden",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-031.png?260508"
+    },
+    {
+      "card_number": "OP01-031",
+      "print_id": "_p1",
+      "full_id": "OP01-031_p1",
+      "name": "Kouzuki Oden",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-031_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-032",
+      "print_id": "base",
+      "full_id": "OP01-032",
+      "name": "Ashura Doji",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-032.png?260508"
+    },
+    {
+      "card_number": "OP01-033",
+      "print_id": "base",
+      "full_id": "OP01-033",
+      "name": "Izo",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-033.png?260508"
+    },
+    {
+      "card_number": "OP01-033",
+      "print_id": "_p1",
+      "full_id": "OP01-033_p1",
+      "name": "Izo",
+      "rarity": "UC",
+      "card_set": "Tournament Pack Vol.2",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-033_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-033",
+      "print_id": "_p3",
+      "full_id": "OP01-033_p3",
+      "name": "Izo",
+      "rarity": "UC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-033_p3.png?260508"
+    },
+    {
+      "card_number": "OP01-033",
+      "print_id": "_p4",
+      "full_id": "OP01-033_p4",
+      "name": "Izo",
+      "rarity": "UC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-033_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-033",
+      "print_id": "_p5",
+      "full_id": "OP01-033_p5",
+      "name": "Izo",
+      "rarity": "UC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-033_p5.png?260508"
+    },
+    {
+      "card_number": "OP01-033",
+      "print_id": "_p6",
+      "full_id": "OP01-033_p6",
+      "name": "Izo",
+      "rarity": "UC",
+      "card_set": "Premium Card Collection -BANDAI CARD GAMES Fest. 23-24 Edition-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-033_p6.png?260508"
+    },
+    {
+      "card_number": "OP01-034",
+      "print_id": "base",
+      "full_id": "OP01-034",
+      "name": "Inuarashi",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-034.png?260508"
+    },
+    {
+      "card_number": "OP01-034",
+      "print_id": "_p1",
+      "full_id": "OP01-034_p1",
+      "name": "Inuarashi",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-034_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-035",
+      "print_id": "base",
+      "full_id": "OP01-035",
+      "name": "Okiku",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-035.png?260508"
+    },
+    {
+      "card_number": "OP01-035",
+      "print_id": "_p1",
+      "full_id": "OP01-035_p1",
+      "name": "Okiku",
+      "rarity": "R",
+      "card_set": "Tournament Pack Vol.4",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-035_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-035",
+      "print_id": "_p3",
+      "full_id": "OP01-035_p3",
+      "name": "Okiku",
+      "rarity": "R",
+      "card_set": "Premium Card Collection -BANDAI CARD GAMES Fest. 23-24 Edition-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-035_p3.png?260508"
+    },
+    {
+      "card_number": "OP01-035",
+      "print_id": "_p2",
+      "full_id": "OP01-035_p2",
+      "name": "Okiku",
+      "rarity": "SP CARD",
+      "card_set": "-500 YEARS IN THE FUTURE- [OP-07]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-035_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-036",
+      "print_id": "base",
+      "full_id": "OP01-036",
+      "name": "Otsuru",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-036.png?260508"
+    },
+    {
+      "card_number": "OP01-037",
+      "print_id": "base",
+      "full_id": "OP01-037",
+      "name": "Kawamatsu",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-037.png?260508"
+    },
+    {
+      "card_number": "OP01-038",
+      "print_id": "base",
+      "full_id": "OP01-038",
+      "name": "Kanjuro",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-038.png?260508"
+    },
+    {
+      "card_number": "OP01-039",
+      "print_id": "base",
+      "full_id": "OP01-039",
+      "name": "Killer",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-039.png?260508"
+    },
+    {
+      "card_number": "OP01-039",
+      "print_id": "_p1",
+      "full_id": "OP01-039_p1",
+      "name": "Killer",
+      "rarity": "UC",
+      "card_set": "-ONE PIECE CARD THE BEST vol.2- [PRB-02]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-039_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-040",
+      "print_id": "base",
+      "full_id": "OP01-040",
+      "name": "Kin'emon",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-040.png?260508"
+    },
+    {
+      "card_number": "OP01-040",
+      "print_id": "_p1",
+      "full_id": "OP01-040_p1",
+      "name": "Kin'emon",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-040_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-041",
+      "print_id": "base",
+      "full_id": "OP01-041",
+      "name": "Kouzuki Momonosuke",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-041.png?260508"
+    },
+    {
+      "card_number": "OP01-041",
+      "print_id": "_p1",
+      "full_id": "OP01-041_p1",
+      "name": "Kouzuki Momonosuke",
+      "rarity": "R",
+      "card_set": "Tournament Pack Vol.7",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-041_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-041",
+      "print_id": "_p3",
+      "full_id": "OP01-041_p3",
+      "name": "Kouzuki Momonosuke",
+      "rarity": "R",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-041_p3.png?260508"
+    },
+    {
+      "card_number": "OP01-041",
+      "print_id": "_p4",
+      "full_id": "OP01-041_p4",
+      "name": "Kouzuki Momonosuke",
+      "rarity": "R",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-041_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-041",
+      "print_id": "_p5",
+      "full_id": "OP01-041_p5",
+      "name": "Kouzuki Momonosuke",
+      "rarity": "R",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-041_p5.png?260508"
+    },
+    {
+      "card_number": "OP01-042",
+      "print_id": "base",
+      "full_id": "OP01-042",
+      "name": "Komurasaki",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-042.png?260508"
+    },
+    {
+      "card_number": "OP01-043",
+      "print_id": "base",
+      "full_id": "OP01-043",
+      "name": "Shinobu",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-043.png?260508"
+    },
+    {
+      "card_number": "OP01-044",
+      "print_id": "base",
+      "full_id": "OP01-044",
+      "name": "Shachi",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-044.png?260508"
+    },
+    {
+      "card_number": "OP01-045",
+      "print_id": "base",
+      "full_id": "OP01-045",
+      "name": "Jean Bart",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-045.png?260508"
+    },
+    {
+      "card_number": "OP01-046",
+      "print_id": "base",
+      "full_id": "OP01-046",
+      "name": "Denjiro",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-046.png?260508"
+    },
+    {
+      "card_number": "OP01-047",
+      "print_id": "base",
+      "full_id": "OP01-047",
+      "name": "Trafalgar Law",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-047.png?260508"
+    },
+    {
+      "card_number": "OP01-047",
+      "print_id": "_p1",
+      "full_id": "OP01-047_p1",
+      "name": "Trafalgar Law",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-047_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-047",
+      "print_id": "_p4",
+      "full_id": "OP01-047_p4",
+      "name": "Trafalgar Law",
+      "rarity": "SR",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-047_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-047",
+      "print_id": "_p2",
+      "full_id": "OP01-047_p2",
+      "name": "Trafalgar Law",
+      "rarity": "SP CARD",
+      "card_set": "-KINGDOMS OF INTRIGUE- [OP04]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-047_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-048",
+      "print_id": "base",
+      "full_id": "OP01-048",
+      "name": "Nekomamushi",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-048.png?260508"
+    },
+    {
+      "card_number": "OP01-048",
+      "print_id": "_p1",
+      "full_id": "OP01-048_p1",
+      "name": "Nekomamushi",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-048_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-049",
+      "print_id": "base",
+      "full_id": "OP01-049",
+      "name": "Bepo",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-049.png?260508"
+    },
+    {
+      "card_number": "OP01-050",
+      "print_id": "base",
+      "full_id": "OP01-050",
+      "name": "Penguin",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-050.png?260508"
+    },
+    {
+      "card_number": "OP01-051",
+      "print_id": "base",
+      "full_id": "OP01-051",
+      "name": "Eustass\"Captain\"Kid",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-051.png?260508"
+    },
+    {
+      "card_number": "OP01-051",
+      "print_id": "_p1",
+      "full_id": "OP01-051_p1",
+      "name": "Eustass\"Captain\"Kid",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-051_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-051",
+      "print_id": "_p4",
+      "full_id": "OP01-051_p4",
+      "name": "Eustass\"Captain\"Kid",
+      "rarity": "SR",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-051_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-051",
+      "print_id": "_p2",
+      "full_id": "OP01-051_p2",
+      "name": "Eustass\"Captain\"Kid",
+      "rarity": "SP CARD",
+      "card_set": "-PILLARS OF STRENGTH- [OP03]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-051_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-052",
+      "print_id": "base",
+      "full_id": "OP01-052",
+      "name": "Raizo",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-052.png?260508"
+    },
+    {
+      "card_number": "OP01-052",
+      "print_id": "_p1",
+      "full_id": "OP01-052_p1",
+      "name": "Raizo",
+      "rarity": "UC",
+      "card_set": "Included in Event Pack Vol.2",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-052_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-052",
+      "print_id": "_p3",
+      "full_id": "OP01-052_p3",
+      "name": "Raizo",
+      "rarity": "UC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-052_p3.png?260508"
+    },
+    {
+      "card_number": "OP01-052",
+      "print_id": "_p4",
+      "full_id": "OP01-052_p4",
+      "name": "Raizo",
+      "rarity": "UC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-052_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-053",
+      "print_id": "base",
+      "full_id": "OP01-053",
+      "name": "Wire",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-053.png?260508"
+    },
+    {
+      "card_number": "OP01-054",
+      "print_id": "base",
+      "full_id": "OP01-054",
+      "name": "X.Drake",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-054.png?260508"
+    },
+    {
+      "card_number": "OP01-055",
+      "print_id": "base",
+      "full_id": "OP01-055",
+      "name": "You Can Be My Samurai!!",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-055.png?260508"
+    },
+    {
+      "card_number": "OP01-055",
+      "print_id": "_p1",
+      "full_id": "OP01-055_p1",
+      "name": "You Can Be My Samurai!!",
+      "rarity": "C",
+      "card_set": "-ONE PIECE CARD THE BEST vol.2- [PRB-02]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-055_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-056",
+      "print_id": "base",
+      "full_id": "OP01-056",
+      "name": "Demon Face",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-056.png?260508"
+    },
+    {
+      "card_number": "OP01-057",
+      "print_id": "base",
+      "full_id": "OP01-057",
+      "name": "Paradise Waterfall",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-057.png?260508"
+    },
+    {
+      "card_number": "OP01-057",
+      "print_id": "_p1",
+      "full_id": "OP01-057_p1",
+      "name": "Paradise Waterfall",
+      "rarity": "UC",
+      "card_set": "Premium Card Collection -Best Selection-",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-057_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-058",
+      "print_id": "base",
+      "full_id": "OP01-058",
+      "name": "Punk Gibson",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-058.png?260508"
+    },
+    {
+      "card_number": "OP01-059",
+      "print_id": "base",
+      "full_id": "OP01-059",
+      "name": "BE-BENG!!",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-059.png?260508"
+    },
+    {
+      "card_number": "OP01-060",
+      "print_id": "base",
+      "full_id": "OP01-060",
+      "name": "Donquixote Doflamingo",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-060.png?260508"
+    },
+    {
+      "card_number": "OP01-060",
+      "print_id": "_p1",
+      "full_id": "OP01-060_p1",
+      "name": "Donquixote Doflamingo",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-060_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-060",
+      "print_id": "_p2",
+      "full_id": "OP01-060_p2",
+      "name": "Donquixote Doflamingo",
+      "rarity": "L",
+      "card_set": "-Blue Donquixote Doflamingo- [ST-17]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-060_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-061",
+      "print_id": "base",
+      "full_id": "OP01-061",
+      "name": "Kaido",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-061.png?260508"
+    },
+    {
+      "card_number": "OP01-061",
+      "print_id": "_p1",
+      "full_id": "OP01-061_p1",
+      "name": "Kaido",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-061_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-062",
+      "print_id": "base",
+      "full_id": "OP01-062",
+      "name": "Crocodile",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-062.png?260508"
+    },
+    {
+      "card_number": "OP01-062",
+      "print_id": "_p1",
+      "full_id": "OP01-062_p1",
+      "name": "Crocodile",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-062_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-063",
+      "print_id": "base",
+      "full_id": "OP01-063",
+      "name": "Arlong",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-063.png?260508"
+    },
+    {
+      "card_number": "OP01-064",
+      "print_id": "base",
+      "full_id": "OP01-064",
+      "name": "Alvida",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-064.png?260508"
+    },
+    {
+      "card_number": "OP01-064",
+      "print_id": "_p1",
+      "full_id": "OP01-064_p1",
+      "name": "Alvida",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-064_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-065",
+      "print_id": "base",
+      "full_id": "OP01-065",
+      "name": "Vergo",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-065.png?260508"
+    },
+    {
+      "card_number": "OP01-066",
+      "print_id": "base",
+      "full_id": "OP01-066",
+      "name": "Krieg",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-066.png?260508"
+    },
+    {
+      "card_number": "OP01-067",
+      "print_id": "base",
+      "full_id": "OP01-067",
+      "name": "Crocodile",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-067.png?260508"
+    },
+    {
+      "card_number": "OP01-067",
+      "print_id": "_p1",
+      "full_id": "OP01-067_p1",
+      "name": "Crocodile",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-067_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-068",
+      "print_id": "base",
+      "full_id": "OP01-068",
+      "name": "Gecko Moria",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-068.png?260508"
+    },
+    {
+      "card_number": "OP01-069",
+      "print_id": "base",
+      "full_id": "OP01-069",
+      "name": "Caesar Clown",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-069.png?260508"
+    },
+    {
+      "card_number": "OP01-070",
+      "print_id": "base",
+      "full_id": "OP01-070",
+      "name": "Dracule Mihawk",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-070.png?260508"
+    },
+    {
+      "card_number": "OP01-070",
+      "print_id": "_p1",
+      "full_id": "OP01-070_p1",
+      "name": "Dracule Mihawk",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-070_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-070",
+      "print_id": "_p2",
+      "full_id": "OP01-070_p2",
+      "name": "Dracule Mihawk",
+      "rarity": "SR",
+      "card_set": "Treasure Cup August – September",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-070_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-070",
+      "print_id": "_p4",
+      "full_id": "OP01-070_p4",
+      "name": "Dracule Mihawk",
+      "rarity": "SR",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-070_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-071",
+      "print_id": "base",
+      "full_id": "OP01-071",
+      "name": "Jinbe",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-071.png?260508"
+    },
+    {
+      "card_number": "OP01-072",
+      "print_id": "base",
+      "full_id": "OP01-072",
+      "name": "Smiley",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-072.png?260508"
+    },
+    {
+      "card_number": "OP01-073",
+      "print_id": "base",
+      "full_id": "OP01-073",
+      "name": "Donquixote Doflamingo",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-073.png?260508"
+    },
+    {
+      "card_number": "OP01-073",
+      "print_id": "_p1",
+      "full_id": "OP01-073_p1",
+      "name": "Donquixote Doflamingo",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-073_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-073",
+      "print_id": "_p2",
+      "full_id": "OP01-073_p2",
+      "name": "Donquixote Doflamingo",
+      "rarity": "SP CARD",
+      "card_set": "-500 YEARS IN THE FUTURE- [OP-07]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-073_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-074",
+      "print_id": "base",
+      "full_id": "OP01-074",
+      "name": "Bartholomew Kuma",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-074.png?260508"
+    },
+    {
+      "card_number": "OP01-075",
+      "print_id": "base",
+      "full_id": "OP01-075",
+      "name": "Pacifista",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-075.png?260508"
+    },
+    {
+      "card_number": "OP01-076",
+      "print_id": "base",
+      "full_id": "OP01-076",
+      "name": "Bellamy",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-076.png?260508"
+    },
+    {
+      "card_number": "OP01-077",
+      "print_id": "base",
+      "full_id": "OP01-077",
+      "name": "Perona",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-077.png?260508"
+    },
+    {
+      "card_number": "OP01-077",
+      "print_id": "_p1",
+      "full_id": "OP01-077_p1",
+      "name": "Perona",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-077_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-078",
+      "print_id": "base",
+      "full_id": "OP01-078",
+      "name": "Boa Hancock",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-078.png?260508"
+    },
+    {
+      "card_number": "OP01-078",
+      "print_id": "_p1",
+      "full_id": "OP01-078_p1",
+      "name": "Boa Hancock",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-078_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-078",
+      "print_id": "_p4",
+      "full_id": "OP01-078_p4",
+      "name": "Boa Hancock",
+      "rarity": "SR",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-078_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-078",
+      "print_id": "_p2",
+      "full_id": "OP01-078_p2",
+      "name": "Boa Hancock",
+      "rarity": "SP CARD",
+      "card_set": "-KINGDOMS OF INTRIGUE- [OP04]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-078_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-079",
+      "print_id": "base",
+      "full_id": "OP01-079",
+      "name": "Ms. All Sunday",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-079.png?260508"
+    },
+    {
+      "card_number": "OP01-080",
+      "print_id": "base",
+      "full_id": "OP01-080",
+      "name": "Miss Doublefinger(Zala)",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-080.png?260508"
+    },
+    {
+      "card_number": "OP01-081",
+      "print_id": "base",
+      "full_id": "OP01-081",
+      "name": "Mocha",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-081.png?260508"
+    },
+    {
+      "card_number": "OP01-082",
+      "print_id": "base",
+      "full_id": "OP01-082",
+      "name": "Monet",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-082.png?260508"
+    },
+    {
+      "card_number": "OP01-083",
+      "print_id": "base",
+      "full_id": "OP01-083",
+      "name": "Mr.1(Daz.Bonez)",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-083.png?260508"
+    },
+    {
+      "card_number": "OP01-084",
+      "print_id": "base",
+      "full_id": "OP01-084",
+      "name": "Mr.2.Bon.Kurei(Bentham)",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-084.png?260508"
+    },
+    {
+      "card_number": "OP01-085",
+      "print_id": "base",
+      "full_id": "OP01-085",
+      "name": "Mr.3(Galdino)",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-085.png?260508"
+    },
+    {
+      "card_number": "OP01-086",
+      "print_id": "base",
+      "full_id": "OP01-086",
+      "name": "Overheat",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-086.png?260508"
+    },
+    {
+      "card_number": "OP01-087",
+      "print_id": "base",
+      "full_id": "OP01-087",
+      "name": "Officer Agents",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-087.png?260508"
+    },
+    {
+      "card_number": "OP01-088",
+      "print_id": "base",
+      "full_id": "OP01-088",
+      "name": "Desert Spada",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-088.png?260508"
+    },
+    {
+      "card_number": "OP01-089",
+      "print_id": "base",
+      "full_id": "OP01-089",
+      "name": "Crescent Cutlass",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-089.png?260508"
+    },
+    {
+      "card_number": "OP01-090",
+      "print_id": "base",
+      "full_id": "OP01-090",
+      "name": "Baroque Works",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-090.png?260508"
+    },
+    {
+      "card_number": "OP01-091",
+      "print_id": "base",
+      "full_id": "OP01-091",
+      "name": "King",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-091.png?260508"
+    },
+    {
+      "card_number": "OP01-091",
+      "print_id": "_p1",
+      "full_id": "OP01-091_p1",
+      "name": "King",
+      "rarity": "L",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-091_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-092",
+      "print_id": "base",
+      "full_id": "OP01-092",
+      "name": "Urashima",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-092.png?260508"
+    },
+    {
+      "card_number": "OP01-093",
+      "print_id": "base",
+      "full_id": "OP01-093",
+      "name": "Ulti",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-093.png?260508"
+    },
+    {
+      "card_number": "OP01-093",
+      "print_id": "_p1",
+      "full_id": "OP01-093_p1",
+      "name": "Ulti",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-093_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-094",
+      "print_id": "base",
+      "full_id": "OP01-094",
+      "name": "Kaido",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-094.png?260508"
+    },
+    {
+      "card_number": "OP01-094",
+      "print_id": "_p1",
+      "full_id": "OP01-094_p1",
+      "name": "Kaido",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-094_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-095",
+      "print_id": "base",
+      "full_id": "OP01-095",
+      "name": "Kyoshirou",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-095.png?260508"
+    },
+    {
+      "card_number": "OP01-096",
+      "print_id": "base",
+      "full_id": "OP01-096",
+      "name": "King",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-096.png?260508"
+    },
+    {
+      "card_number": "OP01-096",
+      "print_id": "_p1",
+      "full_id": "OP01-096_p1",
+      "name": "King",
+      "rarity": "SR",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-096_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-097",
+      "print_id": "base",
+      "full_id": "OP01-097",
+      "name": "Queen",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-097.png?260508"
+    },
+    {
+      "card_number": "OP01-097",
+      "print_id": "_p1",
+      "full_id": "OP01-097_p1",
+      "name": "Queen",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-097_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-098",
+      "print_id": "base",
+      "full_id": "OP01-098",
+      "name": "Kurozumi Orochi",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-098.png?260508"
+    },
+    {
+      "card_number": "OP01-099",
+      "print_id": "base",
+      "full_id": "OP01-099",
+      "name": "Kurozumi Semimaru",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-099.png?260508"
+    },
+    {
+      "card_number": "OP01-100",
+      "print_id": "base",
+      "full_id": "OP01-100",
+      "name": "Kurozumi Higurashi",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-100.png?260508"
+    },
+    {
+      "card_number": "OP01-101",
+      "print_id": "base",
+      "full_id": "OP01-101",
+      "name": "Sasaki",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-101.png?260508"
+    },
+    {
+      "card_number": "OP01-101",
+      "print_id": "_p1",
+      "full_id": "OP01-101_p1",
+      "name": "Sasaki",
+      "rarity": "UC",
+      "card_set": "Included in Event Pack Vol.2",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-101_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-102",
+      "print_id": "base",
+      "full_id": "OP01-102",
+      "name": "Jack",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-102.png?260508"
+    },
+    {
+      "card_number": "OP01-102",
+      "print_id": "_p1",
+      "full_id": "OP01-102_p1",
+      "name": "Jack",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-102_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-103",
+      "print_id": "base",
+      "full_id": "OP01-103",
+      "name": "Scratchmen Apoo",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-103.png?260508"
+    },
+    {
+      "card_number": "OP01-104",
+      "print_id": "base",
+      "full_id": "OP01-104",
+      "name": "Speed",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-104.png?260508"
+    },
+    {
+      "card_number": "OP01-105",
+      "print_id": "base",
+      "full_id": "OP01-105",
+      "name": "Bao Huang",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-105.png?260508"
+    },
+    {
+      "card_number": "OP01-106",
+      "print_id": "base",
+      "full_id": "OP01-106",
+      "name": "Basil Hawkins",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-106.png?260508"
+    },
+    {
+      "card_number": "OP01-107",
+      "print_id": "base",
+      "full_id": "OP01-107",
+      "name": "Babanuki",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-107.png?260508"
+    },
+    {
+      "card_number": "OP01-108",
+      "print_id": "base",
+      "full_id": "OP01-108",
+      "name": "Hitokiri Kamazo",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-108.png?260508"
+    },
+    {
+      "card_number": "OP01-109",
+      "print_id": "base",
+      "full_id": "OP01-109",
+      "name": "Who's.Who",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-109.png?260508"
+    },
+    {
+      "card_number": "OP01-109",
+      "print_id": "_p1",
+      "full_id": "OP01-109_p1",
+      "name": "Who's.Who",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-109_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-110",
+      "print_id": "base",
+      "full_id": "OP01-110",
+      "name": "Fukurokuju",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-110.png?260508"
+    },
+    {
+      "card_number": "OP01-111",
+      "print_id": "base",
+      "full_id": "OP01-111",
+      "name": "Black Maria",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-111.png?260508"
+    },
+    {
+      "card_number": "OP01-112",
+      "print_id": "base",
+      "full_id": "OP01-112",
+      "name": "Page One",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-112.png?260508"
+    },
+    {
+      "card_number": "OP01-113",
+      "print_id": "base",
+      "full_id": "OP01-113",
+      "name": "Holedem",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-113.png?260508"
+    },
+    {
+      "card_number": "OP01-114",
+      "print_id": "base",
+      "full_id": "OP01-114",
+      "name": "X.Drake",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-114.png?260508"
+    },
+    {
+      "card_number": "OP01-115",
+      "print_id": "base",
+      "full_id": "OP01-115",
+      "name": "Elephant's Marchoo",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-115.png?260508"
+    },
+    {
+      "card_number": "OP01-116",
+      "print_id": "base",
+      "full_id": "OP01-116",
+      "name": "Artificial Devil Fruit SMILE",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-116.png?260508"
+    },
+    {
+      "card_number": "OP01-117",
+      "print_id": "base",
+      "full_id": "OP01-117",
+      "name": "Sheep's Horn",
+      "rarity": "C",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-117.png?260508"
+    },
+    {
+      "card_number": "OP01-118",
+      "print_id": "base",
+      "full_id": "OP01-118",
+      "name": "Ulti-Mortar",
+      "rarity": "UC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-118.png?260508"
+    },
+    {
+      "card_number": "OP01-119",
+      "print_id": "base",
+      "full_id": "OP01-119",
+      "name": "Thunder Bagua",
+      "rarity": "R",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-119.png?260508"
+    },
+    {
+      "card_number": "OP01-120",
+      "print_id": "base",
+      "full_id": "OP01-120",
+      "name": "Shanks",
+      "rarity": "SEC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-120.png?260508"
+    },
+    {
+      "card_number": "OP01-120",
+      "print_id": "_p1",
+      "full_id": "OP01-120_p1",
+      "name": "Shanks",
+      "rarity": "SEC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-120_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-120",
+      "print_id": "_p2",
+      "full_id": "OP01-120_p2",
+      "name": "Shanks",
+      "rarity": "SEC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-120_p2.png?260508"
+    },
+    {
+      "card_number": "OP01-120",
+      "print_id": "_p5",
+      "full_id": "OP01-120_p5",
+      "name": "Shanks",
+      "rarity": "SEC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-120_p5.png?260508"
+    },
+    {
+      "card_number": "OP01-121",
+      "print_id": "base",
+      "full_id": "OP01-121",
+      "name": "Yamato",
+      "rarity": "SEC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-121.png?260508"
+    },
+    {
+      "card_number": "OP01-121",
+      "print_id": "_p1",
+      "full_id": "OP01-121_p1",
+      "name": "Yamato",
+      "rarity": "SEC",
+      "card_set": "-ROMANCE DAWN- [OP01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-121_p1.png?260508"
+    },
+    {
+      "card_number": "OP01-121",
+      "print_id": "_p4",
+      "full_id": "OP01-121_p4",
+      "name": "Yamato",
+      "rarity": "SEC",
+      "card_set": "-ONE PIECE CARD THE BEST- [PRB-01]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-121_p4.png?260508"
+    },
+    {
+      "card_number": "OP01-121",
+      "print_id": "_p2",
+      "full_id": "OP01-121_p2",
+      "name": "Yamato",
+      "rarity": "SP CARD",
+      "card_set": "-AWAKENING OF THE NEW ERA-[OP05]",
+      "image_url": "https://en.onepiece-cardgame.com/images/cardlist/card/OP01-121_p2.png?260508"
+    }
+  ]
+}
