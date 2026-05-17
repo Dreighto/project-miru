@@ -25,6 +25,9 @@ JSONL_PATH = ROOT / "data" / "op01_image_audit.jsonl"
 OPTCG_ROOT = Path(r"D:\OPTCG_Images")
 MIRU_ROOT = Path(r"D:\Miru_Assets")
 
+BANDAI_P = re.compile(r"^OP01-\d{3}(_p\d+)?$")
+BANDAI_R = re.compile(r"^OP01-\d{3}_r\d+$")
+
 
 def candidate_paths(image_path: str) -> list[Path]:
     """Generate candidate disk locations for a DB image_path string."""
@@ -70,10 +73,10 @@ def head_url(url: str, session: requests.Session) -> tuple[int, int]:
     """HEAD a URL. Returns (status_code, content_length)."""
     try:
         r = session.head(url, allow_redirects=True, timeout=15)
-        cl = int(r.headers.get("Content-Length") or 0)
-        return r.status_code, cl
     except Exception:
         return 0, 0
+    cl = int(r.headers.get("Content-Length") or 0)
+    return r.status_code, cl
 
 
 def main() -> int:
@@ -103,9 +106,6 @@ def main() -> int:
     no_path = 0
     by_category = {"bandai_canonical": [0, 0], "r_variant": [0, 0], "synthetic": [0, 0]}
     # [present, total]
-
-    BANDAI_P = re.compile(r"^OP01-\d{3}(_p\d+)?$")
-    BANDAI_R = re.compile(r"^OP01-\d{3}_r\d+$")
 
     with JSONL_PATH.open("a", encoding="utf-8") as logf:
         for r in rows:
