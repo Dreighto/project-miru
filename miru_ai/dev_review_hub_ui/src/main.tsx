@@ -16,6 +16,7 @@ if (unifiedNav) {
 }
 
 const el =
+  document.getElementById("shadow-review-root") ??
   document.getElementById("operator-root") ??
   document.getElementById("hub-root") ??
   document.getElementById("dev-training-root") ??
