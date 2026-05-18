@@ -32,12 +32,12 @@ where the operator resolves that.
 
 Column breakdown:
 
-| Source              | Columns | Notes                                                         |
-| ------------------- | ------: | ------------------------------------------------------------- |
-| Own (pool-native)   |       2 | `id` PK + `created_at` timestamp                              |
-| Mirrored: `cards`   |      34 | every column from `card_catalog.cards` except its `id`        |
-| Mirrored: `card_variants` |   30 | every column from `card_catalog.card_variants` except its `id` |
-| Learning metadata   |       6 | the six learning-only fields below                            |
+| Source                    | Columns | Notes                                                          |
+| ------------------------- | ------: | -------------------------------------------------------------- |
+| Own (pool-native)         |       2 | `id` PK + `created_at` timestamp                               |
+| Mirrored: `cards`         |      34 | every column from `card_catalog.cards` except its `id`         |
+| Mirrored: `card_variants` |      30 | every column from `card_catalog.card_variants` except its `id` |
+| Learning metadata         |       6 | the six learning-only fields below                             |
 
 The mirror is built **live** from `card_catalog.db` via `PRAGMA table_info`
 at script-run time — it cannot drift from the source schema.
@@ -51,12 +51,12 @@ card-level fields go to `cards`, the variant-level fields go to
 ### Column-name collision rule
 
 Two columns exist in both `cards` and `card_variants`. To keep both, the
-card_variants copy gets the `variant_` prefix:
+card*variants copy gets the `variant*` prefix:
 
-| Collision        | Pool column name (cards copy) | Pool column name (variants copy) |
-| ---------------- | ----------------------------- | -------------------------------- |
-| `is_serialized`  | `is_serialized`               | `variant_is_serialized`          |
-| `block_icon`     | `block_icon`                  | `variant_block_icon`             |
+| Collision       | Pool column name (cards copy) | Pool column name (variants copy) |
+| --------------- | ----------------------------- | -------------------------------- |
+| `is_serialized` | `is_serialized`               | `variant_is_serialized`          |
+| `block_icon`    | `block_icon`                  | `variant_block_icon`             |
 
 ### NOT NULL relaxation
 
@@ -75,23 +75,23 @@ still works for callers that want the catalog-shaped behaviour.)
 
 These are pool-only. Stripped on promotion to `card_catalog`.
 
-| Column                | Type | Purpose                                                                                                                                                                                                                          |
-| --------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `confidence_score`    | REAL | How sure the loop is about this row (0.0–1.0). Set by the primary model, may be reweighted by the validator.                                                                                                                     |
-| `learned_from`        | TEXT | Which question or correction taught this row. Free-text reference back to the source — a question ID, a review verdict ID, a Bandai URL, etc.                                                                                    |
-| `last_verified`       | TEXT | ISO 8601 timestamp of the last successful verification. Drives staleness queries.                                                                                                                                                |
-| `promotion_status`    | TEXT | One of `experimental` / `review-ready` / `promoted` / `rejected`. CHECK-constrained. Defaults to `experimental` on insert.                                                                                                       |
-| `validator_agreement` | TEXT | Did the primary AI and the shadow validator agree on this row. Free-text so the validator can say _what_ it disagreed about, not just yes/no.                                                                                    |
-| `contributing_model`  | TEXT | Which model produced/learned this fact. Load-bearing for the "should we switch a model" decision — drives the per-model performance view in PRO-909.                                                                             |
+| Column                | Type | Purpose                                                                                                                                              |
+| --------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `confidence_score`    | REAL | How sure the loop is about this row (0.0–1.0). Set by the primary model, may be reweighted by the validator.                                         |
+| `learned_from`        | TEXT | Which question or correction taught this row. Free-text reference back to the source — a question ID, a review verdict ID, a Bandai URL, etc.        |
+| `last_verified`       | TEXT | ISO 8601 timestamp of the last successful verification. Drives staleness queries.                                                                    |
+| `promotion_status`    | TEXT | One of `experimental` / `review-ready` / `promoted` / `rejected`. CHECK-constrained. Defaults to `experimental` on insert.                           |
+| `validator_agreement` | TEXT | Did the primary AI and the shadow validator agree on this row. Free-text so the validator can say _what_ it disagreed about, not just yes/no.        |
+| `contributing_model`  | TEXT | Which model produced/learned this fact. Load-bearing for the "should we switch a model" decision — drives the per-model performance view in PRO-909. |
 
 ## Indexes
 
-| Index name                                      | Columns                            | Why                                            |
-| ----------------------------------------------- | ---------------------------------- | ---------------------------------------------- |
-| `idx_learned_cards_identity`                    | `(canonical_code, print_id)`       | Natural identity lookup                        |
-| `idx_learned_cards_promotion_status`            | `promotion_status`                 | Review-queue filtering                         |
-| `idx_learned_cards_contributing_model`          | `contributing_model`               | Per-model performance view                     |
-| `idx_learned_cards_last_verified`               | `last_verified`                    | Staleness queries                              |
+| Index name                             | Columns                      | Why                        |
+| -------------------------------------- | ---------------------------- | -------------------------- |
+| `idx_learned_cards_identity`           | `(canonical_code, print_id)` | Natural identity lookup    |
+| `idx_learned_cards_promotion_status`   | `promotion_status`           | Review-queue filtering     |
+| `idx_learned_cards_contributing_model` | `contributing_model`         | Per-model performance view |
+| `idx_learned_cards_last_verified`      | `last_verified`              | Staleness queries          |
 
 ## Promotion semantics (operator gate)
 

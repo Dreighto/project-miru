@@ -139,8 +139,7 @@ INDEXES: list[str] = [
     "ON learned_cards(promotion_status)",
     "CREATE INDEX IF NOT EXISTS idx_learned_cards_contributing_model "
     "ON learned_cards(contributing_model)",
-    "CREATE INDEX IF NOT EXISTS idx_learned_cards_last_verified "
-    "ON learned_cards(last_verified)",
+    "CREATE INDEX IF NOT EXISTS idx_learned_cards_last_verified " "ON learned_cards(last_verified)",
 ]
 
 
@@ -156,7 +155,9 @@ def existing_table_columns(conn: sqlite3.Connection, table: str) -> list[str] | 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--db", default=str(DEFAULT_POOL_DB), help="learning pool db path (default: data/miru_learning_pool.db)"
+        "--db",
+        default=str(DEFAULT_POOL_DB),
+        help="learning pool db path (default: data/miru_learning_pool.db)",
     )
     args = parser.parse_args()
     pool_path = Path(args.db)
@@ -182,8 +183,7 @@ def main() -> int:
         if existing is not None:
             # Idempotency guard: confirm the existing shape matches what we'd build.
             expected_names = [
-                line.strip().split()[0].rstrip(",")
-                for line in create_sql.splitlines()[1:-1]
+                line.strip().split()[0].rstrip(",") for line in create_sql.splitlines()[1:-1]
             ]
             if existing == expected_names:
                 print(
