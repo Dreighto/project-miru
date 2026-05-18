@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#121212">
+    <title>Shadow-loop review — {{ app_name }}</title>
+    {% if favicon_url %}
+    <link rel="icon" href="{{ favicon_url }}{% if favicon_url.startswith('data:') %}{% else %}?v={{ asset_version }}{% endif %}">
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='dev_review_hub/assets/app.css') }}?v={{ asset_version }}">
+</head>
+<body class="min-h-dvh bg-[#121212] text-[#E4E4E4] antialiased">
+    <div id="shadow-review-root"></div>
+    <script type="module" src="{{ url_for('static', filename='dev_review_hub/assets/app.js') }}?v={{ asset_version }}"></script>
+</body>
+</html>
