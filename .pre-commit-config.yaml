@@ -23,9 +23,13 @@ repos:
       # archive/ holds preserved snapshots and reference HTML/CSS captured at
       # a point in time. Reformatting them defeats their purpose.
       - id: trailing-whitespace
-        exclude: ^(data/.*\.jsonl$|archive/)
+        # miru_ai/static/ + pm/storefront/build/ are Vite build output
+        # (minified bundles). Rewriting them is harmful — the next
+        # `npm run build` regenerates them and the trailing-whitespace
+        # normalization just churns the diff.
+        exclude: ^(data/.*\.jsonl$|archive/|miru_ai/static/|pm/storefront/build/)
       - id: end-of-file-fixer
-        exclude: ^(data/.*\.jsonl$|archive/)
+        exclude: ^(data/.*\.jsonl$|archive/|miru_ai/static/|pm/storefront/build/)
       - id: check-merge-conflict
       - id: check-added-large-files
       - id: check-yaml
@@ -46,7 +50,8 @@ repos:
       - id: prettier
         types_or: [javascript, css, html, markdown]
         # archive/ snapshots stay in original form (see end-of-file-fixer note).
-        exclude: ^(docker/n8n/workflows/|archive/)
+        # miru_ai/static/ + pm/storefront/build/ are Vite output (see above).
+        exclude: ^(docker/n8n/workflows/|archive/|miru_ai/static/|pm/storefront/build/)
 
   - repo: https://github.com/pre-commit/mirrors-eslint
     rev: v9.16.0
