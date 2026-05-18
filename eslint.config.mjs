@@ -33,6 +33,11 @@ export default [
       'data/**',
       'logs/**',
       'tests/_tmp/**',
+      // Vite build output served by Flask — these are minified bundles,
+      // not source. Linting the compiled bundle yields ~1900 false-positive
+      // errors (no-undef on `document`/`fetch`, eqeqeq on minified `==`, etc.).
+      'miru_ai/static/**',
+      'pm/storefront/build/**',
     ],
     rules: {
       // Existing (tightened 2026-05-09 per CH linter-tightening proposal).
