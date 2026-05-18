@@ -81,7 +81,14 @@ def upsert_learned_card(
         for field in CARD_COLUMNS:
             if field in primary_answer:
                 columns.append(field)
-                values.append(primary_answer[field])
+                raw = primary_answer[field]
+                # Models sometimes return list/dict for fields like `traits` or
+                # `aliases_json`. SQLite can't bind those — serialize to JSON
+                # text. The catalog stores these columns as TEXT anyway.
+                if isinstance(raw, (list, dict)):
+                    values.append(json.dumps(raw))
+                else:
+                    values.append(raw)
 
         columns.append("confidence_score")
         values.append(verifier_result.get("confidence_score", 0.0))
