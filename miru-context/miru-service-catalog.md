@@ -402,12 +402,12 @@ Get-ScheduledTask -TaskName LogueOS-ServiceWatchdog | Get-ScheduledTaskInfo
 
 ### Config and state
 
-| Path                                           | Purpose                                            |
-| ---------------------------------------------- | -------------------------------------------------- |
-| `data/config/watchdog_registry.json`           | Workflow definitions — class, interval, thresholds |
+| Path                                                                          | Purpose                                                                                                                        |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `data/config/watchdog_registry.json`                                          | Workflow definitions — class, interval, thresholds                                                                             |
 | `D:\dev\LogueOS-Orchestrator\data\logueos_memory.db` (table `watchdog_state`) | Per-workflow state persistence (renamed from `miru_memory.db` during the 2026-05 de-Miru sweep; lives in the orchestrator now) |
-| `logs/n8n_loop_watchdog.log`                   | Structured log (TSV format)                        |
-| `logs/n8n_loop_watchdog_sched.log`             | stdout/stderr captured by Task Scheduler           |
+| `logs/n8n_loop_watchdog.log`                                                  | Structured log (TSV format)                                                                                                    |
+| `logs/n8n_loop_watchdog_sched.log`                                            | stdout/stderr captured by Task Scheduler                                                                                       |
 
 ### Environment variables required
 

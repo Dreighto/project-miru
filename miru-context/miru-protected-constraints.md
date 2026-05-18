@@ -48,9 +48,9 @@ They are NOT stored in this repo. The kernel canon at
 
 The only append-only file that remains in this repo's `data/` directory:
 
-| File                              | Purpose                                                                  |
-| --------------------------------- | ------------------------------------------------------------------------ |
-| `data/miru_worker_runs.jsonl`     | Miru-product worker run records (tracked in git, governed by miru tests) |
+| File                          | Purpose                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------ |
+| `data/miru_worker_runs.jsonl` | Miru-product worker run records (tracked in git, governed by miru tests) |
 
 **Why this matters:** workers dispatched into a miru worktree call the local
 `tools/emit_completion.py` / `tools/emit_heartbeat.py` helpers — the listener
