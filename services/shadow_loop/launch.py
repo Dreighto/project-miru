@@ -18,10 +18,13 @@ from logging.handlers import RotatingFileHandler
 from typing import Any
 
 from . import config as config_mod
+from .bandai_source import BandaiSource
 from .db_writer import upsert_learned_card
 from .dummy_verifier import DummyVerifier
 from .ollama_client import primary as build_primary
+from .ollama_client import validator as build_validator
 from .priority_queue import PriorityQueue
+from .real_verifier import RealVerifier
 
 
 def configure_logging(log_path) -> None:
@@ -48,6 +51,33 @@ class SmokeClient:
         return {}
 
 
+def _build_verifier(cfg, log: logging.Logger):
+    """Construct the active verifier per SHADOW_LOOP_VERIFIER env var.
+
+    `real` (default): RealVerifier with BandaiSource + validator-LLM as semantic judge.
+    `dummy`: DummyVerifier — PR-A behaviour, every field inconclusive.
+
+    In smoke mode, RealVerifier is still used (deterministic against catalog),
+    but the semantic judge for SOFT fields is disabled — soft fields land
+    inconclusive instead of hitting Ollama.
+    """
+    import os
+
+    mode = os.environ.get("SHADOW_LOOP_VERIFIER", "real").lower()
+    if mode == "dummy":
+        log.info("SHADOW_LOOP_VERIFIER=dummy — using DummyVerifier (PR-A behaviour)")
+        return DummyVerifier()
+
+    bandai = BandaiSource(cfg.learning_pool_db.parent / "bandai_op01_crawl.json")
+    if cfg.smoke_mode:
+        log.info("SHADOW_LOOP_VERIFIER=real (smoke mode) — no semantic judge for SOFT fields")
+        judge = None
+    else:
+        judge = build_validator(cfg.ollama_url, cfg.validator_model, cfg.request_timeout_s)
+        log.info("SHADOW_LOOP_VERIFIER=real — validator-as-judge model=%s", cfg.validator_model)
+    return RealVerifier(bandai=bandai, judge=judge)
+
+
 def main() -> int:
     cfg = config_mod.load()
     configure_logging(cfg.log_path)
@@ -69,7 +99,7 @@ def main() -> int:
     else:
         primary_client = build_primary(cfg.ollama_url, cfg.primary_model, cfg.request_timeout_s)
 
-    verifier = DummyVerifier()
+    verifier = _build_verifier(cfg, log)
     queue = PriorityQueue()
 
     def writer(
