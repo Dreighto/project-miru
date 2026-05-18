@@ -17,11 +17,11 @@ into `card_catalog.db` is a separate operator-gated mechanism (later ticket).
 
 ## Architecture (2.5-stage)
 
-| Stage | Component | Role |
-| --- | --- | --- |
-| 1. Primary | NEW Qwen 2.5 7B Ollama spawn | Answers card questions from learned knowledge only. No tools. The "naive learner" that gets graded. |
-| 2. Validator | NEW Mistral Small 3 7B Ollama spawn | Answers the same question independently with tool access (catalog + Bandai + TCGPlayer). Compares to primary, emits per-field outcomes. |
-| 2.5. Sanity post-check | Small Python check | Re-verifies validator's hard-field claims against catalog directly. Catches validator hallucinating around its own tools. |
+| Stage                  | Component                           | Role                                                                                                                                    |
+| ---------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Primary             | NEW Qwen 2.5 7B Ollama spawn        | Answers card questions from learned knowledge only. No tools. The "naive learner" that gets graded.                                     |
+| 2. Validator           | NEW Mistral Small 3 7B Ollama spawn | Answers the same question independently with tool access (catalog + Bandai + TCGPlayer). Compares to primary, emits per-field outcomes. |
+| 2.5. Sanity post-check | Small Python check                  | Re-verifies validator's hard-field claims against catalog directly. Catches validator hallucinating around its own tools.               |
 
 **HARD constraint:** the routing Hermes (`qwen2.5:7b` at `dispatch_listener`
 spawn) is UNTOUCHED. The shadow loop runs separate Ollama model instances
@@ -97,18 +97,18 @@ verifying the plumbing without depending on Ollama.
 
 All knobs are env vars with documented defaults in `config.py`:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `SHADOW_LOOP_OLLAMA_URL` | `http://127.0.0.1:11434` | Ollama HTTP endpoint |
-| `SHADOW_LOOP_PRIMARY_MODEL` | `qwen2.5:7b` | Primary learner model |
-| `SHADOW_LOOP_VALIDATOR_MODEL` | `mistral-small3:7b` | Validator model (used in PR-B) |
-| `SHADOW_LOOP_REQUEST_TIMEOUT_S` | `180` | Per-model request timeout |
-| `SHADOW_LOOP_TICK_SECONDS` | `60` | Sleep between ticks |
-| `SHADOW_LOOP_MODE` | `real` | Set `smoke` to bypass Ollama |
-| `SHADOW_LOOP_CATALOG_DB` | `data/card_catalog.db` | Catalog read source |
-| `SHADOW_LOOP_POOL_DB` | `data/miru_learning_pool.db` | Learning pool write target |
-| `SHADOW_LOOP_LOG_PATH` | `data/shadow_loop.log` | Rotating log file |
-| `SHADOW_LOOP_SET_SCOPE` | `OP01-` | Card-code prefix to learn |
+| Variable                        | Default                      | Purpose                        |
+| ------------------------------- | ---------------------------- | ------------------------------ |
+| `SHADOW_LOOP_OLLAMA_URL`        | `http://127.0.0.1:11434`     | Ollama HTTP endpoint           |
+| `SHADOW_LOOP_PRIMARY_MODEL`     | `qwen2.5:7b`                 | Primary learner model          |
+| `SHADOW_LOOP_VALIDATOR_MODEL`   | `mistral-small3:7b`          | Validator model (used in PR-B) |
+| `SHADOW_LOOP_REQUEST_TIMEOUT_S` | `180`                        | Per-model request timeout      |
+| `SHADOW_LOOP_TICK_SECONDS`      | `60`                         | Sleep between ticks            |
+| `SHADOW_LOOP_MODE`              | `real`                       | Set `smoke` to bypass Ollama   |
+| `SHADOW_LOOP_CATALOG_DB`        | `data/card_catalog.db`       | Catalog read source            |
+| `SHADOW_LOOP_POOL_DB`           | `data/miru_learning_pool.db` | Learning pool write target     |
+| `SHADOW_LOOP_LOG_PATH`          | `data/shadow_loop.log`       | Rotating log file              |
+| `SHADOW_LOOP_SET_SCOPE`         | `OP01-`                      | Card-code prefix to learn      |
 
 ## Tick flow (PR-A)
 
@@ -130,6 +130,7 @@ PR-C present.
 orchestrator PR.)
 
 Manual:
+
 ```powershell
 Get-NetTCPConnection -LocalPort 11434 -ErrorAction SilentlyContinue
 # Ollama is shared — don't restart it from the shadow loop.
