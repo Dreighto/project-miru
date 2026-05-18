@@ -12368,9 +12368,12 @@ def create_app() -> Flask:
             return jsonify({"error": str(exc)}), 400
         return jsonify(result)
 
-    # Note: the `/dev/shadow-review` page route is added by PR-B (PRO-915)
-    # alongside the template file `templates/shadow_review.html`. PR-A scopes
-    # to the API endpoints only.
+    @app.get("/dev/shadow-review")
+    def shadow_review_page():
+        # PRO-909 PR-B — operator-facing review queue. The Vite bundle is
+        # shared across DevReviewHubPage / OperatorConsolePage / MiruHubPage /
+        # ShadowReviewPage; App.tsx dispatches by root-element id.
+        return render_template("shadow_review.html")
 
     return app
 
