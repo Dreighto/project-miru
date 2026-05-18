@@ -3,7 +3,7 @@
 Non-negotiable architectural constraints every coding worker must know before touching
 any Miru service. These are not preferences — violating them causes production failures.
 
-Last updated: 2026-05-01
+Last updated: 2026-05-17
 
 ---
 
@@ -75,23 +75,45 @@ broke message routing. Snooze state is set via `logs/sentinel_state.json` instea
 
 ---
 
-## 4. Database — Read-Only for Workers
+## 4. Database — Write Discipline for Workers
 
-`card_catalog.db` is the live production database. Workers interact with it through
-the sqlite-ro-snapshot MCP only (read-only). Direct writes from worker sessions are
-**prohibited**.
+`card_catalog.db` is the live production database. Direct writes from worker
+sessions ARE in scope (operator-set 2026-05-17) when the work requires them
+— set population (OP01–OP15), provenance backfills, meta-relevancy / insight
+columns, image-asset linkage. The earlier never-touch rule was situational to
+the schema-setup-and-initial-population phase and is no longer in force.
 
-| What you can do       | How                                  |
-| --------------------- | ------------------------------------ |
-| Read card data        | Use `sqlite-ro-snapshot` MCP tool    |
-| Read schema           | Use `sqlite-ro-snapshot` MCP tool    |
-| Propose schema change | Write a proposal for operator review |
+| What you can do                             | How                                                       |
+| ------------------------------------------- | --------------------------------------------------------- |
+| Read card data (any worker, any time)       | `sqlite-ro-snapshot` MCP tool                             |
+| Read schema                                 | `sqlite-ro-snapshot` MCP tool                             |
+| Write rows (CC, for in-scope work)          | Direct `sqlite3` after backup + change log (see below)    |
+| ALTER / CREATE / DROP TABLE (schema change) | STOP. Operator approval required. Write a proposal first. |
 
-**Why:** An accidental write to the live DB corrupts the card catalog with no undo.
-Schema changes require a migration, not an in-session write.
+### Required discipline before any write
 
-`sqlite3` is available at `C:\tools\sqlite3\sqlite3.exe` if you need to inspect the DB
-outside of MCP — but still read-only.
+Every UPDATE / INSERT / DELETE batch MUST:
+
+1. **Backup first:**
+   `cp data/card_catalog.db data/card_catalog.db.bak.<YYYYMMDD_HHMMSS>`
+2. **Log the change** to a `data/*.log` file (what rows, what columns, what
+   query, why).
+3. **Surface the diff in commit messages** — say what changed and how to
+   verify it.
+4. **Verify after** — read the rows back via `sqlite-ro-snapshot` to
+   confirm the write landed as intended.
+
+Schema changes (ALTER TABLE, CREATE TABLE, DROP TABLE, new indexes affecting
+query plans) remain operator-approval-only. Propose, don't execute.
+
+**Why:** Data writes have real impact on production — but blocking them
+entirely blocks set-population and provenance work that the operator has
+prioritized. The backup + log + verify pattern gives the same audit trail
+ALTER would, without gating every row update on operator approval.
+
+`sqlite3` is available at `C:\tools\sqlite3\sqlite3.exe` for direct CLI work.
+See `D:\dev\LogueOS-Orchestrator\.logueos\reference\database-rules.md` for
+the kernel-level rules that apply to all SQLite DBs in this stack.
 
 ---
 
