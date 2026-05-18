@@ -12319,6 +12319,59 @@ def create_app() -> Flask:
             }
         )
 
+    # ─── Shadow-review API (PRO-909 PR-A) ─────────────────────────────────
+    from miru_ai import shadow_review as _shadow_review
+
+    @app.get("/api/shadow-review/queue")
+    def shadow_review_queue():
+        try:
+            limit = int(request.args.get("limit", "50"))
+        except (TypeError, ValueError):
+            limit = 50
+        if limit <= 0:
+            limit = 50
+        if limit > 500:
+            limit = 500
+        return jsonify(_shadow_review.fetch_queue(limit=limit))
+
+    @app.get("/api/shadow-review/item/<canonical_code>/<print_id>")
+    def shadow_review_item(canonical_code: str, print_id: str):
+        contributing_model = request.args.get("contributing_model", "").strip()
+        if not contributing_model:
+            return jsonify({"error": "contributing_model query param required"}), 400
+        item = _shadow_review.fetch_item(
+            canonical_code=canonical_code,
+            print_id=print_id,
+            contributing_model=contributing_model,
+        )
+        if item is None:
+            return jsonify({"error": "not found"}), 404
+        return jsonify(item)
+
+    @app.post("/api/shadow-review/verdict")
+    def shadow_review_verdict():
+        body = request.get_json(silent=True) or {}
+        required = ("canonical_code", "print_id", "contributing_model", "verdict")
+        missing = [k for k in required if not body.get(k)]
+        if missing:
+            return jsonify({"error": f"missing fields: {','.join(missing)}"}), 400
+        try:
+            result = _shadow_review.submit_verdict(
+                canonical_code=body["canonical_code"],
+                print_id=body["print_id"],
+                contributing_model=body["contributing_model"],
+                verdict=body["verdict"],
+                sources_checked=body.get("sources_checked") or [],
+                operator=body.get("operator", "operator"),
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify(result)
+
+    # Note: the `/dev/shadow-review` page route is added by PR-B (PRO-915)
+    # alongside the template file `templates/shadow_review.html`. PR-A scopes
+    # to the API endpoints only.
+
     return app
 
 

@@ -31,6 +31,14 @@ ignore = ["E501", "TRY003"]
 # Per-file-ignored to avoid forcing immediate conversion. New pytest-style tests
 # in tests/ won't trigger PT009/PT027 since they don't use unittest.TestCase.
 "tests/**" = ["PT009", "PT027"]
+# miru_ai/server.py — 12 000-line legacy Flask app with 11 pre-existing
+# TRY300/TRY301/TRY401 violations (try/return patterns and logging.exception
+# arg redundancy). Any new route added to server.py would otherwise trip
+# the hygiene CI on these unrelated warnings. Per-file-ignored to scope
+# the violations to the file that has them; new files don't get a free pass.
+# Follow-up cleanup tracked separately so the file can graduate off this
+# ignore list. Set 2026-05-18 (PRO-909 PR-A).
+"miru_ai/server.py" = ["TRY300", "TRY301", "TRY401"]
 
 [tool.ruff.format]
 quote-style = "double"
