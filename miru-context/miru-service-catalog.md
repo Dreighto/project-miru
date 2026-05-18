@@ -3,7 +3,7 @@
 Ground-truth reference for every service in the Miru stack. Extracted directly from source
 files and live logs. Workers read this before writing any code that touches a service.
 
-Last updated: 2026-05-02
+Last updated: 2026-05-18
 
 ---
 
@@ -32,8 +32,9 @@ Last updated: 2026-05-02
 ## 1. Dispatch Listener — Port 19100
 
 **What it does:** Receives dispatch webhooks from n8n. Authenticates via HMAC. Spawns
-worker processes (claude-code, codex, gemini) and streams their output back as the job runs.
-Maintains an allowlist of approved worker binaries.
+worker processes (claude-code, gemini) and streams their output back as the job runs.
+Maintains an allowlist of approved worker binaries. Codex was retired from the loop
+2026-05-12; only `claude-code` and `gemini-cli` are valid worker types today.
 
 **Bind address:** 127.0.0.1 (loopback only — never exposed externally)
 
@@ -59,7 +60,7 @@ Dispatch Listener uses structured JSON logs — one object per line.
 
 ```json
 {"ts":"2026-04-26T00:24:20.594Z","level":"info","msg":"listener_listening","host":"127.0.0.1","port":19100}
-{"ts":"...","level":"info","msg":"startup_allowlist_resolved","resolved":{"claude-code":"...claude.cmd","codex":"...codex.cmd"}}
+{"ts":"...","level":"info","msg":"startup_allowlist_resolved","resolved":{"claude-code":"...claude.cmd","gemini":"...gemini.cmd"}}
 {"ts":"...","level":"info","msg":"worker_spawned","trace_id":"...","worker":"claude-code","pid":48040}
 {"ts":"...","level":"info","msg":"worker_exit","trace_id":"...","exit_code":0,"status":"INCONCLUSIVE"}
 {"ts":"...","level":"info","msg":"already_dispatched","trace_id":"..."}
@@ -82,13 +83,19 @@ started a second time while the first was already running. The entry is inert. N
 
 ### Restart mechanism
 
+There is no standalone restart task for the dispatch listener as of 2026-05-18.
+The listener is launched by the `LogueOS-Startup` scheduled task at boot via
+`windows\start_dispatch_listener.ps1` (which owns its own respawn loop and the
+port-in-use guard). To manually restart while the system is up:
+
 ```powershell
-powershell -ExecutionPolicy Bypass -File windows\restart_dispatch_listener.ps1
+# Kill current listener and let LogueOS-ServiceWatchdog respawn it on next check,
+# OR re-run the start wrapper directly:
+Start-Process powershell.exe -WindowStyle Hidden -ArgumentList '-File','D:\dev\LogueOS-Orchestrator\windows\start_dispatch_listener.ps1'
 ```
 
-This triggers the `MiruRestartDispatchListener` scheduled task (SYSTEM privilege).
-The wrapper at `windows\start_dispatch_listener.ps1` owns the respawn loop and the
-port-in-use guard.
+CC has standing authority to restart autonomously per `feedback_self_restart`
+memory — don't ask the operator for routine restarts.
 
 ### Config files
 
@@ -142,10 +149,12 @@ FATAL: this FastMCP version does not expose `custom_route` for attaching /health
 ### Restart mechanism
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File windows\restart_mcp_gateway.ps1
+schtasks /Run /TN 'LogueOS-RestartMcpGateway'
 ```
 
-Triggers the `MiruRestartMCPGateway` scheduled task. Restart log: `logs/mcp_gateway_restart.log`.
+Triggers the `LogueOS-RestartMcpGateway` scheduled task (renamed from
+`MiruRestartMCPGateway` during the 2026-05 de-Miru sweep). Restart log:
+`logs/mcp_gateway_restart.log`.
 
 ---
 
@@ -153,7 +162,8 @@ Triggers the `MiruRestartMCPGateway` scheduled task. Restart log: `logs/mcp_gate
 
 **What it does:** Dev Review Hub backend. Handles card data queries, batch review jobs,
 Ollama routing for AI analysis, Telegram webhook, and Pushover notifications. The primary
-Python service workers (Claude Code, Codex) write backend code here.
+Python service worker (Claude Code) writes backend code here. Codex was retired from the
+loop 2026-05-12; Gemini CLI handles frontend lane work but not Python backend.
 
 **Bind address:** 0.0.0.0 (all interfaces — accessible on local network and Tailscale)
 
@@ -203,11 +213,18 @@ WARNING: This is a development server. Do not use it in a production deployment.
 
 ### Restart mechanism
 
+There is no dedicated restart task for Miru AI as of 2026-05-18. The service
+is monitored by `LogueOS-ServiceWatchdog`, which respawns it if it stops
+responding to the health endpoint. To manually restart:
+
 ```powershell
-powershell -ExecutionPolicy Bypass -File windows\restart_miru_ai.ps1
+# Stop the current process, then re-run the launch wrapper.
+# Or invoke service_restart via MCP: service_restart with service="miru_ai".
 ```
 
-Triggers `MiruRestartMiruAI` scheduled task. Restart log: `logs/miru_ai_restart.log`.
+CC has standing authority to restart autonomously — see
+`.logueos/reference/restart-procedures.md` in the orchestrator for the
+current authoritative restart procedures across all services.
 
 ### Key source files
 
@@ -266,11 +283,12 @@ WARNING: This is a development server. Do not use it in a production deployment.
 
 ### Restart mechanism
 
-```powershell
-powershell -ExecutionPolicy Bypass -File windows\restart_pm.ps1
-```
+There is no dedicated restart task for the PM Dashboard as of 2026-05-18.
+The service is monitored by `LogueOS-ServiceWatchdog`. To manually restart,
+stop the current process and re-run the launch wrapper, or invoke
+`service_restart` via MCP with `service="pm"`.
 
-Triggers `MiruRestartPM` scheduled task. Restart log: `logs/pm_restart.log`.
+Restart log (if still in use): `logs/pm_restart.log`.
 
 ### Key source files
 
@@ -298,10 +316,11 @@ Body: {"status":"ok"}
 
 ### Log files
 
-n8n runs in Docker. Logs are in the container:
+n8n runs in Docker. The container name is `logueos-n8n` (renamed from `n8n`
+during the de-Miru sweep). Logs are in the container:
 
 ```bash
-docker logs n8n
+docker logs logueos-n8n
 ```
 
 Workflow execution logs are accessible via the n8n UI at http://127.0.0.1:15678.
@@ -334,7 +353,7 @@ Telegram workflow is active. Route all Telegram commands through n8n instead.
 n8n runs in Docker. Restart via:
 
 ```bash
-docker restart n8n
+docker restart logueos-n8n
 ```
 
 or via the n8n MCP tool: `service_restart` with service="n8n".
@@ -360,27 +379,25 @@ Sends Telegram alerts **only on state transitions** (healthy → failing, recove
 ### Scheduled task
 
 ```
-Task name:  MiruN8nWatchdog
+Task name:  LogueOS-ServiceWatchdog
 Schedule:   Every 15 minutes
 Run as:     SYSTEM
 ```
 
-**Register (elevated shell, once):**
-
-```powershell
-powershell -ExecutionPolicy Bypass -File windows\register_watchdog_task.ps1
-```
+The standalone `MiruN8nWatchdog` task was consolidated into the broader
+`LogueOS-ServiceWatchdog` during the 2026-05 de-Miru sweep — the same task
+now monitors n8n workflows AND core LogueOS services.
 
 **Manual trigger:**
 
 ```powershell
-schtasks /Run /TN 'MiruN8nWatchdog'
+schtasks /Run /TN 'LogueOS-ServiceWatchdog'
 ```
 
 **Check last run:**
 
 ```powershell
-Get-ScheduledTask -TaskName MiruN8nWatchdog | Get-ScheduledTaskInfo
+Get-ScheduledTask -TaskName LogueOS-ServiceWatchdog | Get-ScheduledTaskInfo
 ```
 
 ### Config and state
@@ -388,7 +405,7 @@ Get-ScheduledTask -TaskName MiruN8nWatchdog | Get-ScheduledTaskInfo
 | Path                                           | Purpose                                            |
 | ---------------------------------------------- | -------------------------------------------------- |
 | `data/config/watchdog_registry.json`           | Workflow definitions — class, interval, thresholds |
-| `data/miru_memory.db` (table `watchdog_state`) | Per-workflow state persistence                     |
+| `D:\dev\LogueOS-Orchestrator\data\logueos_memory.db` (table `watchdog_state`) | Per-workflow state persistence (renamed from `miru_memory.db` during the 2026-05 de-Miru sweep; lives in the orchestrator now) |
 | `logs/n8n_loop_watchdog.log`                   | Structured log (TSV format)                        |
 | `logs/n8n_loop_watchdog_sched.log`             | stdout/stderr captured by Task Scheduler           |
 

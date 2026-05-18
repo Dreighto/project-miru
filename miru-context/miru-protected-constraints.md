@@ -37,25 +37,32 @@ are NOT in this document. Use your judgment on those.
 
 ## 2. Append-Only Files — NEVER Edit, Truncate, or Read-Modify-Write
 
-These five files in `data/` are strictly append-only. The only allowed operation is
-appending a new line. Never overwrite, sort, deduplicate, or truncate them.
+The orchestration append-only chains (12 files: `cc_completion_log.jsonl`,
+`routing_history.jsonl`, `pending_callbacks.jsonl`, `dispatch_dlq.jsonl`,
+`cc_heartbeat_log.jsonl`, `vp_ops_supervision.jsonl`, `drift_scanner_log.jsonl`,
+`agent_decisions.jsonl`, `github_resource_ledger.jsonl`, `usage_anomalies.jsonl`,
+`salvage_reports.jsonl`, `hermes_predictions.jsonl`) **live in the orchestrator**
+at `D:\dev\LogueOS-Orchestrator\data\` since Migration Phase 3 (LOS-55, 2026-05-14).
+They are NOT stored in this repo. The kernel canon at
+`D:\dev\LogueOS-Orchestrator\CLAUDE.md` ("Append-Only Data Files") is authoritative.
 
-| File                           | Purpose                                         |
-| ------------------------------ | ----------------------------------------------- |
-| `data/cc_completion_log.jsonl` | Task completion markers (tracked in git)        |
-| `data/routing_history.jsonl`   | n8n routing decisions (gitignored)              |
-| `data/pending_callbacks.jsonl` | Telegram callback ledger (gitignored)           |
-| `data/dispatch_dlq.jsonl`      | Dispatch dead-letter queue (gitignored)         |
-| `data/cc_heartbeat_log.jsonl`  | Worker heartbeat / liveness signal (gitignored) |
+The only append-only file that remains in this repo's `data/` directory:
 
-Use `fs.appendFileSync` (Node) or `>>` (shell) or `open(path, "a")` (Python) only.
+| File                              | Purpose                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------ |
+| `data/miru_worker_runs.jsonl`     | Miru-product worker run records (tracked in git, governed by miru tests) |
 
-**Why:** These files are the audit trail. Workers, orchestrator, and sentinel all read
-them to understand system state. A truncation or sort destroys history irreversibly.
-Pre-commit hooks are configured to exclude them from formatting.
+**Why this matters:** workers dispatched into a miru worktree call the local
+`tools/emit_completion.py` / `tools/emit_heartbeat.py` helpers — the listener
+sets `LOGUEOS_DATA_DIR` so every helper resolves the canonical orchestrator
+path automatically. Use the helpers; never hand-roll the append. Truncation
+or sort destroys history irreversibly. Pre-commit hooks exclude all `*.jsonl`
+files from formatting.
 
-The append-only invariant is enforced by `tests/test_jsonl_append_only_invariant.py`.
-If that test starts failing, STOP and escalate — something is breaking the contract.
+The append-only invariant for `miru_worker_runs.jsonl` is enforced by
+`tests/test_jsonl_append_only_invariant.py` in this repo. The orchestrator's
+12 chains are enforced by its own equivalent test. If either test starts
+failing, STOP and escalate — something is breaking the contract.
 
 ---
 
