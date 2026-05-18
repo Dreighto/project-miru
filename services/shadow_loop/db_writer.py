@@ -85,7 +85,7 @@ def upsert_learned_card(
                 # Models sometimes return list/dict for fields like `traits` or
                 # `aliases_json`. SQLite can't bind those — serialize to JSON
                 # text. The catalog stores these columns as TEXT anyway.
-                if isinstance(raw, (list, dict)):
+                if isinstance(raw, list | dict):
                     values.append(json.dumps(raw))
                 else:
                     values.append(raw)
