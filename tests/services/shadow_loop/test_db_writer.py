@@ -156,7 +156,7 @@ def test_different_models_get_distinct_rows(fresh_pool_db: Path):
         pool_db=fresh_pool_db,
         canonical_code="OP01-001",
         print_id="OP01-001",
-        contributing_model="mistral-small3:7b",
+        contributing_model="qwen2.5:14b",
         primary_answer=primary_answer,
         verifier_result=verifier_result,
         learned_from="tick_1",
