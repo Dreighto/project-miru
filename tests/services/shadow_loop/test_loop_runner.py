@@ -78,7 +78,7 @@ def tick_config(tmp_path: Path) -> Config:
     return Config(
         ollama_url="http://127.0.0.1:11434",
         primary_model="qwen2.5:7b",
-        validator_model="mistral-small3:7b",
+        validator_model="qwen2.5:14b",
         request_timeout_s=10,
         tick_seconds=0,
         smoke_mode=True,

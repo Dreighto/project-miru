@@ -40,7 +40,7 @@ def load() -> Config:
     return Config(
         ollama_url=os.environ.get("SHADOW_LOOP_OLLAMA_URL", "http://127.0.0.1:11434"),
         primary_model=os.environ.get("SHADOW_LOOP_PRIMARY_MODEL", "qwen2.5:7b"),
-        validator_model=os.environ.get("SHADOW_LOOP_VALIDATOR_MODEL", "mistral-small3:7b"),
+        validator_model=os.environ.get("SHADOW_LOOP_VALIDATOR_MODEL", "qwen2.5:14b"),
         request_timeout_s=int(os.environ.get("SHADOW_LOOP_REQUEST_TIMEOUT_S", "180")),
         tick_seconds=int(os.environ.get("SHADOW_LOOP_TICK_SECONDS", "60")),
         smoke_mode=os.environ.get("SHADOW_LOOP_MODE", "real").lower() == "smoke",

@@ -70,8 +70,8 @@ data/shadow_loop_verifier_overrides.jsonl  (append-only, written by PRO-909)
 - Ollama running on `http://127.0.0.1:11434`.
 - Models pulled:
   ```bash
-  ollama pull qwen2.5:7b          # already present per routing Hermes
-  ollama pull mistral-small3:7b   # ~4-5 GB one-time pull
+  ollama pull qwen2.5:7b          # primary learner (already present per routing Hermes)
+  ollama pull qwen2.5:14b         # validator / semantic judge (~8.4 GB)
   ```
 - `data/miru_learning_pool.db` exists (run `python tools/create_miru_learning_pool.py` if missing).
 
@@ -101,7 +101,7 @@ All knobs are env vars with documented defaults in `config.py`:
 | ------------------------------- | ---------------------------- | ------------------------------ |
 | `SHADOW_LOOP_OLLAMA_URL`        | `http://127.0.0.1:11434`     | Ollama HTTP endpoint           |
 | `SHADOW_LOOP_PRIMARY_MODEL`     | `qwen2.5:7b`                 | Primary learner model          |
-| `SHADOW_LOOP_VALIDATOR_MODEL`   | `mistral-small3:7b`          | Validator model (used in PR-B) |
+| `SHADOW_LOOP_VALIDATOR_MODEL`   | `qwen2.5:14b`                | Validator model (used in PR-B) |
 | `SHADOW_LOOP_REQUEST_TIMEOUT_S` | `180`                        | Per-model request timeout      |
 | `SHADOW_LOOP_TICK_SECONDS`      | `60`                         | Sleep between ticks            |
 | `SHADOW_LOOP_MODE`              | `real`                       | Set `smoke` to bypass Ollama   |

@@ -68,7 +68,7 @@ def test_distinct_deduplicates_multiple_models(fresh_pool_db: Path):
         fresh_pool_db,
         "OP01-001",
         "OP01-001",
-        contributing_model="mistral-small3:7b",
+        contributing_model="qwen2.5:14b",
         last_verified=_OLD,
     )
     result = stale_rows(pool_db=fresh_pool_db)
