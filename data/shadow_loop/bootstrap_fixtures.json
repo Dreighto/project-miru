@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "description": "Hand-curated bootstrap test cases for the shadow-loop verifier. Catalog values are operator-verified as of 2026-05-18 (PR-A + PR-B merged). Each case feeds a synthetic primary-model answer through RealVerifier.score() and asserts the expected per-field outcome. If any case fails, the verifier rubric is broken and the loop refuses to start.",
+  "cases": [
+    {
+      "name": "OP01-001 Roronoa Zoro (Leader) — primary answers HARD fields correctly",
+      "canonical_code": "OP01-001",
+      "print_id": "OP01-001",
+      "primary_answer": {
+        "card_name": "Roronoa Zoro",
+        "card_type": "Leader",
+        "color": "Red",
+        "rarity": "L",
+        "cost": 5,
+        "power": "5000",
+        "counter": "-",
+        "attribute": "Strike",
+        "life": "5"
+      },
+      "expected": {
+        "card_name": "verified-correct",
+        "card_type": "verified-correct",
+        "color": "verified-correct",
+        "rarity": "verified-correct",
+        "cost": "verified-correct",
+        "power": "verified-correct",
+        "counter": "verified-correct",
+        "attribute": "verified-correct",
+        "life": "verified-correct"
+      }
+    },
+    {
+      "name": "OP01-001 Roronoa Zoro — primary off-by-one on cost",
+      "canonical_code": "OP01-001",
+      "print_id": "OP01-001",
+      "primary_answer": {
+        "card_name": "Roronoa Zoro",
+        "rarity": "L",
+        "cost": 6,
+        "power": "5000"
+      },
+      "expected": {
+        "card_name": "verified-correct",
+        "rarity": "verified-correct",
+        "cost": "verified-wrong",
+        "power": "verified-correct"
+      }
+    },
+    {
+      "name": "OP01-001 Roronoa Zoro — primary expresses power as comma-separated string",
+      "canonical_code": "OP01-001",
+      "print_id": "OP01-001",
+      "primary_answer": {
+        "power": "5,000",
+        "life": "5"
+      },
+      "expected": {
+        "power": "verified-correct",
+        "life": "verified-correct"
+      }
+    },
+    {
+      "name": "OP01-001 Roronoa Zoro — primary normalization edge cases (case + whitespace)",
+      "canonical_code": "OP01-001",
+      "print_id": "OP01-001",
+      "primary_answer": {
+        "color": "  red  ",
+        "card_type": "LEADER",
+        "attribute": "strike"
+      },
+      "expected": {
+        "color": "verified-correct",
+        "card_type": "verified-correct",
+        "attribute": "verified-correct"
+      }
+    },
+    {
+      "name": "OP01-016 Nami (Character) — primary blank on life matches catalog blank",
+      "canonical_code": "OP01-016",
+      "print_id": "OP01-016",
+      "primary_answer": {
+        "card_name": "Nami",
+        "card_type": "Character",
+        "cost": 1,
+        "power": "2000",
+        "counter": "1000",
+        "life": ""
+      },
+      "expected": {
+        "card_name": "verified-correct",
+        "card_type": "verified-correct",
+        "cost": "verified-correct",
+        "power": "verified-correct",
+        "counter": "verified-correct",
+        "life": "verified-correct"
+      }
+    },
+    {
+      "name": "OP01-016 Nami — primary asserts life value where catalog has blank",
+      "canonical_code": "OP01-016",
+      "print_id": "OP01-016",
+      "primary_answer": {
+        "life": "5"
+      },
+      "expected": {
+        "life": "verified-wrong"
+      }
+    },
+    {
+      "name": "OP01-024 Monkey.D.Luffy (Character SR) — primary correct on all HARD",
+      "canonical_code": "OP01-024",
+      "print_id": "OP01-024",
+      "primary_answer": {
+        "card_name": "Monkey.D.Luffy",
+        "card_type": "Character",
+        "color": "Red",
+        "rarity": "SR",
+        "cost": 2,
+        "power": "3000",
+        "counter": "1000",
+        "attribute": "Strike",
+        "life": ""
+      },
+      "expected": {
+        "card_name": "verified-correct",
+        "card_type": "verified-correct",
+        "color": "verified-correct",
+        "rarity": "verified-correct",
+        "cost": "verified-correct",
+        "power": "verified-correct",
+        "counter": "verified-correct",
+        "attribute": "verified-correct",
+        "life": "verified-correct"
+      }
+    },
+    {
+      "name": "OP01-024 Monkey.D.Luffy — primary mis-attributes color",
+      "canonical_code": "OP01-024",
+      "print_id": "OP01-024",
+      "primary_answer": {
+        "color": "Blue"
+      },
+      "expected": {
+        "color": "verified-wrong"
+      }
+    },
+    {
+      "name": "OP01-091 King (Leader Purple) — primary correct",
+      "canonical_code": "OP01-091",
+      "print_id": "OP01-091",
+      "primary_answer": {
+        "card_name": "King",
+        "card_type": "Leader",
+        "color": "Purple",
+        "rarity": "L",
+        "power": "5000",
+        "counter": "-",
+        "attribute": "Special"
+      },
+      "expected": {
+        "card_name": "verified-correct",
+        "card_type": "verified-correct",
+        "color": "verified-correct",
+        "rarity": "verified-correct",
+        "power": "verified-correct",
+        "counter": "verified-correct",
+        "attribute": "verified-correct"
+      }
+    },
+    {
+      "name": "OP01-091 King — primary trailing-whitespace on card_name",
+      "canonical_code": "OP01-091",
+      "print_id": "OP01-091",
+      "primary_answer": {
+        "card_name": "King   "
+      },
+      "expected": {
+        "card_name": "verified-correct"
+      }
+    },
+    {
+      "name": "OP01-013 Sanji — counter normalization (int vs string)",
+      "canonical_code": "OP01-013",
+      "print_id": "OP01-013",
+      "primary_answer": {
+        "card_name": "Sanji",
+        "cost": 2,
+        "power": 3000,
+        "counter": 2000
+      },
+      "expected": {
+        "card_name": "verified-correct",
+        "cost": "verified-correct",
+        "power": "verified-correct",
+        "counter": "verified-correct"
+      }
+    },
+    {
+      "name": "OP01-051 Eustass\"Captain\"Kid — primary correct on HARD fields",
+      "canonical_code": "OP01-051",
+      "print_id": "OP01-051",
+      "primary_answer": {
+        "card_name": "Eustass\"Captain\"Kid",
+        "card_type": "Character",
+        "color": "Blue",
+        "cost": 8,
+        "power": "8000",
+        "attribute": "Special"
+      },
+      "expected": {
+        "card_name": "verified-correct",
+        "card_type": "verified-correct",
+        "color": "verified-correct",
+        "cost": "verified-correct",
+        "power": "verified-correct",
+        "attribute": "verified-correct"
+      }
+    },
+    {
+      "name": "OP01-001 — primary leaves cost null (omitted field)",
+      "canonical_code": "OP01-001",
+      "print_id": "OP01-001",
+      "primary_answer": {
+        "card_name": "Roronoa Zoro"
+      },
+      "expected": {
+        "card_name": "verified-correct",
+        "cost": "inconclusive"
+      }
+    }
+  ]
+}
