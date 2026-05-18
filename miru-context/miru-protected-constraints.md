@@ -83,12 +83,12 @@ sessions ARE in scope (operator-set 2026-05-17) when the work requires them
 columns, image-asset linkage. The earlier never-touch rule was situational to
 the schema-setup-and-initial-population phase and is no longer in force.
 
-| What you can do                              | How                                                              |
-| -------------------------------------------- | ---------------------------------------------------------------- |
-| Read card data (any worker, any time)        | `sqlite-ro-snapshot` MCP tool                                    |
-| Read schema                                  | `sqlite-ro-snapshot` MCP tool                                    |
-| Write rows (CC, for in-scope work)           | Direct `sqlite3` after backup + change log (see below)           |
-| ALTER / CREATE / DROP TABLE (schema change)  | STOP. Operator approval required. Write a proposal first.        |
+| What you can do                             | How                                                       |
+| ------------------------------------------- | --------------------------------------------------------- |
+| Read card data (any worker, any time)       | `sqlite-ro-snapshot` MCP tool                             |
+| Read schema                                 | `sqlite-ro-snapshot` MCP tool                             |
+| Write rows (CC, for in-scope work)          | Direct `sqlite3` after backup + change log (see below)    |
+| ALTER / CREATE / DROP TABLE (schema change) | STOP. Operator approval required. Write a proposal first. |
 
 ### Required discipline before any write
 
