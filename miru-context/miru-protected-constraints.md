@@ -20,16 +20,21 @@ are NOT in this document. Use your judgment on those.
 
 ## 1. Ports — DO NOT CHANGE OR REUSE
 
-| Port  | Service           | Rule                                                             |
-| ----- | ----------------- | ---------------------------------------------------------------- |
-| 18080 | PM Dashboard      | Active — do not bind anything else here                          |
-| 18765 | Miru AI           | Active — do not bind anything else here                          |
-| 18766 | MCP Gateway       | Active — do not bind anything else here                          |
-| 19100 | Dispatch Listener | Active — do not bind anything else here                          |
-| 15678 | n8n               | Active (Docker) — do not bind anything else here                 |
-| 8080  | (Reserved)        | RESERVED — do not touch                                          |
-| 8765  | (Reserved)        | **NEVER TOUCH under any circumstances**                          |
-| 11434 | Ollama            | Local dependency — not Miru-owned; do not restart or reconfigure |
+| Port  | Service                                                          | Rule                                                             |
+| ----- | ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 18080 | PM Dashboard                                                     | Active — do not bind anything else here                          |
+| 18765 | Miru AI (Flask backend API; legacy HTML dev page until refactor) | Active — do not bind anything else here                          |
+| 18768 | Miru AI Hub UI (SvelteKit dev page)                              | Active — do not bind anything else here                          |
+| 18766 | MCP Gateway                                                      | Active — do not bind anything else here                          |
+| 19100 | Dispatch Listener                                                | Active — do not bind anything else here                          |
+| 15678 | n8n                                                              | Active (Docker) — do not bind anything else here                 |
+| 8080  | (Reserved)                                                       | RESERVED — do not touch                                          |
+| 8765  | (Reserved)                                                       | **NEVER TOUCH under any circumstances**                          |
+| 11434 | Ollama                                                           | Local dependency — not Miru-owned; do not restart or reconfigure |
+
+**Dev-page note (2026-05-19):** The dev page is the SvelteKit Hub UI on 18768. Flask on 18765
+is the backend API the SvelteKit page calls. The legacy HTML dev page on 18765 is a fallback
+pending a refactor to drop those routes from `server.py` (backlog, not yet dispatched).
 
 **Why:** Port conflicts cause EADDRINUSE crash loops that are hard to diagnose.
 

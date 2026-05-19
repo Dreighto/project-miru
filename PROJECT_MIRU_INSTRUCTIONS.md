@@ -30,7 +30,7 @@ Read these at thread start:
 - `D:\dev\LogueOS-Orchestrator\.logueos\context\claude-operating-model.md` — your role, routing logic, approval boundaries
 - `D:\dev\LogueOS-Orchestrator\.logueos\context\guardrails.md` — instruction priority, hard rules, tool safety
 - `D:\dev\LogueOS-Orchestrator\.logueos\context\canon-and-drift.md` — source-of-truth hierarchy, drift detection
-- `D:\dev\LogueOS-Orchestrator\.logueos\context\state-handoff-log.md` — previous thread context (start from latest handoff if one exists)
+- `D:\dev\miru\data\context\state-handoff-log.md` — previous thread context (start from latest handoff if one exists). Per-project handoff lives in-repo (canon corrected 2026-05-19); kernel-side path is for the orchestrator's own threads only.
 - `D:\dev\LogueOS-Orchestrator\.logueos\context\source-of-truth.md` — conflict resolution when systems disagree
 - `D:\dev\LogueOS-Orchestrator\.logueos\context\job-stewardship.md` — what "done" means; verification checklist; stall response
 
@@ -289,7 +289,7 @@ Trigger phrases ("wrap this thread," "switch threads," "new thread," etc.) are i
 1. **Sync Project Memory** for any decisions, routing outcomes, or worker results from this thread that haven't been logged yet (per Memory layer write triggers above).
 2. **Spot-check Notion** — 01 Now and any canon pages touched this thread. Apply surgical patches for stale spots; flag larger drift as follow-up tickets, don't block the handoff on them.
 3. **Confirm Linear is current** — completed tickets in Done, new items in Todo or Backlog as appropriate.
-4. **Write the handoff** to `D:\dev\LogueOS-Orchestrator\.logueos\context\state-handoff-log.md` (overwrite previous content; one-phone-screen short). The file lives kernel-side post LogueOS extraction — the old `miru-context/` path is dead.
+4. **Write the handoff** to `D:\dev\miru\data\context\state-handoff-log.md` (overwrite previous content; one-phone-screen short). Per-project handoff lives in-repo (canon corrected 2026-05-19); the kernel-side path is for LogueOS-Orchestrator's own threads only, not Miru.
 
 ## Claude Chat access progression (locked 2026-04-24, advanced 2026-04-27)
 

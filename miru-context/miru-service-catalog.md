@@ -3,7 +3,7 @@
 Ground-truth reference for every service in the Miru stack. Extracted directly from source
 files and live logs. Workers read this before writing any code that touches a service.
 
-Last updated: 2026-05-18
+Last updated: 2026-05-19
 
 ---
 
@@ -19,13 +19,14 @@ Last updated: 2026-05-18
 
 ## Service Index
 
-| Service           | Port  | Language                   | Status |
-| ----------------- | ----- | -------------------------- | ------ |
-| Dispatch Listener | 19100 | Node.js                    | ACTIVE |
-| MCP Gateway       | 18766 | Python (FastMCP / uvicorn) | ACTIVE |
-| Miru AI           | 18765 | Python (Flask)             | ACTIVE |
-| PM Dashboard      | 18080 | Python (Flask + SvelteKit) | ACTIVE |
-| n8n               | 15678 | Node.js                    | ACTIVE |
+| Service           | Port  | Language                       | Status |
+| ----------------- | ----- | ------------------------------ | ------ |
+| Dispatch Listener | 19100 | Node.js                        | ACTIVE |
+| MCP Gateway       | 18766 | Python (FastMCP / uvicorn)     | ACTIVE |
+| Miru AI (backend) | 18765 | Python (Flask)                 | ACTIVE |
+| Miru AI Hub UI    | 18768 | SvelteKit (Node, adapter-node) | ACTIVE |
+| PM Dashboard      | 18080 | Python (Flask + SvelteKit)     | ACTIVE |
+| n8n               | 15678 | Node.js                        | ACTIVE |
 
 ---
 
@@ -160,10 +161,14 @@ Triggers the `LogueOS-RestartMcpGateway` scheduled task (renamed from
 
 ## 3. Miru AI — Port 18765
 
-**What it does:** Dev Review Hub backend. Handles card data queries, batch review jobs,
-Ollama routing for AI analysis, Telegram webhook, and Pushover notifications. The primary
-Python service worker (Claude Code) writes backend code here. Codex was retired from the
-loop 2026-05-12; Gemini CLI handles frontend lane work but not Python backend.
+**What it does:** Flask backend API for the Miru AI surfaces. Handles card data queries,
+batch review jobs, Ollama routing for AI analysis, Telegram webhook, Pushover notifications,
+`/api/dev-status`, health probes, and service-control endpoints. Forward role going forward:
+**backend API only** — the new SvelteKit Hub UI on port 18768 is now the dev page and calls
+this service for data. The legacy HTML dev page routes still served from `server.py` are a
+fallback pending refactor (backlog, not yet dispatched). The primary Python service worker
+(Claude Code) writes backend code here. Codex was retired from the loop 2026-05-12; Gemini
+CLI handles frontend lane work but not Python backend.
 
 **Bind address:** 0.0.0.0 (all interfaces — accessible on local network and Tailscale)
 
@@ -236,7 +241,54 @@ current authoritative restart procedures across all services.
 
 ---
 
-## 4. PM Dashboard — Port 18080
+## 4. Miru AI Hub UI — Port 18768
+
+**What it does:** The new SvelteKit dev page. Three surfaces — **Glance / Voyage / Review**
+— served by a SvelteKit (adapter-node) process. BFF pattern: the page reads data from Flask
+(18765) via `src/lib/server/flask.ts` and never talks to the DB directly. Flask remains the
+sole data owner. This is the dev page going forward; the legacy HTML routes on 18765 stay as
+fallback until refactored out.
+
+**Bind address:** 0.0.0.0 (Tailscale-reachable, firewall rule "Miru AI Hub UI 18768" on
+Private + Domain profiles).
+
+### Stack pins
+
+- SvelteKit 2.57 + Svelte 5.55 (runes)
+- Vite 8
+- Tailwind 4.2
+- Node adapter (`@sveltejs/adapter-node`)
+
+### Health / smoke
+
+```
+GET http://127.0.0.1:18768/        → 200 (Glance route)
+GET http://room.taila28611.ts.net:18768/  → 200 from tailnet
+```
+
+### Key source files
+
+- `miru_ai/hub_ui/` — SvelteKit project root
+- `miru_ai/hub_ui/vite.config.ts` — port + `allowedHosts: true` for tailnet/LAN
+- `miru_ai/hub_ui/src/lib/server/flask.ts` — BFF fetch wrapper, reads `MIRU_FLASK_BASE_URL`
+- `miru_ai/hub_ui/src/lib/stores/currentIsland.svelte.ts` — Svelte 5 runes store
+- `miru_ai/hub_ui/src/routes/` — `/` (Glance), `/voyage`, `/review`
+
+### Restart mechanism
+
+Currently a manual `npm run build && node build` process — not yet registered as a Windows
+service. Scheduled-task setup is on the backlog. To restart manually:
+
+```powershell
+# from D:\dev\miru\miru_ai\hub_ui
+npm run build
+# stop any running build/index.js, then:
+node build
+```
+
+---
+
+## 5. PM Dashboard — Port 18080
 
 **What it does:** Project Miru storefront UI. Serves the SvelteKit-built frontend. Flask
 backend provides API routes for card data, watchlist, and hub summary. The frontend is a
@@ -298,7 +350,7 @@ Restart log (if still in use): `logs/pm_restart.log`.
 
 ---
 
-## 5. n8n — Port 15678
+## 6. n8n — Port 15678
 
 **What it does:** Workflow automation engine. Owns the Telegram bot webhook (dispatches
 operator messages to workers), routes Linear ticket events, runs the stall recovery loop,
@@ -362,7 +414,7 @@ or via the n8n MCP tool: `service_restart` with service="n8n".
 
 ---
 
-## 6. n8n Loop Watchdog — `tools/n8n_loop_watchdog.py`
+## 7. n8n Loop Watchdog — `tools/n8n_loop_watchdog.py`
 
 **What it does:** Polls the n8n REST API every 15 minutes and detects three failure modes:
 
