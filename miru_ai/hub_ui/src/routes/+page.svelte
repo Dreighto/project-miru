@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { currentIsland } from '$lib/stores/currentIsland.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -6,6 +7,7 @@
 
 <main class="mx-auto max-w-5xl space-y-8 p-6">
 	<h1 class="text-2xl font-bold">Miru AI Dev — Glance</h1>
+	<p data-testid="current-island" class="text-sm text-gray-500">Island: {currentIsland.value}</p>
 
 	{#if data.flaskDown}
 		<div

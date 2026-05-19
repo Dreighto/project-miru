@@ -6,7 +6,7 @@
 </script>
 
 <h1>Voyage</h1>
-<p>Island: {currentIsland.value}</p>
+<p data-testid="current-island">Island: {currentIsland.value}</p>
 
 {#if data.flaskDown}
 	<div class="flask-error" role="alert" aria-label="Flask service unreachable">

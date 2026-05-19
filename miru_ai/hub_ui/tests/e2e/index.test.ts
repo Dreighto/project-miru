@@ -10,7 +10,7 @@ test.describe('Glance (/)', () => {
 
 	test('displays currentIsland value', async ({ page }) => {
 		await page.goto('/');
-		await expect(page.getByText('OP01')).toBeVisible();
+		await expect(page.getByTestId('current-island')).toContainText('OP01');
 	});
 
 	test('passes axe-core accessibility scan (no serious/critical violations)', async ({ page }) => {
@@ -49,7 +49,7 @@ test.describe('Voyage (/voyage)', () => {
 
 	test('displays currentIsland value', async ({ page }) => {
 		await page.goto('/voyage');
-		await expect(page.getByText('OP01')).toBeVisible();
+		await expect(page.getByTestId('current-island')).toContainText('OP01');
 	});
 });
 
@@ -61,6 +61,6 @@ test.describe('Review (/review)', () => {
 
 	test('displays currentIsland value', async ({ page }) => {
 		await page.goto('/review');
-		await expect(page.getByText('OP01')).toBeVisible();
+		await expect(page.getByTestId('current-island')).toContainText('OP01');
 	});
 });
