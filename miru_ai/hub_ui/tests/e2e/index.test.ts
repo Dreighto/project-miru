@@ -1,13 +1,16 @@
-// E2E smoke test — proves the Playwright pipeline works and the scaffold heading loads.
+// E2E smoke tests — surface route headings + currentIsland store display.
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-test.describe('home page', () => {
-	test('loads and shows the scaffold heading', async ({ page }) => {
+test.describe('Glance (/)', () => {
+	test('shows Glance heading', async ({ page }) => {
 		await page.goto('/');
-		await expect(page).toHaveURL(/\//);
-		const heading = page.getByRole('heading', { name: /Miru AI Dev/i });
-		await expect(heading).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Glance' })).toBeVisible();
+	});
+
+	test('displays currentIsland value', async ({ page }) => {
+		await page.goto('/');
+		await expect(page.getByText('OP01')).toBeVisible();
 	});
 
 	test('passes axe-core accessibility scan (no serious/critical violations)', async ({ page }) => {
@@ -35,5 +38,29 @@ test.describe('home page', () => {
 			blocking,
 			`Blocking a11y violations: ${blocking.map((v) => `${v.id} (${v.impact})`).join(', ')}`
 		).toEqual([]);
+	});
+});
+
+test.describe('Voyage (/voyage)', () => {
+	test('shows Voyage heading', async ({ page }) => {
+		await page.goto('/voyage');
+		await expect(page.getByRole('heading', { name: 'Voyage' })).toBeVisible();
+	});
+
+	test('displays currentIsland value', async ({ page }) => {
+		await page.goto('/voyage');
+		await expect(page.getByText('OP01')).toBeVisible();
+	});
+});
+
+test.describe('Review (/review)', () => {
+	test('shows Review heading', async ({ page }) => {
+		await page.goto('/review');
+		await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible();
+	});
+
+	test('displays currentIsland value', async ({ page }) => {
+		await page.goto('/review');
+		await expect(page.getByText('OP01')).toBeVisible();
 	});
 });
