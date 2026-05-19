@@ -7,7 +7,7 @@
 
 <main class="mx-auto max-w-5xl space-y-6 p-6">
 	<h1 class="text-2xl font-bold">Review</h1>
-	<p class="text-sm text-gray-500">Island: {currentIsland.value}</p>
+	<p data-testid="current-island" class="text-sm text-gray-500">Island: {currentIsland.value}</p>
 
 	{#if data.flaskDown}
 		<div

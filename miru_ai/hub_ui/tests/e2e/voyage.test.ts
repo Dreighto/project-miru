@@ -9,7 +9,7 @@ test.describe('Voyage (/voyage) BFF', () => {
 
 	test('displays currentIsland value', async ({ page }) => {
 		await page.goto('/voyage');
-		await expect(page.getByText('OP01')).toBeVisible();
+		await expect(page.getByTestId('current-island')).toContainText('OP01');
 	});
 
 	test('renders throughput data or Flask-down banner', async ({ page }) => {
