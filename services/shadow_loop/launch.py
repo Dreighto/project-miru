@@ -96,8 +96,12 @@ def main() -> int:
     if cfg.smoke_mode:
         log.info("SHADOW_LOOP_MODE=smoke — using canned client")
         primary_client = SmokeClient()
+        validator_client = SmokeClient()
     else:
         primary_client = build_primary(cfg.ollama_url, cfg.primary_model, cfg.request_timeout_s)
+        validator_client = build_validator(
+            cfg.ollama_url, cfg.validator_model, cfg.request_timeout_s
+        )
 
     verifier = _build_verifier(cfg, log)
     queue = PriorityQueue()
@@ -123,7 +127,7 @@ def main() -> int:
     from .loop_runner import run_forever
 
     try:
-        run_forever(cfg, queue, primary_client, verifier, writer)
+        run_forever(cfg, queue, primary_client, verifier, writer, validator_client)
     except KeyboardInterrupt:
         log.info("interrupted — shutting down cleanly")
     return 0

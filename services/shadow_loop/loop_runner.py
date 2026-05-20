@@ -4,8 +4,9 @@ Each tick:
   1. Pull next (canonical_code, print_id) from the priority queue.
   2. Ask primary + validator the canonical question for that card.
   3. Score the primary's answer via the verifier (dummy in PR-A).
-  4. Write a row to miru_learning_pool.db.
-  5. Sleep tick_seconds.
+  4. Run the Stage 3 auto-clear predicate (PRO-927).
+  5. Write a row to miru_learning_pool.db.
+  6. Sleep tick_seconds.
 
 If the queue is empty, the loop reseeds from card_catalog (every card with
 the configured set_scope_prefix is enqueued).
@@ -17,6 +18,8 @@ Hooks reserved for PR-C (verifier-of-verifier guards):
 These imports are wrapped in try/except so PR-A can run without PR-C present.
 
 PRO-908 PR-A.
+PRO-927: run_one_tick accepts optional validator_client; runs stage3_autoclear
+predicate and embeds the result in verifier_result before writing.
 """
 
 from __future__ import annotations
@@ -29,6 +32,7 @@ from typing import Any, Protocol
 from .config import Config
 from .priority_queue import PriorityQueue
 from .question_template import build_question
+from .stage3_autoclear import stage3_autoclear
 
 log = logging.getLogger(__name__)
 
@@ -54,7 +58,12 @@ class ModelClient(Protocol):
 
 
 class Verifier(Protocol):
-    def score(self, card: dict[str, Any], primary_answer: dict[str, Any]) -> dict[str, Any]: ...
+    def score(
+        self,
+        card: dict[str, Any],
+        primary_answer: dict[str, Any],
+        validator_answer: dict[str, Any] | None = None,
+    ) -> dict[str, Any]: ...
 
 
 class Writer(Protocol):
@@ -115,6 +124,7 @@ def run_one_tick(
     verifier: Verifier,
     writer: Writer,
     tick_count: int,
+    validator_client: ModelClient | None = None,
 ) -> bool:
     """One tick. Returns True if work was done; False if loop should halt."""
     # PR-C halt guard: operator-override-rate auto-pause.
@@ -148,7 +158,28 @@ def run_one_tick(
         log.warning("primary model failed on %s %s: %s", canonical_code, print_id, exc)
         primary_answer = {}
 
-    verifier_result = verifier.score(card, primary_answer)
+    validator_answer: dict[str, Any] | None = None
+    if validator_client is not None:
+        try:
+            validator_answer = validator_client.ask_json(question)
+        except Exception as exc:
+            log.warning("validator model failed on %s %s: %s", canonical_code, print_id, exc)
+
+    verifier_result = verifier.score(card, primary_answer, validator_answer)
+
+    # PRO-927: Stage 3 auto-clear — require BANDAI-TRACE AGREEMENT.
+    stage3_advance, stage3_reason = stage3_autoclear(verifier_result)
+    verifier_result["stage3_autoclear"] = {
+        "advance": stage3_advance,
+        "reason": stage3_reason,
+    }
+    if not stage3_advance:
+        log.debug(
+            "stage3_autoclear FAIL card=%s/%s reason=%s",
+            canonical_code,
+            print_id,
+            stage3_reason,
+        )
 
     writer(
         canonical_code=canonical_code,
@@ -180,6 +211,7 @@ def run_forever(
     primary_client: ModelClient,
     verifier: Verifier,
     writer: Writer,
+    validator_client: ModelClient | None = None,
 ) -> None:
     """Drive the loop until shutdown signal or halt-guard trips."""
     seed_queue_from_catalog(queue, config.catalog_db, config.set_scope_prefix)
@@ -190,7 +222,9 @@ def run_forever(
     tick_count = 0
     while True:
         tick_count += 1
-        should_continue = run_one_tick(config, queue, primary_client, verifier, writer, tick_count)
+        should_continue = run_one_tick(
+            config, queue, primary_client, verifier, writer, tick_count, validator_client
+        )
         if not should_continue:
             log.info("shadow loop halting at tick %d", tick_count)
             return
