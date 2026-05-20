@@ -8,18 +8,20 @@
 
 	type QueueItem = NonNullable<PageData['items']>[number];
 
-	// Key of the row whose verdict is currently in flight — only that row's
-	// buttons disable, so the rest of the queue stays actionable.
-	let submittingKey = $state<string | null>(null);
-	let errorMsg = $state<string | null>(null);
+	// Per-row state, keyed by rowKey(item). Keeping this per-row (rather than a
+	// single shared key) means concurrent submissions on different rows don't
+	// clobber each other's in-flight flag or error message.
+	let submitting = $state<Record<string, boolean>>({});
+	let errors = $state<Record<string, string>>({});
 
 	function rowKey(item: QueueItem): string {
 		return `${item.canonical_code}|${item.print_id}|${item.contributing_model}`;
 	}
 
 	async function submitVerdict(item: QueueItem, verdict: 'correct' | 'wrong') {
-		submittingKey = rowKey(item);
-		errorMsg = null;
+		const key = rowKey(item);
+		submitting[key] = true;
+		delete errors[key];
 		try {
 			const resp = await fetch(resolve('/review/verdict'), {
 				method: 'POST',
@@ -33,16 +35,16 @@
 			});
 			if (!resp.ok) {
 				const body = (await resp.json().catch(() => ({}))) as { error?: string };
-				errorMsg = body.error ?? `Verdict submission failed (HTTP ${resp.status}).`;
+				errors[key] = body.error ?? `Verdict submission failed (HTTP ${resp.status}).`;
 				return;
 			}
 			// Verdict committed — the row is no longer pending_review, so a
 			// re-fetch of the queue drops it.
 			await invalidateAll();
 		} catch {
-			errorMsg = 'Could not reach the review service. Try again in a moment.';
+			errors[key] = 'Could not reach the review service. Try again in a moment.';
 		} finally {
-			submittingKey = null;
+			delete submitting[key];
 		}
 	}
 </script>
@@ -50,16 +52,6 @@
 <main class="mx-auto max-w-5xl space-y-6 p-6">
 	<h1 class="text-2xl font-bold">Review</h1>
 	<p data-testid="current-island" class="text-sm text-gray-500">Island: {currentIsland.value}</p>
-
-	{#if errorMsg}
-		<div
-			role="alert"
-			data-testid="verdict-error"
-			class="rounded border border-red-400 bg-red-50 px-4 py-3 text-sm text-red-800"
-		>
-			{errorMsg}
-		</div>
-	{/if}
 
 	{#if data.flaskDown}
 		<div
@@ -72,7 +64,9 @@
 	{:else if data.items && data.items.length > 0}
 		<ul class="space-y-3">
 			{#each data.items as item (rowKey(item))}
-				{@const busy = submittingKey === rowKey(item)}
+				{@const key = rowKey(item)}
+				{@const busy = submitting[key] === true}
+				{@const rowError = errors[key]}
 				<li class="rounded border border-gray-200 bg-white p-4">
 					<div class="grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
 						<div>
@@ -123,6 +117,11 @@
 							<span class="text-xs text-gray-500">Submitting...</span>
 						{/if}
 					</div>
+					{#if rowError}
+						<p role="alert" data-testid="verdict-error" class="mt-2 text-xs text-red-700">
+							{rowError}
+						</p>
+					{/if}
 				</li>
 			{/each}
 		</ul>

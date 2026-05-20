@@ -3,6 +3,10 @@
 // The queue loads server-side (+page.server.ts), so it renders against the live
 // review service and is not stubbed here. The verdict POST is a browser-side
 // fetch to the /review/verdict BFF, which page.route() CAN intercept.
+//
+// Deterministic coverage of the button -> fetch wiring lives in the component
+// test (tests/unit/review-page.test.ts); this e2e exercises the same path
+// end-to-end against the real backend when the live queue has pending rows.
 import { test, expect } from '@playwright/test';
 
 test.describe('Review (/review)', () => {
@@ -31,11 +35,13 @@ test.describe('Review (/review)', () => {
 		await expect(page.getByRole('heading', { name: /review/i })).toBeVisible();
 
 		const approve = page.getByRole('button', { name: /approve/i }).first();
-		if ((await approve.count()) === 0) {
-			// Live queue is empty — no pending rows to act on. The render check
-			// above already proves the page is healthy; nothing to click.
-			return;
-		}
+		// Skip (visibly, not a silent pass) when the live queue has no pending
+		// rows — there is nothing to click. The component test still covers the
+		// wiring deterministically in that case.
+		test.skip(
+			(await approve.count()) === 0,
+			'live review queue is empty — no pending rows to exercise'
+		);
 
 		// Retry the click + assertion as a unit. The first click can land before
 		// SvelteKit finishes hydrating the button's handler (a no-op), and the
