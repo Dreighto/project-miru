@@ -11,7 +11,7 @@ land in the JSONL). `should_halt_loop(threshold)` returns True when that
 rate exceeds the threshold — the loop runner halts gracefully on True.
 
 Why JSONL not DB: operator overrides are *events*, not state. A row's
-`promotion_status` can flip multiple times; we want to count every
+`approval_state` can flip multiple times; we want to count every
 override, not the latest state. JSONL is also what PRO-909 already writes
 to (per the design conversation).
 

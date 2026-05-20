@@ -33,7 +33,12 @@ class _FakeVerifier:
     def __init__(self) -> None:
         self.calls: list[tuple[dict[str, Any], dict[str, Any]]] = []
 
-    def score(self, card: dict[str, Any], primary_answer: dict[str, Any]) -> dict[str, Any]:
+    def score(
+        self,
+        card: dict[str, Any],
+        primary_answer: dict[str, Any],
+        validator_answer: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         self.calls.append((card, primary_answer))
         return {
             "field_outcomes": {"card_name": {"outcome": "inconclusive", "reason": "fake"}},

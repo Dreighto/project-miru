@@ -68,7 +68,8 @@ def test_upsert_writes_row_with_expected_shape(fresh_pool_db: Path):
         rows = conn.execute(
             "SELECT canonical_code, print_id, contributing_model, "
             "card_name, cost, power, color, card_type, "
-            "confidence_score, validator_agreement, promotion_status, learned_from "
+            "confidence_score, validator_agreement, "
+            "readiness_state, approval_state, promotion_state, learned_from "
             "FROM learned_cards WHERE id = ?",
             (row_id,),
         ).fetchall()
@@ -89,8 +90,11 @@ def test_upsert_writes_row_with_expected_shape(fresh_pool_db: Path):
     # validator_agreement holds field_outcomes JSON
     field_outcomes = json.loads(row[9])
     assert field_outcomes["card_name"]["outcome"] == "inconclusive"
-    assert row[10] == "experimental"
-    assert row[11] == "test_tick_1"
+    # No stage3_autoclear in verifier_result -> fail-closed -> blocked_by_guardrail.
+    assert row[10] == "blocked_by_guardrail"
+    assert row[11] == "pending_review"
+    assert row[12] == ""
+    assert row[13] == "test_tick_1"
 
 
 def test_upsert_replaces_prior_row_for_same_card_and_model(fresh_pool_db: Path):
@@ -171,3 +175,65 @@ def test_different_models_get_distinct_rows(fresh_pool_db: Path):
         conn.close()
 
     assert count == 2
+
+
+def _state(pool_db: Path, row_id: int) -> tuple[str, str, str]:
+    conn = sqlite3.connect(pool_db)
+    try:
+        return conn.execute(
+            "SELECT readiness_state, approval_state, promotion_state "
+            "FROM learned_cards WHERE id = ?",
+            (row_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def test_upsert_stage3_pass_sets_ready_for_review(fresh_pool_db: Path):
+    """When the Stage 3 gate advances, the row enters ready_for_review."""
+    row_id = upsert_learned_card(
+        pool_db=fresh_pool_db,
+        canonical_code="OP01-002",
+        print_id="OP01-002",
+        contributing_model="qwen2.5:7b",
+        primary_answer={"card_name": "Nami"},
+        verifier_result={
+            "field_outcomes": {},
+            "confidence_score": 1.0,
+            "stage3_autoclear": {"advance": True},
+        },
+        learned_from="tick_stage3_pass",
+    )
+    assert _state(fresh_pool_db, row_id) == ("ready_for_review", "pending_review", "")
+
+
+def test_upsert_stage3_fail_sets_blocked_by_guardrail(fresh_pool_db: Path):
+    """When the Stage 3 gate fails, the row is blocked_by_guardrail."""
+    row_id = upsert_learned_card(
+        pool_db=fresh_pool_db,
+        canonical_code="OP01-003",
+        print_id="OP01-003",
+        contributing_model="qwen2.5:7b",
+        primary_answer={"card_name": "Zoro"},
+        verifier_result={
+            "field_outcomes": {},
+            "confidence_score": 0.0,
+            "stage3_autoclear": {"advance": False, "reason": "no bandai trace"},
+        },
+        learned_from="tick_stage3_fail",
+    )
+    assert _state(fresh_pool_db, row_id) == ("blocked_by_guardrail", "pending_review", "")
+
+
+def test_upsert_missing_stage3_is_fail_closed(fresh_pool_db: Path):
+    """An absent stage3_autoclear result is treated as a gate failure."""
+    row_id = upsert_learned_card(
+        pool_db=fresh_pool_db,
+        canonical_code="OP01-004",
+        print_id="OP01-004",
+        contributing_model="qwen2.5:7b",
+        primary_answer={"card_name": "Usopp"},
+        verifier_result={"field_outcomes": {}, "confidence_score": 0.0},
+        learned_from="tick_no_stage3",
+    )
+    assert _state(fresh_pool_db, row_id) == ("blocked_by_guardrail", "pending_review", "")

@@ -5,7 +5,7 @@ on each pass. PR-A writes rows with:
 
   * The primary's claimed values for each field (in the mirrored card columns).
   * The verifier's per-field outcomes in `validator_agreement` JSON.
-  * `confidence_score` and `promotion_status` from the verifier's verdict.
+  * `confidence_score` from the verifier's verdict.
   * `last_verified` timestamp.
   * `contributing_model` set to the primary model's identifier.
   * `learned_from` set to a stable reason string for traceability.
@@ -15,6 +15,12 @@ PRO-927 adds:
     the Stage 3 auto-clear predicate passes; NULL when it fails.
   * `stage3_gate` key injected into `validator_agreement` on gate failure so
     the reason is visible without a separate column.
+
+PRO-928 — three-axis state model (BORROW decision). Replaces the single
+`promotion_status` column with `readiness_state` / `approval_state` /
+`promotion_state`, mirroring card_catalog.db's proven publication-pipeline
+shape. A new row is written ready_for_review (or blocked_by_guardrail if the
+Stage 3 gate failed) / pending_review / '' (pre-promotion).
 
 Each call replaces any prior row for the same
 (canonical_code, print_id, contributing_model) tuple — the pool tracks current
@@ -125,10 +131,22 @@ def upsert_learned_card(
         columns.append("learned_from")
         values.append(learned_from)
 
-        # PR-A always writes promotion_status='experimental'; PR-C's promotion
-        # gate is what graduates rows past that.
-        columns.append("promotion_status")
-        values.append("experimental")
+        # PRO-928 — three-axis state model (BORROW decision). A new row enters
+        # the pool with readiness routed by the Stage 3 gate, awaiting operator
+        # review, not yet promoted:
+        #   * readiness_state — 'ready_for_review' if Stage 3 passed,
+        #     'blocked_by_guardrail' if it failed. Fail-closed: if the stage3
+        #     result is absent, treat it as a gate failure (don't auto-pass).
+        #   * approval_state  — always 'pending_review' on write (the operator
+        #     review surface advances it).
+        #   * promotion_state — always '' on write (the pre-promotion state).
+        readiness_state = "ready_for_review" if stage3.get("advance") else "blocked_by_guardrail"
+        columns.append("readiness_state")
+        values.append(readiness_state)
+        columns.append("approval_state")
+        values.append("pending_review")
+        columns.append("promotion_state")
+        values.append("")
 
         placeholders = ",".join("?" for _ in columns)
         sql = f"INSERT INTO learned_cards ({','.join(columns)}) VALUES ({placeholders})"
