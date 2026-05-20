@@ -49,7 +49,13 @@ TRACKED_FIELDS: list[str] = [
 class DummyVerifier:
     """Returns inconclusive on every field. PR-B replaces with real logic."""
 
-    def score(self, card: dict[str, Any], primary_answer: dict[str, Any]) -> dict[str, Any]:
+    def score(
+        self,
+        card: dict[str, Any],
+        primary_answer: dict[str, Any],
+        validator_answer: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        _ = validator_answer  # dummy ignores validator; real verifier uses it
         field_outcomes: dict[str, dict[str, Any]] = {}
         for field in TRACKED_FIELDS:
             field_outcomes[field] = {

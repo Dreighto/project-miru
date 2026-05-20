@@ -29,6 +29,8 @@ deterministic), but the post-check hook stays present so a future LLM
 judge layer can be added without changing the call sites.
 
 PRO-908 PR-B.
+PRO-927: score() accepts optional validator_answer; emits primary_source_trace
+and validator_source_trace per Bandai-tracked field for Stage 3 auto-clear.
 """
 
 from __future__ import annotations
@@ -64,7 +66,12 @@ class RealVerifier:
         self._bandai = bandai
         self._judge = judge
 
-    def score(self, card: dict[str, Any], primary_answer: dict[str, Any]) -> dict[str, Any]:
+    def score(
+        self,
+        card: dict[str, Any],
+        primary_answer: dict[str, Any],
+        validator_answer: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         canonical_code = card.get("canonical_code", "")
         print_id = card.get("print_id", "")
         bandai_row = self._bandai.lookup(canonical_code, print_id)
@@ -84,14 +91,52 @@ class RealVerifier:
                 outcome = "inconclusive"
                 reason = "inferred field — operator-only adjudication"
 
-            field_outcomes[field] = {
+            fo: dict[str, Any] = {
                 "outcome": outcome,
                 "reason": reason,
                 "tier": t.value,
                 "catalog_value": cat_v,
                 "bandai_value": ban_v,
                 "model_value": primary_v,
+                "primary_answer": primary_v,
             }
+
+            # PRO-927: per-field source traces for Bandai-tracked fields.
+            if has_bandai_source(field):
+                # Primary source trace: present only when primary's answer
+                # matches the Bandai crawl value (outcome == verified-correct
+                # and Bandai has data). A hallucinated answer can't anchor to
+                # a real Bandai source — that's the collusion-fix invariant.
+                if outcome == "verified-correct" and ban_v is not None:
+                    fo["primary_source_trace"] = self._bandai.source_trace_for(
+                        canonical_code, print_id, field
+                    )
+                else:
+                    fo["primary_source_trace"] = None
+
+                # Validator source trace: independent check of the validator
+                # model's answer against the same Bandai value.
+                val_v = validator_answer.get(field) if validator_answer is not None else None
+                fo["validator_answer"] = val_v
+                if (
+                    validator_answer is not None
+                    and val_v is not None
+                    and ban_v is not None
+                    and equal(val_v, ban_v)
+                ):
+                    fo["validator_source_trace"] = self._bandai.source_trace_for(
+                        canonical_code, print_id, field
+                    )
+                else:
+                    fo["validator_source_trace"] = None
+
+                # Agreement: whether the two models gave the same answer.
+                if primary_v is not None and val_v is not None:
+                    fo["agree"] = equal(primary_v, val_v)
+                else:
+                    fo["agree"] = None
+
+            field_outcomes[field] = fo
 
         # Deterministic sanity post-check on hard fields. In PR-B this is a
         # no-op (hard pass is already deterministic) but the hook stays so

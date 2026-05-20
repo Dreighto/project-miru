@@ -10,6 +10,12 @@ on each pass. PR-A writes rows with:
   * `contributing_model` set to the primary model's identifier.
   * `learned_from` set to a stable reason string for traceability.
 
+PRO-927 adds:
+  * `source_trace_json` — consolidated per-field Bandai-source pointers when
+    the Stage 3 auto-clear predicate passes; NULL when it fails.
+  * `stage3_gate` key injected into `validator_agreement` on gate failure so
+    the reason is visible without a separate column.
+
 Each call replaces any prior row for the same
 (canonical_code, print_id, contributing_model) tuple — the pool tracks current
 state per (card, model), not history. History lives in `validator_agreement`
@@ -93,8 +99,25 @@ def upsert_learned_card(
         columns.append("confidence_score")
         values.append(verifier_result.get("confidence_score", 0.0))
 
+        # Build validator_agreement JSON; inject stage3_gate reason when gate fails.
+        field_outcomes = verifier_result.get("field_outcomes", {})
+        stage3 = verifier_result.get("stage3_autoclear", {})
+        agreement_data: dict = dict(field_outcomes)
+        if not stage3.get("advance") and stage3.get("reason"):
+            agreement_data["stage3_gate"] = stage3["reason"]
+
         columns.append("validator_agreement")
-        values.append(json.dumps(verifier_result.get("field_outcomes", {})))
+        values.append(json.dumps(agreement_data))
+
+        # Write source_trace_json only when the Stage 3 gate passes.
+        if stage3.get("advance"):
+            source_traces: dict = {}
+            for field, fo in field_outcomes.items():
+                trace = fo.get("primary_source_trace")
+                if trace is not None:
+                    source_traces[field] = trace
+            columns.append("source_trace_json")
+            values.append(json.dumps(source_traces) if source_traces else None)
 
         columns.append("last_verified")
         values.append(_utc_now_iso())
