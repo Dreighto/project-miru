@@ -48,11 +48,21 @@ CARD_SET_RE = re.compile(
 
 
 def load_env_key() -> str:
-    env_path = Path(r"D:\dev\LogueOS-Orchestrator\.env")
+    key = os.environ.get("FIRECRAWL_API_KEY")
+    if key:
+        return key.strip()
+
+    env_path_str = os.environ.get(
+        "LOGUEOS_ENV_PATH",
+        r"D:\dev\LogueOS-Orchestrator\.env",
+    )
+    env_path = Path(env_path_str)
+    if not env_path.exists():
+        raise RuntimeError(f"FIRECRAWL_API_KEY env var not set and {env_path} does not exist")
     for line in env_path.read_text(encoding="utf-8").splitlines():
         if line.startswith("FIRECRAWL_API_KEY="):
             return line.split("=", 1)[1].strip().strip('"').strip("'")
-    raise RuntimeError("FIRECRAWL_API_KEY not found in canonical .env")
+    raise RuntimeError(f"FIRECRAWL_API_KEY not found in {env_path}")
 
 
 def log(msg: str) -> None:
@@ -213,7 +223,7 @@ def main() -> int:
         "ticket": "PRO-904",
         "source": "https://en.onepiece-cardgame.com/cardlist/?search=true&freewords=OP01-NNN",
         "queried_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "card_numbers_queried": len(CARD_NUMBERS),
+        "card_numbers_queried": len(cards),
         "card_numbers_with_results": sum(1 for v in coverage.values() if v > 0),
         "total_printings": len(all_printings),
         "failures": failures,
