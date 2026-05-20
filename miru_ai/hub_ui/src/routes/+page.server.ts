@@ -1,11 +1,45 @@
 import { fetchFlask } from '$lib/server/flask';
 
+export interface ServiceStatus {
+	port: string;
+	status: string;
+}
+
+export interface IssueCard {
+	label: string;
+	status: string;
+	tone: 'good' | 'warn';
+	detail: string;
+	items: string[];
+}
+
 export interface DevStatus {
 	updated_at_display: string;
 	pending_approvals_count: number;
 	publication_review_count: number;
 	catalog_status: { cards: number; sets: number; usable: boolean };
 	dev_environment: { label: string; current_port: number };
+	surface_status: {
+		miru_ai: ServiceStatus;
+		worktree_dashboard: ServiceStatus;
+	};
+	project_miru: {
+		reachable: boolean;
+		status_code: number;
+		detail: string;
+	};
+	learning_engine: {
+		learner_state: string;
+	};
+	issues: {
+		miru_ai: IssueCard;
+		project_miru: IssueCard;
+	};
+	intelligence_status: {
+		status_sentence: string;
+		worker: { label: string; tone: string; detail: string };
+		activity_hint: string;
+	};
 }
 
 export interface ActivityItem {
