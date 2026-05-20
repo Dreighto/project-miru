@@ -14,9 +14,15 @@ The Flask routes live in server.py and call thin wrappers here.
 
 Discipline:
   - miru_learning_pool.db: opened READ-ONLY for queue + item fetches.
-  - promotion_status updates happen on verdict commit — UPDATE only, never INSERT.
+  - approval_state / promotion_state updates happen on verdict commit —
+    UPDATE only, never INSERT.
   - data/shadow_loop_verifier_overrides.jsonl is APPEND-ONLY (the file
     services/shadow_loop/override_metric.py reads).
+
+PRO-928 — ported from the single `promotion_status` column to the three-axis
+state model (readiness_state / approval_state / promotion_state). This is a
+minimal keep-it-working port of the existing correct/wrong/defer verdict flow;
+the full three-door verdict model is Ticket 3b.
 """
 
 from __future__ import annotations
@@ -30,11 +36,6 @@ from typing import Any
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_POOL_DB = REPO_ROOT / "data" / "miru_learning_pool.db"
 DEFAULT_OVERRIDES_JSONL = REPO_ROOT / "data" / "shadow_loop_verifier_overrides.jsonl"
-
-# Set of promotion_status values that can land in the review queue.
-# `experimental` rows show up only if they have at least one inconclusive
-# field — operator needs to look. `review-ready` always shows up.
-_QUEUE_STATUSES = ("review-ready", "experimental")
 
 
 def _utc_now_iso() -> str:
@@ -100,9 +101,10 @@ def fetch_queue(
 ) -> dict[str, Any]:
     """Return queue items + total count.
 
-    Surfaces rows in `review-ready` first, then `experimental` rows that have
-    at least one inconclusive field (those are the ones the operator needs
-    to look at — clean experimental rows aren't review work).
+    The queue is rows awaiting an operator verdict (`approval_state =
+    'pending_review'`). Rows blocked by a guardrail surface first; a clean
+    `ready_for_review` row with no inconclusive fields is not review work and
+    is filtered out.
     """
     pool_db = Path(pool_db) if pool_db is not None else DEFAULT_POOL_DB
     if not pool_db.exists():
@@ -112,16 +114,16 @@ def fetch_queue(
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
             """
-            SELECT canonical_code, print_id, contributing_model, promotion_status,
+            SELECT canonical_code, print_id, contributing_model,
+                   readiness_state, approval_state, promotion_state,
                    confidence_score, validator_agreement, created_at, last_verified
             FROM learned_cards
-            WHERE promotion_status IN (?, ?)
+            WHERE approval_state = 'pending_review'
             ORDER BY
-              CASE promotion_status WHEN 'review-ready' THEN 0 ELSE 1 END,
+              CASE readiness_state WHEN 'blocked_by_guardrail' THEN 0 ELSE 1 END,
               last_verified DESC NULLS LAST,
               created_at DESC
             """,
-            _QUEUE_STATUSES,
         ).fetchall()
     finally:
         conn.close()
@@ -130,15 +132,19 @@ def fetch_queue(
     for row in rows:
         row_dict = dict(row)
         inconclusive = _inconclusive_field_count(row_dict)
-        # Experimental rows without inconclusive fields are not review work.
-        if row_dict["promotion_status"] == "experimental" and inconclusive == 0:
+        # A clean `ready_for_review` row (Stage 3 passed, no inconclusive
+        # fields) is not review work — only surface rows blocked by a
+        # guardrail or carrying at least one inconclusive field.
+        if row_dict["readiness_state"] != "blocked_by_guardrail" and inconclusive == 0:
             continue
         items.append(
             {
                 "canonical_code": row_dict["canonical_code"],
                 "print_id": row_dict["print_id"],
                 "contributing_model": row_dict.get("contributing_model") or "",
-                "promotion_status": row_dict["promotion_status"],
+                "readiness_state": row_dict["readiness_state"],
+                "approval_state": row_dict["approval_state"],
+                "promotion_state": row_dict["promotion_state"],
                 "confidence_score": float(row_dict.get("confidence_score") or 0.0),
                 "inconclusive_field_count": inconclusive,
                 "created_at": row_dict.get("created_at") or "",
@@ -167,7 +173,8 @@ def fetch_item(
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             """
-            SELECT canonical_code, print_id, contributing_model, promotion_status,
+            SELECT canonical_code, print_id, contributing_model,
+                   readiness_state, approval_state, promotion_state,
                    confidence_score, validator_agreement
             FROM learned_cards
             WHERE canonical_code = ? AND print_id = ? AND contributing_model = ?
@@ -184,7 +191,9 @@ def fetch_item(
         "canonical_code": row_dict["canonical_code"],
         "print_id": row_dict["print_id"],
         "contributing_model": row_dict.get("contributing_model") or "",
-        "promotion_status": row_dict["promotion_status"],
+        "readiness_state": row_dict["readiness_state"],
+        "approval_state": row_dict["approval_state"],
+        "promotion_state": row_dict["promotion_state"],
         "confidence_score": float(row_dict.get("confidence_score") or 0.0),
         "field_outcomes": _parse_field_outcomes(row_dict),
         "bandai_url": _bandai_url(canonical_code),
@@ -192,11 +201,14 @@ def fetch_item(
     }
 
 
-# Promotion-status transitions on verdict commit. Defer is intentionally
-# absent — defer does NOT change the row's state, only appends to JSONL.
-_VERDICT_TO_STATUS: dict[str, str] = {
-    "correct": "promoted",
-    "wrong": "rejected",
+# State transitions on verdict commit, as (approval_state, promotion_state).
+# Defer is intentionally absent — defer does NOT change the row's state, it
+# only appends to JSONL; the card stays `pending_review`, held for the
+# operator. Minimal keep-it-working port of the correct/wrong/defer verdict
+# model; the full three-door verdict model is Ticket 3b.
+_VERDICT_TO_STATE: dict[str, tuple[str, str]] = {
+    "correct": ("approved_for_candidate", "review_approved_candidate"),
+    "wrong": ("rejected", "blocked_from_promotion"),
 }
 
 
@@ -214,7 +226,7 @@ def submit_verdict(
     promotion_status.
 
     Returns the response envelope the UI expects:
-        { ok: bool, new_promotion_status: str, event_logged: bool }
+        { ok: bool, new_approval_state: str, event_logged: bool }
 
     Raises ValueError on invalid input (bubbled to a 400 by the route).
     """
@@ -232,20 +244,20 @@ def submit_verdict(
 
     # Read the current verifier outcome so we can record what the operator
     # was reacting to — useful for the verifier-error-rate metric.
-    current_status = "experimental"
+    current_approval = "pending_review"
     current_outcome = "inconclusive"
     if pool_db.exists():
         conn_ro = sqlite3.connect(f"file:{pool_db}?mode=ro", uri=True)
         try:
             row = conn_ro.execute(
-                "SELECT promotion_status, confidence_score FROM learned_cards "
+                "SELECT approval_state, confidence_score FROM learned_cards "
                 "WHERE canonical_code = ? AND print_id = ? AND contributing_model = ? LIMIT 1",
                 (canonical_code, print_id, contributing_model),
             ).fetchone()
         finally:
             conn_ro.close()
         if row is not None:
-            current_status = row[0] or "experimental"
+            current_approval = row[0] or "pending_review"
             score = row[1] or 0.0
             if score >= 1.0:
                 current_outcome = "verified-correct"
@@ -268,16 +280,17 @@ def submit_verdict(
     with overrides_jsonl.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(event) + "\n")
 
-    # Update promotion_status only on correct/wrong (defer leaves it alone).
-    new_status = current_status
-    if verdict in _VERDICT_TO_STATUS and pool_db.exists():
-        new_status = _VERDICT_TO_STATUS[verdict]
+    # Update approval_state + promotion_state only on correct/wrong (defer
+    # leaves the row pending_review — it stays held for the operator).
+    new_approval = current_approval
+    if verdict in _VERDICT_TO_STATE and pool_db.exists():
+        new_approval, new_promotion = _VERDICT_TO_STATE[verdict]
         conn_rw = sqlite3.connect(pool_db)
         try:
             conn_rw.execute(
-                "UPDATE learned_cards SET promotion_status = ? "
+                "UPDATE learned_cards SET approval_state = ?, promotion_state = ? "
                 "WHERE canonical_code = ? AND print_id = ? AND contributing_model = ?",
-                (new_status, canonical_code, print_id, contributing_model),
+                (new_approval, new_promotion, canonical_code, print_id, contributing_model),
             )
             conn_rw.commit()
         finally:
@@ -285,6 +298,6 @@ def submit_verdict(
 
     return {
         "ok": True,
-        "new_promotion_status": new_status,
+        "new_approval_state": new_approval,
         "event_logged": True,
     }

@@ -33,27 +33,27 @@ def insert_learned_row(
     canonical_code: str,
     print_id: str,
     contributing_model: str = "qwen2.5:7b",
-    promotion_status: str = "experimental",
     confidence_score: float = 0.0,
     last_verified: str = "2026-05-18T03:00:00Z",
 ) -> None:
-    """Insert a minimal learned_cards row with explicit last_verified for time-sensitive tests.
+    """Insert a minimal learned_cards row with explicit last_verified for
+    time-sensitive tests.
 
-    `promotion_status` must be one of the values allowed by the learned_cards CHECK
-    constraint: 'experimental', 'review-ready', 'promoted', 'rejected'.
+    The three-axis state columns (readiness_state / approval_state /
+    promotion_state, PRO-928) take their schema DEFAULTs — these tests key off
+    `last_verified`, not review state.
     """
     conn = sqlite3.connect(pool_db)
     try:
         conn.execute(
             "INSERT INTO learned_cards "
             "(canonical_code, print_id, contributing_model, "
-            "promotion_status, confidence_score, last_verified, learned_from) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "confidence_score, last_verified, learned_from) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
             (
                 canonical_code,
                 print_id,
                 contributing_model,
-                promotion_status,
                 confidence_score,
                 last_verified,
                 "test_fixture",

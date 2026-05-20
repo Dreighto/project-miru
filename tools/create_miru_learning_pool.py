@@ -4,8 +4,13 @@ PRO-907 — shadow-loop learning database.
 
 This is the working memory for the OP01 shadow-evaluation loop (PRO-908).
 It mirrors card_catalog.db's card/variant structure so a promoted row slots
-back into card_catalog with no transformation, PLUS six learning-only
-metadata columns.
+back into card_catalog with no transformation, PLUS ten learning-only
+metadata columns (see METADATA_COLUMNS).
+
+This script builds the CURRENT schema directly — fresh DBs land already at
+the latest shape, no migration chain needed. The historical migrations
+(PRO-926 qa-flow, PRO-928 state-model) only exist to upgrade DBs created by
+an older version of this script.
 
 Design notes:
   * The mirror is built live from card_catalog.db via PRAGMA table_info — it
@@ -38,19 +43,44 @@ ROOT = Path(__file__).resolve().parent.parent
 CATALOG_DB = ROOT / "data" / "card_catalog.db"
 DEFAULT_POOL_DB = ROOT / "data" / "miru_learning_pool.db"
 
+# Ordered to match the post-migration column layout exactly: an older DB
+# upgraded through PRO-926 (qa-flow) + PRO-928 (state-model) ends up with this
+# same column order, so a fresh build and a migrated build are byte-identical
+# in shape. Do not reorder without re-checking both migration scripts.
 METADATA_COLUMNS: list[tuple[str, str, str]] = [
     # (column, type, ddl-tail)
     ("confidence_score", "REAL", ""),
     ("learned_from", "TEXT", ""),
     ("last_verified", "TEXT", ""),
-    (
-        "promotion_status",
-        "TEXT",
-        "NOT NULL DEFAULT 'experimental' "
-        "CHECK (promotion_status IN ('experimental','review-ready','promoted','rejected'))",
-    ),
     ("validator_agreement", "TEXT", ""),
     ("contributing_model", "TEXT", ""),
+    # PRO-926 (qa-flow) additions.
+    ("source_trace_json", "TEXT", "DEFAULT NULL"),
+    ("derived_from_json", "TEXT", "DEFAULT '[]'"),
+    # PRO-928 — three-axis state model (BORROW decision). Replaces the old
+    # single `promotion_status` column. Each DEFAULT is a valid vocabulary
+    # value; '' on promotion_state is the real pre-promotion state, not absence.
+    (
+        "readiness_state",
+        "TEXT",
+        "NOT NULL DEFAULT 'ready_for_review' "
+        "CHECK (readiness_state IN "
+        "('not_ready','ready_for_review','blocked_by_guardrail','ready_for_publish_candidate'))",
+    ),
+    (
+        "approval_state",
+        "TEXT",
+        "NOT NULL DEFAULT 'pending_review' "
+        "CHECK (approval_state IN "
+        "('pending_review','approved_for_candidate','rejected','deferred'))",
+    ),
+    (
+        "promotion_state",
+        "TEXT",
+        "NOT NULL DEFAULT '' "
+        "CHECK (promotion_state IN "
+        "('', 'review_approved_candidate', 'blocked_from_promotion', 'deferred'))",
+    ),
 ]
 
 
@@ -135,8 +165,8 @@ def build_create_table(cards_cols: list[dict], variants_cols: list[dict]) -> tup
 INDEXES: list[str] = [
     "CREATE INDEX IF NOT EXISTS idx_learned_cards_identity "
     "ON learned_cards(canonical_code, print_id)",
-    "CREATE INDEX IF NOT EXISTS idx_learned_cards_promotion_status "
-    "ON learned_cards(promotion_status)",
+    "CREATE INDEX IF NOT EXISTS idx_learned_cards_readiness_state "
+    "ON learned_cards(readiness_state)",
     "CREATE INDEX IF NOT EXISTS idx_learned_cards_contributing_model "
     "ON learned_cards(contributing_model)",
     "CREATE INDEX IF NOT EXISTS idx_learned_cards_last_verified " "ON learned_cards(last_verified)",

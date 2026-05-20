@@ -87,9 +87,9 @@ def test_respects_custom_max_age(fresh_pool_db: Path):
         conn.execute(
             "INSERT INTO learned_cards "
             "(canonical_code, print_id, contributing_model, "
-            "promotion_status, confidence_score, last_verified, learned_from) "
-            "VALUES (?, ?, ?, ?, ?, datetime('now', '-2 hours'), ?)",
-            ("OP01-005", "OP01-005", "qwen2.5:7b", "experimental", 0.0, "test"),
+            "confidence_score, last_verified, learned_from) "
+            "VALUES (?, ?, ?, ?, datetime('now', '-2 hours'), ?)",
+            ("OP01-005", "OP01-005", "qwen2.5:7b", 0.0, "test"),
         )
         conn.commit()
     finally:
