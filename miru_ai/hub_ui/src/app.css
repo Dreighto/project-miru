@@ -1,20 +1,47 @@
 @import 'tailwindcss';
 
+/*
+ * Ink — the dev-page design system (evolved 2026-05-21).
+ * A dark, brass-accent identity built on a real elevation ladder: surfaces
+ * lighten and pick up a faint cool tint as they rise. Token NAMES are stable
+ * (existing classes keep working); values evolved + new tokens added for depth.
+ * See: .claude/skills/immersive-ui-craft + data/research/2026-05-21_dev_page_design_research.md
+ */
+
 @theme {
-  --color-bg: #0c0e10;
-  --color-surface: #14171a;
-  --color-surface2: #1c2024;
-  --color-border: #2a3038;
-  --color-text: #ece8df;
-  --color-text-dim: #8a8680;
-  --color-text-faint: #5f5b55;
+  /* ── Elevation ladder — deepest → highest ───────────────────────── */
+  --color-bg: #0a0c0f; /* the page itself */
+  --color-surface: #111418; /* base content surface */
+  --color-surface2: #181c22; /* raised — cards, panels */
+  --color-surface3: #20252d; /* higher — hover, nested, elevated panel */
+  --color-overlay: #2a3039; /* popovers, sheets, sticky bars */
+
+  /* ── Borders ────────────────────────────────────────────────────── */
+  --color-border: #2c323b; /* default 1px boundary */
+  --color-border-strong: #3a414c; /* emphasis divider */
+
+  /* ── Text ramp ──────────────────────────────────────────────────── */
+  --color-text: #ece8df; /* warm off-white — body, headings */
+  --color-text-dim: #9a958c; /* secondary — supporting copy */
+  --color-text-faint: #6b665e; /* tertiary — labels, timestamps */
+
+  /* ── Accent — brass, the single UI accent ───────────────────────── */
   --color-accent: #c89860;
-  --color-on-accent: #14171a;
+  --color-accent-dim: #8a7350; /* muted brass — subtle accent, borders */
+  --color-on-accent: #14171a; /* text on a brass fill */
+
+  /* ── Semantic state ─────────────────────────────────────────────── */
   --color-positive: #8fbe7a;
   --color-warning: #d4a347;
   --color-negative: #d97070;
-  --font-sans: 'Geist', system-ui, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  /* ── Voyage-only sea accent — do NOT use off the Voyage surface ──── */
+  --color-sea: #57a3b5;
+
+  /* ── Typography ─────────────────────────────────────────────────── */
+  --font-sans: 'Geist', system-ui, sans-serif; /* UI + body */
+  --font-mono: 'Geist Mono', ui-monospace, monospace; /* data, IDs, ports */
+  --font-display: 'Fraunces', Georgia, serif; /* Voyage display character */
 }
 
 @layer base {
@@ -22,5 +49,7 @@
     background-color: var(--color-bg);
     color: var(--color-text);
     font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
