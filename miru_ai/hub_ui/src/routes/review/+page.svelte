@@ -158,7 +158,7 @@
 </script>
 
 <main
-	class="mx-auto max-w-5xl p-6 md:flex md:h-[calc(100dvh-49px)] md:flex-col md:overflow-hidden"
+	class="mx-auto max-w-5xl p-4 sm:p-6 md:flex md:h-[calc(100dvh-61px)] md:flex-col md:overflow-hidden"
 >
 	<h1 class="mb-6 shrink-0 font-sans text-xl font-semibold text-text">Review</h1>
 
