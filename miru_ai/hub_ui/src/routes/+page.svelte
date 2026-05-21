@@ -135,7 +135,7 @@
 	}
 </script>
 
-<main class="mx-auto max-w-4xl space-y-8 p-6">
+<main class="mx-auto max-w-5xl space-y-8 p-6">
 	{#if data.flaskDown}
 		<div
 			role="alert"
@@ -150,9 +150,10 @@
 		<section aria-label="Glance status" data-testid="glance-status-section">
 			<h1 class="mb-6 text-xl font-sans font-semibold text-text">Glance</h1>
 
+			<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 			<!-- Q1: Is everything up? -->
 			<div
-				class="mb-4 rounded border border-border bg-surface p-4"
+				class="rounded border border-border bg-surface p-4 md:col-span-2"
 				data-testid="q1-services-section"
 			>
 				<h2 class="mb-3 text-xs font-mono uppercase tracking-widest text-text-faint">
@@ -167,7 +168,7 @@
 								aria-hidden="true"
 							></span>
 							<span class="text-text-dim w-16 shrink-0 font-mono text-xs">18765</span>
-							<span class="{textClass[miru18765Tone]} min-w-[60px]">
+							<span class="{textClass[miru18765Tone]} w-20">
 								{data.devStatus?.surface_status?.miru_ai?.status ?? 'Running'}
 							</span>
 							<span class="text-text-faint text-xs">Miru AI</span>
@@ -190,19 +191,19 @@
 									>cancel</button>
 								{:else}
 									<button
-										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
 										disabled={!!controls['miru-ai'].inflight}
 										onclick={() => triggerControl('miru-ai', 'start')}
 										data-testid="ctrl-miru-ai-start"
 									>start</button>
 									<button
-										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
 										disabled={!!controls['miru-ai'].inflight}
 										onclick={() => triggerControl('miru-ai', 'stop')}
 										data-testid="ctrl-miru-ai-stop"
 									>stop</button>
 									<button
-										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-accent hover:bg-surface2 disabled:opacity-40"
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-accent hover:bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
 										disabled={!!controls['miru-ai'].inflight}
 										onclick={() => triggerControl('miru-ai', 'restart')}
 										data-testid="ctrl-miru-ai-restart"
@@ -230,7 +231,7 @@
 								aria-hidden="true"
 							></span>
 							<span class="text-text-dim w-16 shrink-0 font-mono text-xs">18080</span>
-							<span class="{textClass[miru18080Tone]} min-w-[60px]">
+							<span class="{textClass[miru18080Tone]} w-20">
 								{data.devStatus?.project_miru?.reachable ? 'Online' : 'Offline'}
 							</span>
 							<span class="text-text-faint text-xs">Project Miru</span>
@@ -254,19 +255,19 @@
 									>cancel</button>
 								{:else}
 									<button
-										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
 										disabled={!!controls['pm-storefront'].inflight}
 										onclick={() => triggerControl('pm-storefront', 'start')}
 										data-testid="ctrl-pm-storefront-start"
 									>start</button>
 									<button
-										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
 										disabled={!!controls['pm-storefront'].inflight}
 										onclick={() => triggerControl('pm-storefront', 'stop')}
 										data-testid="ctrl-pm-storefront-stop"
 									>stop</button>
 									<button
-										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-accent hover:bg-surface2 disabled:opacity-40"
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-accent hover:bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
 										disabled={!!controls['pm-storefront'].inflight}
 										onclick={() => triggerControl('pm-storefront', 'restart')}
 										data-testid="ctrl-pm-storefront-restart"
@@ -294,7 +295,7 @@
 								aria-hidden="true"
 							></span>
 							<span class="text-text-dim w-16 shrink-0 font-mono text-xs">learner</span>
-							<span class="{textClass[learnerToneValue]} min-w-[60px]">
+							<span class="{textClass[learnerToneValue]} w-20">
 								{data.devStatus?.learning_engine?.learner_state ?? 'Unknown'}
 							</span>
 							<span class="text-text-faint text-xs">Learning worker</span>
@@ -317,19 +318,19 @@
 									>cancel</button>
 								{:else}
 									<button
-										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
 										disabled={!!controls['learner'].inflight}
 										onclick={() => triggerControl('learner', 'start')}
 										data-testid="ctrl-learner-start"
 									>start</button>
 									<button
-										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
 										disabled={!!controls['learner'].inflight}
 										onclick={() => triggerControl('learner', 'stop')}
 										data-testid="ctrl-learner-stop"
 									>stop</button>
 									<button
-										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-accent hover:bg-surface2 disabled:opacity-40"
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-accent hover:bg-surface2 disabled:opacity-40 disabled:cursor-not-allowed"
 										disabled={!!controls['learner'].inflight}
 										onclick={() => triggerControl('learner', 'restart')}
 										data-testid="ctrl-learner-restart"
@@ -353,7 +354,7 @@
 
 			<!-- Q2: What is Miru doing right now? -->
 			<div
-				class="mb-4 rounded border border-border bg-surface p-4"
+				class="rounded border border-border bg-surface p-4"
 				data-testid="q2-activity-section"
 			>
 				<h2 class="mb-2 text-xs font-mono uppercase tracking-widest text-text-faint">
@@ -364,7 +365,7 @@
 
 			<!-- Q3: Is anything wrong? -->
 			<div
-				class="mb-4 rounded border border-border bg-surface p-4"
+				class="rounded border border-border bg-surface p-4"
 				data-testid="q3-issues-section"
 			>
 				<h2 class="mb-2 text-xs font-mono uppercase tracking-widest text-text-faint">
@@ -379,7 +380,7 @@
 			</div>
 
 			<!-- Q4: What's waiting for me? -->
-			<div class="rounded border border-border bg-surface p-4" data-testid="q4-waiting-section">
+			<div class="rounded border border-border bg-surface p-4 md:col-span-2" data-testid="q4-waiting-section">
 				<h2 class="mb-2 text-xs font-mono uppercase tracking-widest text-text-faint">
 					What's waiting for me?
 				</h2>
@@ -394,6 +395,7 @@
 				{:else}
 					<p class="text-sm text-positive">Queue is clear. Nothing held for review.</p>
 				{/if}
+			</div>
 			</div>
 		</section>
 
@@ -421,7 +423,7 @@
 					{/each}
 				</ul>
 			{:else}
-				<p class="text-sm text-text-faint">No recent activity.</p>
+				<div class="rounded border border-dashed border-border px-4 py-3 text-sm text-text-faint">No recent activity.</div>
 			{/if}
 		</section>
 
@@ -436,7 +438,7 @@
 							{#if metric.available}
 								<div class="h-2 w-36 overflow-hidden rounded-full bg-surface2">
 									<div
-										class="h-full rounded-full bg-accent"
+										class="h-full rounded-full bg-text-dim"
 										style="width: {metric.percent}%"
 									></div>
 								</div>
@@ -449,7 +451,7 @@
 				</ul>
 				<p class="mt-2 font-mono text-xs text-text-faint">Updated {data.metricsUpdatedAt}</p>
 			{:else}
-				<p class="text-sm text-text-faint">No metrics available.</p>
+				<div class="rounded border border-dashed border-border px-4 py-3 text-sm text-text-faint">No metrics available.</div>
 			{/if}
 		</section>
 	{/if}
