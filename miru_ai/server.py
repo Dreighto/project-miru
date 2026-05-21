@@ -609,182 +609,25 @@ HOME_HIGHLIGHTS = (
     },
 )
 
-VOYAGE_ISLANDS = (
-    {
-        "key": "east_blue",
-        "name": "East Blue",
-        "short_name": "East Blue",
-        "sprite": "islands/island_east_blue.png",
-        "stage": "East Blue",
-        "map_x": 10,
-        "map_y": 75,
-    },
-    {
-        "key": "reverse_mountain",
-        "name": "Reverse Mountain",
-        "short_name": "Reverse Mountain",
-        "sprite": "islands/island_reverse_mountain.png",
-        "stage": "Grand Line Approach",
-        "map_x": 23,
-        "map_y": 57,
-    },
-    {
-        "key": "alabasta",
-        "name": "Alabasta",
-        "short_name": "Alabasta",
-        "sprite": "islands/island_alabasta.png",
-        "stage": "Grand Line",
-        "map_x": 35,
-        "map_y": 66,
-    },
-    {
-        "key": "skypiea",
-        "name": "Skypiea",
-        "short_name": "Skypiea",
-        "sprite": "islands/island_skypiea.png",
-        "stage": "Grand Line",
-        "map_x": 45,
-        "map_y": 42,
-    },
-    {
-        "key": "water_7",
-        "name": "Water 7",
-        "short_name": "Water 7",
-        "sprite": "islands/island_water_7.png",
-        "stage": "Grand Line",
-        "map_x": 56,
-        "map_y": 56,
-    },
-    {
-        "key": "thriller_bark",
-        "name": "Thriller Bark",
-        "short_name": "Thriller Bark",
-        "sprite": "islands/island_thriller_bark.png",
-        "stage": "Grand Line",
-        "map_x": 66,
-        "map_y": 42,
-    },
-    {
-        "key": "fishman_island",
-        "name": "Fishman Island",
-        "short_name": "Fishman Island",
-        "sprite": "islands/island_fishman_island.png",
-        "stage": "New World",
-        "map_x": 74,
-        "map_y": 64,
-    },
-    {
-        "key": "dressrosa",
-        "name": "Dressrosa",
-        "short_name": "Dressrosa",
-        "sprite": "islands/island_dressrosa.png",
-        "stage": "New World",
-        "map_x": 83,
-        "map_y": 48,
-    },
-    {
-        "key": "whole_cake",
-        "name": "Whole Cake",
-        "short_name": "Whole Cake",
-        "sprite": "islands/island_whole_cake.png",
-        "stage": "New World",
-        "map_x": 90,
-        "map_y": 62,
-    },
-    {
-        "key": "wano",
-        "name": "Wano",
-        "short_name": "Wano",
-        "sprite": "islands/island_wano.png",
-        "stage": "New World",
-        "map_x": 86,
-        "map_y": 29,
-    },
-    {
-        "key": "egghead",
-        "name": "Egghead",
-        "short_name": "Egghead",
-        "sprite": "islands/island_egghead.png",
-        "stage": "Final Voyage",
-        "map_x": 69,
-        "map_y": 15,
-    },
-    {
-        "key": "laugh_tale",
-        "name": "Laugh Tale",
-        "short_name": "Laugh Tale",
-        "sprite": "islands/island_laugh_tale.png",
-        "stage": "Final Voyage",
-        "map_x": 50,
-        "map_y": 11,
-    },
+# Canonical One Piece island milestones in story order.
+# Islands are milestones on the route; TCG sets are the distance measure.
+_VOYAGE_ISLAND_MILESTONES: tuple[dict[str, str], ...] = (
+    {"key": "east_blue", "name": "East Blue"},
+    {"key": "reverse_mountain", "name": "Reverse Mountain"},
+    {"key": "whisky_peak", "name": "Whisky Peak"},
+    {"key": "alabasta", "name": "Alabasta"},
+    {"key": "skypiea", "name": "Skypiea"},
+    {"key": "water_7", "name": "Water 7"},
+    {"key": "thriller_bark", "name": "Thriller Bark"},
+    {"key": "sabaody", "name": "Sabaody Archipelago"},
+    {"key": "fishman_island", "name": "Fish-Man Island"},
+    {"key": "punk_hazard", "name": "Punk Hazard"},
+    {"key": "dressrosa", "name": "Dressrosa"},
+    {"key": "whole_cake", "name": "Whole Cake Island"},
+    {"key": "wano", "name": "Wano"},
+    {"key": "egghead", "name": "Egghead"},
+    {"key": "elbaf", "name": "Elbaf"},
 )
-
-VOYAGE_BOSSES = (
-    {"name": "Alvida", "sprite": "bosses/boss_alvida.png", "island_key": "east_blue"},
-    {"name": "Kuro", "sprite": "bosses/boss_kuro.png", "island_key": "east_blue"},
-    {"name": "Krieg", "sprite": "bosses/boss_krieg.png", "island_key": "east_blue"},
-    {"name": "Buggy", "sprite": "bosses/boss_buggy.png", "island_key": "east_blue"},
-    {"name": "Arlong", "sprite": "bosses/boss_arlong.png", "island_key": "east_blue"},
-    {
-        "name": "Crocodile",
-        "sprite": "bosses/boss_crocodile.png",
-        "island_key": "alabasta",
-    },
-    {"name": "Enel", "sprite": "bosses/boss_enel.png", "island_key": "skypiea"},
-    {"name": "Lucci", "sprite": "bosses/boss_lucci.png", "island_key": "water_7"},
-    {"name": "Moria", "sprite": "bosses/boss_moria.png", "island_key": "thriller_bark"},
-    {
-        "name": "Doflamingo",
-        "sprite": "bosses/boss_doflamingo.png",
-        "island_key": "dressrosa",
-    },
-    {
-        "name": "Katakuri",
-        "sprite": "bosses/boss_katakuri.png",
-        "island_key": "whole_cake",
-    },
-    {
-        "name": "Big Mom",
-        "sprite": "bosses/boss_big_mom.png",
-        "island_key": "whole_cake",
-    },
-    {"name": "Kaido", "sprite": "bosses/boss_kaido.png", "island_key": "wano"},
-    {
-        "name": "Five Elders",
-        "sprite": "bosses/boss_five_elders.png",
-        "island_key": "egghead",
-    },
-    {"name": "Imu", "sprite": "bosses/boss_imu.png", "island_key": "egghead"},
-    {
-        "name": "Blackbeard",
-        "sprite": "bosses/boss_blackbeard.png",
-        "island_key": "laugh_tale",
-    },
-)
-
-VOYAGE_ROUTE_MARKERS = {
-    "completed": "routes/route_completed_marker.png",
-    "current": "routes/route_current_ship_marker.png",
-    "next": "routes/route_next_destination_marker.png",
-    "planned": "routes/route_checkpoint_marker.png",
-    "finish": "routes/route_finish_marker.png",
-}
-
-VOYAGE_SHARED_ASSETS = {
-    "ship": "ships/polar_tang_sail_01.png",
-    "ship_alt": "ships/polar_tang_sail_02.png",
-    "travel_ship": "travel/travel_ship_move_01.png",
-    "wake_primary": "travel/travel_wake_01.png",
-    "wake_secondary": "travel/travel_long_wake_01.png",
-    "captain_log": "ui/ui_log_pose.png",
-    "compass": "ui/ui_compass_open.png",
-    "vivre": "ui/ui_vivre_card.png",
-    "celebration": "characters/barto_victory.png",
-    "celebration_alt": "characters/barto_fanboy.png",
-    "sparkle": "effects/effect_glow_sparkle.png",
-    "confetti": "effects/effect_confetti.png",
-}
 
 TRAINING_STAGE_BLUEPRINT = (
     (
@@ -1337,329 +1180,190 @@ def _build_training_status_uncached() -> dict[str, Any]:
         "stats": stats_clear,
     }
     training_status["intelligence_progress"] = build_intelligence_progress(training_status)
-    training_status["voyage"] = ensure_voyage_state(training_status)
     return training_status
 
 
-def voyage_asset_url(relative_path: str) -> str:
-    return url_for("static", filename=f"icons/miru_voyage/{relative_path}")
+def _load_catalog_sets_for_voyage(db_path: Path) -> list[dict[str, Any]]:
+    """Load distinct (set_code, set_name) from catalog DB sorted by set_code."""
+    if not db_path.is_file():
+        return []
+    try:
+        with closing(sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)) as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT set_code, set_name FROM cards "
+                "WHERE set_code IS NOT NULL AND trim(set_code) != '' "
+                "ORDER BY set_code"
+            ).fetchall()
+        return [
+            {"set_code": str(r[0] or "").strip(), "set_name": str(r[1] or "").strip()}
+            for r in rows
+            if str(r[0] or "").strip()
+        ]
+    except sqlite3.Error:
+        return []
 
 
-def safe_voyage_asset_url(
-    relative_path: str | None, fallback_relative_path: str = "ui/ui_log_pose.png"
-) -> str:
-    voyage_root = STATIC_DIR / "icons" / "miru_voyage"
-    candidate = voyage_root / str(relative_path or "")
-    if relative_path and candidate.is_file():
-        return voyage_asset_url(relative_path)
-    fallback_candidate = voyage_root / fallback_relative_path
-    if fallback_candidate.is_file():
-        return voyage_asset_url(fallback_relative_path)
-    return url_for("static", filename="icons/miru-fruit.png")
+def _load_set_dossier_verification(
+    dossier_db_path: Path, set_codes: list[str]
+) -> dict[str, tuple[int, int]]:
+    """Return {set_code: (verified_count, total_in_dossier)} from dossier DB."""
+    if not dossier_db_path.is_file() or not set_codes:
+        return {}
+    upper_codes = [c.upper() for c in set_codes]
+    placeholders = ",".join("?" * len(upper_codes))
+    try:
+        with closing(
+            sqlite3.connect(f"file:{dossier_db_path.as_posix()}?mode=ro", uri=True)
+        ) as conn:
+            rows = conn.execute(
+                f"""
+                SELECT upper(coalesce(set_code, '')),
+                       COUNT(*),
+                       SUM(CASE WHEN lower(coalesce(overall_state, '')) = 'verified'
+                                THEN 1 ELSE 0 END)
+                FROM cards
+                WHERE upper(coalesce(set_code, '')) IN ({placeholders})
+                GROUP BY upper(coalesce(set_code, ''))
+                """,
+                upper_codes,
+            ).fetchall()
+        return {str(r[0]): (int(r[2] or 0), int(r[1] or 0)) for r in rows}
+    except sqlite3.Error:
+        return {}
 
 
-def voyage_shared_asset_url(key: str, fallback_relative_path: str = "ui/ui_log_pose.png") -> str:
-    return safe_voyage_asset_url(VOYAGE_SHARED_ASSETS.get(key), fallback_relative_path)
+def _build_voyage_log_from_recurrence() -> list[dict[str, Any]]:
+    """Build voyage log from recurrence pattern aggregates (never per-card)."""
+    from miru_ai.recurrence import build_candidate_queue_payload
 
+    try:
+        candidates = build_candidate_queue_payload()
+    except Exception:
+        return []
 
-def build_voyage_assets() -> dict[str, str]:
-    fallbacks = {
-        "ship": "ships/polar_tang_idle.png",
-        "ship_alt": "ships/polar_tang_sail_01.png",
-        "travel_ship": "ships/polar_tang_sail_01.png",
-        "wake_primary": "effects/effect_wave_loop.png",
-        "wake_secondary": "effects/effect_wave_loop.png",
-        "captain_log": "ui/ui_log_pose.png",
-        "compass": "ui/ui_compass_open.png",
-        "vivre": "ui/ui_vivre_card.png",
-        "celebration": "characters/barto_idle.png",
-        "celebration_alt": "characters/barto_fanboy.png",
-        "sparkle": "effects/effect_glow_sparkle.png",
-        "confetti": "effects/effect_confetti.png",
-    }
-    return {
-        key: voyage_shared_asset_url(key, fallback_relative_path=fallback)
-        for key, fallback in fallbacks.items()
-    }
+    standard: list[dict[str, Any]] = candidates.get("standard") or []
+    elevated: list[dict[str, Any]] = candidates.get("elevated") or []
 
+    issue_type_counts: dict[str, int] = {}
+    for cand in standard + elevated:
+        issue_type = str(cand.get("issue_type") or "unknown").strip()
+        if issue_type:
+            issue_type_counts[issue_type] = issue_type_counts.get(issue_type, 0) + 1
 
-def build_voyage_location(island: dict[str, str], status: str) -> dict[str, str]:
-    return {
-        "key": island.get("key", "planned"),
-        "name": island.get("name", "Planned"),
-        "short_name": island.get("short_name", island.get("name", "Planned")),
-        "stage": island.get("stage", "Planned"),
-        "status": status,
-        "map_x": int(island.get("map_x", 0) or 0),
-        "map_y": int(island.get("map_y", 0) or 0),
-        "sprite_url": safe_voyage_asset_url(island.get("sprite"), "islands/island_east_blue.png"),
-    }
-
-
-def build_voyage_boss(boss: dict[str, str], status: str) -> dict[str, str]:
-    return {
-        "name": boss.get("name", "Planned"),
-        "island_key": boss.get("island_key", ""),
-        "status": status,
-        "sprite_url": safe_voyage_asset_url(boss.get("sprite"), "characters/barto_idle.png"),
-    }
-
-
-def build_voyage_log_entries(
-    current_island_index: int,
-    defeated_boss_count: int,
-    next_island: dict[str, str] | None,
-) -> list[dict[str, str]]:
-    assets = build_voyage_assets()
-    entries: list[dict[str, str]] = []
-    if defeated_boss_count > 0:
-        last_boss = VOYAGE_BOSSES[defeated_boss_count - 1]
-        entries.append(
+    log_entries: list[dict[str, Any]] = []
+    for issue_type, count in sorted(issue_type_counts.items(), key=lambda x: -x[1])[:6]:
+        label = issue_type.replace("_", " ").title()
+        log_entries.append(
             {
-                "message": f"Defeated {last_boss['name']}",
-                "tone": "victory",
-                "icon_url": assets["confetti"],
+                "kind": "pattern",
+                "issue_type": issue_type,
+                "count": count,
+                "message": f"{label} — {count} recurring instance{'s' if count != 1 else ''}",
             }
         )
-    if current_island_index > 0:
-        entries.append(
+    if elevated:
+        n = len(elevated)
+        log_entries.insert(
+            0,
             {
-                "message": f"Entered {VOYAGE_ISLANDS[current_island_index]['name']}",
-                "tone": "travel",
-                "icon_url": assets["compass"],
-            }
+                "kind": "alert",
+                "issue_type": "elevated_review",
+                "count": n,
+                "message": f"{n} pattern{'s' if n != 1 else ''} flagged for elevated review",
+            },
         )
-        entries.append(
-            {
-                "message": f"Left {VOYAGE_ISLANDS[current_island_index - 1]['name']}",
-                "tone": "travel",
-                "icon_url": assets["captain_log"],
-            }
-        )
-    if current_island_index >= 6:
-        entries.append(
-            {
-                "message": "Entered the New World",
-                "tone": "travel",
-                "icon_url": assets["compass"],
-            }
-        )
-    elif current_island_index >= 1:
-        entries.append(
-            {
-                "message": "Entered the Grand Line",
-                "tone": "travel",
-                "icon_url": assets["compass"],
-            }
-        )
-    if current_island_index >= 10:
-        entries.append(
-            {
-                "message": "Left Wano",
-                "tone": "travel",
-                "icon_url": assets["captain_log"],
-            }
-        )
-    if next_island:
-        entries.append(
-            {
-                "message": f"Charted course for {next_island['name']}",
-                "tone": "planned",
-                "icon_url": assets["vivre"],
-            }
-        )
-    return entries[:5]
+    return log_entries[:8]
 
 
-def build_voyage_state(
-    training_status: dict[str, Any],
-    learning_status: dict[str, Any] | None = None,
+def build_voyage_milestones(
+    catalog_db_path: Path | None = None,
+    dossier_db_path: Path | None = None,
 ) -> dict[str, Any]:
-    progress_percent = float(training_status.get("progress_percent") or 0.0)
-    island_total = len(VOYAGE_ISLANDS)
-    reverse_mountain_index = next(
-        (
-            index
-            for index, island in enumerate(VOYAGE_ISLANDS)
-            if island.get("key") == "reverse_mountain"
-        ),
-        0,
-    )
-    next_island_index = min(reverse_mountain_index + 1, island_total - 1) if island_total else 0
+    """Build the islands-as-milestones model for the Voyage surface.
 
-    current_island = build_voyage_location(VOYAGE_ISLANDS[reverse_mountain_index], "current")
-    next_island = (
-        build_voyage_location(VOYAGE_ISLANDS[next_island_index], "next") if island_total else None
-    )
-    route_nodes = []
-    for index, island in enumerate(VOYAGE_ISLANDS):
-        if index == reverse_mountain_index:
-            status = "current"
-        elif index == next_island_index and next_island_index != reverse_mountain_index:
-            status = "next"
-        elif index == island_total - 1:
-            status = "finish"
+    Islands are real One Piece canon waypoints in story order.  TCG sets are
+    the distance measure: each fully-verified set moves the ship forward.
+    States: charted (done), current (Log Pose — verifying now), fog (ahead).
+    Ship is near the start; route is open-ended, never finished.
+    """
+    catalog_path = catalog_db_path or FALLBACK_CATALOG_DB_PATH
+    dossier_path = dossier_db_path or LEARNING_DOSSIER_DB_PATH
+
+    catalog_sets = _load_catalog_sets_for_voyage(catalog_path)
+    set_codes = [s["set_code"] for s in catalog_sets]
+    verification = _load_set_dossier_verification(dossier_path, set_codes)
+
+    set_states: list[dict[str, Any]] = []
+    found_current = False
+    charted_count = 0
+
+    for s in catalog_sets:
+        code = s["set_code"]
+        verified, total = verification.get(code.upper(), (0, 0))
+        if total == 0:
+            state = "fog"
+        elif verified >= total:
+            if not found_current:
+                state = "charted"
+                charted_count += 1
+            else:
+                state = "fog"
+        elif verified > 0:
+            if not found_current:
+                state = "current"
+                found_current = True
+            else:
+                state = "fog"
         else:
-            status = "planned"
-        route_nodes.append(
+            state = "fog"
+
+        set_states.append(
             {
-                "key": island.get("key", f"island-{index}"),
-                "name": island.get("name", "Planned"),
-                "short_name": island.get("short_name", island.get("name", "Planned")),
-                "status": status,
-                "map_x": int(island.get("map_x", 0) or 0),
-                "map_y": int(island.get("map_y", 0) or 0),
-                "sprite_url": safe_voyage_asset_url(
-                    island.get("sprite"), "islands/island_east_blue.png"
-                ),
-                "marker_url": safe_voyage_asset_url(
-                    VOYAGE_ROUTE_MARKERS.get(status),
-                    "routes/route_checkpoint_marker.png",
-                ),
-                "bosses": [],
+                "set_code": code,
+                "set_name": s["set_name"],
+                "state": state,
+                "verified_count": verified,
+                "total_count": total,
             }
         )
 
-    learning_phase = describe_learning_engine_phase(dict(learning_status or {}))
-    queue_length = int((learning_status or {}).get("queue_length") or 0)
-    running_count = int((learning_status or {}).get("running_count") or 0)
-    assets = build_voyage_assets()
-    stage_label = "Approaching Reverse Mountain"
-    route_progress = learning_phase["description"]
-    stage_detail = "Miru is in early structured learning: collecting, checking, and organizing card knowledge without claiming advanced intelligence."
-    stage_meaning = (
-        "This voyage position means Miru has moved beyond basic setup and is learning in a structured way, "
-        "but it is still far from advanced deck, matchup, or endgame reasoning."
-    )
+    island_total = len(_VOYAGE_ISLAND_MILESTONES)
+    # Each fully verified set advances the ship by one island.
+    # Clamp so there's always a current island and at least one fog island ahead.
+    current_island_idx = min(charted_count, island_total - 2)
+    if current_island_idx < 0:
+        current_island_idx = 0
 
-    if learning_phase["title"] == "Verifying Knowledge":
-        can_do_now = "Check card facts against real sources"
-        can_do_now_detail = (
-            "Miru can compare queued card facts with source material and lock in trusted details."
-        )
-    elif learning_phase["title"] == "Writing Dossiers":
-        can_do_now = "Write structured card notes"
-        can_do_now_detail = (
-            "Miru can turn trusted facts into cleaner dossier records for later lookup."
-        )
-    elif learning_phase["title"] == "Scanning Sources":
-        can_do_now = "Collect source material for verification"
-        can_do_now_detail = (
-            "Miru can gather new source pages and queue them for the next verification pass."
-        )
-    elif learning_phase["title"] == "Processing Images":
-        can_do_now = "Track and verify card images"
-        can_do_now_detail = (
-            "Miru can fetch or review card images so the learning archive stays usable."
-        )
-    else:
-        can_do_now = "Build dependable card knowledge"
-        can_do_now_detail = (
-            "Miru can work through source-backed card tasks and keep structured learning moving."
-        )
+    islands: list[dict[str, Any]] = []
+    for idx, milestone in enumerate(_VOYAGE_ISLAND_MILESTONES):
+        if idx < current_island_idx:
+            state = "charted"
+        elif idx == current_island_idx:
+            state = "current"
+        else:
+            state = "fog"
+        islands.append({"key": milestone["key"], "name": milestone["name"], "state": state})
 
-    next_title = "Steadier trusted coverage"
-    if queue_length > 0:
-        next_detail = f"{format_count(queue_length)} queued task{'s' if queue_length != 1 else ''} still need attention after the current step."
-    elif running_count > 0:
-        next_detail = "The next step is finishing the work already in flight and turning it into trusted coverage."
-    else:
-        next_detail = "The next step is widening trusted coverage and keeping the queue healthy."
+    current_island = next((i for i in islands if i["state"] == "current"), None)
 
-    route_polyline = " ".join(f"{node['map_x']},{node['map_y']}" for node in route_nodes)
-    ship_position = {
-        "x": int(current_island.get("map_x", 0) or 0),
-        "y": int(current_island.get("map_y", 0) or 0),
-    }
+    charted_sets = [s for s in set_states if s["state"] == "charted"]
+    current_sets = [s for s in set_states if s["state"] == "current"]
+    fog_sets = [s for s in set_states if s["state"] == "fog"]
 
     return {
-        "source_label": "Live learning engine telemetry",
-        "learning_label": learning_phase["title"],
-        "learning_stage": str(training_status.get("training_stage") or "planned"),
-        "stage": stage_label,
-        "sea_label": "Early structured learning",
-        "route_progress": route_progress,
-        "boss_summary": learning_phase["detail"] or stage_detail,
-        "stage_title": stage_label,
-        "stage_detail": stage_detail,
-        "stage_meaning": stage_meaning,
-        "can_do_now": can_do_now,
-        "can_do_now_detail": can_do_now_detail,
-        "still_learning": "Broader trusted coverage",
-        "still_learning_detail": "Miru still needs much more verified coverage before higher-level strategic reasoning would be trustworthy.",
-        "next_title": next_title,
-        "next_detail": next_detail,
+        "islands": islands,
         "current_island": current_island,
-        "next_island": next_island,
-        "next_boss": None,
-        "progress_percent": progress_percent,
-        "defeated_boss_count": 0,
-        "boss_total": 0,
-        "defeated_bosses": [],
-        "defeated_boss_names": [],
-        "recent_log": [],
-        "route_nodes": route_nodes,
-        "route_polyline": route_polyline,
-        "ship_position": ship_position,
-        "assets": assets,
-        "celebration_state": "voyage",
+        "sets": set_states,
+        "voyage_log": _build_voyage_log_from_recurrence(),
+        "progress": {
+            "sets_charted": len(charted_sets),
+            "sets_current": len(current_sets),
+            "sets_fog": len(fog_sets),
+            "sets_total": len(set_states),
+            "islands_charted": sum(1 for i in islands if i["state"] == "charted"),
+            "islands_fog": sum(1 for i in islands if i["state"] == "fog"),
+        },
     }
-
-
-def ensure_voyage_state(
-    training_status: dict[str, Any] | None,
-    voyage_state: dict[str, Any] | None = None,
-    learning_status: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    training_status = dict(training_status or {})
-    base_voyage = build_voyage_state(training_status, learning_status=learning_status)
-    candidate = voyage_state if isinstance(voyage_state, dict) else training_status.get("voyage")
-    if not isinstance(candidate, dict):
-        return base_voyage
-
-    merged = dict(base_voyage)
-    for key in (
-        "source_label",
-        "learning_label",
-        "learning_stage",
-        "stage",
-        "sea_label",
-        "route_progress",
-        "boss_summary",
-        "stage_title",
-        "stage_detail",
-        "stage_meaning",
-        "can_do_now",
-        "can_do_now_detail",
-        "still_learning",
-        "still_learning_detail",
-        "next_title",
-        "next_detail",
-        "progress_percent",
-        "defeated_boss_count",
-        "boss_total",
-        "celebration_state",
-        "route_polyline",
-    ):
-        if candidate.get(key) not in (None, ""):
-            merged[key] = candidate[key]
-    for key in ("current_island", "next_island", "next_boss", "ship_position"):
-        if isinstance(candidate.get(key), dict):
-            merged[key] = {**merged.get(key, {}), **candidate[key]}
-    if isinstance(candidate.get("assets"), dict):
-        merged["assets"] = {
-            **merged["assets"],
-            **{k: v for k, v in candidate["assets"].items() if v},
-        }
-    if isinstance(candidate.get("recent_log"), list) and candidate["recent_log"]:
-        merged["recent_log"] = candidate["recent_log"]
-    if isinstance(candidate.get("route_nodes"), list) and candidate["route_nodes"]:
-        merged["route_nodes"] = candidate["route_nodes"]
-    if isinstance(candidate.get("defeated_bosses"), list):
-        merged["defeated_bosses"] = candidate["defeated_bosses"]
-    if isinstance(candidate.get("defeated_boss_names"), list):
-        merged["defeated_boss_names"] = candidate["defeated_boss_names"]
-    return merged
 
 
 def current_timestamp() -> str:
@@ -6673,13 +6377,6 @@ def build_dev_status(
             total_cards=_total_cards,
         ),
     )
-    # `/api/dev-status` should always expose a fresh telemetry-based voyage snapshot.
-    # Do not merge a previously built voyage dict back in here, because that can
-    # preserve older fictional milestone fields from an earlier code path.
-    training_status["voyage"] = build_voyage_state(
-        training_status,
-        learning_status=learning_status,
-    )
     activity = build_learning_engine_activity(learning_status, build_miru_activity(training_status))
     pushover_state = build_pushover_runtime_state(
         training_status=training_status,
@@ -7751,9 +7448,6 @@ def render_page(page_key: str, current_endpoint: str):
 
     if page_key == "training":
         training_status = build_training_status()
-        training_status["voyage"] = ensure_voyage_state(
-            training_status, training_status.get("voyage")
-        )
     elif page_key in ("dev", "dev_monitor"):
         dev_status = build_dev_bootstrap_status()
         if page_key == "dev":
@@ -10387,6 +10081,13 @@ def create_app() -> Flask:
         if not _image_review_port_ok():
             return jsonify({"error": "Only available on port 18765."}), 403
         return jsonify(op01_throughput_stats())
+
+    @app.get("/api/dev/voyage")
+    def dev_voyage():
+        """Islands-as-milestones model for the Voyage surface (18765 only)."""
+        if not _image_review_port_ok():
+            return jsonify({"error": "Only available on port 18765."}), 403
+        return jsonify(build_voyage_milestones())
 
     @app.get("/api/dev/helper/status")
     def dev_helper_status():
