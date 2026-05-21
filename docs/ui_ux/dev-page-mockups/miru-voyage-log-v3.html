@@ -1,0 +1,1077 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Miru · Voyage Log — OP01 (v3, closed loop)</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Cinzel:wght@500;600;700&display=swap');
+
+      :root {
+        --bg: #0a0d14;
+        --panel: #10141d;
+        --panel-2: #161b26;
+        --line: #262c3a;
+        --line-soft: #1d222d;
+        --ink: #ececef;
+        --ink-dim: #9aa6b8;
+        --ink-faint: #5a6678;
+        --ink-ghost: #3d4452;
+        --pink: #e91e63;
+        --purple: #7b1fa2;
+        --gold: #e0b23c;
+        --gold-soft: #c79a2e;
+        --parchment: #e8dcc0;
+        --green: #34c77b;
+        --amber: #e0a93c;
+        --red: #e0533c;
+        --cyan: #3ca9e0;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background: #000;
+        font-family: 'Mona Sans', 'Helvetica Neue', Arial, sans-serif;
+        color: var(--ink);
+        display: flex;
+        justify-content: center;
+        padding: 24px 12px;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .phone {
+        width: 393px;
+        min-height: 820px;
+        background: var(--bg);
+        border-radius: 34px;
+        border: 1px solid #2c2c38;
+        overflow: hidden;
+        position: relative;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .statusbar {
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 22px;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 12px;
+        color: var(--ink-dim);
+        flex-shrink: 0;
+      }
+
+      .map-peek {
+        height: 50px;
+        flex-shrink: 0;
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(ellipse at 70% 40%, rgba(233, 30, 99, 0.14), transparent 60%),
+          linear-gradient(180deg, #0d1626, #0a0d14);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .map-peek::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(224, 178, 60, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(224, 178, 60, 0.04) 1px, transparent 1px);
+        background-size: 30px 30px;
+      }
+      .backrow {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        cursor: pointer;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        color: var(--gold);
+        letter-spacing: 1px;
+        z-index: 2;
+      }
+      .backrow svg {
+        width: 13px;
+        height: 13px;
+      }
+
+      .log {
+        flex: 1;
+        overflow-y: auto;
+        background: linear-gradient(180deg, #10141d, #0c0f17);
+        border-top: 1.5px solid rgba(224, 178, 60, 0.25);
+        border-radius: 18px 18px 0 0;
+        margin-top: -10px;
+        position: relative;
+        box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.5);
+      }
+      .log::-webkit-scrollbar {
+        width: 0;
+      }
+      .grab {
+        width: 36px;
+        height: 4px;
+        border-radius: 3px;
+        background: var(--line);
+        margin: 9px auto 0;
+      }
+      .log-inner {
+        padding: 12px 18px 28px;
+      }
+
+      .crest {
+        display: flex;
+        gap: 13px;
+        align-items: flex-start;
+        padding-bottom: 13px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .crest-medal {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: radial-gradient(circle at 38% 32%, #f0568a, #9c1648);
+        border: 2.5px solid var(--gold);
+        box-shadow: 0 0 18px rgba(233, 30, 99, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .crest-medal svg {
+        width: 20px;
+        height: 20px;
+      }
+      .crest-text {
+        flex: 1;
+        padding-top: 1px;
+      }
+      .crest-set {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 9.5px;
+        color: var(--gold);
+        letter-spacing: 1.5px;
+      }
+      .crest-name {
+        font-family: 'Cinzel', serif;
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--parchment);
+        letter-spacing: 0.3px;
+        line-height: 1.1;
+        margin-top: 2px;
+      }
+      .crest-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 6px;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8.5px;
+        padding: 3px 8px;
+        border-radius: 5px;
+        letter-spacing: 0.5px;
+        background: rgba(233, 30, 99, 0.12);
+        color: #f5849f;
+        border: 1px solid rgba(233, 30, 99, 0.3);
+      }
+      .crest-status i {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--pink);
+        animation: blink 2s infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0.3;
+        }
+      }
+
+      .canon {
+        margin-top: 12px;
+        padding: 11px 13px;
+        border-radius: 11px;
+        background: linear-gradient(135deg, rgba(224, 178, 60, 0.07), rgba(123, 31, 162, 0.05));
+        border: 1px solid rgba(224, 178, 60, 0.18);
+        position: relative;
+      }
+      .canon::before {
+        content: '\201C';
+        position: absolute;
+        top: -6px;
+        left: 9px;
+        font-family: 'Cinzel', serif;
+        font-size: 36px;
+        color: rgba(224, 178, 60, 0.3);
+      }
+      .canon .saga {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8.5px;
+        letter-spacing: 1px;
+        color: var(--gold-soft);
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+      .canon .flavor {
+        font-family: 'Cinzel', serif;
+        font-size: 12px;
+        color: var(--parchment);
+        line-height: 1.55;
+        font-style: italic;
+      }
+
+      .seclabel {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 9.5px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin: 16px 2px 9px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .seclabel::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--line-soft);
+      }
+
+      .prog {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 13px;
+      }
+      .prog-top {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+      }
+      .prog-num {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 24px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .prog-num b {
+        color: var(--gold);
+      }
+      .prog-pct {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 11px;
+        color: var(--ink-dim);
+      }
+      .prog-bar {
+        margin-top: 9px;
+        height: 7px;
+        border-radius: 5px;
+        background: #1a2030;
+        overflow: hidden;
+      }
+      .prog-bar i {
+        display: block;
+        height: 100%;
+        width: 33%;
+        background: linear-gradient(90deg, var(--gold), var(--pink));
+        border-radius: 5px;
+      }
+      .prog-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1px;
+        margin-top: 12px;
+        background: var(--line);
+        border-radius: 9px;
+        overflow: hidden;
+      }
+      .pcell {
+        background: var(--panel-2);
+        padding: 8px 9px;
+      }
+      .pcell .pv {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .pcell .pv.warn {
+        color: var(--red);
+      }
+      .pcell .pv.verify {
+        color: var(--cyan);
+      }
+      .pcell .pv.good {
+        color: var(--green);
+      }
+      .pcell .pl {
+        font-size: 8.5px;
+        color: var(--ink-faint);
+        margin-top: 2px;
+        line-height: 1.3;
+      }
+
+      /* legend strip */
+      .legend {
+        display: flex;
+        gap: 13px;
+        margin: 9px 2px 2px;
+        flex-wrap: wrap;
+      }
+      .lg {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8.5px;
+        color: var(--ink-faint);
+      }
+      .lg i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      /* ===== log entries — brightness hierarchy ===== */
+      .entry {
+        display: flex;
+        gap: 10px;
+        padding: 11px 0;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .entry:last-child {
+        border-bottom: none;
+      }
+      .etime {
+        flex-shrink: 0;
+        width: 42px;
+        text-align: right;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8.5px;
+        color: var(--ink-faint);
+        padding-top: 3px;
+        line-height: 1.45;
+      }
+      .etrack {
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .edot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        border: 2px solid var(--bg);
+      }
+      .edot.held {
+        background: var(--red);
+        box-shadow: 0 0 8px rgba(224, 83, 60, 0.5);
+      }
+      .edot.verifying {
+        background: var(--ink-ghost);
+      }
+      .edot.cleared {
+        background: var(--green);
+      }
+      .edot.start {
+        background: var(--gold);
+      }
+      .edot.pattern {
+        background: var(--red);
+        box-shadow: 0 0 8px rgba(224, 83, 60, 0.5);
+      }
+      .eline {
+        width: 2px;
+        flex: 1;
+        background: var(--line);
+        margin-top: 2px;
+        min-height: 14px;
+      }
+      .ebody {
+        flex: 1;
+        padding-bottom: 2px;
+      }
+
+      /* --- HELD: brightest, tappable --- */
+      .held-card {
+        background: linear-gradient(135deg, rgba(224, 83, 60, 0.1), rgba(224, 83, 60, 0.03));
+        border: 1px solid rgba(224, 83, 60, 0.32);
+        border-radius: 10px;
+        padding: 11px 12px;
+        cursor: pointer;
+        transition: transform 0.12s ease;
+      }
+      .held-card:active {
+        transform: scale(0.98);
+      }
+      .held-card .hc-head {
+        font-size: 12.5px;
+        font-weight: 650;
+        color: var(--ink);
+        line-height: 1.35;
+      }
+      .held-card .hc-desc {
+        font-size: 11.5px;
+        color: var(--ink-dim);
+        margin-top: 4px;
+        line-height: 1.5;
+      }
+      .held-card .hc-desc code {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10.5px;
+        color: var(--gold-soft);
+      }
+      .hc-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 9px;
+        padding-top: 8px;
+        border-top: 1px solid rgba(224, 83, 60, 0.16);
+      }
+      .hc-tag {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8.5px;
+        color: #e98a78;
+        letter-spacing: 0.5px;
+      }
+      .hc-cta {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 11px;
+        font-weight: 650;
+        color: #fff;
+        background: var(--red);
+        padding: 6px 11px;
+        border-radius: 7px;
+      }
+      .hc-cta svg {
+        width: 12px;
+        height: 12px;
+      }
+
+      /* --- VERIFYING: dimmest, recessive, no action --- */
+      .verifying-row {
+        opacity: 0.62;
+      }
+      .verifying-row .vh {
+        font-size: 12px;
+        font-weight: 550;
+        color: var(--ink-dim);
+        line-height: 1.35;
+      }
+      .verifying-row .vd {
+        font-size: 11px;
+        color: var(--ink-faint);
+        margin-top: 3px;
+        line-height: 1.45;
+      }
+      .verifying-row .vd code {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        color: var(--ink-faint);
+      }
+      .vstate {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 6px;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8.5px;
+        color: var(--cyan);
+        letter-spacing: 0.5px;
+      }
+      .vstate .vdots {
+        display: flex;
+        gap: 2px;
+      }
+      .vstate .vdots i {
+        width: 3px;
+        height: 3px;
+        border-radius: 50%;
+        background: var(--cyan);
+        animation: vdot 1.4s infinite;
+      }
+      .vstate .vdots i:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+      .vstate .vdots i:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+      @keyframes vdot {
+        0%,
+        100% {
+          opacity: 0.25;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      /* --- CLEARED: settled green, quiet --- */
+      .cleared-row .ch {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--ink);
+        line-height: 1.35;
+      }
+      .cleared-row .cd {
+        font-size: 11px;
+        color: var(--ink-dim);
+        margin-top: 3px;
+        line-height: 1.45;
+      }
+      .cleared-row .cd code {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        color: var(--gold-soft);
+      }
+      .ctag {
+        display: inline-block;
+        margin-top: 6px;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8.5px;
+        padding: 2px 7px;
+        border-radius: 4px;
+        letter-spacing: 0.3px;
+        background: rgba(52, 199, 123, 0.12);
+        color: #5fd99b;
+        border: 1px solid rgba(52, 199, 123, 0.3);
+      }
+      .ctag.byyou {
+        background: rgba(224, 178, 60, 0.12);
+        color: var(--gold);
+        border-color: rgba(224, 178, 60, 0.3);
+      }
+
+      /* --- start --- */
+      .start-row .sh {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .start-row .sd {
+        font-size: 11px;
+        color: var(--ink-dim);
+        margin-top: 3px;
+        line-height: 1.45;
+      }
+      .start-row .sd code {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        color: var(--gold-soft);
+      }
+
+      /* --- pattern (held, batched) --- */
+      .pat-count {
+        margin-left: auto;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        color: #e98a78;
+        background: rgba(224, 83, 60, 0.13);
+        padding: 2px 7px;
+        border-radius: 5px;
+      }
+      .pat-headrow {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .pat-insight {
+        margin-top: 8px;
+        padding: 7px 9px;
+        border-radius: 7px;
+        background: rgba(224, 83, 60, 0.06);
+        border-left: 2px solid var(--red);
+        font-size: 10.5px;
+        color: #d8a89e;
+        line-height: 1.45;
+      }
+      .pat-insight b {
+        color: #eccac2;
+      }
+
+      .lognote {
+        margin-top: 16px;
+        text-align: center;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 9px;
+        color: var(--ink-faint);
+        line-height: 1.6;
+      }
+
+      /* ===== review panel-on-panel ===== */
+      .scrim {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(2px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 30;
+      }
+      .scrim.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .review-panel {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 31;
+        background: linear-gradient(180deg, #141925, #0e121b);
+        border-top: 1.5px solid rgba(224, 83, 60, 0.4);
+        border-radius: 20px 20px 0 0;
+        transform: translateY(102%);
+        transition: transform 0.26s cubic-bezier(0.2, 0.7, 0.2, 1);
+        box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.6);
+        max-height: 88%;
+        overflow-y: auto;
+      }
+      .review-panel.show {
+        transform: translateY(0);
+      }
+      .review-panel::-webkit-scrollbar {
+        width: 0;
+      }
+      .rp-inner {
+        padding: 8px 18px 24px;
+      }
+      .rp-grab {
+        width: 36px;
+        height: 4px;
+        border-radius: 3px;
+        background: var(--line);
+        margin: 8px auto 12px;
+      }
+      .rp-eyebrow {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 9px;
+        letter-spacing: 1px;
+        color: #e98a78;
+        text-transform: uppercase;
+      }
+      .rp-title {
+        font-size: 17px;
+        font-weight: 680;
+        margin-top: 3px;
+        letter-spacing: -0.2px;
+      }
+      .rp-thumbrow {
+        display: flex;
+        gap: 12px;
+        margin-top: 13px;
+      }
+      .rp-thumb {
+        width: 74px;
+        height: 104px;
+        border-radius: 8px;
+        flex-shrink: 0;
+        background: linear-gradient(150deg, #3a2730, #2a1f2e);
+        border: 1px solid var(--line);
+      }
+      .rp-disagree {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .rp-dcol {
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: var(--panel-2);
+        border: 1px solid var(--line-soft);
+      }
+      .rp-dcol.primary {
+        border-color: rgba(123, 31, 162, 0.4);
+      }
+      .rp-dcol.verifier {
+        border-color: rgba(233, 30, 99, 0.35);
+      }
+      .rp-dlabel {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--ink-faint);
+      }
+      .rp-dval {
+        font-size: 13px;
+        font-weight: 600;
+        margin-top: 2px;
+      }
+      .rp-note {
+        margin-top: 12px;
+        padding: 9px 10px;
+        border-radius: 9px;
+        background: rgba(60, 169, 224, 0.07);
+        border: 1px solid rgba(60, 169, 224, 0.2);
+        font-size: 10.5px;
+        color: #a9c8da;
+        line-height: 1.5;
+      }
+      .rp-note b {
+        color: #cfe4f0;
+      }
+      .rp-verdict {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .rp-vbtn {
+        flex: 1;
+        padding: 12px 6px;
+        border-radius: 9px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 650;
+        text-align: center;
+        border: 1px solid var(--line);
+      }
+      .rp-vbtn.ok {
+        background: var(--green);
+        color: #04210f;
+        border-color: var(--green);
+      }
+      .rp-vbtn.no {
+        background: var(--panel-2);
+        color: #e98a78;
+        border-color: rgba(224, 83, 60, 0.35);
+      }
+      .rp-vbtn.skip {
+        background: var(--panel-2);
+        color: var(--ink-dim);
+      }
+      .rp-foot {
+        margin-top: 11px;
+        text-align: center;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 9px;
+        color: var(--ink-faint);
+        line-height: 1.5;
+      }
+
+      .tapcue {
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8.5px;
+        color: var(--ink-faint);
+        background: rgba(20, 25, 35, 0.9);
+        padding: 3px 9px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        z-index: 40;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="phone">
+      <div class="tapcue">tap the red "Needs Review" card ↓</div>
+
+      <div class="statusbar">
+        <span>9:41</span>
+        <span>miru.room · 18765</span>
+      </div>
+
+      <div class="map-peek">
+        <div class="backrow">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          BACK TO CHART
+        </div>
+      </div>
+
+      <div class="log">
+        <div class="grab"></div>
+        <div class="log-inner">
+          <div class="crest">
+            <div class="crest-medal">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#fff"
+                stroke-width="2.3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                <circle cx="12" cy="12" r="4" />
+              </svg>
+            </div>
+            <div class="crest-text">
+              <div class="crest-set">OP01 · ISLAND 01</div>
+              <div class="crest-name">Romance Dawn</div>
+              <div class="crest-status"><i></i>LOG POSE LOCKED — VERIFYING</div>
+            </div>
+          </div>
+
+          <div class="canon">
+            <div class="saga">East Blue · the voyage begins</div>
+            <div class="flavor">
+              Where the crew is gathered and the dream is named. Humble coastal waters — the first
+              step into a world that does not yet know you.
+            </div>
+          </div>
+
+          <div class="seclabel">Charting progress</div>
+          <div class="prog">
+            <div class="prog-top">
+              <div class="prog-num"><b>40</b> / 121</div>
+              <div class="prog-pct">33% charted</div>
+            </div>
+            <div class="prog-bar"><i></i></div>
+            <div class="prog-grid">
+              <div class="pcell">
+                <div class="pv warn">2</div>
+                <div class="pl">Held — needs you</div>
+              </div>
+              <div class="pcell">
+                <div class="pv verify">3</div>
+                <div class="pl">Verifying your calls</div>
+              </div>
+              <div class="pcell">
+                <div class="pv good">35</div>
+                <div class="pl">Cleared</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="legend">
+            <div class="lg"><i style="background: #e0533c"></i>Held — your move</div>
+            <div class="lg"><i style="background: #3d4452"></i>Verifying</div>
+            <div class="lg"><i style="background: #34c77b"></i>Cleared</div>
+          </div>
+
+          <div class="seclabel">Voyage log</div>
+
+          <!-- HELD — brightest, tappable -->
+          <div class="entry">
+            <div class="etime">today<br />09:12</div>
+            <div class="etrack">
+              <div class="edot held"></div>
+              <div class="eline"></div>
+            </div>
+            <div class="ebody">
+              <div class="held-card" onclick="openReview()">
+                <div class="hc-head">The AIs disagreed on OP01-038</div>
+                <div class="hc-desc">
+                  Primary read the counter value as <code>2000</code>. The verifier checked Bandai
+                  and found <code>1000</code>. A one-off — nothing else on the island shows this.
+                </div>
+                <div class="hc-action">
+                  <div class="hc-tag">HELD FOR YOU</div>
+                  <div class="hc-cta">
+                    Review now
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.6"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- HELD — pattern, batched -->
+          <div class="entry">
+            <div class="etime">today<br />08:05</div>
+            <div class="etrack">
+              <div class="edot pattern"></div>
+              <div class="eline"></div>
+            </div>
+            <div class="ebody">
+              <div class="held-card">
+                <div class="pat-headrow">
+                  <div class="hc-head">A recurring issue — not 14 separate ones</div>
+                  <div class="pat-count">×14</div>
+                </div>
+                <div class="hc-desc">
+                  Same card-type mismatch on 14 cards in a row,
+                  <code>OP01-027</code>–<code>OP01-040</code>.
+                </div>
+                <div class="pat-insight">
+                  <b>Likely one upstream cause.</b> One decision clears the whole run — you won't
+                  review them one by one.
+                </div>
+                <div class="hc-action">
+                  <div class="hc-tag">HELD — BATCH</div>
+                  <div class="hc-cta">
+                    Review batch
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.6"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VERIFYING — dimmest, recessive, no action -->
+          <div class="entry verifying-row">
+            <div class="etime">today<br />07:48</div>
+            <div class="etrack">
+              <div class="edot verifying"></div>
+              <div class="eline"></div>
+            </div>
+            <div class="ebody">
+              <div class="vh">Your call on OP01-031 is being checked</div>
+              <div class="vd">
+                You sided with the verifier on the card name. The system is re-checking it against
+                Bandai before it clears.
+              </div>
+              <div class="vstate">
+                <div class="vdots"><i></i><i></i><i></i></div>
+                VERIFYING YOUR CALL
+              </div>
+            </div>
+          </div>
+
+          <!-- CLEARED by you -->
+          <div class="entry cleared-row">
+            <div class="etime">yest<br />22:05</div>
+            <div class="etrack">
+              <div class="edot cleared"></div>
+              <div class="eline"></div>
+            </div>
+            <div class="ebody">
+              <div class="ch">OP01-022 cleared — your call held</div>
+              <div class="cd">
+                You sided with the verifier on the name conflict. The re-check confirmed it. Card
+                charted.
+              </div>
+              <span class="ctag byyou">RESOLVED BY YOU · VERIFIED</span>
+            </div>
+          </div>
+
+          <!-- CLEARED clean -->
+          <div class="entry cleared-row">
+            <div class="etime">yest<br />16:30</div>
+            <div class="etrack">
+              <div class="edot cleared"></div>
+              <div class="eline"></div>
+            </div>
+            <div class="ebody">
+              <div class="ch">Charted OP01-014 through OP01-021</div>
+              <div class="cd">
+                Eight cards verified clean — both AIs agreed, Gatekeeper cleared all eight. No
+                review needed.
+              </div>
+              <span class="ctag">8 CLEARED</span>
+            </div>
+          </div>
+
+          <!-- start -->
+          <div class="entry start-row">
+            <div class="etime">May 12<br />14:00</div>
+            <div class="etrack"><div class="edot start"></div></div>
+            <div class="ebody">
+              <div class="sh">Made landfall on Romance Dawn</div>
+              <div class="sd">
+                The Log Pose locked onto OP01. The verifier began the set from
+                <code>OP01-001</code>.
+              </div>
+            </div>
+          </div>
+
+          <div class="lognote">
+            — start of voyage log —<br />121 cards on this island · 81 still uncharted
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== review panel-on-panel ===== -->
+      <div class="scrim" id="scrim" onclick="closeReview()"></div>
+      <div class="review-panel" id="reviewPanel">
+        <div class="rp-inner">
+          <div class="rp-grab"></div>
+          <div class="rp-eyebrow">Held for review · OP01 Romance Dawn</div>
+          <div class="rp-title">OP01-038 · Nami</div>
+
+          <div class="rp-thumbrow">
+            <div class="rp-thumb"></div>
+            <div class="rp-disagree">
+              <div class="rp-dcol primary">
+                <div class="rp-dlabel">Primary AI read</div>
+                <div class="rp-dval">Counter 2000</div>
+              </div>
+              <div class="rp-dcol verifier">
+                <div class="rp-dlabel">Verifier found (Bandai)</div>
+                <div class="rp-dval">Counter 1000</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="rp-note">
+            <b>Your verdict isn't final.</b> Whichever you pick goes back through a verification
+            step before the card clears — if something doesn't hold, it returns to your queue.
+          </div>
+
+          <div class="rp-verdict">
+            <div class="rp-vbtn ok" onclick="closeReview()">Verifier's right</div>
+            <div class="rp-vbtn no" onclick="closeReview()">Primary's right</div>
+            <div class="rp-vbtn skip" onclick="closeReview()">Skip</div>
+          </div>
+          <div class="rp-foot">
+            your call → verifying → cleared · nothing turns green on a tap alone
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function openReview() {
+        document.getElementById('scrim').classList.add('show');
+        document.getElementById('reviewPanel').classList.add('show');
+      }
+      function closeReview() {
+        document.getElementById('scrim').classList.remove('show');
+        document.getElementById('reviewPanel').classList.remove('show');
+      }
+    </script>
+  </body>
+</html>

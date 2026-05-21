@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Miru AI · 18765 — mockup</title>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+      :root {
+        --bg: #0e0e12;
+        --panel: #17171d;
+        --panel-2: #1e1e26;
+        --line: #2a2a35;
+        --line-soft: #222229;
+        --ink: #ececef;
+        --ink-dim: #9a9aa8;
+        --ink-faint: #65656f;
+        --pink: #e91e63;
+        --purple: #7b1fa2;
+        --green: #34c77b;
+        --amber: #e0a93c;
+        --red: #e0533c;
+        --radius: 14px;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background: #000;
+        font-family: 'Mona Sans', 'Helvetica Neue', Arial, sans-serif;
+        color: var(--ink);
+        display: flex;
+        justify-content: center;
+        padding: 24px 12px;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* phone frame */
+      .phone {
+        width: 393px;
+        min-height: 820px;
+        background: var(--bg);
+        border-radius: 34px;
+        border: 1px solid #2c2c38;
+        overflow: hidden;
+        position: relative;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* status bar */
+      .statusbar {
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 22px;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 12px;
+        color: var(--ink-dim);
+      }
+
+      /* header */
+      header {
+        padding: 14px 18px 12px;
+        border-bottom: 1px solid var(--line-soft);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .mark {
+        width: 30px;
+        height: 30px;
+        border-radius: 9px;
+        background: linear-gradient(150deg, var(--pink), var(--purple));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .mark svg {
+        width: 16px;
+        height: 16px;
+      }
+      .htext h1 {
+        font-size: 15px;
+        font-weight: 650;
+        letter-spacing: -0.2px;
+      }
+      .htext span {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10.5px;
+        color: var(--ink-faint);
+      }
+      .live-dot {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        color: var(--ink-dim);
+      }
+      .live-dot i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 0 0 rgba(52, 199, 123, 0.5);
+        animation: pulse 2.4s infinite;
+      }
+      @keyframes pulse {
+        0% {
+          box-shadow: 0 0 0 0 rgba(52, 199, 123, 0.45);
+        }
+        70% {
+          box-shadow: 0 0 0 7px rgba(52, 199, 123, 0);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(52, 199, 123, 0);
+        }
+      }
+
+      /* scroll body */
+      .scroll {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 14px 90px;
+      }
+      .scroll::-webkit-scrollbar {
+        width: 0;
+      }
+
+      /* view toggle */
+      .view {
+        display: none;
+      }
+      .view.active {
+        display: block;
+        animation: fade 0.25s ease;
+      }
+      @keyframes fade {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+
+      /* section label */
+      .seclabel {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+        margin: 4px 2px 9px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .seclabel::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--line-soft);
+      }
+
+      /* ---- the headline card ---- */
+      .headline {
+        background: linear-gradient(160deg, #1b1320, #15131c);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 16px 16px 15px;
+        margin-bottom: 14px;
+        position: relative;
+        overflow: hidden;
+      }
+      .headline::before {
+        content: '';
+        position: absolute;
+        top: -40px;
+        right: -40px;
+        width: 140px;
+        height: 140px;
+        background: radial-gradient(circle, rgba(233, 30, 99, 0.18), transparent 70%);
+      }
+      .headline .eyebrow {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        color: var(--pink);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+      .headline .big {
+        font-size: 30px;
+        font-weight: 680;
+        letter-spacing: -0.5px;
+        line-height: 1;
+      }
+      .headline .big small {
+        font-size: 14px;
+        color: var(--ink-dim);
+        font-weight: 500;
+      }
+      .headline .sub {
+        font-size: 12.5px;
+        color: var(--ink-dim);
+        margin-top: 7px;
+      }
+      .bar {
+        margin-top: 12px;
+        height: 7px;
+        border-radius: 5px;
+        background: #272730;
+        overflow: hidden;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        width: 33%;
+        background: linear-gradient(90deg, var(--pink), var(--purple));
+        border-radius: 5px;
+      }
+      .bar-meta {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 6px;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        color: var(--ink-faint);
+      }
+
+      /* ---- two-AI status pair ---- */
+      .ai-pair {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+      .ai-card {
+        flex: 1;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 13px 12px;
+      }
+      .ai-card .role {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 9.5px;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+      }
+      .ai-card .name {
+        font-size: 14px;
+        font-weight: 620;
+        margin-top: 3px;
+      }
+      .ai-card .state {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 9px;
+        font-size: 11.5px;
+        color: var(--ink-dim);
+      }
+      .ai-card .state b {
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .tick {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .tick.work {
+        background: var(--green);
+      }
+      .tick.idle {
+        background: var(--ink-faint);
+      }
+      .ai-card .doing {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--ink-faint);
+        font-family: 'IBM Plex Mono', monospace;
+        line-height: 1.4;
+      }
+
+      /* ---- needs you banner ---- */
+      .needsyou {
+        background: linear-gradient(135deg, rgba(224, 169, 60, 0.14), rgba(224, 83, 60, 0.08));
+        border: 1px solid rgba(224, 169, 60, 0.4);
+        border-radius: var(--radius);
+        padding: 14px;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        cursor: pointer;
+        transition: transform 0.12s ease;
+      }
+      .needsyou:active {
+        transform: scale(0.985);
+      }
+      .ny-num {
+        font-size: 30px;
+        font-weight: 720;
+        color: var(--amber);
+        line-height: 1;
+        font-family: 'IBM Plex Mono', monospace;
+      }
+      .ny-txt b {
+        font-size: 13.5px;
+        font-weight: 620;
+        display: block;
+      }
+      .ny-txt span {
+        font-size: 11.5px;
+        color: var(--ink-dim);
+      }
+      .ny-arrow {
+        margin-left: auto;
+        color: var(--amber);
+      }
+
+      /* ---- hiccups ---- */
+      .hiccup {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        padding: 11px 12px;
+        margin-bottom: 8px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+      .hiccup .ic {
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(224, 83, 60, 0.16);
+      }
+      .hiccup.warn .ic {
+        background: rgba(224, 169, 60, 0.16);
+      }
+      .hiccup .body b {
+        font-size: 12.5px;
+        font-weight: 600;
+      }
+      .hiccup .body p {
+        font-size: 11.5px;
+        color: var(--ink-dim);
+        margin-top: 2px;
+        line-height: 1.45;
+      }
+      .hiccup .body .when {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 9.5px;
+        color: var(--ink-faint);
+        margin-top: 5px;
+      }
+
+      /* ---- services ---- */
+      .svc {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        padding: 11px 12px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 11px;
+      }
+      .svc .sdot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .svc .sdot.up {
+        background: var(--green);
+      }
+      .svc .sdot.down {
+        background: var(--red);
+      }
+      .svc .sname {
+        font-size: 13px;
+        font-weight: 560;
+      }
+      .svc .sport {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        color: var(--ink-faint);
+      }
+      .svc .smeta {
+        margin-left: auto;
+        text-align: right;
+      }
+      .svc .smeta .up-txt {
+        font-size: 10.5px;
+        color: var(--ink-dim);
+      }
+      .restart {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        color: var(--ink);
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        padding: 6px 10px;
+        border-radius: 7px;
+        cursor: pointer;
+        letter-spacing: 0.3px;
+        transition: all 0.12s ease;
+      }
+      .restart:active {
+        transform: scale(0.94);
+        background: var(--pink);
+        border-color: var(--pink);
+      }
+      .restart.danger {
+        color: var(--red);
+        border-color: rgba(224, 83, 60, 0.4);
+      }
+
+      /* ---- review queue cards ---- */
+      .qcard {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 13px;
+        margin-bottom: 12px;
+      }
+      .qcard .qtop {
+        display: flex;
+        gap: 12px;
+      }
+      .thumb {
+        width: 78px;
+        height: 109px;
+        border-radius: 8px;
+        flex-shrink: 0;
+        background: linear-gradient(150deg, #23232c, #1a1a21);
+        border: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .thumb.has {
+        background: linear-gradient(150deg, #3a2730, #2a1f2e);
+      }
+      .thumb.has::after {
+        content: 'OP01-007';
+        position: absolute;
+        bottom: 6px;
+        left: 0;
+        right: 0;
+        text-align: center;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+      .thumb .cardface {
+        font-size: 9px;
+        color: var(--ink-faint);
+        font-family: 'IBM Plex Mono', monospace;
+        text-align: center;
+        padding: 0 6px;
+        line-height: 1.5;
+      }
+      .thumb.missing {
+        border-style: dashed;
+        border-color: rgba(224, 169, 60, 0.5);
+        background: rgba(224, 169, 60, 0.06);
+      }
+      .qinfo {
+        flex: 1;
+        min-width: 0;
+      }
+      .qcode {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10.5px;
+        color: var(--pink);
+      }
+      .qname {
+        font-size: 15px;
+        font-weight: 640;
+        margin-top: 2px;
+        letter-spacing: -0.2px;
+      }
+      .qchips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 8px;
+      }
+      .chip {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 9px;
+        padding: 3px 7px;
+        border-radius: 5px;
+        letter-spacing: 0.3px;
+        background: var(--panel-2);
+        color: var(--ink-dim);
+        border: 1px solid var(--line);
+      }
+      .chip.flag {
+        background: rgba(224, 83, 60, 0.13);
+        color: #e98a78;
+        border-color: rgba(224, 83, 60, 0.3);
+      }
+      .chip.warn {
+        background: rgba(224, 169, 60, 0.13);
+        color: #e6bd6a;
+        border-color: rgba(224, 169, 60, 0.3);
+      }
+
+      .qwhy {
+        margin-top: 11px;
+        padding: 9px 10px;
+        border-radius: 9px;
+        background: var(--panel-2);
+        border: 1px solid var(--line-soft);
+        font-size: 11.5px;
+        color: var(--ink-dim);
+        line-height: 1.5;
+      }
+      .qwhy b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      /* disagreement row */
+      .disagree {
+        margin-top: 9px;
+        display: flex;
+        gap: 8px;
+      }
+      .dcol {
+        flex: 1;
+        padding: 8px 9px;
+        border-radius: 8px;
+        background: var(--panel-2);
+        border: 1px solid var(--line-soft);
+      }
+      .dcol .dlabel {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 8.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--ink-faint);
+      }
+      .dcol .dval {
+        font-size: 12.5px;
+        font-weight: 600;
+        margin-top: 3px;
+      }
+      .dcol.primary {
+        border-color: rgba(123, 31, 162, 0.4);
+      }
+      .dcol.verifier {
+        border-color: rgba(233, 30, 99, 0.35);
+      }
+
+      /* missing-thumb upload zone */
+      .uploadzone {
+        margin-top: 11px;
+        padding: 13px;
+        border-radius: 10px;
+        border: 1.5px dashed rgba(224, 169, 60, 0.5);
+        background: rgba(224, 169, 60, 0.05);
+        text-align: center;
+      }
+      .uploadzone .utitle {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--amber);
+      }
+      .uploadzone .udesc {
+        font-size: 11px;
+        color: var(--ink-dim);
+        margin-top: 3px;
+        line-height: 1.45;
+      }
+      .ubtns {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .ubtn {
+        flex: 1;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 10px;
+        padding: 9px 6px;
+        border-radius: 8px;
+        cursor: pointer;
+        letter-spacing: 0.3px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--ink);
+      }
+      .ubtn.solid {
+        background: var(--amber);
+        color: #1a1206;
+        border-color: var(--amber);
+        font-weight: 600;
+      }
+
+      /* verdict buttons */
+      .verdict {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .vbtn {
+        flex: 1;
+        padding: 11px 6px;
+        border-radius: 9px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        text-align: center;
+        border: 1px solid var(--line);
+        transition: transform 0.1s ease;
+      }
+      .vbtn:active {
+        transform: scale(0.96);
+      }
+      .vbtn.ok {
+        background: var(--green);
+        color: #04210f;
+        border-color: var(--green);
+      }
+      .vbtn.no {
+        background: var(--panel-2);
+        color: #e98a78;
+        border-color: rgba(224, 83, 60, 0.35);
+      }
+      .vbtn.skip {
+        background: var(--panel-2);
+        color: var(--ink-dim);
+      }
+
+      /* bottom nav */
+      .nav {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(20, 20, 26, 0.95);
+        backdrop-filter: blur(12px);
+        border-top: 1px solid var(--line);
+        display: flex;
+        padding: 8px 0 14px;
+      }
+      .navitem {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 3px;
+        cursor: pointer;
+        color: var(--ink-faint);
+      }
+      .navitem.on {
+        color: var(--pink);
+      }
+      .navitem svg {
+        width: 20px;
+        height: 20px;
+      }
+      .navitem span {
+        font-size: 9.5px;
+        font-family: 'IBM Plex Mono', monospace;
+        letter-spacing: 0.3px;
+      }
+      .navitem .badge {
+        position: absolute;
+        transform: translate(13px, -6px);
+        background: var(--amber);
+        color: #1a1206;
+        font-size: 8px;
+        font-weight: 700;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'IBM Plex Mono', monospace;
+      }
+
+      .footnote {
+        text-align: center;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 9px;
+        color: var(--ink-faint);
+        margin-top: 14px;
+        padding-bottom: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="phone">
+      <div class="statusbar">
+        <span>9:41</span>
+        <span>miru.room · 18765</span>
+      </div>
+
+      <header>
+        <div class="mark">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#fff"
+            stroke-width="2.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M4 17l6-6 4 4 6-8" />
+          </svg>
+        </div>
+        <div class="htext">
+          <h1>Miru AI</h1>
+          <span>learning &amp; review</span>
+        </div>
+        <div class="live-dot"><i></i>LIVE</div>
+      </header>
+
+      <div class="scroll">
+        <!-- ============ LANDING ============ -->
+        <div class="view active" id="landing">
+          <!-- Q1: what did the AIs learn -->
+          <div class="headline">
+            <div class="eyebrow">OP01 · Romance Dawn</div>
+            <div class="big">40<small> / 121 cards</small></div>
+            <div class="sub">Verifier has confirmed 40 cards. Currently on OP01-041.</div>
+            <div class="bar"><i></i></div>
+            <div class="bar-meta"><span>33% learned</span><span>~3h remaining</span></div>
+          </div>
+
+          <!-- the two AIs -->
+          <div class="seclabel">The two AIs</div>
+          <div class="ai-pair">
+            <div class="ai-card">
+              <div class="role">Primary</div>
+              <div class="name">Miru AI</div>
+              <div class="state"><i class="tick work"></i><b>Learning</b></div>
+              <div class="doing">answering<br />OP01-041</div>
+            </div>
+            <div class="ai-card">
+              <div class="role">Secondary</div>
+              <div class="name">Verifier</div>
+              <div class="state"><i class="tick work"></i><b>Checking</b></div>
+              <div class="doing">cross-ref<br />OP01-040</div>
+            </div>
+          </div>
+
+          <!-- Q3: needs you -->
+          <div class="needsyou" onclick="go('review')">
+            <div class="ny-num">3</div>
+            <div class="ny-txt">
+              <b>Cards need your review</b>
+              <span>Gatekeeper couldn't clear these on its own</span>
+            </div>
+            <div class="ny-arrow">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </div>
+          </div>
+
+          <!-- Q2: hiccups -->
+          <div class="seclabel">Recent hiccups</div>
+          <div class="hiccup">
+            <div class="ic">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#e98a78"
+                stroke-width="2.4"
+                stroke-linecap="round"
+              >
+                <path d="M12 9v4M12 17h.01" />
+                <path
+                  d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"
+                />
+              </svg>
+            </div>
+            <div class="body">
+              <b>The AIs disagreed on OP01-038</b>
+              <p>
+                Primary read the counter value as 2000, verifier found 1000 on Bandai. Sent to your
+                queue.
+              </p>
+              <div class="when">14 MIN AGO</div>
+            </div>
+          </div>
+          <div class="hiccup warn">
+            <div class="ic" style="background: rgba(224, 169, 60, 0.16)">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#e6bd6a"
+                stroke-width="2.4"
+                stroke-linecap="round"
+              >
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </div>
+            <div class="body">
+              <b>No card image for OP01-035</b>
+              <p>
+                Verifier couldn't find art on the Bandai CDN. Needs a thumbnail before it can move
+                forward.
+              </p>
+              <div class="when">32 MIN AGO</div>
+            </div>
+          </div>
+
+          <!-- Q4: services -->
+          <div class="seclabel">Services</div>
+          <div class="svc">
+            <div class="sdot up"></div>
+            <div>
+              <div class="sname">PM Storefront</div>
+              <div class="sport">:18080</div>
+            </div>
+            <div class="smeta">
+              <div class="up-txt">up 4d 2h</div>
+            </div>
+            <button class="restart">RESTART</button>
+          </div>
+          <div class="svc">
+            <div class="sdot up"></div>
+            <div>
+              <div class="sname">Miru AI</div>
+              <div class="sport">:18765</div>
+            </div>
+            <div class="smeta">
+              <div class="up-txt">up 6h 11m</div>
+            </div>
+            <button class="restart">RESTART</button>
+          </div>
+          <div class="svc">
+            <div class="sdot down"></div>
+            <div>
+              <div class="sname">Shadow Loop</div>
+              <div class="sport">worker</div>
+            </div>
+            <div class="smeta">
+              <div class="up-txt" style="color: #e98a78">stopped</div>
+            </div>
+            <button class="restart danger">START</button>
+          </div>
+
+          <div class="footnote">— end of glance · pull to refresh —</div>
+        </div>
+
+        <!-- ============ REVIEW QUEUE ============ -->
+        <div class="view" id="review">
+          <div class="seclabel">Your review queue · 3 cards</div>
+
+          <!-- card 1: disagreement, has thumb -->
+          <div class="qcard">
+            <div class="qtop">
+              <div class="thumb has">
+                <span class="cardface"></span>
+              </div>
+              <div class="qinfo">
+                <div class="qcode">OP01-007</div>
+                <div class="qname">Nami</div>
+                <div class="qchips">
+                  <span class="chip flag">AIS DISAGREE</span>
+                  <span class="chip">counter value</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="disagree">
+              <div class="dcol primary">
+                <div class="dlabel">Primary said</div>
+                <div class="dval">Counter 2000</div>
+              </div>
+              <div class="dcol verifier">
+                <div class="dlabel">Verifier found</div>
+                <div class="dval">Counter 1000</div>
+              </div>
+            </div>
+
+            <div class="qwhy">
+              <b>Why you're seeing this:</b> the verifier checked Bandai and got 1000. The
+              Gatekeeper won't clear a card the two AIs disagree on. Your call decides which is
+              true.
+            </div>
+
+            <div class="verdict">
+              <div class="vbtn ok">Verifier's right</div>
+              <div class="vbtn no">Primary's right</div>
+              <div class="vbtn skip">Skip</div>
+            </div>
+          </div>
+
+          <!-- card 2: MISSING THUMB -->
+          <div class="qcard">
+            <div class="qtop">
+              <div class="thumb missing">
+                <span class="cardface">no<br />image</span>
+              </div>
+              <div class="qinfo">
+                <div class="qcode">OP01-035</div>
+                <div class="qname">Gum-Gum Pistol</div>
+                <div class="qchips">
+                  <span class="chip warn">NEEDS IMAGE</span>
+                  <span class="chip">event card</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="uploadzone">
+              <div class="utitle">This card has no image</div>
+              <div class="udesc">
+                The verifier couldn't find art on the Bandai CDN. Supply the correct thumbnail so it
+                can move forward.
+              </div>
+              <div class="ubtns">
+                <div class="ubtn solid">Upload image</div>
+                <div class="ubtn">Paste URL</div>
+              </div>
+            </div>
+
+            <div class="verdict">
+              <div class="vbtn skip" style="flex: 1">Skip for now</div>
+            </div>
+          </div>
+
+          <!-- card 3: verifier low confidence, has thumb -->
+          <div class="qcard">
+            <div class="qtop">
+              <div class="thumb has" style="background: linear-gradient(150deg, #27323a, #1f2a30)">
+                <span class="cardface"></span>
+              </div>
+              <div class="qinfo">
+                <div class="qcode">OP01-024</div>
+                <div class="qname">Jinbe</div>
+                <div class="qchips">
+                  <span class="chip warn">LOW CONFIDENCE</span>
+                  <span class="chip">card type</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="qwhy">
+              <b>Why you're seeing this:</b> both AIs agree it's a Character card, but the
+              verifier's evidence was thin — only one source confirmed it. Gatekeeper wants a human
+              to sign off.
+            </div>
+
+            <div class="verdict">
+              <div class="vbtn ok">Looks right</div>
+              <div class="vbtn no">It's wrong</div>
+              <div class="vbtn skip">Skip</div>
+            </div>
+          </div>
+
+          <div class="footnote">— queue end · clear all to return to learning —</div>
+        </div>
+      </div>
+
+      <!-- bottom nav -->
+      <div class="nav">
+        <div class="navitem on" id="nav-landing" onclick="go('landing')">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 12l9-9 9 9" />
+            <path d="M5 10v10h14V10" />
+          </svg>
+          <span>GLANCE</span>
+        </div>
+        <div class="navitem" id="nav-review" onclick="go('review')">
+          <span class="badge">3</span>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M9 11l3 3L22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
+          <span>REVIEW</span>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function go(view) {
+        document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+        document.getElementById(view).classList.add('active');
+        document.querySelectorAll('.navitem').forEach((n) => n.classList.remove('on'));
+        document.getElementById('nav-' + view).classList.add('on');
+        document.querySelector('.scroll').scrollTop = 0;
+      }
+    </script>
+  </body>
+</html>
