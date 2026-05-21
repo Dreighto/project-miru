@@ -1,42 +1,53 @@
-// Voyage BFF — asserts throughput data renders (or error banner if Flask is down).
+// Voyage surface E2E — islands route map + Voyage Log panel.
 import { test, expect } from '@playwright/test';
 
-test.describe('Voyage (/voyage) BFF', () => {
+test.describe('Voyage (/voyage)', () => {
 	test('shows Voyage heading', async ({ page }) => {
 		await page.goto('/voyage');
 		await expect(page.getByRole('heading', { name: 'Voyage' })).toBeVisible();
 	});
 
-	test('displays currentIsland value', async ({ page }) => {
+	test('renders route map or Flask-down banner', async ({ page }) => {
 		await page.goto('/voyage');
-		await expect(page.getByTestId('current-island')).toContainText('OP01');
+		const hasMap = await page.getByTestId('route-map').isVisible();
+		const hasBanner = await page.getByTestId('flask-down-banner').isVisible();
+		expect(hasMap || hasBanner, 'Expected either route map or Flask-down banner').toBe(true);
 	});
 
-	test('renders throughput data or Flask-down banner', async ({ page }) => {
+	test('route map renders island nodes when Flask is reachable', async ({ page }) => {
 		await page.goto('/voyage');
-
-		const hasGrid = await page.locator('[aria-label="OP01 Throughput"]').isVisible();
-		const hasBanner = await page
-			.getByRole('alert', { name: 'Flask service unreachable' })
-			.isVisible();
-
-		expect(hasGrid || hasBanner, 'Expected either throughput grid or Flask-down banner').toBe(true);
-	});
-
-	test('throughput stat tiles render when Flask is reachable', async ({ page }) => {
-		await page.goto('/voyage');
-
-		const flaskDown = await page
-			.getByRole('alert', { name: 'Flask service unreachable' })
-			.isVisible();
+		const flaskDown = await page.getByTestId('flask-down-banner').isVisible();
 		if (flaskDown) {
-			test.skip(true, 'Flask not available in this environment — skipping data-render assertions');
+			test.skip(true, 'Flask not available in this environment — skipping route map assertions');
 		}
+		await expect(page.getByTestId('route-map')).toBeVisible();
+		const islands = page.locator('[data-testid^="island-node-"]');
+		await expect(islands.first()).toBeVisible();
+	});
 
-		await expect(page.locator('[aria-label="OP01 Throughput"]')).toBeVisible();
-		await expect(page.getByTestId('stat-total-reviews')).toBeVisible();
-		await expect(page.getByTestId('stat-today-reviews')).toBeVisible();
-		await expect(page.getByTestId('stat-distinct-cards')).toBeVisible();
-		await expect(page.getByTestId('stat-op01-total')).toBeVisible();
+	test('clicking an island opens the Voyage Log panel', async ({ page }) => {
+		await page.goto('/voyage');
+		const flaskDown = await page.getByTestId('flask-down-banner').isVisible();
+		if (flaskDown) {
+			test.skip(true, 'Flask not available — skipping interaction test');
+		}
+		const firstIsland = page.locator('[data-testid^="island-node-"]').first();
+		if (!(await firstIsland.isVisible())) return;
+		await firstIsland.click();
+		await expect(page.getByTestId('voyage-log-panel')).toBeVisible();
+	});
+
+	test('clicking same island again closes the Voyage Log panel', async ({ page }) => {
+		await page.goto('/voyage');
+		const flaskDown = await page.getByTestId('flask-down-banner').isVisible();
+		if (flaskDown) {
+			test.skip(true, 'Flask not available — skipping toggle test');
+		}
+		const firstIsland = page.locator('[data-testid^="island-node-"]').first();
+		if (!(await firstIsland.isVisible())) return;
+		await firstIsland.click();
+		await expect(page.getByTestId('voyage-log-panel')).toBeVisible();
+		await firstIsland.click();
+		await expect(page.getByTestId('voyage-log-panel')).not.toBeVisible();
 	});
 });
