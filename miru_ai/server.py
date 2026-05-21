@@ -9561,6 +9561,175 @@ def create_app() -> Flask:
             202,
         )
 
+    # ── Glance service controls (PRO-932) ──────────────────────────────────────
+    # start / stop / restart for miru-ai (18765), pm-storefront (18080), learner.
+    # Access guard: loopback + Tailscale — same as existing runtime/restart routes.
+
+    @app.post("/api/runtime/start/18080")
+    def runtime_start_18080():
+        """Start PM Storefront (18080). Idempotent — uses same script as restart."""
+        if not _is_runtime_control_allowed():
+            return (
+                jsonify({"ok": False, "error": "Allowed only from localhost or Tailscale"}),
+                403,
+            )
+        code, out, err = _run_worktree_script(
+            "start_project_miru_dashboard.ps1", ["-Force"], wait=True, timeout=90
+        )
+        if code == 0:
+            return jsonify(
+                {
+                    "ok": True,
+                    "service": "18080",
+                    "message": "PM Storefront started",
+                    "detail": (out or "").strip() or "Script completed successfully",
+                }
+            )
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "service": "18080",
+                    "error": "Start failed",
+                    "detail": (err or out or f"exit code {code}").strip(),
+                }
+            ),
+            502,
+        )
+
+    @app.post("/api/runtime/stop/18080")
+    def runtime_stop_18080():
+        """Stop PM Storefront (18080) — terminates the process bound to port 18080."""
+        if not _is_runtime_control_allowed():
+            return (
+                jsonify({"ok": False, "error": "Allowed only from localhost or Tailscale"}),
+                403,
+            )
+        killed = _kill_processes_bound_to_port(18080)
+        if killed:
+            return jsonify(
+                {
+                    "ok": True,
+                    "service": "18080",
+                    "message": f"PM Storefront stopped (PID {killed[0]})",
+                }
+            )
+        return jsonify({"ok": True, "service": "18080", "message": "PM Storefront was not running"})
+
+    @app.post("/api/runtime/start/18765")
+    def runtime_start_18765():
+        """Start Miru AI (18765) — fire-and-forget respawn via start script."""
+        if not _is_runtime_control_allowed():
+            return (
+                jsonify({"ok": False, "error": "Allowed only from localhost or Tailscale"}),
+                403,
+            )
+        _run_worktree_script("start_miru_ai_dev.ps1", ["-Force"], wait=False)
+        return (
+            jsonify(
+                {
+                    "ok": True,
+                    "service": "18765",
+                    "message": "Miru AI start initiated. Reload in a few seconds.",
+                }
+            ),
+            202,
+        )
+
+    @app.post("/api/runtime/stop/18765")
+    def runtime_stop_18765_ctrl():
+        """Stop Miru AI (18765) — schedules a self-kill after the response is sent."""
+        if not _is_runtime_control_allowed():
+            return (
+                jsonify({"ok": False, "error": "Allowed only from localhost or Tailscale"}),
+                403,
+            )
+
+        def _kill_self() -> None:
+            time.sleep(0.5)
+            _kill_processes_bound_to_port(18765)
+
+        Thread(target=_kill_self, daemon=True).start()
+        return jsonify(
+            {
+                "ok": True,
+                "service": "18765",
+                "message": "Miru AI stopping. This tab will close.",
+            }
+        )
+
+    @app.post("/api/runtime/start/learner")
+    def runtime_start_learner():
+        """Start the shadow-loop learner. Uses worktree process control."""
+        if not _is_runtime_control_allowed():
+            return (
+                jsonify({"ok": False, "error": "Allowed only from localhost or Tailscale"}),
+                403,
+            )
+        invalidate_ttl_cache("learning_engine_status")
+        if not _is_worktree_runtime():
+            return jsonify({"ok": True, "message": "This runtime does not manage the learner."})
+        running = _list_worktree_learner_process_ids()
+        if running:
+            _write_worktree_learner_pid(int(running[0]))
+            clear_runtime_truth_cache()
+            return jsonify(
+                {
+                    "ok": False,
+                    "already_running": True,
+                    "message": "Learner is already running.",
+                }
+            )
+        ok, message, pid = _start_worktree_learner_process()
+        clear_runtime_truth_cache()
+        invalidate_ttl_cache("learning_engine_status")
+        if ok:
+            return jsonify(
+                {"ok": True, "status": "started", "learner_pid": pid, "message": message}
+            )
+        return jsonify({"ok": False, "error": message})
+
+    @app.post("/api/runtime/stop/learner")
+    def runtime_stop_learner():
+        """Stop the shadow-loop learner."""
+        if not _is_runtime_control_allowed():
+            return (
+                jsonify({"ok": False, "error": "Allowed only from localhost or Tailscale"}),
+                403,
+            )
+        invalidate_ttl_cache("learning_engine_status")
+        if not _is_worktree_runtime():
+            return jsonify({"ok": True, "message": "This runtime does not manage the learner."})
+        ok, message = _stop_worktree_learner_process()
+        clear_runtime_truth_cache()
+        invalidate_ttl_cache("learning_engine_status")
+        return jsonify({"ok": ok, "message": message})
+
+    @app.post("/api/runtime/restart/learner")
+    def runtime_restart_learner():
+        """Restart the shadow-loop learner: stop then start."""
+        if not _is_runtime_control_allowed():
+            return (
+                jsonify({"ok": False, "error": "Allowed only from localhost or Tailscale"}),
+                403,
+            )
+        invalidate_ttl_cache("learning_engine_status")
+        if not _is_worktree_runtime():
+            return jsonify({"ok": True, "message": "This runtime does not manage the learner."})
+        _stop_worktree_learner_process()
+        time.sleep(1)
+        ok, message, pid = _start_worktree_learner_process()
+        clear_runtime_truth_cache()
+        invalidate_ttl_cache("learning_engine_status")
+        return jsonify(
+            {
+                "ok": ok,
+                "status": "restarting" if ok else "error",
+                "learner_pid": pid,
+                "message": message,
+            }
+        )
+
     @app.post("/api/runtime/restart/main-site")
     def runtime_restart_main_site():
         """

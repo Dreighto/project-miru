@@ -5,6 +5,8 @@
 	let { data }: { data: PageData } = $props();
 
 	type Tone = 'positive' | 'warning' | 'negative' | 'neutral';
+	type ServiceId = 'miru-ai' | 'pm-storefront' | 'learner';
+	type Action = 'start' | 'stop' | 'restart';
 
 	function learnerTone(state: string | undefined): Tone {
 		if (!state) return 'negative';
@@ -75,6 +77,62 @@
 			data.devStatus?.intelligence_status?.activity_hint ??
 			'Status unavailable.'
 	);
+
+	// ── Service controls ──────────────────────────────────────────────────────
+
+	type ControlState = {
+		inflight: Action | null;
+		error: string | null;
+		confirmPending: Action | null;
+	};
+
+	let controls = $state<Record<ServiceId, ControlState>>({
+		'miru-ai': { inflight: null, error: null, confirmPending: null },
+		'pm-storefront': { inflight: null, error: null, confirmPending: null },
+		learner: { inflight: null, error: null, confirmPending: null }
+	});
+
+	function requiresConfirm(action: Action): boolean {
+		return action === 'stop' || action === 'restart';
+	}
+
+	async function triggerControl(service: ServiceId, action: Action): Promise<void> {
+		const state = controls[service];
+
+		if (requiresConfirm(action) && state.confirmPending !== action) {
+			state.confirmPending = action;
+			state.error = null;
+			return;
+		}
+
+		state.confirmPending = null;
+		state.inflight = action;
+		state.error = null;
+
+		try {
+			const resp = await fetch('/api/runtime', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ service, action })
+			});
+			const body = (await resp.json()) as { ok?: boolean; error?: string; message?: string };
+			if (!resp.ok || body.ok === false) {
+				state.error = body.error ?? body.message ?? `Action failed (HTTP ${resp.status}).`;
+			}
+		} catch {
+			state.error = 'Network error — could not reach the control endpoint.';
+		} finally {
+			state.inflight = null;
+		}
+	}
+
+	function cancelConfirm(service: ServiceId): void {
+		controls[service].confirmPending = null;
+	}
+
+	function dismissError(service: ServiceId): void {
+		controls[service].error = null;
+	}
 </script>
 
 <main class="mx-auto max-w-4xl space-y-8 p-6">
@@ -100,39 +158,195 @@
 				<h2 class="mb-3 text-xs font-mono uppercase tracking-widest text-text-faint">
 					Is everything up?
 				</h2>
-				<ul class="space-y-2 text-sm">
-					<li class="flex items-center gap-3">
-						<span
-							class="inline-block h-2 w-2 shrink-0 rounded-full {dotClass[miru18765Tone]}"
-							aria-hidden="true"
-						></span>
-						<span class="text-text-dim w-16 shrink-0 font-mono text-xs">18765</span>
-						<span class="{textClass[miru18765Tone]}">
-							{data.devStatus?.surface_status?.miru_ai?.status ?? 'Running'}
-						</span>
-						<span class="text-text-faint text-xs">Miru AI</span>
+				<ul class="space-y-3 text-sm">
+					<!-- Miru AI (18765) -->
+					<li data-testid="service-row-miru-ai">
+						<div class="flex items-center gap-3">
+							<span
+								class="inline-block h-2 w-2 shrink-0 rounded-full {dotClass[miru18765Tone]}"
+								aria-hidden="true"
+							></span>
+							<span class="text-text-dim w-16 shrink-0 font-mono text-xs">18765</span>
+							<span class="{textClass[miru18765Tone]} min-w-[60px]">
+								{data.devStatus?.surface_status?.miru_ai?.status ?? 'Running'}
+							</span>
+							<span class="text-text-faint text-xs">Miru AI</span>
+							<span class="ml-auto flex items-center gap-1">
+								{#if controls['miru-ai'].inflight}
+									<span class="font-mono text-xs text-text-faint"
+										>{controls['miru-ai'].inflight}&hellip;</span
+									>
+								{:else if controls['miru-ai'].confirmPending}
+									<span class="mr-1 text-xs text-warning"
+										>{controls['miru-ai'].confirmPending}?</span
+									>
+									<button
+										class="rounded border border-negative px-2 py-0.5 font-mono text-xs text-negative hover:bg-negative hover:text-bg"
+										onclick={() => triggerControl('miru-ai', controls['miru-ai'].confirmPending!)}
+									>confirm</button>
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2"
+										onclick={() => cancelConfirm('miru-ai')}
+									>cancel</button>
+								{:else}
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										disabled={!!controls['miru-ai'].inflight}
+										onclick={() => triggerControl('miru-ai', 'start')}
+										data-testid="ctrl-miru-ai-start"
+									>start</button>
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										disabled={!!controls['miru-ai'].inflight}
+										onclick={() => triggerControl('miru-ai', 'stop')}
+										data-testid="ctrl-miru-ai-stop"
+									>stop</button>
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-accent hover:bg-surface2 disabled:opacity-40"
+										disabled={!!controls['miru-ai'].inflight}
+										onclick={() => triggerControl('miru-ai', 'restart')}
+										data-testid="ctrl-miru-ai-restart"
+									>restart</button>
+								{/if}
+							</span>
+						</div>
+						{#if controls['miru-ai'].error}
+							<div class="mt-1 flex items-center gap-2 pl-5">
+								<span class="text-xs text-negative">{controls['miru-ai'].error}</span>
+								<button
+									class="font-mono text-xs text-text-faint hover:text-text"
+									onclick={() => dismissError('miru-ai')}
+									aria-label="Dismiss error"
+								>&times;</button>
+							</div>
+						{/if}
 					</li>
-					<li class="flex items-center gap-3">
-						<span
-							class="inline-block h-2 w-2 shrink-0 rounded-full {dotClass[miru18080Tone]}"
-							aria-hidden="true"
-						></span>
-						<span class="text-text-dim w-16 shrink-0 font-mono text-xs">18080</span>
-						<span class="{textClass[miru18080Tone]}">
-							{data.devStatus?.project_miru?.reachable ? 'Online' : 'Offline'}
-						</span>
-						<span class="text-text-faint text-xs">Project Miru</span>
+
+					<!-- PM Storefront (18080) -->
+					<li data-testid="service-row-pm-storefront">
+						<div class="flex items-center gap-3">
+							<span
+								class="inline-block h-2 w-2 shrink-0 rounded-full {dotClass[miru18080Tone]}"
+								aria-hidden="true"
+							></span>
+							<span class="text-text-dim w-16 shrink-0 font-mono text-xs">18080</span>
+							<span class="{textClass[miru18080Tone]} min-w-[60px]">
+								{data.devStatus?.project_miru?.reachable ? 'Online' : 'Offline'}
+							</span>
+							<span class="text-text-faint text-xs">Project Miru</span>
+							<span class="ml-auto flex items-center gap-1">
+								{#if controls['pm-storefront'].inflight}
+									<span class="font-mono text-xs text-text-faint"
+										>{controls['pm-storefront'].inflight}&hellip;</span
+									>
+								{:else if controls['pm-storefront'].confirmPending}
+									<span class="mr-1 text-xs text-warning"
+										>{controls['pm-storefront'].confirmPending}?</span
+									>
+									<button
+										class="rounded border border-negative px-2 py-0.5 font-mono text-xs text-negative hover:bg-negative hover:text-bg"
+										onclick={() =>
+											triggerControl('pm-storefront', controls['pm-storefront'].confirmPending!)}
+									>confirm</button>
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2"
+										onclick={() => cancelConfirm('pm-storefront')}
+									>cancel</button>
+								{:else}
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										disabled={!!controls['pm-storefront'].inflight}
+										onclick={() => triggerControl('pm-storefront', 'start')}
+										data-testid="ctrl-pm-storefront-start"
+									>start</button>
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										disabled={!!controls['pm-storefront'].inflight}
+										onclick={() => triggerControl('pm-storefront', 'stop')}
+										data-testid="ctrl-pm-storefront-stop"
+									>stop</button>
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-accent hover:bg-surface2 disabled:opacity-40"
+										disabled={!!controls['pm-storefront'].inflight}
+										onclick={() => triggerControl('pm-storefront', 'restart')}
+										data-testid="ctrl-pm-storefront-restart"
+									>restart</button>
+								{/if}
+							</span>
+						</div>
+						{#if controls['pm-storefront'].error}
+							<div class="mt-1 flex items-center gap-2 pl-5">
+								<span class="text-xs text-negative">{controls['pm-storefront'].error}</span>
+								<button
+									class="font-mono text-xs text-text-faint hover:text-text"
+									onclick={() => dismissError('pm-storefront')}
+									aria-label="Dismiss error"
+								>&times;</button>
+							</div>
+						{/if}
 					</li>
-					<li class="flex items-center gap-3">
-						<span
-							class="inline-block h-2 w-2 shrink-0 rounded-full {dotClass[learnerToneValue]}"
-							aria-hidden="true"
-						></span>
-						<span class="text-text-dim w-16 shrink-0 font-mono text-xs">learner</span>
-						<span class="{textClass[learnerToneValue]}">
-							{data.devStatus?.learning_engine?.learner_state ?? 'Unknown'}
-						</span>
-						<span class="text-text-faint text-xs">Learning worker</span>
+
+					<!-- Learner / shadow-loop -->
+					<li data-testid="service-row-learner">
+						<div class="flex items-center gap-3">
+							<span
+								class="inline-block h-2 w-2 shrink-0 rounded-full {dotClass[learnerToneValue]}"
+								aria-hidden="true"
+							></span>
+							<span class="text-text-dim w-16 shrink-0 font-mono text-xs">learner</span>
+							<span class="{textClass[learnerToneValue]} min-w-[60px]">
+								{data.devStatus?.learning_engine?.learner_state ?? 'Unknown'}
+							</span>
+							<span class="text-text-faint text-xs">Learning worker</span>
+							<span class="ml-auto flex items-center gap-1">
+								{#if controls['learner'].inflight}
+									<span class="font-mono text-xs text-text-faint"
+										>{controls['learner'].inflight}&hellip;</span
+									>
+								{:else if controls['learner'].confirmPending}
+									<span class="mr-1 text-xs text-warning"
+										>{controls['learner'].confirmPending}?</span
+									>
+									<button
+										class="rounded border border-negative px-2 py-0.5 font-mono text-xs text-negative hover:bg-negative hover:text-bg"
+										onclick={() => triggerControl('learner', controls['learner'].confirmPending!)}
+									>confirm</button>
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2"
+										onclick={() => cancelConfirm('learner')}
+									>cancel</button>
+								{:else}
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										disabled={!!controls['learner'].inflight}
+										onclick={() => triggerControl('learner', 'start')}
+										data-testid="ctrl-learner-start"
+									>start</button>
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:bg-surface2 disabled:opacity-40"
+										disabled={!!controls['learner'].inflight}
+										onclick={() => triggerControl('learner', 'stop')}
+										data-testid="ctrl-learner-stop"
+									>stop</button>
+									<button
+										class="rounded border border-border px-2 py-0.5 font-mono text-xs text-accent hover:bg-surface2 disabled:opacity-40"
+										disabled={!!controls['learner'].inflight}
+										onclick={() => triggerControl('learner', 'restart')}
+										data-testid="ctrl-learner-restart"
+									>restart</button>
+								{/if}
+							</span>
+						</div>
+						{#if controls['learner'].error}
+							<div class="mt-1 flex items-center gap-2 pl-5">
+								<span class="text-xs text-negative">{controls['learner'].error}</span>
+								<button
+									class="font-mono text-xs text-text-faint hover:text-text"
+									onclick={() => dismissError('learner')}
+									aria-label="Dismiss error"
+								>&times;</button>
+							</div>
+						{/if}
 					</li>
 				</ul>
 			</div>
