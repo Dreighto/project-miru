@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import type { PageData } from './$types';
@@ -41,6 +42,9 @@
 	let detailLoading = $state(false);
 	let detailError = $state<string | null>(null);
 
+	// Ref for mobile scroll-into-view
+	let evidencePanelEl = $state<HTMLElement | null>(null);
+
 	function rowKey(item: QueueItem): string {
 		return `${item.canonical_code}|${item.print_id}|${item.contributing_model}`;
 	}
@@ -60,6 +64,13 @@
 		itemDetail = null;
 		detailError = null;
 		detailLoading = true;
+
+		// Mobile: scroll evidence panel into view after DOM updates
+		await tick();
+		if (typeof window !== 'undefined' && window.innerWidth < 768) {
+			evidencePanelEl?.scrollIntoView({ behavior: 'smooth' });
+		}
+
 		try {
 			const params = new URLSearchParams({ contributing_model: item.contributing_model });
 			const resp = await fetch(
@@ -146,8 +157,10 @@
 	}
 </script>
 
-<main class="mx-auto max-w-6xl p-6">
-	<h1 class="mb-6 font-sans text-xl font-semibold text-text">Review</h1>
+<main
+	class="mx-auto max-w-5xl p-6 md:flex md:h-[calc(100dvh-49px)] md:flex-col md:overflow-hidden"
+>
+	<h1 class="mb-6 shrink-0 font-sans text-xl font-semibold text-text">Review</h1>
 
 	{#if data.flaskDown}
 		<div
@@ -159,16 +172,24 @@
 			18765 and reload.
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+		<div
+			class="grid min-h-0 flex-1 grid-cols-1 gap-4 md:auto-rows-fr md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
+		>
 			<!-- Queue list -->
-			<section aria-label="Review queue" data-testid="review-queue">
-				<h2 class="mb-3 font-mono text-xs uppercase tracking-widest text-text-faint">
+			<section
+				aria-label="Review queue"
+				data-testid="review-queue"
+				class="md:flex md:min-h-0 md:flex-col"
+			>
+				<h2 class="mb-3 shrink-0 font-mono text-xs uppercase tracking-widest text-text-faint">
 					Queue {data.items ? `(${data.items.length})` : ''}
 				</h2>
 				{#if !data.items || data.items.length === 0}
-					<p class="text-sm text-text-faint" data-testid="queue-empty">Queue is empty.</p>
+					<div class="rounded border border-dashed border-border p-6 text-center">
+						<p class="text-sm text-text-faint" data-testid="queue-empty">Queue is empty.</p>
+					</div>
 				{:else}
-					<ul class="space-y-2" role="list">
+					<ul class="flex flex-col gap-1 md:flex-1 md:overflow-y-auto" role="list">
 						{#each data.items as item (rowKey(item))}
 							{@const key = rowKey(item)}
 							{@const selected = selectedKey === key}
@@ -181,7 +202,7 @@
 									aria-pressed={selected}
 									data-testid="queue-row-{item.canonical_code}"
 								>
-									<div class="p-3">
+									<div class="p-2">
 										<div class="mb-1.5 flex items-center justify-between gap-2">
 											<span class="font-mono text-sm font-medium text-text"
 												>{item.canonical_code}</span
@@ -230,7 +251,12 @@
 			</section>
 
 			<!-- Evidence panel -->
-			<section aria-label="Evidence panel" data-testid="evidence-panel">
+			<section
+				aria-label="Evidence panel"
+				data-testid="evidence-panel"
+				class="md:h-full md:overflow-y-auto"
+				bind:this={evidencePanelEl}
+			>
 				{#if !selectedItem}
 					<div
 						class="flex h-48 items-center justify-center rounded border border-border bg-surface"
@@ -238,143 +264,157 @@
 						<p class="text-sm text-text-faint">Select a queue row to inspect its evidence.</p>
 					</div>
 				{:else}
-					<div class="space-y-4 rounded border border-border bg-surface p-4">
-						<!-- Card header -->
-						<div class="flex items-start justify-between gap-4">
-							<div>
-								<h2 class="font-mono text-base font-medium text-text">
-									{selectedItem.canonical_code}
-								</h2>
-								<p class="font-mono text-xs text-text-dim">
-									{selectedItem.print_id} · {selectedItem.contributing_model}
-								</p>
-							</div>
-							{#if itemDetail}
-								<div class="flex shrink-0 gap-2">
-									{#if itemDetail.bandai_url}
-										<a
-											href={itemDetail.bandai_url}
-											target="_blank"
-											rel="noopener noreferrer"
-											data-testid="bandai-link"
-											class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:border-accent hover:text-accent"
-										>Bandai</a>
-									{/if}
-									{#if itemDetail.tcgplayer_url}
-										<a
-											href={itemDetail.tcgplayer_url}
-											target="_blank"
-											rel="noopener noreferrer"
-											data-testid="tcgplayer-link"
-											class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:border-accent hover:text-accent"
-										>TCGPlayer</a>
-									{/if}
+					<div class="rounded border border-border bg-surface">
+						<!-- Scrollable evidence content -->
+						<div class="p-4">
+							<!-- Card header -->
+							<div class="mb-4 flex items-start justify-between gap-4">
+								<div>
+									<h2 class="font-mono text-base font-medium text-text">
+										{selectedItem.canonical_code}
+									</h2>
+									<p class="font-mono text-xs text-text-dim">
+										{selectedItem.print_id} · {selectedItem.contributing_model}
+									</p>
 								</div>
+								{#if itemDetail}
+									<div class="flex shrink-0 gap-2">
+										{#if itemDetail.bandai_url}
+											<a
+												href={itemDetail.bandai_url}
+												target="_blank"
+												rel="noopener noreferrer"
+												data-testid="bandai-link"
+												class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:border-accent hover:text-accent"
+											>Bandai</a>
+										{/if}
+										{#if itemDetail.tcgplayer_url}
+											<a
+												href={itemDetail.tcgplayer_url}
+												target="_blank"
+												rel="noopener noreferrer"
+												data-testid="tcgplayer-link"
+												class="rounded border border-border px-2 py-0.5 font-mono text-xs text-text-dim hover:border-accent hover:text-accent"
+											>TCGPlayer</a>
+										{/if}
+									</div>
+								{/if}
+							</div>
+
+							<!-- Three-axis state -->
+							<div class="mb-4 flex flex-wrap gap-2">
+								<div class="rounded bg-surface2 px-2 py-1">
+									<span
+										class="mb-0.5 block font-mono text-[10px] uppercase tracking-wider text-text-faint"
+										>Readiness</span
+									>
+									<span
+										class="font-mono text-xs {readinessTextClass(selectedItem.readiness_state)}"
+										>{selectedItem.readiness_state}</span
+									>
+								</div>
+								<div class="rounded bg-surface2 px-2 py-1">
+									<span
+										class="mb-0.5 block font-mono text-[10px] uppercase tracking-wider text-text-faint"
+										>Approval</span
+									>
+									<span
+										class="font-mono text-xs {approvalTextClass(selectedItem.approval_state)}"
+										>{selectedItem.approval_state}</span
+									>
+								</div>
+								<div class="rounded bg-surface2 px-2 py-1">
+									<span
+										class="mb-0.5 block font-mono text-[10px] uppercase tracking-wider text-text-faint"
+										>Promotion</span
+									>
+									<span class="font-mono text-xs text-text-dim"
+										>{selectedItem.promotion_state || '(none)'}</span
+									>
+								</div>
+							</div>
+
+							<!-- Field evidence -->
+							{#if detailLoading}
+								<div class="animate-pulse space-y-3" data-testid="evidence-loading">
+									<div class="h-4 rounded bg-surface2"></div>
+									<div class="h-4 w-3/4 rounded bg-surface2"></div>
+									<div class="h-4 rounded bg-surface2"></div>
+									<div class="h-4 w-1/2 rounded bg-surface2"></div>
+									<div class="h-16 rounded bg-surface2"></div>
+								</div>
+							{:else if detailError}
+								<p class="text-sm text-negative" data-testid="evidence-error">{detailError}</p>
+							{:else if itemDetail && itemDetail.field_outcomes.length > 0}
+								<div data-testid="field-outcomes">
+									<h3 class="mb-2 font-mono text-xs uppercase tracking-widest text-text-faint">
+										Field Evidence
+									</h3>
+									<div class="overflow-x-auto">
+										<table class="w-full text-xs">
+											<thead>
+												<tr class="border-b border-border text-left">
+													<th class="pb-1.5 pr-3 font-mono font-medium text-text-faint">Field</th>
+													<th class="pb-1.5 pr-3 font-mono font-medium text-text-faint">Trainer</th>
+													<th class="pb-1.5 pr-3 font-mono font-medium text-text-faint"
+														>Verifier</th
+													>
+													<th class="pb-1.5 pr-3 font-mono font-medium text-text-faint">Catalog</th>
+													<th class="pb-1.5 pr-3 font-mono font-medium text-text-faint">Bandai</th>
+													<th class="pb-1.5 font-mono font-medium text-text-faint">Result</th>
+												</tr>
+											</thead>
+											<tbody>
+												{#each itemDetail.field_outcomes as outcome (outcome.field)}
+													<tr
+														class="border-b border-surface2 even:bg-surface2/30 hover:bg-surface2/50"
+													>
+														<td class="py-1.5 pr-3 font-mono text-text-dim">{outcome.field}</td>
+														<td class="py-1.5 pr-3 font-mono text-text"
+															>{formatVal(outcome.primary_value)}</td
+														>
+														<td class="py-1.5 pr-3 font-mono text-text"
+															>{formatVal(outcome.validator_value)}</td
+														>
+														<td class="py-1.5 pr-3 font-mono text-text-dim"
+															>{formatVal(outcome.catalog_value)}</td
+														>
+														<td class="py-1.5 pr-3 font-mono text-text-dim"
+															>{formatVal(outcome.bandai_value)}</td
+														>
+														<td class="py-1.5">
+															<span class="font-mono {outcomeTextClass(outcome.outcome)}"
+																>{outcome.outcome}</span
+															>
+														</td>
+													</tr>
+													{#if outcome.reason}
+														<tr class="border-b border-surface2 bg-surface2">
+															<td class="py-1 pr-3 font-mono italic text-text-faint" colspan={6}>
+																{outcome.reason}
+															</td>
+														</tr>
+													{/if}
+												{/each}
+											</tbody>
+										</table>
+									</div>
+								</div>
+							{:else if itemDetail}
+								<p class="text-sm text-text-faint" data-testid="no-field-evidence">
+									No field evidence recorded for this row.
+								</p>
 							{/if}
 						</div>
 
-						<!-- Three-axis state -->
-						<div class="flex flex-wrap gap-2">
-							<div class="rounded bg-surface2 px-2 py-1">
-								<span
-									class="mb-0.5 block font-mono text-[10px] uppercase tracking-wider text-text-faint"
-									>Readiness</span
-								>
-								<span
-									class="font-mono text-xs {readinessTextClass(selectedItem.readiness_state)}"
-									>{selectedItem.readiness_state}</span
-								>
-							</div>
-							<div class="rounded bg-surface2 px-2 py-1">
-								<span
-									class="mb-0.5 block font-mono text-[10px] uppercase tracking-wider text-text-faint"
-									>Approval</span
-								>
-								<span
-									class="font-mono text-xs {approvalTextClass(selectedItem.approval_state)}"
-									>{selectedItem.approval_state}</span
-								>
-							</div>
-							<div class="rounded bg-surface2 px-2 py-1">
-								<span
-									class="mb-0.5 block font-mono text-[10px] uppercase tracking-wider text-text-faint"
-									>Promotion</span
-								>
-								<span class="font-mono text-xs text-text-dim"
-									>{selectedItem.promotion_state || '(none)'}</span
-								>
-							</div>
-						</div>
-
-						<!-- Field evidence -->
-						{#if detailLoading}
-							<p class="text-sm text-text-faint" data-testid="evidence-loading">
-								Loading evidence...
-							</p>
-						{:else if detailError}
-							<p class="text-sm text-negative" data-testid="evidence-error">{detailError}</p>
-						{:else if itemDetail && itemDetail.field_outcomes.length > 0}
-							<div data-testid="field-outcomes">
-								<h3 class="mb-2 font-mono text-xs uppercase tracking-widest text-text-faint">
-									Field Evidence
-								</h3>
-								<div class="overflow-x-auto">
-									<table class="w-full text-xs">
-										<thead>
-											<tr class="border-b border-border text-left">
-												<th class="pb-1.5 pr-3 font-mono font-medium text-text-faint">Field</th>
-												<th class="pb-1.5 pr-3 font-mono font-medium text-text-faint">Trainer</th>
-												<th class="pb-1.5 pr-3 font-mono font-medium text-text-faint">Verifier</th>
-												<th class="pb-1.5 pr-3 font-mono font-medium text-text-faint">Catalog</th>
-												<th class="pb-1.5 pr-3 font-mono font-medium text-text-faint">Bandai</th>
-												<th class="pb-1.5 font-mono font-medium text-text-faint">Result</th>
-											</tr>
-										</thead>
-										<tbody>
-											{#each itemDetail.field_outcomes as outcome (outcome.field)}
-												<tr class="border-b border-surface2">
-													<td class="py-1.5 pr-3 font-mono text-text-dim">{outcome.field}</td>
-													<td class="py-1.5 pr-3 font-mono text-text"
-														>{formatVal(outcome.primary_value)}</td
-													>
-													<td class="py-1.5 pr-3 font-mono text-text"
-														>{formatVal(outcome.validator_value)}</td
-													>
-													<td class="py-1.5 pr-3 font-mono text-text-dim"
-														>{formatVal(outcome.catalog_value)}</td
-													>
-													<td class="py-1.5 pr-3 font-mono text-text-dim"
-														>{formatVal(outcome.bandai_value)}</td
-													>
-													<td class="py-1.5">
-														<span class="font-mono {outcomeTextClass(outcome.outcome)}"
-															>{outcome.outcome}</span
-														>
-													</td>
-												</tr>
-												{#if outcome.reason}
-													<tr class="border-b border-surface2 bg-surface2">
-														<td class="py-1 pr-3 font-mono italic text-text-faint" colspan={6}>
-															{outcome.reason}
-														</td>
-													</tr>
-												{/if}
-											{/each}
-										</tbody>
-									</table>
-								</div>
-							</div>
-						{:else if itemDetail}
-							<p class="text-sm text-text-faint" data-testid="no-field-evidence">
-								No field evidence recorded for this row.
-							</p>
-						{/if}
-
-						<!-- Verdict actions — {#if selectedItem} gives {@const} a valid block parent -->
+						<!-- Verdict bar: sticky to bottom of the scrollable evidence section -->
 						{#if selectedItem}
 							{@const key = rowKey(selectedItem)}
 							{@const busy = submitting[key] === true}
-							<div class="border-t border-border pt-4" data-testid="verdict-actions">
+							<div
+								class="sticky bottom-0 border-t border-border bg-surface px-4 pb-4 pt-4"
+								data-testid="verdict-actions"
+							>
 								<h3 class="mb-2 font-mono text-xs uppercase tracking-widest text-text-faint">
 									Verdict
 								</h3>
