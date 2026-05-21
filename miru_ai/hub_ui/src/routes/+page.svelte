@@ -135,7 +135,7 @@
 	}
 </script>
 
-<main class="mx-auto max-w-5xl space-y-8 p-6">
+<main class="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
 	{#if data.flaskDown}
 		<div
 			role="alert"
@@ -162,7 +162,7 @@
 				<ul class="space-y-3 text-sm">
 					<!-- Miru AI (18765) -->
 					<li data-testid="service-row-miru-ai">
-						<div class="flex items-center gap-3">
+						<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 							<span
 								class="inline-block h-2 w-2 shrink-0 rounded-full {dotClass[miru18765Tone]}"
 								aria-hidden="true"
@@ -225,7 +225,7 @@
 
 					<!-- PM Storefront (18080) -->
 					<li data-testid="service-row-pm-storefront">
-						<div class="flex items-center gap-3">
+						<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 							<span
 								class="inline-block h-2 w-2 shrink-0 rounded-full {dotClass[miru18080Tone]}"
 								aria-hidden="true"
@@ -289,7 +289,7 @@
 
 					<!-- Learner / shadow-loop -->
 					<li data-testid="service-row-learner">
-						<div class="flex items-center gap-3">
+						<div class="flex flex-wrap items-center gap-x-3 gap-y-2">
 							<span
 								class="inline-block h-2 w-2 shrink-0 rounded-full {dotClass[learnerToneValue]}"
 								aria-hidden="true"

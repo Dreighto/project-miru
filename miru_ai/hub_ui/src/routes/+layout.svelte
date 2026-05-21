@@ -19,7 +19,7 @@
 
 <div class="min-h-screen bg-bg font-sans text-text">
 	<header class="sticky top-0 z-10 border-b border-border bg-surface">
-		<nav class="mx-auto flex max-w-5xl items-center gap-6 px-6 py-3">
+		<nav class="mx-auto flex max-w-5xl items-center gap-3 px-4 py-2 sm:gap-6 sm:px-6">
 			<span class="font-mono text-sm text-text-faint">miru//dev</span>
 			<ul class="flex gap-1" role="list">
 				<li>
@@ -52,25 +52,29 @@
 
 <style>
 	.nav-link {
-		display: inline-block;
-		padding: 0.25rem 0.75rem;
-		border-radius: 0.375rem;
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+		padding: 0.5rem 0.85rem;
+		border-radius: 0.5rem;
 		font-size: 0.875rem;
 		font-weight: 500;
 		color: var(--color-text-dim);
 		text-decoration: none;
+		-webkit-tap-highlight-color: transparent;
 		transition:
-			color 150ms ease,
-			background-color 150ms ease;
+			color 120ms ease,
+			background-color 120ms ease;
 	}
 
-	.nav-link:hover {
+	.nav-link:hover,
+	.nav-link:active {
 		color: var(--color-text);
 		background-color: var(--color-surface2);
 	}
 
 	.nav-link[aria-current='page'] {
 		color: var(--color-accent);
-		background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+		background-color: color-mix(in srgb, var(--color-accent) 14%, transparent);
 	}
 </style>
