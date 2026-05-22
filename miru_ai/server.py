@@ -611,20 +611,39 @@ HOME_HIGHLIGHTS = (
 
 # Canonical One Piece island milestones in story order.
 # Islands are milestones on the route; TCG sets are the distance measure.
+# The Voyage milestones — One Piece Grand Line canon order, East Blue through
+# the New World. Each island is a project MILESTONE (an accomplishment), not a
+# set tally. The route is open-ended: the ship never reaches the final island.
+# Keys match the island art filenames in hub_ui/static/voyage/islands/.
 _VOYAGE_ISLAND_MILESTONES: tuple[dict[str, str], ...] = (
-    {"key": "east_blue", "name": "East Blue"},
+    # East Blue — the home sea
+    {"key": "foosha_village", "name": "Foosha Village"},
+    {"key": "shells_town", "name": "Shells Town"},
+    {"key": "orange_town", "name": "Orange Town"},
+    {"key": "syrup_village", "name": "Syrup Village"},
+    {"key": "baratie", "name": "Baratie"},
+    {"key": "cocoyasi_village", "name": "Cocoyasi Village"},
+    {"key": "loguetown", "name": "Loguetown"},
+    # Paradise — the first half of the Grand Line
     {"key": "reverse_mountain", "name": "Reverse Mountain"},
     {"key": "whisky_peak", "name": "Whisky Peak"},
+    {"key": "little_garden", "name": "Little Garden"},
+    {"key": "drum_island", "name": "Drum Island"},
     {"key": "alabasta", "name": "Alabasta"},
+    {"key": "jaya", "name": "Jaya"},
     {"key": "skypiea", "name": "Skypiea"},
-    {"key": "water_7", "name": "Water 7"},
+    {"key": "long_ring_long_land", "name": "Long Ring Long Land"},
+    {"key": "water_seven", "name": "Water Seven"},
+    {"key": "enies_lobby", "name": "Enies Lobby"},
     {"key": "thriller_bark", "name": "Thriller Bark"},
-    {"key": "sabaody", "name": "Sabaody Archipelago"},
-    {"key": "fishman_island", "name": "Fish-Man Island"},
+    {"key": "sabaody_archipelago", "name": "Sabaody Archipelago"},
+    # The New World — the second half, open-ended toward Laugh Tale
+    {"key": "fish_man_island", "name": "Fish-Man Island"},
     {"key": "punk_hazard", "name": "Punk Hazard"},
     {"key": "dressrosa", "name": "Dressrosa"},
-    {"key": "whole_cake", "name": "Whole Cake Island"},
-    {"key": "wano", "name": "Wano"},
+    {"key": "zou", "name": "Zou"},
+    {"key": "whole_cake_island", "name": "Whole Cake Island"},
+    {"key": "wano_country", "name": "Wano Country"},
     {"key": "egghead", "name": "Egghead"},
     {"key": "elbaf", "name": "Elbaf"},
 )

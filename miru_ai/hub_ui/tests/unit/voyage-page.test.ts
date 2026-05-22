@@ -1,150 +1,135 @@
-// Component test — Voyage page route map + Voyage Log panel (PRO-934).
+// Component test — Voyage Atlas: chart pages, chapter navigation, Voyage Log.
 // Deterministic: mock data, no live Flask. E2E tests cover the real backend path.
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 
 import VoyagePage from '../../src/routes/voyage/+page.svelte';
 
-const mockIslands = [
-	{ key: 'east_blue', name: 'East Blue', state: 'charted' as const },
-	{ key: 'reverse_mountain', name: 'Reverse Mountain', state: 'current' as const },
-	{ key: 'whisky_peak', name: 'Whisky Peak', state: 'fog' as const },
+const KEYS = [
+	'foosha_village', 'shells_town', 'orange_town', 'syrup_village', 'baratie',
+	'cocoyasi_village', 'loguetown', 'reverse_mountain', 'whisky_peak', 'little_garden',
+	'drum_island', 'alabasta', 'jaya', 'skypiea', 'long_ring_long_land', 'water_seven',
+	'enies_lobby', 'thriller_bark', 'sabaody_archipelago', 'fish_man_island', 'punk_hazard',
+	'dressrosa', 'zou', 'whole_cake_island', 'wano_country', 'egghead', 'elbaf'
 ];
 
-const mockVoyageData = {
-	islands: mockIslands,
-	current_island: mockIslands[1],
-	sets: [
-		{
-			set_code: 'OP01',
-			set_name: 'Romance Dawn',
-			state: 'charted' as const,
-			verified_count: 100,
-			total_count: 100,
-		},
-		{
-			set_code: 'OP02',
-			set_name: 'Paramount War',
-			state: 'current' as const,
-			verified_count: 50,
-			total_count: 100,
-		},
-	],
-	voyage_log: [
-		{
-			kind: 'pattern' as const,
-			issue_type: 'grading_dispute',
-			count: 3,
-			message: 'Grading Dispute — 3 recurring instances',
-		},
-		{
-			kind: 'alert' as const,
-			issue_type: 'elevated_review',
-			count: 2,
-			message: '2 patterns flagged for elevated review',
-		},
-	],
-	progress: {
-		sets_charted: 1,
-		sets_current: 1,
-		sets_fog: 0,
-		sets_total: 2,
-		islands_charted: 1,
-		islands_fog: 1,
-	},
-};
+const title = (k: string) =>
+	k.split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
 
-describe('Voyage page — route map', () => {
-	it('renders the route map section', () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
+function mockData(currentKey = 'foosha_village') {
+	const islands = KEYS.map((k) => ({
+		key: k,
+		name: title(k),
+		state: (k === currentKey ? 'current' : 'fog') as 'charted' | 'current' | 'fog'
+	}));
+	return {
+		voyage: {
+			islands,
+			current_island: islands.find((i) => i.state === 'current') ?? null,
+			sets: [],
+			voyage_log: [
+				{
+					kind: 'pattern' as const,
+					issue_type: 'grading_dispute',
+					count: 3,
+					message: 'Grading Dispute — 3 recurring instances'
+				}
+			],
+			progress: {
+				sets_charted: 0,
+				sets_current: 0,
+				sets_fog: 0,
+				sets_total: 0,
+				islands_charted: 0,
+				islands_fog: 26
+			}
+		},
+		flaskDown: false as const
+	};
+}
+
+describe('Voyage Atlas — chart page', () => {
+	it('renders the chart', () => {
+		render(VoyagePage, { props: { data: mockData() } });
 		expect(screen.getByTestId('route-map')).toBeInTheDocument();
 	});
 
-	it('renders all island nodes', () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
-		expect(screen.getByTestId('island-node-east_blue')).toBeInTheDocument();
+	it("renders the current chapter's island nodes", () => {
+		render(VoyagePage, { props: { data: mockData('foosha_village') } });
+		expect(screen.getByTestId('island-node-foosha_village')).toBeInTheDocument();
+		expect(screen.getByTestId('island-node-loguetown')).toBeInTheDocument();
+	});
+
+	it('opens on the chapter that holds the current island', () => {
+		render(VoyagePage, { props: { data: mockData('reverse_mountain') } });
 		expect(screen.getByTestId('island-node-reverse_mountain')).toBeInTheDocument();
-		expect(screen.getByTestId('island-node-whisky_peak')).toBeInTheDocument();
+		// East Blue islands are on a different chart page
+		expect(screen.queryByTestId('island-node-foosha_village')).not.toBeInTheDocument();
 	});
 
-	it('shows Log Pose label only on the current island', () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
-		const currentNode = screen.getByTestId('island-node-reverse_mountain');
-		expect(currentNode).toHaveTextContent('Log Pose');
-		const chartedNode = screen.getByTestId('island-node-east_blue');
-		expect(chartedNode).not.toHaveTextContent('Log Pose');
-	});
-
-	it('renders progress summary', () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
+	it('renders the progress summary', () => {
+		render(VoyagePage, { props: { data: mockData() } });
 		expect(screen.getByTestId('progress-summary')).toBeInTheDocument();
 	});
 });
 
-describe('Voyage page — Voyage Log panel', () => {
-	it('panel is hidden until an island is clicked', () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
-		expect(screen.queryByTestId('voyage-log-panel')).not.toBeInTheDocument();
-	});
-
-	it('clicking an island opens the Voyage Log panel', async () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
-		await fireEvent.click(screen.getByTestId('island-node-east_blue'));
-		expect(screen.getByTestId('voyage-log-panel')).toBeInTheDocument();
-	});
-
-	it('panel header shows the selected island name', async () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
-		await fireEvent.click(screen.getByTestId('island-node-reverse_mountain'));
-		const panel = screen.getByTestId('voyage-log-panel');
-		expect(panel).toHaveTextContent('Reverse Mountain');
-	});
-
-	it('clicking the same island again closes the panel', async () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
-		await fireEvent.click(screen.getByTestId('island-node-east_blue'));
-		expect(screen.getByTestId('voyage-log-panel')).toBeInTheDocument();
-		await fireEvent.click(screen.getByTestId('island-node-east_blue'));
-		expect(screen.queryByTestId('voyage-log-panel')).not.toBeInTheDocument();
-	});
-
-	it('clicking a different island switches the panel', async () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
-		await fireEvent.click(screen.getByTestId('island-node-east_blue'));
-		expect(screen.getByTestId('voyage-log-panel')).toHaveTextContent('East Blue');
-		await fireEvent.click(screen.getByTestId('island-node-reverse_mountain'));
-		expect(screen.getByTestId('voyage-log-panel')).toHaveTextContent('Reverse Mountain');
-	});
-
-	it('shows voyage log entries', async () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
-		await fireEvent.click(screen.getByTestId('island-node-east_blue'));
-		expect(screen.getByTestId('voyage-log-entries')).toBeInTheDocument();
-		expect(screen.getByText('Grading Dispute — 3 recurring instances')).toBeInTheDocument();
-	});
-
-	it('shows relevant sets for the selected island state', async () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
-		// Click the charted island — should show charted sets (OP01)
-		await fireEvent.click(screen.getByTestId('island-node-east_blue'));
-		expect(screen.getByTestId('set-progress')).toBeInTheDocument();
-		expect(screen.getByText('Romance Dawn')).toBeInTheDocument();
-	});
-
-	it('shows uncharted message for fog islands', async () => {
-		render(VoyagePage, { props: { data: { voyage: mockVoyageData, flaskDown: false } } });
-		await fireEvent.click(screen.getByTestId('island-node-whisky_peak'));
-		expect(screen.getByTestId('voyage-log-panel')).toHaveTextContent("Log Pose hasn't locked on");
+describe('Voyage Atlas — chapter navigation', () => {
+	it('chapter tabs switch the active chart page', async () => {
+		render(VoyagePage, { props: { data: mockData('foosha_village') } });
+		expect(screen.getByTestId('island-node-foosha_village')).toBeInTheDocument();
+		await fireEvent.click(screen.getByRole('button', { name: 'New World' }));
+		expect(screen.getByTestId('island-node-elbaf')).toBeInTheDocument();
+		expect(screen.queryByTestId('island-node-foosha_village')).not.toBeInTheDocument();
 	});
 });
 
-describe('Voyage page — error states', () => {
-	it('shows Flask-down banner when flaskDown is true', () => {
+describe('Voyage Atlas — Voyage Log panel', () => {
+	it('panel is hidden until an island is tapped', () => {
+		render(VoyagePage, { props: { data: mockData() } });
+		expect(screen.queryByTestId('voyage-log-panel')).not.toBeInTheDocument();
+	});
+
+	it('tapping an island opens the Voyage Log', async () => {
+		render(VoyagePage, { props: { data: mockData() } });
+		await fireEvent.click(screen.getByTestId('island-node-loguetown'));
+		expect(screen.getByTestId('voyage-log-panel')).toBeInTheDocument();
+	});
+
+	it('panel shows the selected island name', async () => {
+		render(VoyagePage, { props: { data: mockData() } });
+		await fireEvent.click(screen.getByTestId('island-node-baratie'));
+		expect(screen.getByTestId('voyage-log-panel')).toHaveTextContent('Baratie');
+	});
+
+	it('tapping the same island again closes the panel', async () => {
+		render(VoyagePage, { props: { data: mockData() } });
+		await fireEvent.click(screen.getByTestId('island-node-baratie'));
+		expect(screen.getByTestId('voyage-log-panel')).toBeInTheDocument();
+		await fireEvent.click(screen.getByTestId('island-node-baratie'));
+		expect(screen.queryByTestId('voyage-log-panel')).not.toBeInTheDocument();
+	});
+
+	it('frames a fog island as an uncharted milestone', async () => {
+		render(VoyagePage, { props: { data: mockData() } });
+		await fireEvent.click(screen.getByTestId('island-node-loguetown'));
+		expect(screen.getByTestId('voyage-log-panel')).toHaveTextContent('Uncharted');
+	});
+
+	it("shows the ship's log on the current island", async () => {
+		render(VoyagePage, { props: { data: mockData('foosha_village') } });
+		await fireEvent.click(screen.getByTestId('island-node-foosha_village'));
+		expect(screen.getByTestId('voyage-log-entries')).toBeInTheDocument();
+		expect(screen.getByText('Grading Dispute — 3 recurring instances')).toBeInTheDocument();
+	});
+});
+
+describe('Voyage Atlas — error states', () => {
+	it('shows the Flask-down banner when flaskDown is true', () => {
 		render(VoyagePage, { props: { data: { voyage: null, flaskDown: true } } });
 		expect(screen.getByTestId('flask-down-banner')).toBeInTheDocument();
 	});
 
-	it('hides route map when Flask is down', () => {
+	it('hides the chart when Flask is down', () => {
 		render(VoyagePage, { props: { data: { voyage: null, flaskDown: true } } });
 		expect(screen.queryByTestId('route-map')).not.toBeInTheDocument();
 	});

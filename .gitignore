@@ -156,3 +156,8 @@ data/peer_reviews/
 # Append-only runtime data, same pattern as the other DGAS append-only files above.
 data/hermes_predictions.jsonl
 .gemini/settings.json.backup-*
+
+# Voyage island source art — local backup of agy-generated black-on-white
+# originals + the unoptimised chart. The app uses the processed versions in
+# hub_ui/static/voyage/. Regenerable; kept local, not committed (added 2026-05-21).
+data/voyage_island_sources/
