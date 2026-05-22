@@ -1,87 +1,136 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { slide } from 'svelte/transition';
+	import { fade, slide } from 'svelte/transition';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	type Voyage = NonNullable<PageData['voyage']>;
-	type Island = Voyage['islands'][number];
+	type Island = NonNullable<PageData['voyage']>['islands'][number];
 	type IslandState = Island['state'];
 
-	// Canon flavour — one line per island, the voyage's story.
+	const islands = $derived(data.voyage?.islands ?? []);
+	const voyageLog = $derived(data.voyage?.voyage_log ?? []);
+	const progress = $derived(data.voyage?.progress ?? null);
+	const currentIsland = $derived(islands.find((i) => i.state === 'current') ?? null);
+	const islandByKey = $derived(new Map(islands.map((i) => [i.key, i])));
+
+	// ── The Atlas — canon regions, each a chart page ─────────────────────────
+	const CHAPTERS = [
+		{
+			id: 'east-blue',
+			label: 'East Blue',
+			sub: 'The home sea',
+			keys: ['foosha_village', 'shells_town', 'orange_town', 'syrup_village', 'baratie', 'cocoyasi_village', 'loguetown']
+		},
+		{
+			id: 'paradise-1',
+			label: 'Paradise I',
+			sub: 'Into the Grand Line',
+			keys: ['reverse_mountain', 'whisky_peak', 'little_garden', 'drum_island', 'alabasta', 'jaya', 'skypiea']
+		},
+		{
+			id: 'paradise-2',
+			label: 'Paradise II',
+			sub: 'To the Red Line',
+			keys: ['long_ring_long_land', 'water_seven', 'enies_lobby', 'thriller_bark', 'sabaody_archipelago']
+		},
+		{
+			id: 'new-world',
+			label: 'New World',
+			sub: 'Toward Laugh Tale',
+			keys: ['fish_man_island', 'punk_hazard', 'dressrosa', 'zou', 'whole_cake_island', 'wano_country', 'egghead', 'elbaf']
+		}
+	];
+
+	// Island positions on the square chart (% coords) — hand-placed so the route
+	// winds with canon twists and turns, never a uniform swirl.
+	const LAYOUT: Record<string, { x: number; y: number }> = {
+		foosha_village: { x: 24, y: 86 }, shells_town: { x: 55, y: 80 }, orange_town: { x: 33, y: 67 },
+		syrup_village: { x: 63, y: 57 }, baratie: { x: 38, y: 45 }, cocoyasi_village: { x: 67, y: 33 },
+		loguetown: { x: 46, y: 17 },
+		reverse_mountain: { x: 25, y: 87 }, whisky_peak: { x: 58, y: 82 }, little_garden: { x: 35, y: 69 },
+		drum_island: { x: 67, y: 60 }, alabasta: { x: 37, y: 47 }, jaya: { x: 64, y: 37 },
+		skypiea: { x: 44, y: 13 },
+		long_ring_long_land: { x: 27, y: 83 }, water_seven: { x: 57, y: 70 }, enies_lobby: { x: 77, y: 54 },
+		thriller_bark: { x: 42, y: 45 }, sabaody_archipelago: { x: 56, y: 23 },
+		fish_man_island: { x: 30, y: 86 }, punk_hazard: { x: 61, y: 79 }, dressrosa: { x: 35, y: 66 },
+		zou: { x: 67, y: 57 }, whole_cake_island: { x: 32, y: 46 }, wano_country: { x: 60, y: 38 },
+		egghead: { x: 40, y: 25 }, elbaf: { x: 64, y: 15 }
+	};
+
+	// Art aspect ratios (width / height) — keeps visual weight even across the set.
+	const ASPECT: Record<string, number> = {
+		alabasta: 1.0, baratie: 1.026, cocoyasi_village: 1.0, dressrosa: 2.216, drum_island: 1.24,
+		egghead: 1.045, elbaf: 1.125, enies_lobby: 1.153, fish_man_island: 0.836, foosha_village: 2.056,
+		jaya: 1.354, little_garden: 1.0, loguetown: 1.0, long_ring_long_land: 1.096, orange_town: 1.407,
+		punk_hazard: 1.193, reverse_mountain: 1.0, sabaody_archipelago: 1.135, shells_town: 1.842,
+		skypiea: 0.879, syrup_village: 1.323, thriller_bark: 1.0, wano_country: 1.533, water_seven: 1.32,
+		whisky_peak: 1.0, whole_cake_island: 2.179, zou: 0.959
+	};
+
+	// Canon flavour — one line per milestone.
 	const CAPTIONS: Record<string, string> = {
-		east_blue: 'The beginning of all things.',
-		reverse_mountain: 'Enter the Grand Line.',
-		whisky_peak: "The bounty hunters' paradise.",
+		foosha_village: 'Where every voyage begins.',
+		shells_town: 'The first Marine base, left in the wake.',
+		orange_town: 'A town reclaimed from a clown.',
+		syrup_village: 'A quiet slope and a brave lie.',
+		baratie: 'The sea-going kitchen.',
+		cocoyasi_village: 'Tangerine groves, hard-won peace.',
+		loguetown: 'The town of the beginning and the end.',
+		reverse_mountain: 'The gate that climbs to the sky.',
+		whisky_peak: 'A welcome with a hidden edge.',
+		little_garden: 'An island the ages forgot.',
+		drum_island: 'A winter kingdom; a doctor found.',
 		alabasta: 'Sand, kings, and revolution.',
+		jaya: 'Half a town, half a dream.',
 		skypiea: 'Above the clouds, a forgotten sky.',
-		water_7: 'Shipwrights and goodbyes.',
-		thriller_bark: 'The island of shadows.',
-		sabaody: "The archipelago at the world's edge.",
-		fishman_island: 'Below the sea, beneath it all.',
-		punk_hazard: 'Fire and ice in equal measure.',
-		dressrosa: 'The kingdom under strings.',
-		whole_cake: 'Tea parties with emperors.',
-		wano: 'The closed country opens.',
-		egghead: 'The future island.',
+		long_ring_long_land: 'An island stretched thin by the tide.',
+		water_seven: 'The city of water and shipwrights.',
+		enies_lobby: 'The judicial island — a declaration of war.',
+		thriller_bark: 'The island of stolen shadows.',
+		sabaody_archipelago: 'The archipelago at the edge of Paradise.',
+		fish_man_island: 'Ten thousand metres beneath the Red Line.',
+		punk_hazard: 'Fire on one shore, ice on the other.',
+		dressrosa: 'A kingdom of toys and strings.',
+		zou: 'A country on the back of a wandering giant.',
+		whole_cake_island: 'A tea party with an Emperor.',
+		wano_country: 'The closed country, opening.',
+		egghead: 'The island of the future.',
 		elbaf: 'The land of giants.'
 	};
 
-	const islands = $derived(data.voyage?.islands ?? []);
-	const progress = $derived(data.voyage?.progress ?? null);
-	const voyageLog = $derived(data.voyage?.voyage_log ?? []);
-	const allSets = $derived(data.voyage?.sets ?? []);
+	// ── Active chapter — opens on the leg the ship is sailing ─────────────────
+	function chapterOf(key: string | undefined): number {
+		if (!key) return 0;
+		const i = CHAPTERS.findIndex((c) => c.keys.includes(key));
+		return i >= 0 ? i : 0;
+	}
+	function startChapter(): number {
+		const key = data.voyage?.islands?.find((i) => i.state === 'current')?.key;
+		return chapterOf(key);
+	}
+	let activeChapter = $state(startChapter());
+	const chapter = $derived(CHAPTERS[activeChapter]);
 
-	let selectedKey = $state<string | null>(null);
-	const selectedIsland = $derived(islands.find((i) => i.key === selectedKey) ?? null);
-	const selectedSets = $derived(
-		selectedIsland ? allSets.filter((s) => s.state === selectedIsland.state) : []
+	type Placed = { x: number; y: number; isl: Island };
+	const pageIslands = $derived(
+		chapter.keys.map((k) => islandByKey.get(k)).filter((x): x is Island => !!x)
 	);
-	const SET_CAP = 12;
-	const cappedSets = $derived(selectedSets.slice(0, SET_CAP));
-
-	const currentIsland = $derived(islands.find((i) => i.state === 'current') ?? null);
-
-	// ── Map geometry ──────────────────────────────────────────────────────────
-	// The route is generated, not hard-coded: island nodes are placed along a
-	// serpentine sine wave, the path is a Catmull-Rom spline through them.
-	const VB_W = 360;
-	const GAP = 76; // vertical spacing between islands
-	const TOP_PAD = 92;
-	const BOT_PAD = 78;
-	const AMP = 104; // serpentine amplitude
-	const CX = VB_W / 2;
-
-	const vbH = $derived(TOP_PAD + Math.max(0, islands.length - 1) * GAP + BOT_PAD);
-
-	type Pt = { x: number; y: number; island: Island; idx: number };
-
-	// index 0 = first island = bottom of the chart; the voyage climbs upward.
-	const points = $derived.by<Pt[]>(() =>
-		islands.map((island, i) => ({
-			x: CX + AMP * Math.sin(i * 0.8 + 0.6),
-			y: vbH - BOT_PAD - i * GAP,
-			island,
-			idx: i
-		}))
+	const pagePts = $derived<Placed[]>(
+		pageIslands.map((isl) => ({ x: LAYOUT[isl.key].x, y: LAYOUT[isl.key].y, isl }))
 	);
 
-	const currentIdx = $derived.by(() => {
-		const i = islands.findIndex((is) => is.state === 'current');
-		if (i >= 0) return i;
-		let last = 0;
-		islands.forEach((is, idx) => {
-			if (is.state === 'charted') last = idx;
+	// route split — wake (sailed) vs ahead (uncharted)
+	const splitIdx = $derived.by(() => {
+		let last = -1;
+		pageIslands.forEach((isl, i) => {
+			if (isl.state !== 'fog') last = i;
 		});
 		return last;
 	});
 
-	// Catmull-Rom spline → cubic Bézier path, so the route curves smoothly
-	// through every island node.
-	function pathThrough(pts: Pt[]): string {
+	function pathThrough(pts: { x: number; y: number }[]): string {
 		if (pts.length === 0) return '';
-		const f = (n: number) => n.toFixed(1);
+		const f = (n: number) => n.toFixed(2);
 		if (pts.length === 1) return `M ${f(pts[0].x)} ${f(pts[0].y)}`;
 		let d = `M ${f(pts[0].x)} ${f(pts[0].y)}`;
 		for (let i = 0; i < pts.length - 1; i++) {
@@ -97,298 +146,312 @@
 		}
 		return d;
 	}
+	const wakePath = $derived(pathThrough(pagePts.slice(0, splitIdx + 1)));
+	const aheadPath = $derived(pathThrough(pagePts.slice(Math.max(0, splitIdx))));
 
-	const chartedPath = $derived(pathThrough(points.slice(0, currentIdx + 1)));
-	const aheadPath = $derived(pathThrough(points.slice(currentIdx)));
+	const shipOnPage = $derived(pageIslands.some((i) => i.state === 'current'));
+	const shipPt = $derived(currentIsland ? LAYOUT[currentIsland.key] : null);
 
-	// The Red Line is crossed at Fish-Man Island — the Paradise / New World divide.
-	const redlineY = $derived.by(() => {
-		const fm = points.find((p) => p.island.key === 'fishman_island');
-		return fm ? fm.y : vbH * 0.5;
-	});
+	// island sizing — long side held roughly constant whatever the art's aspect
+	function box(key: string, state: IslandState): { w: number; h: number } {
+		const a = ASPECT[key] ?? 1;
+		const long = state === 'current' ? 23 : state === 'charted' ? 17.5 : 15.5;
+		return a >= 1 ? { w: long, h: long / a } : { w: long * a, h: long };
+	}
+	const fileOf = (key: string) => key.replace(/_/g, '-');
 
-	const pctX = (x: number) => (x / VB_W) * 100;
-	const pctY = (y: number) => (y / vbH) * 100;
+	function stateLabel(s: IslandState): string {
+		return s === 'charted' ? 'Charted' : s === 'current' ? 'Log Pose locked' : 'Uncharted';
+	}
+	function milestoneLine(s: IslandState): string {
+		return s === 'charted'
+			? 'A milestone charted — this accomplishment is behind the ship.'
+			: s === 'current'
+				? 'The Log Pose is locked here — the voyage stands at this milestone now.'
+				: 'Uncharted — a milestone still ahead, waiting in the mist.';
+	}
 
-	function toggle(key: string) {
+	// ── Selection + the Voyage Log ───────────────────────────────────────────
+	let selectedKey = $state<string | null>(null);
+	const selected = $derived(selectedKey ? (islandByKey.get(selectedKey) ?? null) : null);
+	function tapIsland(key: string) {
 		selectedKey = selectedKey === key ? null : key;
 	}
 
-	function stateLabel(s: IslandState): string {
-		if (s === 'charted') return 'Charted';
-		if (s === 'current') return 'Log Pose locked';
-		return 'Uncharted';
+	// ── Chapter navigation ───────────────────────────────────────────────────
+	function go(dir: number) {
+		const n = activeChapter + dir;
+		if (n >= 0 && n < CHAPTERS.length) {
+			activeChapter = n;
+			selectedKey = null;
+		}
+	}
+	function setChapter(i: number) {
+		activeChapter = i;
+		selectedKey = null;
 	}
 
-	onMount(() => {
-		// Open the chart on the operator's current position.
-		const node = document.getElementById('voyage-current-node');
-		try {
-			node?.scrollIntoView({ block: 'center', behavior: 'auto' });
-		} catch {
-			// scrollIntoView is unavailable in some environments (e.g. jsdom).
-		}
-	});
+	let touchX = 0;
+	function onTouchStart(e: TouchEvent) {
+		touchX = e.changedTouches[0].clientX;
+	}
+	function onTouchEnd(e: TouchEvent) {
+		const dx = e.changedTouches[0].clientX - touchX;
+		if (Math.abs(dx) > 55) go(dx < 0 ? 1 : -1);
+	}
 </script>
 
-<main class="voyage mx-auto max-w-5xl p-4 sm:p-6">
-	<div class="vcol">
-	<header class="vhead">
-		<h1>Voyage</h1>
-		{#if data.voyage && currentIsland}
-			<p class="vsub">
-				The Grand Line · Log Pose locked on <span>{currentIsland.name}</span>
-			</p>
-		{:else}
-			<p class="vsub">The Grand Line</p>
-		{/if}
-	</header>
+<main class="voyage">
+	<div class="col">
+		<header class="vhead">
+			<p class="eyebrow">The Grand Line</p>
+			<h1>Voyage</h1>
+			{#if currentIsland}
+				<p class="sub">The Log Pose points to <span>{currentIsland.name}</span></p>
+			{/if}
+		</header>
 
-	{#if data.flaskDown}
-		<div role="alert" data-testid="flask-down-banner" class="flask-down">
-			Flask service unreachable. Start <code>miru_ai.server</code> on port 18765 and reload.
-		</div>
-	{:else if data.voyage}
-		<!-- ── The chart ──────────────────────────────────────────────────── -->
-		<div class="chart-frame">
-			<div
-				class="map"
-				data-testid="route-map"
-				role="list"
-				aria-label="Island route map"
-				style="aspect-ratio: {VB_W} / {vbH};"
-			>
-				<div class="grain" aria-hidden="true"></div>
-				<div class="seacurrent c1" aria-hidden="true"></div>
-				<div class="seacurrent c2" aria-hidden="true"></div>
-				<div class="seacurrent c3" aria-hidden="true"></div>
-				<div class="fogbank" aria-hidden="true"><span>NEW WORLD</span></div>
-
-				<svg
-					class="route"
-					viewBox="0 0 {VB_W} {vbH}"
-					preserveAspectRatio="none"
-					aria-hidden="true"
-				>
-					<defs>
-						<linearGradient id="charted-grad" x1="0" y1="1" x2="0" y2="0">
-							<stop offset="0" stop-color="var(--color-positive)" stop-opacity="0.85" />
-							<stop offset="1" stop-color="var(--color-accent)" stop-opacity="0.9" />
-						</linearGradient>
-					</defs>
-					<!-- Red Line — the Paradise / New World divide -->
-					<line
-						class="redline"
-						x1="0"
-						y1={redlineY}
-						x2={VB_W}
-						y2={redlineY}
-					/>
-					<!-- route ahead (faint, dashed, into the fog) -->
-					<path class="seg-ahead" d={aheadPath} />
-					<!-- charted route (the wake behind you) -->
-					<path class="seg-charted" d={chartedPath} stroke="url(#charted-grad)" />
-				</svg>
-
-				<div class="redline-tag" style="top: {pctY(redlineY)}%;">RED LINE</div>
-
-				<svg class="rose" viewBox="0 0 100 100" aria-hidden="true">
-					<circle cx="50" cy="50" r="34" />
-					<circle cx="50" cy="50" r="21" />
-					<path d="M50 8 L56 50 L50 92 L44 50 Z" class="rose-ns" />
-					<path d="M8 50 L50 56 L92 50 L50 44 Z" class="rose-ew" />
-				</svg>
-
-				<!-- ── Island nodes ──────────────────────────────────────────── -->
-				{#each points as p (p.island.key)}
-					{@const sel = selectedKey === p.island.key}
+		{#if data.flaskDown}
+			<div role="alert" data-testid="flask-down-banner" class="flask-down">
+				Flask service unreachable. Start <code>miru_ai.server</code> on port 18765 and reload.
+			</div>
+		{:else if data.voyage}
+			<!-- ── Chapter tabs ─────────────────────────────────────────────── -->
+			<nav class="tabs" aria-label="Voyage chapters">
+				{#each CHAPTERS as c, i (c.id)}
 					<button
 						type="button"
-						class="island {p.island.state}"
-						class:selected={sel}
-						style="left: {pctX(p.x)}%; top: {pctY(p.y)}%;"
-						id={p.idx === currentIdx ? 'voyage-current-node' : undefined}
-						data-testid="island-node-{p.island.key}"
-						aria-pressed={sel}
-						aria-label="{p.island.name} — {stateLabel(p.island.state)}"
-						onclick={() => toggle(p.island.key)}
+						class="tab"
+						class:active={i === activeChapter}
+						aria-current={i === activeChapter}
+						onclick={() => setChapter(i)}
 					>
-						<span class="dot" aria-hidden="true">
-							{#if p.island.state === 'charted'}
-								<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
-							{:else if p.island.state === 'current'}
-								<svg viewBox="0 0 24 24" class="ic-current">
-									<circle cx="12" cy="12" r="3.4" />
-									<path d="M12 2.5v3.5M12 18v3.5M2.5 12h3.5M18 12h3.5" />
-								</svg>
-							{/if}
-						</span>
-						{#if p.island.state === 'current'}
-							<span class="eyebrow">Log Pose</span>
-						{/if}
-						<span class="iname">{p.island.name}</span>
+						{c.label}
 					</button>
 				{/each}
-			</div>
-		</div>
+			</nav>
 
-		<!-- ── Voyage Log panel (slides in on island tap) ──────────────────── -->
-		{#if selectedIsland}
-			<section
-				class="logpanel"
-				data-testid="voyage-log-panel"
-				aria-label="Voyage Log — {selectedIsland.name}"
-				transition:slide={{ duration: 220 }}
-			>
-				<div class="crest">
-					<span class="medal {selectedIsland.state}" aria-hidden="true">
-						{#if selectedIsland.state === 'charted'}
-							<svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7" /></svg>
-						{:else if selectedIsland.state === 'current'}
-							<svg viewBox="0 0 24 24">
-								<circle cx="12" cy="12" r="3.4" />
-								<path d="M12 2.5v3.5M12 18v3.5M2.5 12h3.5M18 12h3.5" />
-							</svg>
-						{/if}
-					</span>
-					<div class="crest-text">
-						<h2>{selectedIsland.name}</h2>
-						<span class="pill {selectedIsland.state}">{stateLabel(selectedIsland.state)}</span>
-					</div>
-					<button
-						type="button"
-						class="crest-close"
-						aria-label="Close Voyage Log"
-						onclick={() => (selectedKey = null)}>&times;</button
+			<!-- ── The chart page ───────────────────────────────────────────── -->
+			{#key activeChapter}
+				<div class="page" in:fade={{ duration: 220 }}>
+					<div
+						class="chart"
+						data-testid="route-map"
+						role="list"
+						aria-label="Voyage chart — {chapter.label}"
+						ontouchstart={onTouchStart}
+						ontouchend={onTouchEnd}
 					>
-				</div>
-
-				{#if CAPTIONS[selectedIsland.key]}
-					<div class="canon">
-						<p>{CAPTIONS[selectedIsland.key]}</p>
-					</div>
-				{/if}
-
-				<div class="logsec" data-testid="set-progress">
-					<h3>Sets</h3>
-					{#if selectedIsland.state === 'fog'}
-						<p class="empty">Sets ahead are uncharted — the Log Pose hasn't locked on yet.</p>
-					{:else if selectedSets.length > 0}
-						<ul class="setlist">
-							{#each cappedSets as set, i (set.set_code + '-' + i)}
-								{@const ratio =
-									set.total_count > 0 ? set.verified_count / set.total_count : 0}
-								<li class="setrow">
-									<span class="setcode">{set.set_code}</span>
-									<span class="setname">{set.set_name}</span>
-									{#if set.total_count > 0}
-										<span class="setbar" aria-hidden="true">
-											<i style="width: {Math.round(ratio * 100)}%;"></i>
-										</span>
-										<span class="setcount">{set.verified_count}/{set.total_count}</span>
-									{/if}
-								</li>
-							{/each}
-						</ul>
-						{#if selectedSets.length > SET_CAP}
-							<p class="more">+{selectedSets.length - SET_CAP} more sets in this state</p>
+						<!-- the Red Line — the wall at the end of Paradise -->
+						{#if chapter.id === 'paradise-2'}
+							<div class="redline" aria-hidden="true"><span>Red Line</span></div>
 						{/if}
-					{:else}
-						<p class="empty">No sets recorded for this island.</p>
-					{/if}
-				</div>
 
-				<div class="logsec">
-					<h3>Voyage Log</h3>
-					{#if voyageLog.length > 0}
-						<ul class="entries" data-testid="voyage-log-entries">
-							{#each voyageLog as entry, i (entry.issue_type + '-' + entry.kind + '-' + i)}
-								<li class="entry">
-									<span
-										class="etrack"
-										class:alert={entry.kind === 'alert'}
-										aria-hidden="true"
-									></span>
-									<span class="etext">
-										<span class="emsg" class:alert={entry.kind === 'alert'}
-											>{entry.message}</span
-										>
-										{#if entry.count > 1}
-											<span class="ecount">&times;{entry.count}</span>
-										{/if}
-									</span>
-								</li>
-							{/each}
-						</ul>
-					{:else}
-						<p class="empty" data-testid="voyage-log-empty">
-							No patterns recorded yet — the log is clear.
-						</p>
-					{/if}
-				</div>
-			</section>
-		{/if}
+						<!-- the route -->
+						<svg class="route" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+							<defs>
+								<linearGradient id="wake" x1="0" y1="1" x2="0" y2="0">
+									<stop offset="0" stop-color="var(--color-positive)" stop-opacity="0.85" />
+									<stop offset="1" stop-color="var(--color-accent)" stop-opacity="0.95" />
+								</linearGradient>
+								<linearGradient id="ahead" x1="0" y1="1" x2="0" y2="0">
+									<stop offset="0" stop-color="var(--color-sea)" stop-opacity="0.7" />
+									<stop offset="1" stop-color="var(--color-sea)" stop-opacity="0.12" />
+								</linearGradient>
+							</defs>
+							{#if aheadPath}
+								<path class="r-ahead" d={aheadPath} stroke="url(#ahead)" />
+							{/if}
+							{#if wakePath && splitIdx > 0}
+								<path class="r-wake" d={wakePath} stroke="url(#wake)" />
+							{/if}
+						</svg>
 
-		<!-- ── Progress summary ────────────────────────────────────────────── -->
-		{#if progress}
-			<section class="progress" data-testid="progress-summary" aria-label="Voyage progress">
-				<h2>Progress</h2>
-				<div class="pstats">
-					<div class="pstat">
-						<span class="pdot charted" aria-hidden="true"></span>
-						<span class="pnum">{progress.sets_charted}</span>
-						<span class="plabel">sets charted</span>
+						<!-- islands -->
+						{#each pagePts as p (p.isl.key)}
+							{@const b = box(p.isl.key, p.isl.state)}
+							<button
+								type="button"
+								class="island {p.isl.state}"
+								class:sel={selectedKey === p.isl.key}
+								style="left:{p.x}%;top:{p.y}%;width:{b.w}%;height:{b.h}%"
+								data-testid="island-node-{p.isl.key}"
+								aria-pressed={selectedKey === p.isl.key}
+								aria-label="{p.isl.name} — {stateLabel(p.isl.state)}"
+								onclick={() => tapIsland(p.isl.key)}
+							>
+								{#if p.isl.state === 'current'}
+									<span class="glow" aria-hidden="true"></span>
+								{/if}
+								<span
+									class="art"
+									style="--art:url(/voyage/islands/{fileOf(p.isl.key)}.png)"
+									aria-hidden="true"
+								></span>
+								<span class="iname">{p.isl.name}</span>
+							</button>
+						{/each}
+
+						<!-- the ship — the Log Pose is here -->
+						{#if shipOnPage && shipPt}
+							<div class="ship" style="left:{shipPt.x}%;top:{shipPt.y}%" aria-hidden="true">
+								<svg viewBox="0 0 36 40">
+									<path class="hull" d="M18 5 Q30 21 24 34 L12 34 Q6 21 18 5 Z" />
+									<path class="sail" d="M18 9 Q26 19 18 27 Q14 19 18 9 Z" />
+									<line class="mast" x1="18" y1="7" x2="18" y2="31" />
+								</svg>
+							</div>
+						{/if}
+
+						<!-- Laugh Tale — the horizon that is never reached -->
+						{#if chapter.id === 'new-world'}
+							<div class="laugh" aria-hidden="true">
+								<span class="laugh-glow"></span>
+								<span class="laugh-label">Laugh Tale</span>
+							</div>
+						{/if}
 					</div>
-					{#if progress.sets_current > 0}
-						<div class="pstat">
-							<span class="pdot current" aria-hidden="true"></span>
-							<span class="pnum">{progress.sets_current}</span>
-							<span class="plabel">in progress</span>
+
+					<!-- chapter caption + arrows -->
+					<div class="chapnav">
+						<button
+							type="button"
+							class="arrow"
+							onclick={() => go(-1)}
+							disabled={activeChapter === 0}
+							aria-label="Previous chapter">&lsaquo;</button
+						>
+						<div class="capt">
+							<span class="cap-name">{chapter.label}</span>
+							<span class="cap-sub">{chapter.sub}</span>
+						</div>
+						<button
+							type="button"
+							class="arrow"
+							onclick={() => go(1)}
+							disabled={activeChapter === CHAPTERS.length - 1}
+							aria-label="Next chapter">&rsaquo;</button
+						>
+					</div>
+				</div>
+			{/key}
+
+			<!-- ── Voyage Log — slides in on island tap ─────────────────────── -->
+			{#if selected}
+				<section
+					class="logpanel"
+					data-testid="voyage-log-panel"
+					aria-label="Voyage Log — {selected.name}"
+					transition:slide={{ duration: 220 }}
+				>
+					<div class="crest">
+						<span class="medal {selected.state}" aria-hidden="true"></span>
+						<div class="crest-tx">
+							<p class="crest-eye">Voyage Log</p>
+							<h2>{selected.name}</h2>
+							<span class="pill {selected.state}">{stateLabel(selected.state)}</span>
+						</div>
+						<button
+							type="button"
+							class="close"
+							aria-label="Close Voyage Log"
+							onclick={() => (selectedKey = null)}>&times;</button
+						>
+					</div>
+
+					{#if CAPTIONS[selected.key]}
+						<p class="canon">&ldquo;{CAPTIONS[selected.key]}&rdquo;</p>
+					{/if}
+					<p class="mline">{milestoneLine(selected.state)}</p>
+
+					{#if selected.state === 'current'}
+						<div class="logsec">
+							<h3>Ship's Log</h3>
+							{#if voyageLog.length > 0}
+								<ul class="entries" data-testid="voyage-log-entries">
+									{#each voyageLog as e, i (e.issue_type + '-' + e.kind + '-' + i)}
+										<li class="entry">
+											<span class="edot" class:alert={e.kind === 'alert'} aria-hidden="true"></span>
+											<span class="etext" class:alert={e.kind === 'alert'}>{e.message}</span>
+											{#if e.count > 1}<span class="ecount">&times;{e.count}</span>{/if}
+										</li>
+									{/each}
+								</ul>
+							{:else}
+								<p class="empty" data-testid="voyage-log-empty">
+									No patterns recorded — the log is clear.
+								</p>
+							{/if}
 						</div>
 					{/if}
-					<div class="pstat">
-						<span class="pdot fog" aria-hidden="true"></span>
-						<span class="pnum">{progress.sets_fog}</span>
-						<span class="plabel">ahead</span>
+				</section>
+			{/if}
+
+			<!-- ── Progress ─────────────────────────────────────────────────── -->
+			{#if progress}
+				<section class="progress" data-testid="progress-summary" aria-label="Voyage progress">
+					<div class="pstats">
+						<div class="pstat">
+							<span class="pnum">{progress.islands_charted}</span>
+							<span class="plabel">charted</span>
+						</div>
+						<div class="pstat">
+							<span class="pnum">{islands.length}</span>
+							<span class="plabel">milestones</span>
+						</div>
+						<div class="pstat">
+							<span class="pnum">{progress.islands_fog}</span>
+							<span class="plabel">ahead</span>
+						</div>
 					</div>
-					<div class="pstat">
-						<span class="pdot charted" aria-hidden="true"></span>
-						<span class="pnum">{progress.islands_charted}</span>
-						<span class="plabel">islands charted</span>
-					</div>
-				</div>
-			</section>
+					<p class="prog-line">
+						The Log Pose is locked on <span>{currentIsland?.name ?? 'the horizon'}</span> — the
+						voyage goes on.
+					</p>
+				</section>
+			{/if}
 		{/if}
-	{/if}
 	</div>
 </main>
 
 <style>
 	.voyage {
-		--sea-deep: #0c141f;
-		--sea-mid: #101d2e;
-		--sea-glow: rgba(200, 152, 96, 0.07);
-		--redline: #6e2530;
+		--isl-charted: var(--color-accent);
+		--isl-current: #f2d9ab;
+		--isl-fog: #66747f;
+		padding: 1rem 0 2.5rem;
 	}
-	.vcol {
-		max-width: 480px;
+	.col {
+		max-width: 460px;
 		margin: 0 auto;
+		padding: 0 1rem;
 	}
 
+	/* ── Header ─────────────────────────────────────────────────────────── */
 	.vhead {
-		margin-bottom: 1rem;
+		margin-bottom: 0.85rem;
+	}
+	.eyebrow {
+		font-family: var(--font-mono, monospace);
+		font-size: 0.62rem;
+		letter-spacing: 0.24em;
+		text-transform: uppercase;
+		color: var(--color-sea);
 	}
 	.vhead h1 {
-		font-size: 1.25rem;
+		font-family: var(--font-display, serif);
+		font-size: 2.4rem;
 		font-weight: 600;
+		line-height: 1;
 		color: var(--color-text);
+		margin-top: 0.1rem;
 	}
-	.vsub {
-		margin-top: 0.15rem;
-		font-size: 0.8rem;
+	.sub {
+		margin-top: 0.35rem;
+		font-size: 0.85rem;
 		color: var(--color-text-dim);
 	}
-	.vsub span {
+	.sub span {
 		color: var(--color-accent);
 		font-weight: 500;
 	}
@@ -397,7 +460,7 @@
 		border: 1px solid var(--color-negative);
 		background: var(--color-surface);
 		color: var(--color-negative);
-		border-radius: 0.375rem;
+		border-radius: 0.5rem;
 		padding: 0.75rem 1rem;
 		font-size: 0.875rem;
 	}
@@ -406,89 +469,42 @@
 		font-size: 0.8rem;
 	}
 
-	/* ── The chart ─────────────────────────────────────────────────────── */
-	.chart-frame {
+	/* ── Chapter tabs ───────────────────────────────────────────────────── */
+	.tabs {
 		display: flex;
-		justify-content: center;
+		gap: 3px;
+		margin-bottom: 0.6rem;
 	}
-	.map {
+	.tab {
+		flex: 1;
+		padding: 0.42rem 0.15rem;
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: 0.35rem;
+		color: var(--color-text-faint);
+		font-family: var(--font-mono, monospace);
+		font-size: 0.57rem;
+		letter-spacing: 0.04em;
+		cursor: pointer;
+		transition: color 0.12s ease, border-color 0.12s ease;
+	}
+	.tab.active {
+		color: var(--color-accent);
+		border-color: var(--color-accent-dim);
+		background: var(--color-surface2);
+	}
+
+	/* ── The chart ──────────────────────────────────────────────────────── */
+	.chart {
 		position: relative;
 		width: 100%;
-		max-width: 460px;
+		aspect-ratio: 1 / 1;
 		overflow: hidden;
 		border: 1px solid var(--color-border);
-		border-radius: 0.75rem;
-		background:
-			radial-gradient(ellipse at 78% 14%, var(--sea-glow), transparent 55%),
-			radial-gradient(ellipse at 20% 88%, rgba(143, 190, 122, 0.05), transparent 55%),
-			linear-gradient(180deg, var(--sea-mid), var(--sea-deep) 62%, #090c10);
-	}
-	.grain {
-		position: absolute;
-		inset: 0;
-		background-image:
-			linear-gradient(rgba(200, 152, 96, 0.035) 1px, transparent 1px),
-			linear-gradient(90deg, rgba(200, 152, 96, 0.035) 1px, transparent 1px);
-		background-size: 34px 34px;
-		pointer-events: none;
-	}
-
-	/* drifting sea-current lines */
-	.seacurrent {
-		position: absolute;
-		left: -20%;
-		width: 140%;
-		height: 1px;
-		background: linear-gradient(
-			90deg,
-			transparent,
-			rgba(120, 160, 200, 0.18),
-			transparent
-		);
-		animation: drift 11s linear infinite alternate;
-		pointer-events: none;
-	}
-	.seacurrent.c1 {
-		top: 22%;
-		animation-duration: 12s;
-	}
-	.seacurrent.c2 {
-		top: 51%;
-		animation-duration: 15s;
-		animation-delay: -4s;
-	}
-	.seacurrent.c3 {
-		top: 77%;
-		animation-duration: 13s;
-		animation-delay: -7s;
-	}
-	@keyframes drift {
-		from {
-			transform: translateX(-26px);
-		}
-		to {
-			transform: translateX(26px);
-		}
-	}
-
-	/* fog bank over the New World */
-	.fogbank {
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		height: 30%;
-		background: linear-gradient(180deg, rgba(14, 19, 28, 0.96), transparent);
-		pointer-events: none;
-	}
-	.fogbank span {
-		position: absolute;
-		top: 14px;
-		right: 16px;
-		font-family: var(--font-mono, monospace);
-		font-size: 0.5rem;
-		letter-spacing: 0.22em;
-		color: rgba(150, 165, 190, 0.42);
+		border-radius: 0.7rem;
+		background: #0c1420 url('/voyage/chart-voyage.png') center / cover no-repeat;
+		box-shadow: 0 20px 50px -26px rgba(0, 0, 0, 0.9);
+		touch-action: pan-y;
 	}
 
 	.route {
@@ -496,244 +512,277 @@
 		inset: 0;
 		width: 100%;
 		height: 100%;
+		pointer-events: none;
 	}
+	.r-wake {
+		fill: none;
+		stroke-width: 2.2;
+		stroke-linecap: round;
+	}
+	.r-ahead {
+		fill: none;
+		stroke-width: 2;
+		stroke-linecap: round;
+		stroke-dasharray: 2.8 3.8;
+	}
+
+	/* the Red Line band */
 	.redline {
-		stroke: var(--redline);
-		stroke-width: 3;
-		opacity: 0.7;
-	}
-	.seg-charted {
-		fill: none;
-		stroke-width: 2.6;
-		stroke-linecap: round;
-		stroke-dasharray: 0.1 7;
-	}
-	.seg-ahead {
-		fill: none;
-		stroke: var(--color-text-faint);
-		stroke-width: 1.6;
-		stroke-linecap: round;
-		stroke-dasharray: 2 8;
-		opacity: 0.55;
-	}
-
-	.redline-tag {
 		position: absolute;
-		left: 12px;
-		transform: translateY(-130%);
+		top: 9%;
+		left: 0;
+		right: 0;
+		height: 6.5%;
+		background: linear-gradient(
+			180deg,
+			rgba(120, 44, 52, 0),
+			rgba(124, 46, 54, 0.8) 45%,
+			rgba(120, 44, 52, 0)
+		);
+		display: flex;
+		align-items: center;
+		pointer-events: none;
+	}
+	.redline span {
+		margin-left: 0.7rem;
 		font-family: var(--font-mono, monospace);
-		font-size: 0.46rem;
-		letter-spacing: 0.18em;
-		color: rgba(200, 130, 138, 0.78);
-		pointer-events: none;
+		font-size: 0.5rem;
+		letter-spacing: 0.2em;
+		text-transform: uppercase;
+		color: rgba(231, 173, 178, 0.92);
 	}
 
-	.rose {
-		position: absolute;
-		bottom: 5%;
-		left: 14px;
-		width: 58px;
-		height: 58px;
-		opacity: 0.22;
-		pointer-events: none;
-		fill: none;
-		stroke: var(--color-accent);
-		stroke-width: 1.4;
-	}
-	.rose-ns {
-		fill: var(--color-accent);
-		stroke: none;
-		opacity: 0.7;
-	}
-	.rose-ew {
-		fill: var(--color-accent);
-		stroke: none;
-		opacity: 0.35;
-	}
-
-	/* ── Island nodes ──────────────────────────────────────────────────── */
+	/* ── Islands ────────────────────────────────────────────────────────── */
 	.island {
 		position: absolute;
 		transform: translate(-50%, -50%);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.2rem;
-		padding: 0.55rem;
 		background: none;
 		border: none;
+		padding: 0;
 		cursor: pointer;
-		min-width: 44px;
+		overflow: visible;
 	}
-	.dot {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		border-radius: 50%;
-		position: relative;
-		transition: transform 0.14s ease;
-	}
-	.island:active .dot {
-		transform: scale(0.9);
-	}
-	.dot svg {
-		width: 13px;
-		height: 13px;
-		fill: none;
-		stroke: var(--color-bg);
-		stroke-width: 3;
-		stroke-linecap: round;
-		stroke-linejoin: round;
-	}
-
-	/* charted */
-	.island.charted .dot {
-		width: 27px;
-		height: 27px;
-		background: radial-gradient(circle at 38% 32%, #9fc98a, #5f8a4e);
-		border: 2px solid var(--color-positive);
-		box-shadow: 0 0 13px rgba(143, 190, 122, 0.35);
-	}
-
-	/* current — the living beacon */
-	.island.current .dot {
-		width: 40px;
-		height: 40px;
-		background: radial-gradient(circle at 38% 32%, #e8c79a, #b3823f);
-		border: 2.5px solid var(--color-accent);
-		box-shadow: 0 0 22px rgba(200, 152, 96, 0.55);
-	}
-	.island.current .dot svg {
-		width: 17px;
-		height: 17px;
-		stroke-width: 2.4;
-	}
-	.island.current .dot::after {
-		content: '';
+	.glow {
 		position: absolute;
-		inset: -7px;
+		inset: -34%;
 		border-radius: 50%;
-		border: 1.5px solid rgba(200, 152, 96, 0.5);
-		animation: ripple 2.8s ease-out infinite;
+		background: radial-gradient(circle, rgba(242, 217, 171, 0.42), transparent 66%);
+		pointer-events: none;
 	}
-	@keyframes ripple {
-		0% {
-			transform: scale(0.82);
-			opacity: 0.85;
-		}
-		100% {
-			transform: scale(1.5);
-			opacity: 0;
-		}
+	.art {
+		position: absolute;
+		inset: 0;
+		-webkit-mask: var(--art) center / contain no-repeat;
+		mask: var(--art) center / contain no-repeat;
+	}
+	.island.fog .art {
+		background: var(--isl-fog);
+	}
+	.island.charted .art {
+		background: var(--isl-charted);
+	}
+	.island.current .art {
+		background: var(--isl-current);
+	}
+	.island.sel .art {
+		filter: drop-shadow(0 0 5px rgba(242, 217, 171, 0.8));
+	}
+	.island:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 3px;
+		border-radius: 0.4rem;
 	}
 
-	/* fog */
-	.island.fog .dot {
-		width: 21px;
-		height: 21px;
-		background: rgba(40, 48, 56, 0.55);
-		border: 1.5px dashed var(--color-text-faint);
-	}
-
-	.eyebrow {
-		font-family: var(--font-mono, monospace);
-		font-size: 0.46rem;
-		letter-spacing: 0.1em;
-		color: var(--color-accent);
-		text-transform: uppercase;
-		line-height: 1;
-	}
 	.iname {
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		transform: translateX(-50%);
+		margin-top: 3px;
+		padding: 1px 5px;
+		border-radius: 3px;
+		background: rgba(8, 12, 18, 0.62);
+		font-family: var(--font-display, serif);
 		font-size: 0.62rem;
-		font-weight: 500;
-		color: var(--color-text-dim);
+		line-height: 1.3;
 		white-space: nowrap;
-		line-height: 1.1;
+		color: var(--color-text-dim);
 	}
 	.island.charted .iname {
-		color: var(--color-positive);
+		color: #dcc095;
 	}
 	.island.current .iname {
 		color: var(--color-text);
 		font-weight: 600;
 	}
 	.island.fog .iname {
-		color: var(--color-text-faint);
-	}
-	.island.selected .dot {
-		outline: 2px solid var(--color-accent);
-		outline-offset: 3px;
-	}
-	.island:focus-visible {
-		outline: 2px solid var(--color-accent);
-		outline-offset: 2px;
-		border-radius: 0.5rem;
+		color: #97a2ad;
 	}
 
-	/* ── Voyage Log panel ──────────────────────────────────────────────── */
+	/* ── The ship ───────────────────────────────────────────────────────── */
+	.ship {
+		position: absolute;
+		width: 11%;
+		transform: translate(-50%, -132%);
+		pointer-events: none;
+		z-index: 3;
+	}
+	.ship svg {
+		display: block;
+		width: 100%;
+		height: auto;
+		overflow: visible;
+		animation: bob 4.2s ease-in-out infinite;
+		filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.7));
+	}
+	.hull {
+		fill: #d8b483;
+		stroke: var(--color-accent);
+		stroke-width: 1.3;
+		stroke-linejoin: round;
+	}
+	.sail {
+		fill: #f2e9d8;
+	}
+	.mast {
+		stroke: #6b5436;
+		stroke-width: 1.5;
+		stroke-linecap: round;
+	}
+	@keyframes bob {
+		0%,
+		100% {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(-2.5px);
+		}
+	}
+
+	/* ── Laugh Tale ─────────────────────────────────────────────────────── */
+	.laugh {
+		position: absolute;
+		top: 3.5%;
+		left: 50%;
+		transform: translateX(-50%);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 3px;
+		pointer-events: none;
+	}
+	.laugh-glow {
+		width: 9px;
+		height: 9px;
+		border-radius: 50%;
+		background: var(--color-accent);
+		box-shadow:
+			0 0 12px 3px rgba(200, 152, 96, 0.6),
+			0 0 28px 9px rgba(200, 152, 96, 0.22);
+	}
+	.laugh-label {
+		font-family: var(--font-display, serif);
+		font-style: italic;
+		font-size: 0.64rem;
+		letter-spacing: 0.13em;
+		color: rgba(200, 152, 96, 0.72);
+	}
+
+	/* ── Chapter nav ────────────────────────────────────────────────────── */
+	.chapnav {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		margin-top: 0.55rem;
+	}
+	.arrow {
+		background: none;
+		border: none;
+		color: var(--color-text-dim);
+		font-size: 1.5rem;
+		line-height: 1;
+		cursor: pointer;
+		padding: 0.1rem 0.7rem;
+	}
+	.arrow:disabled {
+		opacity: 0.22;
+		cursor: default;
+	}
+	.capt {
+		text-align: center;
+	}
+	.cap-name {
+		display: block;
+		font-family: var(--font-display, serif);
+		font-size: 1.05rem;
+		color: var(--color-text);
+	}
+	.cap-sub {
+		display: block;
+		font-size: 0.66rem;
+		color: var(--color-text-dim);
+	}
+
+	/* ── Voyage Log panel ───────────────────────────────────────────────── */
 	.logpanel {
-		margin-top: 1rem;
+		margin-top: 0.9rem;
 		border: 1px solid var(--color-border);
-		border-top: 2px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+		border-top: 2px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
 		border-radius: 0.75rem;
 		background: var(--color-surface);
 		padding: 1rem;
 	}
 	.crest {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		gap: 0.75rem;
-		padding-bottom: 0.85rem;
+		padding-bottom: 0.8rem;
 		border-bottom: 1px solid var(--color-border);
 	}
 	.medal {
-		width: 42px;
-		height: 42px;
+		width: 38px;
+		height: 38px;
 		border-radius: 50%;
 		flex-shrink: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-	.medal svg {
-		width: 18px;
-		height: 18px;
-		fill: none;
-		stroke: var(--color-bg);
-		stroke-width: 2.6;
-		stroke-linecap: round;
-		stroke-linejoin: round;
 	}
 	.medal.charted {
-		background: radial-gradient(circle at 38% 32%, #9fc98a, #5f8a4e);
-		border: 2px solid var(--color-positive);
-	}
-	.medal.current {
 		background: radial-gradient(circle at 38% 32%, #e8c79a, #b3823f);
 		border: 2px solid var(--color-accent);
-		box-shadow: 0 0 16px rgba(200, 152, 96, 0.35);
+	}
+	.medal.current {
+		background: radial-gradient(circle at 38% 32%, #f6e3bf, #c89860);
+		border: 2px solid var(--color-accent);
+		box-shadow: 0 0 14px rgba(200, 152, 96, 0.45);
 	}
 	.medal.fog {
-		background: rgba(40, 48, 56, 0.55);
+		background: rgba(56, 66, 76, 0.6);
 		border: 1.5px dashed var(--color-text-faint);
 	}
-	.crest-text {
+	.crest-tx {
 		flex: 1;
 		min-width: 0;
 	}
-	.crest-text h2 {
-		font-size: 1.05rem;
+	.crest-eye {
+		font-family: var(--font-mono, monospace);
+		font-size: 0.55rem;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: var(--color-text-faint);
+	}
+	.crest-tx h2 {
+		font-family: var(--font-display, serif);
+		font-size: 1.4rem;
 		font-weight: 600;
+		line-height: 1.1;
 		color: var(--color-text);
-		line-height: 1.2;
+		margin: 0.1rem 0 0.3rem;
 	}
 	.pill {
 		display: inline-block;
-		margin-top: 0.25rem;
 		font-family: var(--font-mono, monospace);
-		font-size: 0.6rem;
-		letter-spacing: 0.04em;
-		padding: 0.1rem 0.4rem;
+		font-size: 0.58rem;
+		letter-spacing: 0.05em;
+		padding: 0.12rem 0.45rem;
 		border-radius: 0.25rem;
 		border: 1px solid var(--color-border);
 		color: var(--color-text-dim);
@@ -746,45 +795,43 @@
 		color: var(--color-accent);
 		border-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
 	}
-	.crest-close {
+	.close {
 		flex-shrink: 0;
-		align-self: flex-start;
 		background: none;
 		border: none;
 		color: var(--color-text-faint);
-		font-size: 1.25rem;
+		font-size: 1.3rem;
 		line-height: 1;
 		cursor: pointer;
 		padding: 0.15rem 0.35rem;
 	}
-	.crest-close:hover {
+	.close:hover {
 		color: var(--color-text);
 	}
-
 	.canon {
-		margin-top: 0.85rem;
-		padding: 0.7rem 0.85rem;
-		border-radius: 0.5rem;
-		border: 1px solid color-mix(in srgb, var(--color-accent) 18%, transparent);
-		background: color-mix(in srgb, var(--color-accent) 6%, transparent);
-	}
-	.canon p {
-		font-size: 0.85rem;
+		margin-top: 0.8rem;
+		font-family: var(--font-display, serif);
+		font-size: 1rem;
 		font-style: italic;
-		color: var(--color-text);
 		line-height: 1.5;
+		color: var(--color-accent);
 	}
-
+	.mline {
+		margin-top: 0.5rem;
+		font-size: 0.84rem;
+		line-height: 1.5;
+		color: var(--color-text-dim);
+	}
 	.logsec {
 		margin-top: 1rem;
 	}
 	.logsec h3 {
 		font-family: var(--font-mono, monospace);
-		font-size: 0.65rem;
+		font-size: 0.62rem;
 		letter-spacing: 0.16em;
 		text-transform: uppercase;
 		color: var(--color-text-faint);
-		margin-bottom: 0.55rem;
+		margin-bottom: 0.5rem;
 	}
 	.empty {
 		font-size: 0.85rem;
@@ -793,68 +840,13 @@
 		border-radius: 0.5rem;
 		padding: 0.7rem 0.85rem;
 	}
-	.more {
-		margin-top: 0.45rem;
-		font-family: var(--font-mono, monospace);
-		font-size: 0.68rem;
-		color: var(--color-text-faint);
-	}
-
-	.setlist {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-	}
-	.setrow {
-		display: flex;
-		align-items: center;
-		gap: 0.6rem;
-		font-size: 0.8rem;
-	}
-	.setcode {
-		font-family: var(--font-mono, monospace);
-		font-size: 0.7rem;
-		color: var(--color-text-faint);
-		width: 3rem;
-		flex-shrink: 0;
-	}
-	.setname {
-		color: var(--color-text-dim);
-		flex: 1;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.setbar {
-		width: 4.5rem;
-		height: 5px;
-		border-radius: 3px;
-		background: var(--color-surface2);
-		overflow: hidden;
-		flex-shrink: 0;
-	}
-	.setbar i {
-		display: block;
-		height: 100%;
-		background: var(--color-positive);
-		border-radius: 3px;
-	}
-	.setcount {
-		font-family: var(--font-mono, monospace);
-		font-size: 0.68rem;
-		color: var(--color-text-faint);
-		width: 3.4rem;
-		text-align: right;
-		flex-shrink: 0;
-	}
-
 	.entries {
 		display: flex;
 		flex-direction: column;
 	}
 	.entry {
 		display: flex;
+		align-items: baseline;
 		gap: 0.6rem;
 		padding: 0.5rem 0;
 		border-bottom: 1px solid var(--color-border);
@@ -863,28 +855,22 @@
 	.entry:last-child {
 		border-bottom: none;
 	}
-	.etrack {
+	.edot {
 		flex-shrink: 0;
 		width: 7px;
 		height: 7px;
-		margin-top: 0.32rem;
 		border-radius: 50%;
 		background: var(--color-text-faint);
+		align-self: center;
 	}
-	.etrack.alert {
+	.edot.alert {
 		background: var(--color-warning);
 	}
 	.etext {
 		flex: 1;
-		display: flex;
-		gap: 0.5rem;
-		align-items: baseline;
-		justify-content: space-between;
-	}
-	.emsg {
 		color: var(--color-text-dim);
 	}
-	.emsg.alert {
+	.etext.alert {
 		color: var(--color-warning);
 	}
 	.ecount {
@@ -894,61 +880,50 @@
 		color: var(--color-text-faint);
 	}
 
-	/* ── Progress summary ──────────────────────────────────────────────── */
+	/* ── Progress ───────────────────────────────────────────────────────── */
 	.progress {
-		margin-top: 1rem;
-	}
-	.progress h2 {
-		font-family: var(--font-mono, monospace);
-		font-size: 0.65rem;
-		letter-spacing: 0.16em;
-		text-transform: uppercase;
-		color: var(--color-text-faint);
-		margin-bottom: 0.6rem;
+		margin-top: 0.9rem;
 	}
 	.pstats {
 		display: flex;
-		flex-wrap: wrap;
-		gap: 0.65rem;
+		gap: 0.6rem;
 	}
 	.pstat {
-		display: flex;
-		align-items: center;
-		gap: 0.4rem;
+		flex: 1;
 		border: 1px solid var(--color-border);
-		border-radius: 0.5rem;
-		padding: 0.5rem 0.7rem;
-		background: var(--color-surface);
-	}
-	.pdot {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		flex-shrink: 0;
-	}
-	.pdot.charted {
-		background: var(--color-positive);
-	}
-	.pdot.current {
-		background: var(--color-accent);
-	}
-	.pdot.fog {
+		border-radius: 0.6rem;
 		background: var(--color-surface2);
-		border: 1px solid var(--color-border);
+		padding: 0.65rem 0.5rem;
+		text-align: center;
 	}
 	.pnum {
+		display: block;
+		font-family: var(--font-mono, monospace);
+		font-size: 1.5rem;
 		font-weight: 600;
-		color: var(--color-text);
+		color: var(--color-accent);
 	}
 	.plabel {
-		font-size: 0.8rem;
+		display: block;
+		margin-top: 0.15rem;
+		font-size: 0.64rem;
+		letter-spacing: 0.04em;
 		color: var(--color-text-dim);
 	}
+	.prog-line {
+		margin-top: 0.6rem;
+		font-size: 0.8rem;
+		line-height: 1.5;
+		color: var(--color-text-dim);
+		text-align: center;
+	}
+	.prog-line span {
+		color: var(--color-accent);
+		font-weight: 500;
+	}
 
-	/* ── Motion off ────────────────────────────────────────────────────── */
 	@media (prefers-reduced-motion: reduce) {
-		.seacurrent,
-		.island.current .dot::after {
+		.ship svg {
 			animation: none;
 		}
 	}
