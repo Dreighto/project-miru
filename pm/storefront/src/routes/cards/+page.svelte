@@ -217,9 +217,9 @@
 						type="button"
 						class="shrink-0 rounded-[12px] px-3 py-[6px] text-[11px] transition-colors"
 						style="font-family: var(--font-ui); border: 1px solid {on
-							? 'rgba(244,208,120,0.35)'
+							? 'rgba(200,162,97,0.35)'
 							: 'rgba(255,255,255,0.08)'}; background: {on
-							? 'rgba(244,208,120,0.12)'
+							? 'rgba(200,162,97,0.12)'
 							: 'rgba(255,255,255,0.02)'}; color: {on
 							? 'var(--color-miru-gold)'
 							: 'var(--color-miru-muted)'};"
@@ -253,15 +253,16 @@
 							>
 								{s.set_id}
 							</div>
+							<!-- Audit W8: bump 11/10px → 12px (PM 06 § 3 floor for micro-labels). -->
 							<div
-								class="mb-2 line-clamp-2 text-[11px]"
-								style="color: var(--color-miru-muted); font-family: var(--font-ui);"
+								class="mb-2 line-clamp-2 text-[12px]"
+								style="color: var(--color-pm-fg-secondary); font-family: var(--font-ui);"
 							>
 								{s.set_name}
 							</div>
 							<div
-								class="text-[10px]"
-								style="color: var(--color-miru-muted-2); font-family: 'JetBrains Mono', ui-monospace, monospace;"
+								class="text-[12px]"
+								style="color: var(--color-pm-fg-tertiary); font-family: var(--font-mono);"
 							>
 								{s.card_count} cards
 							</div>
@@ -303,9 +304,9 @@
 						type="button"
 						class="shrink-0 rounded-[12px] px-3 py-[6px] text-[11px] transition-colors"
 						style="font-family: var(--font-ui); border: 1px solid {on
-							? 'rgba(244,208,120,0.35)'
+							? 'rgba(200,162,97,0.35)'
 							: 'rgba(255,255,255,0.08)'}; background: {on
-							? 'rgba(244,208,120,0.12)'
+							? 'rgba(200,162,97,0.12)'
 							: 'rgba(255,255,255,0.02)'}; color: {on
 							? 'var(--color-miru-gold)'
 							: 'var(--color-miru-muted)'};"
@@ -322,7 +323,10 @@
 				</p>
 			{/if}
 
-			<div class="grid grid-cols-2 gap-2">
+			<!-- 3-col card grid on all phone widths per operator directive 2026-05-24
+			     (updated from 2026-05-23 which had a 390px fallback that left
+			     iPhone SE / Display Zoom users on 2-col). -->
+			<div class="grid grid-cols-3 gap-2">
 				{#each cards as c (c.code)}
 					<button
 						type="button"
@@ -391,7 +395,7 @@
 					<button
 						type="button"
 						class="rounded-[12px] px-4 py-2 text-[12px] font-semibold transition-colors"
-						style="background: rgba(244,208,120,0.12); border: 1px solid rgba(244,208,120,0.35); color: var(--color-miru-gold); font-family: var(--font-ui);"
+						style="background: rgba(200,162,97,0.12); border: 1px solid rgba(200,162,97,0.35); color: var(--color-miru-gold); font-family: var(--font-ui);"
 						onclick={() => loadCards(false)}
 					>
 						Load more · {cardsPage}/{cardsPages}
@@ -467,7 +471,7 @@
 				<div class="mb-3 flex items-center gap-2">
 					<span
 						class="rounded-[8px] px-2 py-[2px] text-[10px] font-semibold"
-						style="background: rgba(244,208,120,0.12); color: var(--color-miru-gold); font-family: 'JetBrains Mono', ui-monospace, monospace;"
+						style="background: rgba(200,162,97,0.12); color: var(--color-miru-gold); font-family: 'JetBrains Mono', ui-monospace, monospace;"
 					>
 						{detail.rarity || '—'}
 					</span>
@@ -486,7 +490,7 @@
 							type="button"
 							class="flex-1 rounded-[8px] px-2 py-[6px] text-[11px] capitalize transition-colors"
 							style="font-family: var(--font-ui); background: {on
-								? 'rgba(244,208,120,0.12)'
+								? 'rgba(200,162,97,0.12)'
 								: 'transparent'}; color: {on
 								? 'var(--color-miru-gold)'
 								: 'var(--color-miru-muted)'};"
@@ -587,9 +591,9 @@
 					type="button"
 					class="flex-1 rounded-[12px] px-3 py-[10px] text-[12px] font-semibold transition-colors"
 					style="background: {inList
-						? 'rgba(244,208,120,0.12)'
+						? 'rgba(200,162,97,0.12)'
 						: 'rgba(255,255,255,0.04)'}; border: 1px solid {inList
-						? 'rgba(244,208,120,0.35)'
+						? 'rgba(200,162,97,0.35)'
 						: 'var(--color-miru-stroke)'}; color: {inList
 						? 'var(--color-miru-gold)'
 						: 'var(--color-miru-text)'}; font-family: var(--font-ui);"
@@ -601,7 +605,7 @@
 			<button
 				type="button"
 				class="flex-1 rounded-[12px] px-3 py-[10px] text-[12px] font-semibold"
-				style="background: rgba(244,208,120,0.14); border: 1px solid rgba(244,208,120,0.4); color: var(--color-miru-gold); opacity: 0.5; font-family: var(--font-ui);"
+				style="background: rgba(200,162,97,0.15); border: 1px solid rgba(200,162,97,0.4); color: var(--color-miru-gold); opacity: 0.5; font-family: var(--font-ui);"
 				disabled
 			>
 				Add to Deck

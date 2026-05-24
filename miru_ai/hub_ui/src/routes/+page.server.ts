@@ -60,22 +60,44 @@ export interface ResourceMetric {
 	value: string;
 }
 
+// Top-of-Glance "Needs you" tile data. Mirrors the shape Flask returns on
+// /api/shadow-review/queue rows (only the fields the landing tile renders, to
+// keep the load payload tight).
+export interface NeedsYouTile {
+	canonical_code: string;
+	print_id: string;
+	contributing_model: string;
+	readiness_state: string;
+	approval_state: string;
+	inconclusive_field_count: number;
+	image_url: string | null;
+}
+
 export async function load() {
 	try {
-		const [devStatus, activityRaw, metricsRaw] = await Promise.all([
+		// Pull the top 5 review-queue entries alongside status — same data the
+		// Review page uses, but capped for the Glance tile strip. If the queue
+		// call fails (older Flask, transient hiccup) we still want Glance to
+		// render — just without the tile strip.
+		const [devStatus, activityRaw, metricsRaw, queueRaw] = await Promise.all([
 			fetchFlask<DevStatus>('/api/dev-status'),
 			fetchFlask<{ activity: ActivityItem[] }>('/api/dev/activity-feed'),
 			fetchFlask<{ resource_metrics: ResourceMetric[]; updated_at: string }>(
 				'/api/dev/resource-metrics'
-			)
+			),
+			fetchFlask<{ items: NeedsYouTile[]; total: number }>(
+				'/api/shadow-review/queue?limit=6'
+			).catch(() => ({ items: [], total: 0 }))
 		]);
 
 		return {
 			flaskDown: false as const,
 			devStatus,
-			activity: activityRaw.activity.slice(0, 10),
+			activity: activityRaw.activity.slice(0, 8),
 			resourceMetrics: metricsRaw.resource_metrics,
-			metricsUpdatedAt: metricsRaw.updated_at
+			metricsUpdatedAt: metricsRaw.updated_at,
+			needsYou: queueRaw.items,
+			needsYouTotal: queueRaw.total
 		};
 	} catch {
 		return {
@@ -83,7 +105,9 @@ export async function load() {
 			devStatus: null,
 			activity: null,
 			resourceMetrics: null,
-			metricsUpdatedAt: null
+			metricsUpdatedAt: null,
+			needsYou: [] as NeedsYouTile[],
+			needsYouTotal: 0
 		};
 	}
 }

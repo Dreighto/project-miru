@@ -82,7 +82,12 @@ def _parse_field_outcomes(row_dict: dict[str, Any]) -> list[dict[str, Any]]:
                 "outcome": payload.get("outcome", "inconclusive"),
                 "reason": payload.get("reason", ""),
                 "primary_value": payload.get("model_value"),
-                "validator_value": payload.get("validator_value"),
+                # Key in the verifier's payload is `validator_answer` (set by
+                # RealVerifier.score in services/shadow_loop/real_verifier.py).
+                # Older code read `validator_value` here, which never existed —
+                # so the Review UI always showed "-" for the verifier column
+                # even when the validator AI did produce an answer.
+                "validator_value": payload.get("validator_answer"),
                 "catalog_value": payload.get("catalog_value"),
                 "bandai_value": payload.get("bandai_value"),
             }
