@@ -203,7 +203,8 @@ the category and the specific blocker. Exit cases:
 
 - The branch has merge conflicts with main.
 - A finding requires editing rule canon (CLAUDE.md, AGENTS.md,
-  .miru/overlays/, .miru/reference/, miru-context/).
+  kernel overlays/reference in D:\dev\LogueOS-Orchestrator\.logueos\,
+  miru-context/).
 - A finding requires editing the DGAS audit chain helpers,
   gateway_security.py, or dispatch listener spawn logic.
 - A finding contradicts another finding in the same list.

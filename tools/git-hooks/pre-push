@@ -45,7 +45,7 @@ if [ -n "$BASE_REF" ]; then
     if ! python tools/pre_pr_review.py --from-ref "$BASE_REF" --strict; then
         echo "" >&2
         echo "[pre-push] BLOCKED: pre_pr_review.py found issues. Fix them or push with --no-verify." >&2
-        echo "[pre-push] See .miru/overlays/pre-push-discipline.md for the protocol." >&2
+        echo "[pre-push] See D:\\dev\\LogueOS-Orchestrator\\.logueos\\overlays\\pre-push-discipline.md for the protocol." >&2
         exit 1
     fi
 else
@@ -53,7 +53,7 @@ else
     if ! python tools/pre_pr_review.py --strict; then
         echo "" >&2
         echo "[pre-push] BLOCKED: pre_pr_review.py found issues. Fix them or push with --no-verify." >&2
-        echo "[pre-push] See .miru/overlays/pre-push-discipline.md for the protocol." >&2
+        echo "[pre-push] See D:\\dev\\LogueOS-Orchestrator\\.logueos\\overlays\\pre-push-discipline.md for the protocol." >&2
         exit 1
     fi
 fi

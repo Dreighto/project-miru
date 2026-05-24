@@ -36,7 +36,6 @@ Files checked:
 
 Files explicitly excluded:
     data/peer_reviews/*       (local research bundles, not canon)
-    .miru/instruction_manifest.json   (machine-readable index, no stamp)
     Worker-specific rule files (GEMINI.md, CURSOR.md, CODEX.md) — separate
     follow-up if needed.
 """

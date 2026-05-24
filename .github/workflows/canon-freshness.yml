@@ -10,9 +10,7 @@ on:
     paths:
       - "CLAUDE.md"
       - "AGENTS.md"
-      - "miru-context/team-charter.md"
-      - ".miru/overlays/**"
-      - ".miru/reference/**"
+      - "miru-context/**"
       - "tools/check_canon_freshness.py"
       - ".github/workflows/canon-freshness.yml"
   push:

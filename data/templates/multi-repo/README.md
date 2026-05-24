@@ -1,7 +1,7 @@
 # multi-repo dispatch: onboarding templates
 
 Copy these files into a new repo before adding it to the Miru dispatch loop.
-See `.miru/reference/multi-repo-onboarding.md` for the full 5-step checklist
+See `D:\dev\LogueOS-Orchestrator\.logueos\reference\multi-repo-onboarding.md` for the full 5-step checklist
 and failure-mode history.
 
 ---
