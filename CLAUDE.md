@@ -2,6 +2,7 @@
 
 ```text
 Instruction Architecture Version: MIRU-INSTRUCTIONS-v3
+Last reviewed: 2026-05-24
 Effective: 2026-05-13
 Overlay scope: project-miru only.
 Kernel canon: D:\dev\LogueOS-Orchestrator\CLAUDE.md + .logueos\
