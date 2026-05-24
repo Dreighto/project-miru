@@ -101,7 +101,19 @@ class RealVerifier:
                 "primary_answer": primary_v,
             }
 
-            # PRO-927: per-field source traces for Bandai-tracked fields.
+            # Validator answer + primary↔validator agreement are recorded for
+            # ALL fields, not just Bandai-tracked ones. (The Review UI reads
+            # validator_answer per field; gating it on has_bandai_source() left
+            # the validator column dark for 10 of 12 fields even when the
+            # validator HAD answered.)
+            val_v = validator_answer.get(field) if validator_answer is not None else None
+            fo["validator_answer"] = val_v
+            if primary_v is not None and val_v is not None:
+                fo["agree"] = equal(primary_v, val_v)
+            else:
+                fo["agree"] = None
+
+            # PRO-927: per-field source traces — Bandai-tracked fields only.
             if has_bandai_source(field):
                 # Primary source trace: present only when primary's answer
                 # matches the Bandai crawl value (outcome == verified-correct
@@ -116,8 +128,6 @@ class RealVerifier:
 
                 # Validator source trace: independent check of the validator
                 # model's answer against the same Bandai value.
-                val_v = validator_answer.get(field) if validator_answer is not None else None
-                fo["validator_answer"] = val_v
                 if (
                     validator_answer is not None
                     and val_v is not None
@@ -129,12 +139,6 @@ class RealVerifier:
                     )
                 else:
                     fo["validator_source_trace"] = None
-
-                # Agreement: whether the two models gave the same answer.
-                if primary_v is not None and val_v is not None:
-                    fo["agree"] = equal(primary_v, val_v)
-                else:
-                    fo["agree"] = None
 
             field_outcomes[field] = fo
 
