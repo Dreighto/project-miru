@@ -16,8 +16,8 @@ Read these in order. Don't skip — every DGAS ticket sits on these:
 3. The specific Tier 1/2 item being worked. The synthesis numbers items 1–10; pick the one the operator named or the one earliest in the order.
 4. `CLAUDE.md` (slim core) — kill switch, worktree gate, append-only invariants, completion contract, fail-closed directive. The DGAS work sits on top of these, never around them.
 5. `AGENTS.md` — Operator Communication Standard (always lead with the plain-English block), Try Harder Discipline.
-6. `.miru/overlays/workflow-git.md` — PR merge tier, hygiene gate, automated PR review sequence, post-merge cleanup, WIP commit checkpoints.
-7. `.miru/overlays/workflow-completion.md` — completion marker schema, terminal states, test_evidence format.
+6. `D:\dev\LogueOS-Orchestrator\.logueos\overlays\workflow-git.md` — PR merge tier, hygiene gate, automated PR review sequence, post-merge cleanup, WIP commit checkpoints.
+7. `D:\dev\LogueOS-Orchestrator\.logueos\overlays\workflow-completion.md` — completion marker schema, terminal states, test_evidence format.
 
 ## The decision rule
 
@@ -25,7 +25,7 @@ A DGAS gate is the right scope if any of these are true. If none are true, this 
 
 - **Irreversible** — force-push, drop table, schema mutation without rollback, secret leak, money movement, deletion of unmerged work.
 - **Undetectable by the worker itself within the same session** — completion marker corruption, test evidence falsification, audit log tampering. The worker can't reliably catch its own non-compliance.
-- **Implicit trust elevation** — the change modifies gateway profiles, `.miru/overlays/`, pre-commit hooks, validator scripts, or any file that governs future actions of any worker.
+- **Implicit trust elevation** — the change modifies gateway profiles, `D:\dev\LogueOS-Orchestrator\.logueos\overlays\`, pre-commit hooks, validator scripts, or any file that governs future actions of any worker.
 - **State integrity** — corrupts persistent state in ways that contaminate downstream reasoning (poisoned routing history, broken append-only chain, stale cached config).
 
 Otherwise prompt-enforce, not code-enforce. Push back to the operator if the ticket asks for a code gate that doesn't satisfy any of these.
@@ -52,7 +52,7 @@ Goal: lock the design with real file:line references, not guesses.
    - For gateway changes → read `tools/miru_mcp_gateway/server.py`, `gateway_security.py`, `profiles.py`, `_context.py`.
    - For pre-commit changes → read `.pre-commit-config.yaml`, the existing hook list.
    - For audit chain → read `tools/emit_completion.py`, `tools/emit_heartbeat.py`, the JSONL files in `data/`.
-   - For git wrappers → read `.miru/overlays/workflow-git.md` for the policy this code enforces.
+   - For git wrappers → read `D:\dev\LogueOS-Orchestrator\.logueos\overlays\workflow-git.md` for the policy this code enforces.
 4. Find an existing test pattern to mirror. Most DGAS tests should look like `tests/test_phase3_denial.py` (unittest, contextvar manipulation, `_make_cfg` fixture).
 5. List by file:line what will change and what tests will exercise it. Cap the list — if it's more than ~5 files or ~300 LOC, this is two tickets, not one. Stop and ask the operator to split.
 
@@ -74,7 +74,7 @@ If you're implementing the work directly:
 2. Emit a heartbeat on phase transition (Phase 2→3).
 3. Make the change. Match existing style. Pre-commit will reformat — let it. Don't fight ruff-format.
 4. Add the tests in the same commit as the implementation. Don't ship an enforcement gate without a fault-injection test that proves the gate fires when expected and doesn't fire when not.
-5. WIP commit at each major phase per `.miru/overlays/workflow-git.md` (tests written, implementation done, pre-commit running, awaiting review). Squash before opening the PR.
+5. WIP commit at each major phase per `D:\dev\LogueOS-Orchestrator\.logueos\overlays\workflow-git.md` (tests written, implementation done, pre-commit running, awaiting review). Squash before opening the PR.
 6. Run `python -m pre_commit run --files <files>` and confirm green before opening the PR.
 7. Emit a heartbeat on phase transition (Phase 3→4).
 
@@ -92,7 +92,7 @@ For DGAS work, verification means more than "tests pass." It means:
 ### Phase 5 — Ship (PR, review, merge, cleanup)
 
 1. Open the PR. Title format: `DGAS Tier <N>: <one-line summary>`. Body references the synthesis item number and the locked design.
-2. PR tier evaluation per `.miru/overlays/workflow-git.md`. Most DGAS tickets are CC-merge or operator-merge. If the change touches a governance file (gateway profiles, .miru/overlays/, pre-commit config), it's operator-merge by default.
+2. PR tier evaluation per `D:\dev\LogueOS-Orchestrator\.logueos\overlays\workflow-git.md`. Most DGAS tickets are CC-merge or operator-merge. If the change touches a governance file (gateway profiles, D:\dev\LogueOS-Orchestrator\.logueos\overlays\, pre-commit config), it's operator-merge by default.
 3. Wait for CodeRabbit and Bugbot. Address every actionable finding. Stale findings (already fixed in earlier commits) — call them out in the PR conversation but don't re-fix. New valid findings — push a follow-up commit.
 4. After merge: return to main, pull, delete the branch with verified force-delete (`gh pr list --head <branch> --state merged` then `git branch -D <branch>` only if a merged PR exists).
 5. Emit the completion marker via `tools/emit_completion.py`. Requirements:
@@ -119,7 +119,7 @@ For DGAS work, verification means more than "tests pass." It means:
 - Do not add new MCP tools as part of a DGAS hardening ticket — that's a separate scope.
 - Do not change the existing profile definitions in `profiles.py` to "fix" the gateway full_operator default — that's middleware, not profile-table work.
 - Do not bypass pre-commit with `--no-verify`. If hygiene fails, fix it.
-- Do not self-merge a governance-file change (per item #6 of the synthesis — the governance file registry rule). All `.miru/overlays/`, gateway profiles, pre-commit config, validator scripts go to operator merge.
+- Do not self-merge a governance-file change (per item #6 of the synthesis — the governance file registry rule). All `D:\dev\LogueOS-Orchestrator\.logueos\overlays\`, gateway profiles, pre-commit config, validator scripts go to operator merge.
 
 ## Escalation
 
@@ -137,8 +137,8 @@ Stop and emit `STATUS: ESCALATE: <category>` if any of these:
 - CC's first-pass synthesis: `data/peer_reviews/2026-05-08_dgas_research_synthesis_cc.md`
 - Sample locked-design ticket (localhost bind): `data/peer_reviews/2026-05-08_codex_ticket_localhost_bind.md`
 - Tests to mirror: `tests/test_phase3_denial.py`, `tests/test_jsonl_append_only_invariant.py`
-- Workflow rules: `.miru/overlays/workflow-git.md`, `.miru/overlays/workflow-completion.md`
-- Adopted lesson on locked-design tickets: `.miru/overlays/adopted-lessons.md`
+- Workflow rules: `D:\dev\LogueOS-Orchestrator\.logueos\overlays\workflow-git.md`, `D:\dev\LogueOS-Orchestrator\.logueos\overlays\workflow-completion.md`
+- Adopted lesson on locked-design tickets: `D:\dev\LogueOS-Orchestrator\.logueos\overlays\adopted-lessons.md`
 
 ## When to NOT use this skill
 

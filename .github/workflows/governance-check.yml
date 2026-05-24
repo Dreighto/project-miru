@@ -1,8 +1,9 @@
 name: Governance Change Gate
 
 # DGAS Tier 2 #9: when a PR touches any file in the governance file registry
-# (gateway profiles, .miru/overlays, .pre-commit-config.yaml, validator
-# scripts, etc.), the PR body MUST contain GOVERNANCE_CHANGE_APPROVED=true
+# (gateway profiles, kernel overlays in LogueOS-Orchestrator/.logueos/overlays,
+# .pre-commit-config.yaml, validator scripts, etc.), the PR body MUST contain
+# GOVERNANCE_CHANGE_APPROVED=true
 # and a markdown section explaining what the change permits.
 #
 # This is the deterministic check. CODEOWNERS provides the auto-review path

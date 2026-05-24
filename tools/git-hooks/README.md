@@ -25,7 +25,7 @@ pattern in the cumulative diff vs `origin/main`. Bypass with
 direct edits to dispatch-loop code or canon-relevant files need the
 discipline catalog applied first).
 
-See `.miru/overlays/pre-push-discipline.md` for the rationale + the
+See `D:\dev\LogueOS-Orchestrator\.logueos\overlays\pre-push-discipline.md` for the rationale + the
 full pre-push protocol.
 
 ## Uninstall / temporarily disable

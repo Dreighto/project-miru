@@ -9,11 +9,11 @@ Authoring tickets for sub-workers is a specific skill that's gone wrong before �
 
 ## Required reading before authoring
 
-1. `.miru/overlays/adopted-lessons.md` — "Lock design in the Linear ticket description, not in the prompt wrapper" (PRO-180 retro). Your output must conform to this rule.
+1. `D:\dev\LogueOS-Orchestrator\.logueos\overlays\adopted-lessons.md` — "Lock design in the Linear ticket description, not in the prompt wrapper" (PRO-180 retro). Your output must conform to this rule.
 2. `AGENTS.md` — Operator Communication Standard. The PR title and ticket title must follow the plain-English-first format.
-3. `.miru/overlays/workflow-git.md` — PR merge tier policy. The ticket should declare which tier the change is in (direct-to-main, CC-merge, operator-merge).
-4. `.miru/overlays/workflow-completion.md` — completion contract. The ticket must specify what the worker emits at terminal state.
-5. `.miru/reference/linear-projects.md` — the projectId table. Every Linear ticket needs a projectId.
+3. `D:\dev\LogueOS-Orchestrator\.logueos\overlays\workflow-git.md` — PR merge tier policy. The ticket should declare which tier the change is in (direct-to-main, CC-merge, operator-merge).
+4. `D:\dev\LogueOS-Orchestrator\.logueos\overlays\workflow-completion.md` — completion contract. The ticket must specify what the worker emits at terminal state.
+5. `D:\dev\LogueOS-Orchestrator\.logueos\reference\linear-projects.md` — the projectId table. Every Linear ticket needs a projectId.
 6. The worker briefing for the target worker if one exists (e.g., for Codex, the most recent briefing posted to the operator).
 
 ## What the ticket MUST contain
@@ -76,7 +76,7 @@ Before handing the ticket to the operator (who will paste it to the worker), rea
 LINEAR TICKET — <Plain English Title>
 
 Title: <under 70 chars, plain English, no jargon>
-Project: <project name from .miru/reference/linear-projects.md>
+Project: <project name from D:\dev\LogueOS-Orchestrator\.logueos\reference\linear-projects.md>
 Project ID: <projectId>
 Type: Bug | Feature | Improvement | Chore
 Priority: 0 (Urgent) | 1 (High) | 2 (Medium) | 3 (Low) | 4 (Backlog)
@@ -192,9 +192,9 @@ Stop and tell the operator if:
 ## Reference
 
 - Sample locked-design ticket: `data/peer_reviews/2026-05-08_codex_ticket_localhost_bind.md`
-- Adopted lesson: `.miru/overlays/adopted-lessons.md`
+- Adopted lesson: `D:\dev\LogueOS-Orchestrator\.logueos\overlays\adopted-lessons.md`
 - Operator communication: `AGENTS.md`
-- Linear project IDs: `.miru/reference/linear-projects.md`
+- Linear project IDs: `D:\dev\LogueOS-Orchestrator\.logueos\reference\linear-projects.md`
 
 ## When to NOT use this skill
 
