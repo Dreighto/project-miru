@@ -251,3 +251,66 @@ def test_inferred_field_is_always_inconclusive(bandai_with_zoro: BandaiSource):
     result = verifier.score(card, primary)
     # archetype_tag isn't in FIELD_TIERS so it's not in field_outcomes at all
     assert "archetype_tag" not in result["field_outcomes"]
+
+
+def test_validator_answer_recorded_for_all_fields_not_just_bandai(
+    bandai_with_zoro: BandaiSource,
+):
+    """validator_answer + agree must be recorded for every tiered field, not
+    only Bandai-tracked ones — so the Review UI sees the validator's answer on
+    color, cost, power, effect_text, etc., not just card_name + rarity."""
+    judge = _CannedJudge(verdict="match")
+    verifier = RealVerifier(bandai=bandai_with_zoro, judge=judge)
+    card = _zoro_card()
+    primary = {
+        "card_name": "Roronoa Zoro",
+        "color": "Green",
+        "cost": 4,
+        "effect_text": card["effect_text"],
+    }
+    validator = {
+        "card_name": "Roronoa Zoro",
+        "color": "Green",
+        "cost": 4,
+        "effect_text": card["effect_text"],
+    }
+    result = verifier.score(card, primary, validator_answer=validator)
+
+    # Bandai-tracked field (card_name): validator_answer present.
+    assert result["field_outcomes"]["card_name"]["validator_answer"] == "Roronoa Zoro"
+    assert result["field_outcomes"]["card_name"]["agree"] is True
+
+    # Hard field WITHOUT Bandai signal (color, cost): validator_answer present.
+    assert result["field_outcomes"]["color"]["validator_answer"] == "Green"
+    assert result["field_outcomes"]["color"]["agree"] is True
+    assert result["field_outcomes"]["cost"]["validator_answer"] == 4
+    assert result["field_outcomes"]["cost"]["agree"] is True
+
+    # Soft field (effect_text): validator_answer present.
+    assert result["field_outcomes"]["effect_text"]["validator_answer"] == card["effect_text"]
+    assert result["field_outcomes"]["effect_text"]["agree"] is True
+
+
+def test_agree_false_when_primary_and_validator_disagree(bandai_with_zoro: BandaiSource):
+    """agree must distinguish primary↔validator agreement on non-Bandai fields too."""
+    verifier = RealVerifier(bandai=bandai_with_zoro)
+    card = _zoro_card()
+    primary = {"cost": 4}
+    validator = {"cost": 7}
+    result = verifier.score(card, primary, validator_answer=validator)
+    assert result["field_outcomes"]["cost"]["validator_answer"] == 7
+    assert result["field_outcomes"]["cost"]["agree"] is False
+
+
+def test_validator_answer_none_when_validator_did_not_answer_field(
+    bandai_with_zoro: BandaiSource,
+):
+    """If validator_answer dict omits a field, validator_answer is None and agree is None."""
+    verifier = RealVerifier(bandai=bandai_with_zoro)
+    card = _zoro_card()
+    primary = {"cost": 4, "color": "Green"}
+    validator = {"cost": 4}  # omits color
+    result = verifier.score(card, primary, validator_answer=validator)
+    assert result["field_outcomes"]["cost"]["validator_answer"] == 4
+    assert result["field_outcomes"]["color"]["validator_answer"] is None
+    assert result["field_outcomes"]["color"]["agree"] is None
