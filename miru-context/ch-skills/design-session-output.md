@@ -87,6 +87,7 @@ pages are worse than dense ones.
 
 Per the kernel canon at `D:\dev\LogueOS-Orchestrator\.logueos\reference\source-of-truth.md`:
 Runtime > Audit logs > Linear > Repo (code/canon/DB) > Notion > Worker memory
+
 > Conversation context.
 
 Notion is a **derived mirror**, not the source. When you write a decision to

@@ -74,13 +74,13 @@ corrected position to <specific ticket scope>", or "Stand down on
 
 ## Why each section is non-optional
 
-| Section | What dies if you skip it |
-|---|---|
-| `WHAT YOU GOT RIGHT` | Worker thinks the whole analysis was wasted and starts over from scratch, losing real findings |
-| `WHAT WAS WRONG IN FRAMING` (with explicit kill) | Worker silently merges old framing with new and ships the wrong thing |
-| `THE CORRECTED POSITION` | Worker doesn't know what's settled vs. still under discussion and re-asks |
-| `HOW TO INTEGRATE YOUR PRIOR WORK` | Worker either over-discards (loses good inventory) or over-preserves (carries wrong premise forward) |
-| `NEXT MOVE` | Worker reads the correction and then does the wrong first action |
+| Section                                          | What dies if you skip it                                                                             |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `WHAT YOU GOT RIGHT`                             | Worker thinks the whole analysis was wasted and starts over from scratch, losing real findings       |
+| `WHAT WAS WRONG IN FRAMING` (with explicit kill) | Worker silently merges old framing with new and ships the wrong thing                                |
+| `THE CORRECTED POSITION`                         | Worker doesn't know what's settled vs. still under discussion and re-asks                            |
+| `HOW TO INTEGRATE YOUR PRIOR WORK`               | Worker either over-discards (loses good inventory) or over-preserves (carries wrong premise forward) |
+| `NEXT MOVE`                                      | Worker reads the correction and then does the wrong first action                                     |
 
 ## Anti-patterns
 

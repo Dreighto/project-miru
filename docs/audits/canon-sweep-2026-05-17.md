@@ -51,13 +51,13 @@ documents restart procedures using `Miru*` scheduled-task names. Live task
 list (just verified via `Get-ScheduledTask`) shows the de-Miru rename is
 already done — current names are `LogueOS-*`:
 
-| Stale ref in catalog (line)              | Live task name              | Status         |
-| ---------------------------------------- | --------------------------- | -------------- |
-| `MiruRestartDispatchListener` (line 89)  | (none — listener launched via Startup) | broken         |
-| `MiruRestartMCPGateway` (line 148)       | `LogueOS-RestartMcpGateway` | renamed        |
-| `MiruRestartMiruAI` (line 210)           | (not in live list)          | broken/removed |
-| `MiruRestartPM` (line 273)               | (not in live list)          | broken/removed |
-| `MiruN8nWatchdog` (line 363)             | `LogueOS-ServiceWatchdog`?  | likely renamed |
+| Stale ref in catalog (line)             | Live task name                         | Status         |
+| --------------------------------------- | -------------------------------------- | -------------- |
+| `MiruRestartDispatchListener` (line 89) | (none — listener launched via Startup) | broken         |
+| `MiruRestartMCPGateway` (line 148)      | `LogueOS-RestartMcpGateway`            | renamed        |
+| `MiruRestartMiruAI` (line 210)          | (not in live list)                     | broken/removed |
+| `MiruRestartPM` (line 273)              | (not in live list)                     | broken/removed |
+| `MiruN8nWatchdog` (line 363)            | `LogueOS-ServiceWatchdog`?             | likely renamed |
 
 Workers following these restart instructions will invoke task names that
 don't exist. A worker who needs to restart Miru AI will hit a dead end.

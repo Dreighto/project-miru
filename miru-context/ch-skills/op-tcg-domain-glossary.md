@@ -41,12 +41,12 @@ When uncertain about a set code's release status or contents, verify against the
 
 Every card has exactly one type:
 
-| Type | What it is | Notes |
-|------|-----------|-------|
-| **Leader** | The deck's central card. One per deck, starts in play. | Has a Life value and a color identity. |
-| **Character** | Cards you play onto the field to attack/defend. | Has Cost, Power, optional Counter value. |
-| **Event** | One-shot effect cards. | Triggered, then discarded. |
-| **Stage** | Persistent field cards (one at a time). | Provide ongoing effects. |
+| Type          | What it is                                             | Notes                                    |
+| ------------- | ------------------------------------------------------ | ---------------------------------------- |
+| **Leader**    | The deck's central card. One per deck, starts in play. | Has a Life value and a color identity.   |
+| **Character** | Cards you play onto the field to attack/defend.        | Has Cost, Power, optional Counter value. |
+| **Event**     | One-shot effect cards.                                 | Triggered, then discarded.               |
+| **Stage**     | Persistent field cards (one at a time).                | Provide ongoing effects.                 |
 
 ## Card attributes (on Characters and some events)
 

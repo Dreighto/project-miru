@@ -29,10 +29,10 @@ this just an excuse to defer making a recommendation?
 
 ## Choosing the reviewer
 
-| Reviewer       | Strong for                                                   |
-| -------------- | ------------------------------------------------------------ |
-| Gemini chat    | Pressure-testing architecture, alternative approaches, large-context analysis |
-| ChatGPT        | Structuring, simplification, second-perspective synthesis    |
+| Reviewer       | Strong for                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------ |
+| Gemini chat    | Pressure-testing architecture, alternative approaches, large-context analysis              |
+| ChatGPT        | Structuring, simplification, second-perspective synthesis                                  |
 | Perplexity app | Research with citations, practitioner patterns, real-world cases (free deep-research tier) |
 
 Pick ONE per relay. Don't fan out to all three for the same question — that

@@ -26,7 +26,7 @@ old one.**
   any promotion mechanism are absent.
 
 The debrief's QA flow (Stages 1–5, three doors, five-rung score, Door B override
-markers) is the design for *finishing System B*. It re-invents concepts System A
+markers) is the design for _finishing System B_. It re-invents concepts System A
 already has. Before building Stage 5 / Door B / promotion, someone has to decide:
 does System B **replace** System A, **feed into** it, or **adopt its proven
 state model**? That is an operator + CH design call. This document gives them
@@ -133,8 +133,8 @@ not wired into `loop_runner`**. Structurally present, functionally dormant.
 - **Stage 4** (operator review) — absent.
 - **Stage 5** (final gate before catalog write) — absent.
 - **Any promotion mechanism** — absent. `miru_learning_pool_schema.md` says so
-  outright: *"There is no automatic flow from this DB into card_catalog.db. The
-  promotion mechanism itself is out of scope... likely a later ticket."*
+  outright: _"There is no automatic flow from this DB into card_catalog.db. The
+  promotion mechanism itself is out of scope... likely a later ticket."_
 - **`door_b_overrides` / `score_transitions` tables** — created by PRO-926's
   migration, but **no code reads or writes them.** Empty, schema-only.
 
@@ -151,17 +151,17 @@ PRO-922 read-only scaffold with inert buttons.
 
 ## The overlap — debrief QA flow vs. what exists
 
-| Debrief concept | Already exists in System A? | Status in System B |
-| --- | --- | --- |
-| 5-stage flow | Partial (review→stage→publish→batch) | Stages 1–3 only |
-| Operator review queue | **Yes** — `miru_review_queue` (24-col, live state model) | `shadow_review.py` JSONL, no queue table |
-| readiness / approval / promotion states | **Yes** — three columns on `miru_review_queue` | one `promotion_status` enum, always `experimental` |
-| Five-rung confidence score | Partial — `confidence_score` + `candidate_score_band` | `confidence_score` REAL, no rung tiers |
-| Multi-source verifier output | **Yes** — `miru_validations` (winning/rejected sources) | `validator_agreement` JSON per row |
-| Publication staging before catalog | **Yes** — `miru_publication_stage` + batches | absent |
-| Three doors (A fix / B approve / C fault) | No (old queue is resolve/defer) | `correct/wrong/defer` in code |
-| Door B override marker | No | `door_b_overrides` table empty/unused |
-| Score-transition log | Partial — `miru_action_history` (70 rows) | `score_transitions` table empty/unused |
+| Debrief concept                           | Already exists in System A?                              | Status in System B                                 |
+| ----------------------------------------- | -------------------------------------------------------- | -------------------------------------------------- |
+| 5-stage flow                              | Partial (review→stage→publish→batch)                     | Stages 1–3 only                                    |
+| Operator review queue                     | **Yes** — `miru_review_queue` (24-col, live state model) | `shadow_review.py` JSONL, no queue table           |
+| readiness / approval / promotion states   | **Yes** — three columns on `miru_review_queue`           | one `promotion_status` enum, always `experimental` |
+| Five-rung confidence score                | Partial — `confidence_score` + `candidate_score_band`    | `confidence_score` REAL, no rung tiers             |
+| Multi-source verifier output              | **Yes** — `miru_validations` (winning/rejected sources)  | `validator_agreement` JSON per row                 |
+| Publication staging before catalog        | **Yes** — `miru_publication_stage` + batches             | absent                                             |
+| Three doors (A fix / B approve / C fault) | No (old queue is resolve/defer)                          | `correct/wrong/defer` in code                      |
+| Door B override marker                    | No                                                       | `door_b_overrides` table empty/unused              |
+| Score-transition log                      | Partial — `miru_action_history` (70 rows)                | `score_transitions` table empty/unused             |
 
 **The debrief re-invented at least four things System A already built:** the
 review queue, the readiness/approval/promotion state model, candidate scoring,
@@ -172,7 +172,7 @@ and multi-source validation records. PRO-926's new tables (`door_b_overrides`,
 
 ## The open design question (for operator + CH)
 
-Before Stage 5 / Door B / promotion can be built *properly*, one decision:
+Before Stage 5 / Door B / promotion can be built _properly_, one decision:
 
 **Does System B (shadow loop) replace, feed, or borrow from System A?**
 
@@ -202,7 +202,7 @@ tables should even be.
 
 **Pause the Stage 5 / Door B build (debrief Ticket 3b) until the question above
 is settled.** Building 3b now means picking option 1 (replace) by default,
-silently — which may be the right call, but it should be a *decision*, not an
+silently — which may be the right call, but it should be a _decision_, not an
 accident of nobody having looked at `card_catalog.db`'s existing tables.
 
 The fastest path: a short operator + CH design session that looks at this

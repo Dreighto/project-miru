@@ -70,14 +70,14 @@ This sentence is the safety net that catches a worker who skims.>
 
 ## Why each section is non-optional
 
-| Section | What dies if you skip it |
-|---|---|
-| `WHAT THIS IS` (with explicit negation) | Worker re-derives scope from existing code and ports the wrong thing |
-| `SETTLED — build to exactly this` | Worker treats decisions as proposals and second-guesses pins/framework |
-| `SCOPE OF THIS TICKET` | Worker over-builds (PRO-922 first attempt: built mock infrastructure that wasn't asked for) |
-| `EXPLICITLY OUT OF SCOPE — DO NOT BUILD` | The single most load-bearing section. Worker scope creep is the #1 cause of 600s timeouts. |
-| `COMPLETION` | Worker doesn't know what "done" means and either over-delivers or stops early |
-| `NOTE` (re-verify against this brief) | Worker carries a wrong prior assumption through to execution |
+| Section                                  | What dies if you skip it                                                                    |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `WHAT THIS IS` (with explicit negation)  | Worker re-derives scope from existing code and ports the wrong thing                        |
+| `SETTLED — build to exactly this`        | Worker treats decisions as proposals and second-guesses pins/framework                      |
+| `SCOPE OF THIS TICKET`                   | Worker over-builds (PRO-922 first attempt: built mock infrastructure that wasn't asked for) |
+| `EXPLICITLY OUT OF SCOPE — DO NOT BUILD` | The single most load-bearing section. Worker scope creep is the #1 cause of 600s timeouts.  |
+| `COMPLETION`                             | Worker doesn't know what "done" means and either over-delivers or stops early               |
+| `NOTE` (re-verify against this brief)    | Worker carries a wrong prior assumption through to execution                                |
 
 ## When to write the brief vs let the ticket carry the design
 

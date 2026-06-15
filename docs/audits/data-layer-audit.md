@@ -56,52 +56,52 @@ substantive counts (SQLite bookkeeping table).
 The central catalog. 45 tables + 1 view (`miru_card_usage_display`) + 100
 indexes. No triggers. **[V]**
 
-| rows | table | role |
-|---|---|---|
-| **2,497** | cards | base catalog (51 sets) **[V]** |
-| **5,413** | card_variants | variant rows (avg 2.2/card) **[V]** |
-| **2,497** | card_intelligence | 1:1 with cards, ~57 columns covering role / pricing / publication state **[V]** |
-| **61,679** | card_relationships | typed edges with confidence + evidence_source + inferred/verified status **[V]** |
-| **4,751** | card_roles | role assignments **[V]** |
-| **3,901** | card_trait_assignments | card↔trait links **[V]** |
-| **3,345** | card_keywords | card↔keyword links **[V]** |
-| **789** | card_rulings | rulings **[V]** |
-| **109** | card_errata | errata entries **[V]** |
-| **198** | card_traits | trait master list **[V]** |
-| **21** | keywords | keyword master list **[V]** |
-| **51** | sets | OP01–OP15, EB01–EB04, ST01–ST29, P, PRB01, PRB02 **[V]** |
-| **5,413** | card_product_appearances | catalog↔product map **[V]** |
-| **2,482** | image_assets | image asset rows **[V]** |
-| **1,951** | image_variant_analysis | analysis output rows **[V]** |
-| **2,398** | printing_market_map | printing↔market product map **[V]** |
-| **5,301** | market_products | TCGPlayer / market product entries **[V]** |
-| **5,163** | market_prices | price snapshots **[V]** |
-| **154** | tcgplayer_products | TCGPlayer-specific product rows **[V]** |
-| **96** | format_set_legality | format/set legality **[V]** |
-| **44** | card_legality_overrides | format-overrides **[V]** |
-| **51** | bandai_cardlist_scrape | Bandai scrape rows **[V]** |
-| **9** | data_sources | data source registry **[V]** |
-| **1,336** | miru_validations | per-card validation pass (all confidence ≥ 0.9, see §6) **[V]** |
-| **172** | miru_review_queue | 16 pending / 155 resolved / 1 deferred **[V]** |
-| **242** | miru_card_insights | 216 usage + 21 ruling + 5 price (see §5 for templating bug) **[V]** |
-| **70** | miru_action_history | governance action history **[V]** |
-| **51** | miru_variant_index | variant index **[V]** |
-| **41** | miru_meta_events | meta-game events **[V]** |
-| **10** | miru_deck_archetypes | curated archetypes (perplexity-research-sourced) **[V]** |
-| **8** | miru_sync_metadata | sync bookkeeping **[V]** |
-| **5** | miru_card_usage | sparse **[V]** |
-| **3** | miru_card_legality | sparse **[V]** |
-| **3** | restriction_pairs | restriction pairs **[V]** |
-| **4** | miru_publication_batch_items | (see §5 — publication pipeline stalled) **[V]** |
-| **2** | miru_publication_batches | only 2 batches ever, one archived empty, one stuck in `mixed_state` **[V]** |
-| **3** | miru_publication_stage | 2 approved-for-candidate + 1 blocked **[V]** |
-| **0** | miru_perception_ledger | **schema only, never written** **[V]** |
-| **0** | miru_perception_ledger_fields | **schema only** **[V]** |
-| **0** | miru_perception_ledger_recurrence | **schema only** **[V]** |
-| **0** | miru_perception_ledger_summary | **schema only** **[V]** |
-| **0** | official_source_refs | empty **[V]** |
-| **1** | official_rule_notices | single notice **[V]** |
-| **7** | official_legality_history | sparse **[V]** |
+| rows       | table                             | role                                                                             |
+| ---------- | --------------------------------- | -------------------------------------------------------------------------------- |
+| **2,497**  | cards                             | base catalog (51 sets) **[V]**                                                   |
+| **5,413**  | card_variants                     | variant rows (avg 2.2/card) **[V]**                                              |
+| **2,497**  | card_intelligence                 | 1:1 with cards, ~57 columns covering role / pricing / publication state **[V]**  |
+| **61,679** | card_relationships                | typed edges with confidence + evidence_source + inferred/verified status **[V]** |
+| **4,751**  | card_roles                        | role assignments **[V]**                                                         |
+| **3,901**  | card_trait_assignments            | card↔trait links **[V]**                                                         |
+| **3,345**  | card_keywords                     | card↔keyword links **[V]**                                                       |
+| **789**    | card_rulings                      | rulings **[V]**                                                                  |
+| **109**    | card_errata                       | errata entries **[V]**                                                           |
+| **198**    | card_traits                       | trait master list **[V]**                                                        |
+| **21**     | keywords                          | keyword master list **[V]**                                                      |
+| **51**     | sets                              | OP01–OP15, EB01–EB04, ST01–ST29, P, PRB01, PRB02 **[V]**                         |
+| **5,413**  | card_product_appearances          | catalog↔product map **[V]**                                                      |
+| **2,482**  | image_assets                      | image asset rows **[V]**                                                         |
+| **1,951**  | image_variant_analysis            | analysis output rows **[V]**                                                     |
+| **2,398**  | printing_market_map               | printing↔market product map **[V]**                                              |
+| **5,301**  | market_products                   | TCGPlayer / market product entries **[V]**                                       |
+| **5,163**  | market_prices                     | price snapshots **[V]**                                                          |
+| **154**    | tcgplayer_products                | TCGPlayer-specific product rows **[V]**                                          |
+| **96**     | format_set_legality               | format/set legality **[V]**                                                      |
+| **44**     | card_legality_overrides           | format-overrides **[V]**                                                         |
+| **51**     | bandai_cardlist_scrape            | Bandai scrape rows **[V]**                                                       |
+| **9**      | data_sources                      | data source registry **[V]**                                                     |
+| **1,336**  | miru_validations                  | per-card validation pass (all confidence ≥ 0.9, see §6) **[V]**                  |
+| **172**    | miru_review_queue                 | 16 pending / 155 resolved / 1 deferred **[V]**                                   |
+| **242**    | miru_card_insights                | 216 usage + 21 ruling + 5 price (see §5 for templating bug) **[V]**              |
+| **70**     | miru_action_history               | governance action history **[V]**                                                |
+| **51**     | miru_variant_index                | variant index **[V]**                                                            |
+| **41**     | miru_meta_events                  | meta-game events **[V]**                                                         |
+| **10**     | miru_deck_archetypes              | curated archetypes (perplexity-research-sourced) **[V]**                         |
+| **8**      | miru_sync_metadata                | sync bookkeeping **[V]**                                                         |
+| **5**      | miru_card_usage                   | sparse **[V]**                                                                   |
+| **3**      | miru_card_legality                | sparse **[V]**                                                                   |
+| **3**      | restriction_pairs                 | restriction pairs **[V]**                                                        |
+| **4**      | miru_publication_batch_items      | (see §5 — publication pipeline stalled) **[V]**                                  |
+| **2**      | miru_publication_batches          | only 2 batches ever, one archived empty, one stuck in `mixed_state` **[V]**      |
+| **3**      | miru_publication_stage            | 2 approved-for-candidate + 1 blocked **[V]**                                     |
+| **0**      | miru_perception_ledger            | **schema only, never written** **[V]**                                           |
+| **0**      | miru_perception_ledger_fields     | **schema only** **[V]**                                                          |
+| **0**      | miru_perception_ledger_recurrence | **schema only** **[V]**                                                          |
+| **0**      | miru_perception_ledger_summary    | **schema only** **[V]**                                                          |
+| **0**      | official_source_refs              | empty **[V]**                                                                    |
+| **1**      | official_rule_notices             | single notice **[V]**                                                            |
+| **7**      | official_legality_history         | sparse **[V]**                                                                   |
 
 ### 1.2 `data/miru_dossiers.db` — 36 MB, file mtime 2026-04-25 13:56 **[V]**
 
@@ -109,41 +109,41 @@ indexes. No triggers. **[V]**
 populated (fact-graph layer), half are empty (consumer/published-output
 layer). **[V]**
 
-| rows | table | role |
-|---|---|---|
-| **53,067** | confidence_records | per-card-per-field confidence trail **[V]** |
-| **50,540** | card_facts | granular per-field facts with verification_state **[V]** |
-| **31,103** | fact_sources | fact↔source provenance **[V]** |
-| **5,561** | card_variants | dossier-side variants **[V]** |
-| **3,974** | answer_fragments | dossier-style structured answer fragments **[V]** |
-| **2,867** | card_sources | card↔source linkages **[V]** |
-| **2,551** | enrichment_run_cards | enrichment scheduling **[V]** |
-| **2,527** | cards | dossier-side card list (+30 vs catalog: all P-XXX promos) **[V]** |
-| **1,160** | card_effects | parsed effect entries **[V]** |
-| **24** | refresh_reports | enrichment-run reports **[V]** |
-| **8** | enrichment_runs | enrichment runs (last 2026-03-16) **[V]** |
-| **6** | source_registry | trust-tier source registry (clean schema) **[V]** |
-| **1** | miru_schema_metadata | bookkeeping **[V]** |
-| **0** | card_identity | empty **[V]** |
-| **0** | card_meta_intel | empty **[V]** |
-| **0** | card_strategy_intel | empty **[V]** |
-| **0** | card_synergy_intel | empty **[V]** |
-| **0** | card_rulings_intel | empty **[V]** |
-| **0** | card_rulings | empty **[V]** |
-| **0** | card_ruling_explanations | empty **[V]** |
-| **0** | card_relationships | empty **[V]** |
-| **0** | card_publication_audit | empty **[V]** |
-| **0** | card_published_insight | empty **[V]** |
-| **0** | card_banlist | empty **[V]** |
-| **0** | card_conflict_flags | empty **[V]** |
-| **0** | card_lore_context | empty **[V]** |
-| **0** | card_market | empty **[V]** |
-| **0** | card_master_images | empty **[V]** |
-| **0** | card_upcoming_rule_changes | empty **[V]** |
-| **0** | card_usage | empty **[V]** |
-| **0** | leader_intelligence | empty **[V]** |
-| **0** | leader_links | empty **[V]** |
-| **0** | leader_meta_intel | empty **[V]** |
+| rows       | table                      | role                                                              |
+| ---------- | -------------------------- | ----------------------------------------------------------------- |
+| **53,067** | confidence_records         | per-card-per-field confidence trail **[V]**                       |
+| **50,540** | card_facts                 | granular per-field facts with verification_state **[V]**          |
+| **31,103** | fact_sources               | fact↔source provenance **[V]**                                    |
+| **5,561**  | card_variants              | dossier-side variants **[V]**                                     |
+| **3,974**  | answer_fragments           | dossier-style structured answer fragments **[V]**                 |
+| **2,867**  | card_sources               | card↔source linkages **[V]**                                      |
+| **2,551**  | enrichment_run_cards       | enrichment scheduling **[V]**                                     |
+| **2,527**  | cards                      | dossier-side card list (+30 vs catalog: all P-XXX promos) **[V]** |
+| **1,160**  | card_effects               | parsed effect entries **[V]**                                     |
+| **24**     | refresh_reports            | enrichment-run reports **[V]**                                    |
+| **8**      | enrichment_runs            | enrichment runs (last 2026-03-16) **[V]**                         |
+| **6**      | source_registry            | trust-tier source registry (clean schema) **[V]**                 |
+| **1**      | miru_schema_metadata       | bookkeeping **[V]**                                               |
+| **0**      | card_identity              | empty **[V]**                                                     |
+| **0**      | card_meta_intel            | empty **[V]**                                                     |
+| **0**      | card_strategy_intel        | empty **[V]**                                                     |
+| **0**      | card_synergy_intel         | empty **[V]**                                                     |
+| **0**      | card_rulings_intel         | empty **[V]**                                                     |
+| **0**      | card_rulings               | empty **[V]**                                                     |
+| **0**      | card_ruling_explanations   | empty **[V]**                                                     |
+| **0**      | card_relationships         | empty **[V]**                                                     |
+| **0**      | card_publication_audit     | empty **[V]**                                                     |
+| **0**      | card_published_insight     | empty **[V]**                                                     |
+| **0**      | card_banlist               | empty **[V]**                                                     |
+| **0**      | card_conflict_flags        | empty **[V]**                                                     |
+| **0**      | card_lore_context          | empty **[V]**                                                     |
+| **0**      | card_market                | empty **[V]**                                                     |
+| **0**      | card_master_images         | empty **[V]**                                                     |
+| **0**      | card_upcoming_rule_changes | empty **[V]**                                                     |
+| **0**      | card_usage                 | empty **[V]**                                                     |
+| **0**      | leader_intelligence        | empty **[V]**                                                     |
+| **0**      | leader_links               | empty **[V]**                                                     |
+| **0**      | leader_meta_intel          | empty **[V]**                                                     |
 
 Newest write: `card_sources.updated_at` and `miru_schema_metadata.updated_at`
 both 2026-04-25 20:56:23 — the bulk of writes were a single ingest on
@@ -153,29 +153,29 @@ both 2026-04-25 20:56:23 — the bulk of writes were a single ingest on
 
 22 tables. Three populated, the rest empty or near-empty.
 
-| rows | table | role |
-|---|---|---|
-| **15,448** | learning_accepted_fact_history | accepted-fact history **[V]** |
-| **13,313** | learning_fact_corroboration_records | corroboration records **[V]** |
-| **12,242** | learning_accepted_fact_provenance | provenance trail **[V]** |
-| **5,646** | learning_dossier_sources | dossier↔source links **[V]** |
-| **2,527** | learning_dossiers | dossier rows (+30 vs catalog, same shape as `miru_dossiers.cards`) **[V]** |
-| **1** | learning_dossier_images | nearly empty **[V]** |
-| **1** | learning_dossier_prints | nearly empty **[V]** |
-| **0** | learning_card_usage | empty **[V]** |
-| **0** | learning_deck_archetypes | empty **[V]** |
-| **0** | learning_dossier_deck_usage | empty **[V]** |
-| **0** | learning_dossier_market_signals | empty **[V]** |
-| **0** | learning_dossier_rulings | empty **[V]** |
-| **0** | learning_dossier_strategy_notes | empty **[V]** |
-| **0** | learning_dossier_variant_art | empty **[V]** |
-| **0** | learning_image_analysis | empty **[V]** |
-| **0** | learning_image_selections | empty **[V]** |
-| **0** | learning_reverification_execution_log | empty **[V]** |
-| **0** | learning_source_limited_use_events | empty **[V]** |
-| **0** | learning_source_reviews | empty **[V]** |
-| **0** | learning_tournament_placements | empty **[V]** |
-| **0** | learning_usage_evidence | empty **[V]** |
+| rows       | table                                 | role                                                                       |
+| ---------- | ------------------------------------- | -------------------------------------------------------------------------- |
+| **15,448** | learning_accepted_fact_history        | accepted-fact history **[V]**                                              |
+| **13,313** | learning_fact_corroboration_records   | corroboration records **[V]**                                              |
+| **12,242** | learning_accepted_fact_provenance     | provenance trail **[V]**                                                   |
+| **5,646**  | learning_dossier_sources              | dossier↔source links **[V]**                                               |
+| **2,527**  | learning_dossiers                     | dossier rows (+30 vs catalog, same shape as `miru_dossiers.cards`) **[V]** |
+| **1**      | learning_dossier_images               | nearly empty **[V]**                                                       |
+| **1**      | learning_dossier_prints               | nearly empty **[V]**                                                       |
+| **0**      | learning_card_usage                   | empty **[V]**                                                              |
+| **0**      | learning_deck_archetypes              | empty **[V]**                                                              |
+| **0**      | learning_dossier_deck_usage           | empty **[V]**                                                              |
+| **0**      | learning_dossier_market_signals       | empty **[V]**                                                              |
+| **0**      | learning_dossier_rulings              | empty **[V]**                                                              |
+| **0**      | learning_dossier_strategy_notes       | empty **[V]**                                                              |
+| **0**      | learning_dossier_variant_art          | empty **[V]**                                                              |
+| **0**      | learning_image_analysis               | empty **[V]**                                                              |
+| **0**      | learning_image_selections             | empty **[V]**                                                              |
+| **0**      | learning_reverification_execution_log | empty **[V]**                                                              |
+| **0**      | learning_source_limited_use_events    | empty **[V]**                                                              |
+| **0**      | learning_source_reviews               | empty **[V]**                                                              |
+| **0**      | learning_tournament_placements        | empty **[V]**                                                              |
+| **0**      | learning_usage_evidence               | empty **[V]**                                                              |
 
 Newest writes: `learning_dossiers.updated_at` 2026-04-08; the verification
 engine wrote heavily through 2026-03-22 and mostly stopped. **[V]**
@@ -184,15 +184,15 @@ engine wrote heavily through 2026-03-22 and mostly stopped. **[V]**
 
 The most-recently-active database in the system.
 
-| rows | table | role |
-|---|---|---|
-| **299** | post_review_evidence | per-review evidence rows **[V]** |
-| **40** | dev_training_reviews | operator review verdicts on variants **[V]** |
-| **38** | evidence_reconciliation | reconciliation rows **[V]** |
-| **28** | recurrence_review_links | review↔aggregate links **[V]** |
-| **8** | evidence_source_weights | weighted source policy (see §6 — cleanest piece of system) **[V]** |
-| **6** | recurrence_aggregates | recurring-issue aggregates **[V]** |
-| **0** | correction_candidates | empty **[V]** |
+| rows    | table                   | role                                                               |
+| ------- | ----------------------- | ------------------------------------------------------------------ |
+| **299** | post_review_evidence    | per-review evidence rows **[V]**                                   |
+| **40**  | dev_training_reviews    | operator review verdicts on variants **[V]**                       |
+| **38**  | evidence_reconciliation | reconciliation rows **[V]**                                        |
+| **28**  | recurrence_review_links | review↔aggregate links **[V]**                                     |
+| **8**   | evidence_source_weights | weighted source policy (see §6 — cleanest piece of system) **[V]** |
+| **6**   | recurrence_aggregates   | recurring-issue aggregates **[V]**                                 |
+| **0**   | correction_candidates   | empty **[V]**                                                      |
 
 Newest write: `recurrence_aggregates.last_refreshed_at` 2026-05-08 08:25:19. **[V]**
 
@@ -200,18 +200,18 @@ Newest write: `recurrence_aggregates.last_refreshed_at` 2026-05-08 08:25:19. **[
 
 Orchestration memory (not a curation DB) — kept here for completeness. Active.
 
-| rows | table | role |
-|---|---|---|
-| **157** | routing_decisions | dispatch routing history (newest 2026-04-29) **[V]** |
-| **119** | decisions | architectural decisions (newest 2026-05-12) **[V]** |
-| **21** | agenda | agenda items (newest 2026-05-06) **[V]** |
-| **20** | stack_state | stack snapshots (newest 2026-05-10) **[V]** |
-| **13** | linear_projects | Linear project cache **[V]** |
-| **12** | usage_events | usage telemetry (newest 2026-05-14 — most-recent write across all DBs) **[V]** |
-| **9** | watchdog_state | watchdog state **[V]** |
-| **6** | worker_profile | worker capability profiles (newest 2026-05-09) **[V]** |
-| **5** | peer_review | peer review entries **[V]** |
-| **0** | agent_messages, task_dependencies, worker_perf, worker_tasks, worktree_registry | empty **[V]** |
+| rows    | table                                                                           | role                                                                           |
+| ------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **157** | routing_decisions                                                               | dispatch routing history (newest 2026-04-29) **[V]**                           |
+| **119** | decisions                                                                       | architectural decisions (newest 2026-05-12) **[V]**                            |
+| **21**  | agenda                                                                          | agenda items (newest 2026-05-06) **[V]**                                       |
+| **20**  | stack_state                                                                     | stack snapshots (newest 2026-05-10) **[V]**                                    |
+| **13**  | linear_projects                                                                 | Linear project cache **[V]**                                                   |
+| **12**  | usage_events                                                                    | usage telemetry (newest 2026-05-14 — most-recent write across all DBs) **[V]** |
+| **9**   | watchdog_state                                                                  | watchdog state **[V]**                                                         |
+| **6**   | worker_profile                                                                  | worker capability profiles (newest 2026-05-09) **[V]**                         |
+| **5**   | peer_review                                                                     | peer review entries **[V]**                                                    |
+| **0**   | agent_messages, task_dependencies, worker_perf, worker_tasks, worktree_registry | empty **[V]**                                                                  |
 
 Plus one view: `current_worker_profiles`. **[V]**
 
@@ -220,24 +220,24 @@ is in scope only because it lives next to the curation DBs in `data/`. **[V]**
 
 ### 1.6 Six dormant DBs **[V]**
 
-| DB | size | last write | role |
-|---|---|---|---|
-| `miru_deck_intel.db` | 242 KB | 2026-03-16 | cluster-derived deck profiles (8 archetypes, 131 archetype-cards, 96 leader signals) |
-| `miru_learning_log.db` | 1.7 MB | 2026-03-22 | learning engine run log (12,414 entries) |
-| `miru_learning_queue.db` | 1.0 MB | 2026-03-22 | learning task queue (2,774 entries) |
-| `miru_official_rules.db` | 98 KB | 2026-03-27 | official ruling capture (12 rulings, 19 legality rows) |
-| `miru_source_cache.db` | 184 KB | 2026-03-20 | HTTP source cache (72 entries) |
-| `miru_mcp_governance.db` | 53 KB | 2026-04-08 | MCP governance (7 sync runs, 4 review leads) |
+| DB                       | size   | last write | role                                                                                 |
+| ------------------------ | ------ | ---------- | ------------------------------------------------------------------------------------ |
+| `miru_deck_intel.db`     | 242 KB | 2026-03-16 | cluster-derived deck profiles (8 archetypes, 131 archetype-cards, 96 leader signals) |
+| `miru_learning_log.db`   | 1.7 MB | 2026-03-22 | learning engine run log (12,414 entries)                                             |
+| `miru_learning_queue.db` | 1.0 MB | 2026-03-22 | learning task queue (2,774 entries)                                                  |
+| `miru_official_rules.db` | 98 KB  | 2026-03-27 | official ruling capture (12 rulings, 19 legality rows)                               |
+| `miru_source_cache.db`   | 184 KB | 2026-03-20 | HTTP source cache (72 entries)                                                       |
+| `miru_mcp_governance.db` | 53 KB  | 2026-04-08 | MCP governance (7 sync runs, 4 review leads)                                         |
 
 All last-written between 2026-03-16 and 2026-04-08. None has been touched
 since. **[V]**
 
 ### 1.7 Two empty/near-empty DBs **[V]**
 
-| DB | size | last write | rows |
-|---|---|---|---|
+| DB                   | size  | last write | rows                   |
+| -------------------- | ----- | ---------- | ---------------------- |
 | `miru_user_decks.db` | 49 KB | 2026-03-16 | **all 4 tables empty** |
-| `pm_decks.db` | 12 KB | 2026-04-22 | 2 decks |
+| `pm_decks.db`        | 12 KB | 2026-04-22 | 2 decks                |
 
 ### 1.8 `data/miru_ai_onepiece_knowledge.json` — 7.2 MB, mtime 2026-04-17 19:56 **[V]**
 
@@ -275,16 +275,16 @@ Method: for every table, find any `created_at` / `updated_at` / `inserted_at`
 
 ### 3.1 ACTIVE (writes in the last 30 days, since 2026-04-16) **[V]**
 
-| DB.table | newest write | what produced it |
-|---|---|---|
-| `miru_memory.usage_events` | 2026-05-14 | orchestration kernel (not curation) |
-| `miru_memory.decisions` | 2026-05-12 | orchestration kernel |
-| `miru_memory.stack_state` | 2026-05-10 | orchestration kernel |
-| `miru_memory.worker_profile` | 2026-05-09 | orchestration kernel |
-| `miru_dev_training_reviews.recurrence_aggregates` | 2026-05-08 | `miru_ai/recurrence.py` |
-| `card_catalog.miru_validations` | 2026-04-25 | `tools/miru_project_sync.py` |
-| `miru_dossiers.card_sources` | 2026-04-25 | `tools/miru_dossier_store.py` |
-| `miru_dossiers.miru_schema_metadata` | 2026-04-25 | (schema bookkeeping) |
+| DB.table                                          | newest write | what produced it                    |
+| ------------------------------------------------- | ------------ | ----------------------------------- |
+| `miru_memory.usage_events`                        | 2026-05-14   | orchestration kernel (not curation) |
+| `miru_memory.decisions`                           | 2026-05-12   | orchestration kernel                |
+| `miru_memory.stack_state`                         | 2026-05-10   | orchestration kernel                |
+| `miru_memory.worker_profile`                      | 2026-05-09   | orchestration kernel                |
+| `miru_dev_training_reviews.recurrence_aggregates` | 2026-05-08   | `miru_ai/recurrence.py`             |
+| `card_catalog.miru_validations`                   | 2026-04-25   | `tools/miru_project_sync.py`        |
+| `miru_dossiers.card_sources`                      | 2026-04-25   | `tools/miru_dossier_store.py`       |
+| `miru_dossiers.miru_schema_metadata`              | 2026-04-25   | (schema bookkeeping)                |
 
 **Only one production-relevant ACTIVE writer chain remains:** the
 `dev_training_review` → `recurrence` subsystem. The validation engine touched
@@ -292,54 +292,54 @@ catalog through 2026-04-25 but is now also dormant. **[V]**
 
 ### 3.2 RECENT but stopped (writes 30–60 days ago, 2026-03-17 to 2026-04-15) **[V]**
 
-| DB.table | newest write |
-|---|---|
+| DB.table                                                                                                                                           | newest write                       |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
 | `card_catalog.card_keywords / card_traits / card_trait_assignments / keywords / format_set_legality / card_legality_overrides / restriction_pairs` | 2026-04-13–15 (a batch ingest run) |
-| `card_catalog.card_errata / card_rulings` | 2026-04-15 |
-| `card_catalog.miru_card_usage / miru_meta_events / miru_deck_archetypes` | 2026-04-15 |
-| `card_catalog.image_assets` | 2026-04-07 |
-| `card_catalog.card_variants` | 2026-04-01 |
-| `card_catalog.market_prices` | 2026-04-02 |
-| `card_catalog.tcgplayer_products` | 2026-04-01 |
-| `card_catalog.printing_market_map` | 2026-04-08 |
-| `miru_dev_training_reviews.dev_training_reviews / evidence_reconciliation / post_review_evidence` | 2026-04-09 |
-| `miru_dossiers.cards` | 2026-04-08 |
-| `miru_learning_dossiers.learning_dossiers` | 2026-04-08 |
-| `miru_dossiers.card_effects` | 2026-04-03 |
-| `miru_mcp_governance.research_review_leads` | 2026-04-08 |
-| `card_catalog.bandai_cardlist_scrape` | 2026-03-30 |
-| `card_catalog.miru_review_queue` | 2026-03-29 |
-| `card_catalog.miru_sync_metadata` | 2026-03-27 |
-| `card_catalog.card_relationships` | 2026-03-25 |
-| `card_catalog.card_intelligence (promotion/publication updates)` | 2026-03-25 |
-| `card_catalog.miru_publication_*` (batches/stage/items) | 2026-03-19 |
-| `card_catalog.miru_action_history` | 2026-03-22 |
-| `miru_learning_dossiers.learning_accepted_fact_*` (all three high-row tables) | 2026-03-22 |
+| `card_catalog.card_errata / card_rulings`                                                                                                          | 2026-04-15                         |
+| `card_catalog.miru_card_usage / miru_meta_events / miru_deck_archetypes`                                                                           | 2026-04-15                         |
+| `card_catalog.image_assets`                                                                                                                        | 2026-04-07                         |
+| `card_catalog.card_variants`                                                                                                                       | 2026-04-01                         |
+| `card_catalog.market_prices`                                                                                                                       | 2026-04-02                         |
+| `card_catalog.tcgplayer_products`                                                                                                                  | 2026-04-01                         |
+| `card_catalog.printing_market_map`                                                                                                                 | 2026-04-08                         |
+| `miru_dev_training_reviews.dev_training_reviews / evidence_reconciliation / post_review_evidence`                                                  | 2026-04-09                         |
+| `miru_dossiers.cards`                                                                                                                              | 2026-04-08                         |
+| `miru_learning_dossiers.learning_dossiers`                                                                                                         | 2026-04-08                         |
+| `miru_dossiers.card_effects`                                                                                                                       | 2026-04-03                         |
+| `miru_mcp_governance.research_review_leads`                                                                                                        | 2026-04-08                         |
+| `card_catalog.bandai_cardlist_scrape`                                                                                                              | 2026-03-30                         |
+| `card_catalog.miru_review_queue`                                                                                                                   | 2026-03-29                         |
+| `card_catalog.miru_sync_metadata`                                                                                                                  | 2026-03-27                         |
+| `card_catalog.card_relationships`                                                                                                                  | 2026-03-25                         |
+| `card_catalog.card_intelligence (promotion/publication updates)`                                                                                   | 2026-03-25                         |
+| `card_catalog.miru_publication_*` (batches/stage/items)                                                                                            | 2026-03-19                         |
+| `card_catalog.miru_action_history`                                                                                                                 | 2026-03-22                         |
+| `miru_learning_dossiers.learning_accepted_fact_*` (all three high-row tables)                                                                      | 2026-03-22                         |
 
 ### 3.3 DORMANT (60–90 days ago, 2026-03-09 to 2026-03-27) **[V]**
 
-| DB | newest write |
-|---|---|
-| `miru_official_rules.db` | 2026-03-27 |
-| `miru_learning_log.db` | 2026-03-22 |
-| `miru_learning_queue.db` | 2026-03-22 |
-| `miru_deck_intel.db` (all tables) | 2026-03-16 |
-| `miru_source_cache.db` | 2026-03-20 |
-| `miru_dossiers.card_facts / fact_sources / confidence_records / cards` (the bulk-write) | 2026-03-16 |
+| DB                                                                                      | newest write |
+| --------------------------------------------------------------------------------------- | ------------ |
+| `miru_official_rules.db`                                                                | 2026-03-27   |
+| `miru_learning_log.db`                                                                  | 2026-03-22   |
+| `miru_learning_queue.db`                                                                | 2026-03-22   |
+| `miru_deck_intel.db` (all tables)                                                       | 2026-03-16   |
+| `miru_source_cache.db`                                                                  | 2026-03-20   |
+| `miru_dossiers.card_facts / fact_sources / confidence_records / cards` (the bulk-write) | 2026-03-16   |
 
 ### 3.4 SCHEMA-ONLY / NEVER WRITTEN **[V]**
 
-| Table family | rows | code that writes |
-|---|---|---|
-| `card_catalog.miru_perception_ledger` | 0 | **NONE** (grep for `INSERT INTO miru_perception_ledger` returns no files) **[V]** |
-| `card_catalog.miru_perception_ledger_fields` | 0 | **NONE** **[V]** |
-| `card_catalog.miru_perception_ledger_recurrence` | 0 | **NONE** **[V]** |
-| `card_catalog.miru_perception_ledger_summary` | 0 | **NONE** **[V]** |
-| `miru_learning_dossiers.learning_deck_archetypes` | 0 | (schema present, never executed) |
-| `miru_learning_dossiers.learning_*` (13 other empty tables) | 0 | (schema present, never executed) |
-| `miru_dossiers.card_identity / card_meta_intel / card_strategy_intel / card_synergy_intel / card_rulings_intel / card_published_insight / card_publication_audit / card_relationships / leader_*` (~15 tables) | 0 | (schema present, never executed) |
-| `miru_user_decks.user_decks / user_deck_versions / user_deck_cards` | 0 | (schema present, never executed) |
-| `card_catalog.official_source_refs` | 0 | (schema present) |
+| Table family                                                                                                                                                                                                   | rows | code that writes                                                                  |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | --------------------------------------------------------------------------------- |
+| `card_catalog.miru_perception_ledger`                                                                                                                                                                          | 0    | **NONE** (grep for `INSERT INTO miru_perception_ledger` returns no files) **[V]** |
+| `card_catalog.miru_perception_ledger_fields`                                                                                                                                                                   | 0    | **NONE** **[V]**                                                                  |
+| `card_catalog.miru_perception_ledger_recurrence`                                                                                                                                                               | 0    | **NONE** **[V]**                                                                  |
+| `card_catalog.miru_perception_ledger_summary`                                                                                                                                                                  | 0    | **NONE** **[V]**                                                                  |
+| `miru_learning_dossiers.learning_deck_archetypes`                                                                                                                                                              | 0    | (schema present, never executed)                                                  |
+| `miru_learning_dossiers.learning_*` (13 other empty tables)                                                                                                                                                    | 0    | (schema present, never executed)                                                  |
+| `miru_dossiers.card_identity / card_meta_intel / card_strategy_intel / card_synergy_intel / card_rulings_intel / card_published_insight / card_publication_audit / card_relationships / leader_*` (~15 tables) | 0    | (schema present, never executed)                                                  |
+| `miru_user_decks.user_decks / user_deck_versions / user_deck_cards`                                                                                                                                            | 0    | (schema present, never executed)                                                  |
+| `card_catalog.official_source_refs`                                                                                                                                                                            | 0    | (schema present)                                                                  |
 
 **`miru_perception_ledger` is the headline finding of this section.** The
 audit prompt asked: "abandoned, superseded, or never started?" The grep
@@ -366,11 +366,11 @@ verdict). They are complementary, not duplicates. **[V]**
 There are three DBs that each hold a `cards` (or equivalent) table at ~2,527
 rows, with overlapping fact-keeping tables:
 
-| layer | DB | "cards" table | populated facts table | shape / unit | latest write |
-|---|---|---|---|---|---|
-| A — catalog | `card_catalog.db` | `cards` (2,497 rows) | `card_intelligence` (1:1 with cards), `card_relationships` (61K) | per-card aggregate + edge graph | 2026-04-25 |
-| B — dossiers | `miru_dossiers.db` | `cards` (2,527 rows) | `card_facts` (50,540), `fact_sources` (31,103), `confidence_records` (53,067) | per-card-per-field facts with provenance | 2026-04-25 |
-| C — learning dossiers | `miru_learning_dossiers.db` | `learning_dossiers` (2,527 rows) | `learning_accepted_fact_provenance` (12,242), `learning_fact_corroboration_records` (13,313), `learning_accepted_fact_history` (15,448) | per-fact provenance & corroboration history | 2026-04-08 |
+| layer                 | DB                          | "cards" table                    | populated facts table                                                                                                                   | shape / unit                                | latest write |
+| --------------------- | --------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | ------------ |
+| A — catalog           | `card_catalog.db`           | `cards` (2,497 rows)             | `card_intelligence` (1:1 with cards), `card_relationships` (61K)                                                                        | per-card aggregate + edge graph             | 2026-04-25   |
+| B — dossiers          | `miru_dossiers.db`          | `cards` (2,527 rows)             | `card_facts` (50,540), `fact_sources` (31,103), `confidence_records` (53,067)                                                           | per-card-per-field facts with provenance    | 2026-04-25   |
+| C — learning dossiers | `miru_learning_dossiers.db` | `learning_dossiers` (2,527 rows) | `learning_accepted_fact_provenance` (12,242), `learning_fact_corroboration_records` (13,313), `learning_accepted_fact_history` (15,448) | per-fact provenance & corroboration history | 2026-04-08   |
 
 These are **NOT strict duplicates**. They model verification at three
 granularities:
@@ -380,11 +380,12 @@ granularities:
 - **B (dossiers)** is the granular fact graph — one row per
   (card × field) with status (`asserted` / `inferred` / `disputed`),
   confidence, multi-source provenance.
-- **C (learning dossiers)** is the verification *process log* — append-
+- **C (learning dossiers)** is the verification _process log_ — append-
   only history of "this fact got accepted on date X with sources Y,Z,W and
   corroboration count N".
 
 **Canonical writer per layer** (grepped) **[V]**:
+
 - A: `tools/miru_project_sync.py` writes `card_intelligence`,
   `miru_validations`, `miru_card_insights`. Also writes `cards` (with
   `tools/miru_dossier_store.py`, `shared/intel/db.py`,
@@ -396,6 +397,7 @@ granularities:
   the accepted-fact tables.
 
 **Apparent flow** (from import graph and writer paths) **[I]**:
+
 1. `learning_engine.py` runs verification jobs → writes (C).
 2. (C) feeds into (B) via promotion / fact acceptance → writes
    `card_facts` in (B).
@@ -403,9 +405,10 @@ granularities:
    `card_intelligence` and `miru_validations`.
 
 **This is a 3-stage funnel architecture**, not three competing systems. Each
-layer is the *audit trail* of the next. **[I]**
+layer is the _audit trail_ of the next. **[I]**
 
 What's broken in the funnel:
+
 - The C → B promotion paths exist but the B → A flatten has stalled —
   `card_intelligence` last broad update was 2026-03-25 while (C) accepted
   facts up to 2026-03-22 and (B) wrote sources up to 2026-04-25. **[V]**
@@ -416,11 +419,11 @@ What's broken in the funnel:
 
 ### 4.2 Three deck archetype tables — different concepts **[V]**
 
-| table | DB | rows | concept |
-|---|---|---|---|
-| `miru_deck_archetypes` | `card_catalog.db` | 10 | **curated tier list** — research-sourced (notes: "Source: perplexity_mcp research"), high-quality prose. Newest 2026-04-15. |
-| `learning_deck_archetypes` | `miru_learning_dossiers.db` | 0 | **placeholder schema** — `verification_state` defaults to `'placeholder'`. Never used. |
-| `archetype_profiles` | `miru_deck_intel.db` | 8 | **math-derived clusters** — leader + cluster_id + deck_count + avg_similarity. Computed by clustering decklists. Newest 2026-03-16. |
+| table                      | DB                          | rows | concept                                                                                                                             |
+| -------------------------- | --------------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `miru_deck_archetypes`     | `card_catalog.db`           | 10   | **curated tier list** — research-sourced (notes: "Source: perplexity_mcp research"), high-quality prose. Newest 2026-04-15.         |
+| `learning_deck_archetypes` | `miru_learning_dossiers.db` | 0    | **placeholder schema** — `verification_state` defaults to `'placeholder'`. Never used.                                              |
+| `archetype_profiles`       | `miru_deck_intel.db`        | 8    | **math-derived clusters** — leader + cluster_id + deck_count + avg_similarity. Computed by clustering decklists. Newest 2026-03-16. |
 
 These are functionally distinct: a curated tier list, a placeholder for a
 learning-substrate version that was never built, and statistically-derived
@@ -471,15 +474,15 @@ Spot-checks below sample real data against ground truth where possible.
 Spot-check of OP01 leaders against ground truth (verified by Perplexity search
 of official Bandai sources, with caveats — see §7.2):
 
-| canonical_code | catalog name | catalog color | catalog rarity | catalog cost / power | spot-check |
-|---|---|---|---|---|---|
-| OP01-001 | Roronoa Zoro | Red | L | 5 / 5000 | VERIFIED — matches well-known OP-01 Zoro Leader, effect "[DON!! x1] This Leader gains +1000 power." **[V]** |
-| OP01-002 | Trafalgar Law | Red/Green | SR | (Leader) | VERIFIED — Red/Green dual leader exists in OP-01. **[V]** |
-| OP01-003 | Monkey.D.Luffy | Red | L | (Leader) | VERIFIED. **[V]** |
-| OP01-031 | Kouzuki Oden | Blue | L | (Leader) | VERIFIED. **[V]** |
-| OP01-061 | Kaido | Purple | L | (Leader) | VERIFIED. **[V]** |
-| OP01-062 | Crocodile | Purple | L | (Leader) | VERIFIED. **[V]** |
-| OP01-091 | King | Purple | L | (Leader) | VERIFIED. **[V]** |
+| canonical_code | catalog name   | catalog color | catalog rarity | catalog cost / power | spot-check                                                                                                  |
+| -------------- | -------------- | ------------- | -------------- | -------------------- | ----------------------------------------------------------------------------------------------------------- |
+| OP01-001       | Roronoa Zoro   | Red           | L              | 5 / 5000             | VERIFIED — matches well-known OP-01 Zoro Leader, effect "[DON!! x1] This Leader gains +1000 power." **[V]** |
+| OP01-002       | Trafalgar Law  | Red/Green     | SR             | (Leader)             | VERIFIED — Red/Green dual leader exists in OP-01. **[V]**                                                   |
+| OP01-003       | Monkey.D.Luffy | Red           | L              | (Leader)             | VERIFIED. **[V]**                                                                                           |
+| OP01-031       | Kouzuki Oden   | Blue          | L              | (Leader)             | VERIFIED. **[V]**                                                                                           |
+| OP01-061       | Kaido          | Purple        | L              | (Leader)             | VERIFIED. **[V]**                                                                                           |
+| OP01-062       | Crocodile      | Purple        | L              | (Leader)             | VERIFIED. **[V]**                                                                                           |
+| OP01-091       | King           | Purple        | L              | (Leader)             | VERIFIED. **[V]**                                                                                           |
 
 Card field data appears correct. **[V]**
 
@@ -513,10 +516,10 @@ overlap existed, but Usopp does not "support" Marco's leader in any
 practical sense. **[V]**
 
 The **60 verified rows are high-quality** — operator-curated synergy notes
-for the Rosinante archetype (leader OP12-061). Example: *"P-093 Trafalgar
+for the Rosinante archetype (leader OP12-061). Example: _"P-093 Trafalgar
 Law is a core Blocker in Rosinante lists. Its On Play DON!! ramp triggers
 naturally because Rosinante Leader effect returns DON!! to deck, keeping
-P-093 condition met consistently."* These are pure operator knowledge. **[V]**
+P-093 condition met consistently."_ These are pure operator knowledge. **[V]**
 
 ### 5.3 `card_intelligence` — partial, with one bad-data row **[V]**
 
@@ -531,13 +534,13 @@ Per-card 57-column "intelligence" table:
   are populated. **[V]**
 - **Some non-leader rows ARE populated** with deck-intel-derived roles —
   OP01-005 Uta has `role_label='core'`, `role_summary='Deck intel: core in
-  1 leader (73% inclusion).'`; OP01-008 Cavendish has `core` at 82%
+1 leader (73% inclusion).'`; OP01-008 Cavendish has `core` at 82%
   inclusion. So there is real signal in the table for cards that appear
   in tracked decks. **[V]**
 - **Confidence distribution is suspicious-uniform**: 2,200 of 2,497 rows
   (88%) have `confidence_score=0.93` exactly. The next-most-common values
   are 0.76 (167 rows) and 0.95 (28 rows). This pattern is consistent with
-  a bulk-default value set at insert time, *not* a derived per-card
+  a bulk-default value set at insert time, _not_ a derived per-card
   metric. **[V]** **[O]** confirm whether 0.93 is a real metric or a
   default by reading the writer code in `tools/miru_project_sync.py`.
 - **One bad-data row**: `canonical_code='OP01-001'` (Roronoa Zoro Leader)
@@ -559,9 +562,9 @@ A canned-text templating bug is visible in the data **[V]**:
 
 > Row: `card_id='OP01-002'` (Trafalgar Law), `insight_type='usage'`,
 > `insight_text='Roronoa Zoro is a flex piece in OP01-001 lists. You'll see
-> it in a solid chunk of those lists.'`
+it in a solid chunk of those lists.'`
 
-The text talks about *Roronoa Zoro* but the row is keyed by *Trafalgar Law*.
+The text talks about _Roronoa Zoro_ but the row is keyed by _Trafalgar Law_.
 A second example from OP01-120 (Shanks): "Shanks is a flex piece in OP01-001
 lists." Shanks is a 10-cost finisher that historically does not appear in
 Zoro-leader (OP01-001) lists in any meaningful frequency — the inclusion
@@ -582,22 +585,22 @@ are clustered around 0.95). 1,318 are `task_type='verify_official_fields'`,
 > OP01-001 / confidence=0.95 / task_type=verify_official_fields /
 > verified_at='2026-03-07 18:31:00' / sources_json includes "Official card
 > list (snapshot)" / validated_fields_json includes ["card_name", "set_code",
-> "set_name", "rarity", "color", "card_type", "power", "attribute",
-> "traits", "life", "effect_text", ...]
+> > "set_name", "rarity", "color", "card_type", "power", "attribute",
+> > "traits", "life", "effect_text", ...]
 
 This is real, structured validation data. **[V]** The narrowness — all rows
 at ~0.95 confidence — suggests the engine writes a row only when a card
-*passes* validation (it's a pass-log, not a contested-validation log). **[I]**
+_passes_ validation (it's a pass-log, not a contested-validation log). **[I]**
 
 ### 5.6 `dev_training_reviews` quality — real operator work **[V]**
 
 40 rows. Sample (3 rows, all OP01):
 
-| id | created_at | card_code | variant_key | verdict | issues | action | source |
-|---|---|---|---|---|---|---|---|
-| 1 | 2026-04-08 20:02:38 | OP01-001 | base | looks_correct | [] | approve | English Bandai cardlist |
-| 10059 | 2026-04-09 04:40:13 | OP01-002 | alt | looks_correct | ["new_card"] | approve | operator-console |
-| 10060 | 2026-04-09 05:01:36 | OP01-002 | alt | needs_review | ["stat_mismatch"] | fix_it | operator-console |
+| id    | created_at          | card_code | variant_key | verdict       | issues            | action  | source                  |
+| ----- | ------------------- | --------- | ----------- | ------------- | ----------------- | ------- | ----------------------- |
+| 1     | 2026-04-08 20:02:38 | OP01-001  | base        | looks_correct | []                | approve | English Bandai cardlist |
+| 10059 | 2026-04-09 04:40:13 | OP01-002  | alt         | looks_correct | ["new_card"]      | approve | operator-console        |
+| 10060 | 2026-04-09 05:01:36 | OP01-002  | alt         | needs_review  | ["stat_mismatch"] | fix_it  | operator-console        |
 
 These are genuine human-in-the-loop reviews via the operator console. The
 `recurrence_aggregates` table downstream rolls these up: OP01-003 (Luffy)
@@ -611,18 +614,18 @@ real, recent, useful work. **[V]**
 
 The 8 rows of this table read like a small, disciplined policy document:
 
-| source | weight | can_contradict_identity | can_contradict_market | staleness_days |
-|---|---|---|---|---|
-| BANDAI_CDN_CHECK | 0.25 | yes | no | 7 |
-| INTERNAL_ASSET_CHECK | 0.25 | no | no | 1 |
-| PM_PARITY_CHECK | 0.20 | no | no | 1 |
-| JUSTTCG_CONSTRAINED | 0.15 | no | yes | 7 |
-| OPERATOR_URL | 0.15 | no | no | 30 |
-| OPTCGAPI_CROSS_CHECK | 0.08 | no | no | 14 |
-| PERPLEXITY | 0.05 | no | no | 30 |
-| YOUTUBE | 0.03 | no | no | 60 |
+| source               | weight | can_contradict_identity | can_contradict_market | staleness_days |
+| -------------------- | ------ | ----------------------- | --------------------- | -------------- |
+| BANDAI_CDN_CHECK     | 0.25   | yes                     | no                    | 7              |
+| INTERNAL_ASSET_CHECK | 0.25   | no                      | no                    | 1              |
+| PM_PARITY_CHECK      | 0.20   | no                      | no                    | 1              |
+| JUSTTCG_CONSTRAINED  | 0.15   | no                      | yes                   | 7              |
+| OPERATOR_URL         | 0.15   | no                      | no                    | 30             |
+| OPTCGAPI_CROSS_CHECK | 0.08   | no                      | no                    | 14             |
+| PERPLEXITY           | 0.05   | no                      | no                    | 30             |
+| YOUTUBE              | 0.03   | no                      | no                    | 60             |
 
-`PERPLEXITY` is rated 0.05 weight and *cannot* produce `CONTRADICTS_OPERATOR`
+`PERPLEXITY` is rated 0.05 weight and _cannot_ produce `CONTRADICTS_OPERATOR`
 for any field — only ever `INCONCLUSIVE` at worst. `YOUTUBE` at 0.03 is
 "promo reveal / alt art corroboration only". Only Bandai CDN is allowed to
 contradict operator-stated identity. **This is well-designed governance.** **[V]**
@@ -638,6 +641,7 @@ sourced and traceable.
 ### 6.1 The propose layer **[V] [I]**
 
 **What proposes new data?**
+
 - `miru_ai/workers/learning_engine.py` runs scheduled-task handlers:
   `bootstrap_dossier`, `sync_missing_fields`, `inspect_missing_image`,
   `promote_verified_dossiers`, `refresh_progress`, `fetch_official_source`,
@@ -655,6 +659,7 @@ and is currently dormant. **[V]**
 ### 6.2 The verify layer **[V]**
 
 **What verifies?**
+
 - `miru_validations` (1,336 rows) is the per-card pass-log.
 - `card_facts` with `verification_state` field is the per-fact verification
   state in `miru_dossiers.db`. **[V]**
@@ -671,6 +676,7 @@ the vision. **[V]**
 ### 6.3 The approve layer **[V]**
 
 **What approves?**
+
 - `miru_review_queue` (172 rows) — 155 resolved, 16 pending, 1 deferred.
   Newest write 2026-03-29. **[V]**
 - `miru_publication_stage` (3 rows) — 2 `approved_for_candidate` (OP10-008,
@@ -678,7 +684,7 @@ the vision. **[V]**
 - `dev_training_reviews` (40 rows) — operator-driven approve/fix_it
   verdicts. **[V]**
 
-**Verdict**: the approval mechanism exists *twice* — once at the catalog
+**Verdict**: the approval mechanism exists _twice_ — once at the catalog
 level (`miru_review_queue` → `miru_publication_stage`) and once at the
 variant-evidence level (`dev_training_reviews`). The catalog-level approval
 has 75 cards stamped `approved_for_candidate` but the path forward from
@@ -708,15 +714,15 @@ member". **[V]**
 
 ### 6.5 Where the real gaps are vs the vision **[V]**
 
-| vision stage | schema present | code present | populated | working today |
-|---|---|---|---|---|
-| Propose new facts | yes (B, C) | yes (learning_engine.py) | yes (50K facts, 12K accepted) | dormant since 2026-03-22 |
-| Verify against sources | yes (validations, corroboration, source weights) | yes (project_sync, evidence_collectors) | yes (1,336 validations, 13K corroborations) | dormant since 2026-04-25 |
-| Operator review (variant level) | yes (dev_training_reviews) | yes (dev_training_review.py, recurrence.py) | yes (40 reviews, 6 aggregates) | **ACTIVE** (newest 2026-05-08) |
-| Operator review (card level) | yes (miru_review_queue) | yes (action_governance.py) | partial (172 rows, last 2026-03-29) | dormant |
-| Approve for publish | yes (publication_stage) | yes (action_governance.py) | minimal (3 rows) | dormant |
-| Batch publish | yes (publication_batches) | likely yes | minimal (2 batches, both stalled) | dormant |
-| Push to storefront | **NO code found** | **NO** | **NO** | not built **[O]** |
+| vision stage                    | schema present                                   | code present                                | populated                                   | working today                  |
+| ------------------------------- | ------------------------------------------------ | ------------------------------------------- | ------------------------------------------- | ------------------------------ |
+| Propose new facts               | yes (B, C)                                       | yes (learning_engine.py)                    | yes (50K facts, 12K accepted)               | dormant since 2026-03-22       |
+| Verify against sources          | yes (validations, corroboration, source weights) | yes (project_sync, evidence_collectors)     | yes (1,336 validations, 13K corroborations) | dormant since 2026-04-25       |
+| Operator review (variant level) | yes (dev_training_reviews)                       | yes (dev_training_review.py, recurrence.py) | yes (40 reviews, 6 aggregates)              | **ACTIVE** (newest 2026-05-08) |
+| Operator review (card level)    | yes (miru_review_queue)                          | yes (action_governance.py)                  | partial (172 rows, last 2026-03-29)         | dormant                        |
+| Approve for publish             | yes (publication_stage)                          | yes (action_governance.py)                  | minimal (3 rows)                            | dormant                        |
+| Batch publish                   | yes (publication_batches)                        | likely yes                                  | minimal (2 batches, both stalled)           | dormant                        |
+| Push to storefront              | **NO code found**                                | **NO**                                      | **NO**                                      | not built **[O]**              |
 
 The vision's last mile — "AI changes the storefront, every change sourced
 and traceable" — has **no implementation**. Approved cards do not flow
@@ -768,12 +774,12 @@ anywhere. **[V]**
 `promotion_state` → `publication_readiness` → `publication_candidate_*` →
 `publish_status` → `publish_*` (reasons, risks, payload, updated_at).
 
-| field | non-empty rows | dominant non-empty value |
-|---|---|---|
-| `approval_state` | 157 (6.3%) | `rejected` (81) + `approved_for_candidate` (75) |
-| `promotion_state` | 221 (8.8%) | `blocked_from_promotion` (116) + `review_approved_candidate` (75) |
-| `publication_readiness` | 252 (10.1%) | `blocked_by_guardrail` (151) + `ready_for_review` (59) |
-| `publish_status` | 177 (7.1%) | `publish_blocked` (99) + `publish_ready` (55) |
+| field                   | non-empty rows | dominant non-empty value                                          |
+| ----------------------- | -------------- | ----------------------------------------------------------------- |
+| `approval_state`        | 157 (6.3%)     | `rejected` (81) + `approved_for_candidate` (75)                   |
+| `promotion_state`       | 221 (8.8%)     | `blocked_from_promotion` (116) + `review_approved_candidate` (75) |
+| `publication_readiness` | 252 (10.1%)    | `blocked_by_guardrail` (151) + `ready_for_review` (59)            |
+| `publish_status`        | 177 (7.1%)     | `publish_blocked` (99) + `publish_ready` (55)                     |
 
 **The state machine is rich. About 90% of cards never entered it.** The
 ones that did show real progression — 75 cards reached `approved_for_candidate`,
@@ -783,15 +789,15 @@ ones that did show real progression — 75 cards reached `approved_for_candidate
 
 Each verified row has a hand-written `notes` field. Example:
 
-> *"EB04-038 Rosinante & Law counts as both Trafalgar Law and Donquixote
+> _"EB04-038 Rosinante & Law counts as both Trafalgar Law and Donquixote
 > Rosinante, making it eligible for Leader cost reduction and Leader
-> life-save protection simultaneously."*
+> life-save protection simultaneously."_
 >
-> *"OP12-115 I Love You!! at 2 or less Life returns a Trafalgar Law from
+> _"OP12-115 I Love You!! at 2 or less Life returns a Trafalgar Law from
 > trash to hand. Enables recycling of key Law pieces that have been used
-> or discarded earlier in the game."*
+> or discarded earlier in the game."_
 
-This is the proof point that the system *can* produce excellent data — when
+This is the proof point that the system _can_ produce excellent data — when
 an operator sits down with the right schema for an afternoon. The challenge
 is not the schema, it's the catalyst. **[V]**
 
@@ -805,20 +811,20 @@ Per Perplexity research (citations: en.onepiece-cardgame.com, the official
 Bandai cardlist; one-piece-card-game.fandom.com; limitless decklists),
 **OP-01 "Romance Dawn"** comprises:
 
-| field | pxy ground truth | card_catalog.db | match? |
-|---|---|---|---|
-| Base card count | 121 | 121 | ✅ VERIFIED |
-| Total entries incl. alt-arts | 154 | 121 base + 348 variants total (not equivalent) | partial — see below **[O]** |
-| Colors | Red, Green, Blue, Purple | Red, Green, Blue, Purple, Red/Green | ✅ catalog adds the Trafalgar Law multicolor leader (correct) |
-| Card types | Leader, Character, Event, Stage | Leader, Character, Event | ⚠️ pxy claims Stage; catalog has 0. **[O]** |
-| Leader count | 8 | 7 | ⚠️ mismatch by 1. **[O]** |
-| Common (C) | 45 | 45 | ✅ |
-| Uncommon (UC) | 30 | 30 | ✅ |
-| Rare (R) | 26 | 24 | ⚠️ off by 2 **[O]** |
-| Super Rare (SR) | 10 | 11 | ⚠️ off by 1 **[O]** |
-| Secret Rare (SEC) | 2 | 2 | ✅ |
-| Leader (L) | 8 | 7 | ⚠️ off by 1 (matches leader count above) **[O]** |
-| SP CARD | (not enumerated separately) | 2 | catalog has explicit SP CARD bucket **[V]** |
+| field                        | pxy ground truth                | card_catalog.db                                | match?                                                        |
+| ---------------------------- | ------------------------------- | ---------------------------------------------- | ------------------------------------------------------------- |
+| Base card count              | 121                             | 121                                            | ✅ VERIFIED                                                   |
+| Total entries incl. alt-arts | 154                             | 121 base + 348 variants total (not equivalent) | partial — see below **[O]**                                   |
+| Colors                       | Red, Green, Blue, Purple        | Red, Green, Blue, Purple, Red/Green            | ✅ catalog adds the Trafalgar Law multicolor leader (correct) |
+| Card types                   | Leader, Character, Event, Stage | Leader, Character, Event                       | ⚠️ pxy claims Stage; catalog has 0. **[O]**                   |
+| Leader count                 | 8                               | 7                                              | ⚠️ mismatch by 1. **[O]**                                     |
+| Common (C)                   | 45                              | 45                                             | ✅                                                            |
+| Uncommon (UC)                | 30                              | 30                                             | ✅                                                            |
+| Rare (R)                     | 26                              | 24                                             | ⚠️ off by 2 **[O]**                                           |
+| Super Rare (SR)              | 10                              | 11                                             | ⚠️ off by 1 **[O]**                                           |
+| Secret Rare (SEC)            | 2                               | 2                                              | ✅                                                            |
+| Leader (L)                   | 8                               | 7                                              | ⚠️ off by 1 (matches leader count above) **[O]**              |
+| SP CARD                      | (not enumerated separately)     | 2                                              | catalog has explicit SP CARD bucket **[V]**                   |
 
 **Caveats on pxy data**: pxy's top citation was a fan wiki, not Bandai's
 own page; the rarity breakdown given may be from a fan-summary. The
@@ -866,15 +872,15 @@ OP-01 is fully present across all three intelligence layers. **[V]**
 
 ### 8.4 OP-01 leader spot-check **[V]**
 
-| canonical_code | card_name | color | rarity | spot-check |
-|---|---|---|---|---|
-| OP01-001 | Roronoa Zoro | Red | L | ✅ |
-| OP01-002 | Trafalgar Law | Red/Green | SR | ✅ (Leader of card_type Leader; SR rarity unusual for a leader — many leaders are L. Worth confirming.) **[O]** |
-| OP01-003 | Monkey.D.Luffy | Red | L | ✅ |
-| OP01-031 | Kouzuki Oden | Blue | L | ✅ |
-| OP01-061 | Kaido | Purple | L | ✅ |
-| OP01-062 | Crocodile | Purple | L | ✅ |
-| OP01-091 | King | Purple | L | ✅ |
+| canonical_code | card_name      | color     | rarity | spot-check                                                                                                      |
+| -------------- | -------------- | --------- | ------ | --------------------------------------------------------------------------------------------------------------- |
+| OP01-001       | Roronoa Zoro   | Red       | L      | ✅                                                                                                              |
+| OP01-002       | Trafalgar Law  | Red/Green | SR     | ✅ (Leader of card_type Leader; SR rarity unusual for a leader — many leaders are L. Worth confirming.) **[O]** |
+| OP01-003       | Monkey.D.Luffy | Red       | L      | ✅                                                                                                              |
+| OP01-031       | Kouzuki Oden   | Blue      | L      | ✅                                                                                                              |
+| OP01-061       | Kaido          | Purple    | L      | ✅                                                                                                              |
+| OP01-062       | Crocodile      | Purple    | L      | ✅                                                                                                              |
+| OP01-091       | King           | Purple    | L      | ✅                                                                                                              |
 
 **[O]** The OP01-002 Trafalgar Law rarity of `SR` is unusual — Leader-type
 cards usually carry rarity `L`. Verify whether the catalog stored an alt-art
@@ -899,7 +905,7 @@ OP01-004 → OP05-001            low   inferred
 ... (continues across ~50 leaders)
 ```
 
-Usopp is a Straw Hat → he *does* belong in Luffy and Zoro decks (high
+Usopp is a Straw Hat → he _does_ belong in Luffy and Zoro decks (high
 confidence rows are correct). He does **not** meaningfully belong in the
 other 48 leaders' decks (low-confidence rows are filler). The
 algorithm has caught the obvious signal and produced N copies of "may
@@ -959,8 +965,8 @@ These are the only two OP-01 cards the validation engine never logged. **[V]**
   card_usage, leader_intelligence, leader_links, leader_meta_intel) — the
   intel/published-insight output layer. Scaffolded, never populated. **[V]**
 - **13 empty tables in `miru_learning_dossiers.db`** (the
-  `learning_dossier_*` detail tables — usage, deck_usage, market_signals,
-  rulings, strategy_notes, variant_art, image_*, source_*, tournament_placements,
+  `learning_dossier_*` detail tables — usage, deck*usage, market_signals,
+  rulings, strategy_notes, variant_art, image*_, source\__, tournament_placements,
   usage_evidence, etc.). **[V]**
 - **`miru_user_decks.db` — all four tables empty.** **[V]**
 - **`card_catalog.official_source_refs` — 0 rows.** **[V]**
@@ -999,8 +1005,8 @@ These are the only two OP-01 cards the validation engine never logged. **[V]**
   with multi-source agreement metadata.
 - **`miru_dev_training_reviews.db`** end-to-end — `dev_training_reviews` +
   `evidence_reconciliation` + `post_review_evidence` + `recurrence_aggregates`
-  + `evidence_source_weights`. The cleanest, most-recent, most-functional
-  subsystem in the project.
+  - `evidence_source_weights`. The cleanest, most-recent, most-functional
+    subsystem in the project.
 - **`miru_dossiers.card_facts` + `fact_sources` + `confidence_records`** —
   the granular fact graph (50K + 31K + 53K rows). Real provenance.
 - **The 60 verified `card_relationships`** — operator-curated Rosinante
@@ -1056,7 +1062,7 @@ The vision is: AI runs the storefront, every change sourced and traceable.
 - **There is no rollback path** — no record of "card X was published with
   values Y at time T, replaced at time T2".
 - **The "every change sourced and traceable" promise is wired at the
-  *verify* layer** (validations carry `sources_json`, facts carry
+  _verify_ layer** (validations carry `sources_json`, facts carry
   `fact_sources`) **but not at the publish layer** (no publication audit
   exists).
 
@@ -1075,7 +1081,7 @@ to be **built**, not merely populated.
 - **No image-analysis history.** `learning_image_analysis` and
   `learning_image_selections` are both empty. The image analysis ran (we
   have `image_variant_analysis` with 1,951 rows in card_catalog.db) but
-  the *learning-trail* version was never wired.
+  the _learning-trail_ version was never wired.
 - **No rulings narrative.** `miru_dossiers.card_rulings_intel`,
   `card_ruling_explanations`, and `card_rulings` are all empty in
   `miru_dossiers.db`. The catalog-side `card_rulings` table has 789 rows;
@@ -1156,27 +1162,27 @@ sampled. **[V]**
 (Grepped from `miru_ai/`, `tools/`, `shared/`, `archive/`, `tests/`.
 Tests excluded from the canonical map below.)
 
-| table | canonical writer(s) | scheduled by |
-|---|---|---|
-| `card_catalog.cards` | `tools/miru_project_sync.py:3501`, `shared/intel/db.py:439`, `miru_ai/core/ai_onepiece.py:611`, `tools/miru_dossier_store.py:1291` | learning_engine + project_sync (operator-triggered) |
-| `card_catalog.card_variants` | `miru_ai/workers/learning_engine.py:12413`, `miru_ai/server.py:8424`, `miru_ai/server.py:8671`, `shared/intel/db.py:493` | learning_engine + server-side write paths |
-| `card_catalog.card_relationships` | `shared/intel/db.py:517`, `archive/legacy_helpers/tools/miru_card_relationships_seed.py:110` (shadow), `archive/legacy_helpers/tools/ingest_operator_card_insights_2026_03_24.py` (operator-curated subset) | one-shot batch + operator script |
-| `card_catalog.card_intelligence` | `tools/miru_project_sync.py:2172`, `tools/miru_project_sync.py:2348` | project_sync (operator-triggered) |
-| `card_catalog.miru_validations` | `tools/miru_project_sync.py:3532` | project_sync |
-| `card_catalog.miru_review_queue` | `miru_ai/governance/action_governance.py:4238`, `:4391` | action_governance (within `miru_ai/`) |
-| `card_catalog.miru_publication_stage` | `miru_ai/governance/action_governance.py:5498` | action_governance |
-| `card_catalog.miru_card_insights` | `tools/miru_project_sync.py:2894`, `:2956`, `archive/legacy_helpers/tools/ingest_operator_card_insights_2026_03_24.py:238` | project_sync + one-shot operator script |
-| `card_catalog.miru_perception_ledger` (and 3 companions) | **NONE** | **never wired** |
-| `miru_dossiers.cards` | `tools/miru_dossier_store.py:1290`, `:1341` | dossier_store |
-| `miru_dossiers.card_facts` | `tools/miru_dossier_store.py:1381`, `shared/intel/db.py:539` | dossier_store / shared.intel |
-| `miru_dossiers.card_variants` | `tools/miru_dossier_store.py:1435` | dossier_store |
-| `miru_learning_dossiers.learning_dossiers` | `miru_ai/workers/learning_engine.py:5722`, `tools/miru_learning_engine_worktree_overlay.py:1142` | learning_engine (+ possibly stale overlay) |
-| `miru_dev_training_reviews.dev_training_reviews` | `miru_ai/dev_training_review.py:258` | server.py wires this — operator-triggered via UI |
-| `miru_dev_training_reviews.recurrence_aggregates` | `miru_ai/recurrence.py:267`, `:457` | recurrence engine |
-| `miru_dev_training_reviews.recurrence_review_links` | `miru_ai/recurrence.py:298`, `:488` | recurrence engine |
-| `miru_dev_training_reviews.correction_candidates` | `miru_ai/recurrence.py:766` (table empty — code present but never produces a row) | recurrence engine |
-| `miru_dev_training_reviews.post_review_evidence` | `miru_ai/evidence_collectors.py:1197` | evidence collector |
-| `miru_dev_training_reviews.evidence_reconciliation` | `miru_ai/evidence_collectors.py:1154` | evidence collector |
+| table                                                    | canonical writer(s)                                                                                                                                                                                         | scheduled by                                        |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `card_catalog.cards`                                     | `tools/miru_project_sync.py:3501`, `shared/intel/db.py:439`, `miru_ai/core/ai_onepiece.py:611`, `tools/miru_dossier_store.py:1291`                                                                          | learning_engine + project_sync (operator-triggered) |
+| `card_catalog.card_variants`                             | `miru_ai/workers/learning_engine.py:12413`, `miru_ai/server.py:8424`, `miru_ai/server.py:8671`, `shared/intel/db.py:493`                                                                                    | learning_engine + server-side write paths           |
+| `card_catalog.card_relationships`                        | `shared/intel/db.py:517`, `archive/legacy_helpers/tools/miru_card_relationships_seed.py:110` (shadow), `archive/legacy_helpers/tools/ingest_operator_card_insights_2026_03_24.py` (operator-curated subset) | one-shot batch + operator script                    |
+| `card_catalog.card_intelligence`                         | `tools/miru_project_sync.py:2172`, `tools/miru_project_sync.py:2348`                                                                                                                                        | project_sync (operator-triggered)                   |
+| `card_catalog.miru_validations`                          | `tools/miru_project_sync.py:3532`                                                                                                                                                                           | project_sync                                        |
+| `card_catalog.miru_review_queue`                         | `miru_ai/governance/action_governance.py:4238`, `:4391`                                                                                                                                                     | action_governance (within `miru_ai/`)               |
+| `card_catalog.miru_publication_stage`                    | `miru_ai/governance/action_governance.py:5498`                                                                                                                                                              | action_governance                                   |
+| `card_catalog.miru_card_insights`                        | `tools/miru_project_sync.py:2894`, `:2956`, `archive/legacy_helpers/tools/ingest_operator_card_insights_2026_03_24.py:238`                                                                                  | project_sync + one-shot operator script             |
+| `card_catalog.miru_perception_ledger` (and 3 companions) | **NONE**                                                                                                                                                                                                    | **never wired**                                     |
+| `miru_dossiers.cards`                                    | `tools/miru_dossier_store.py:1290`, `:1341`                                                                                                                                                                 | dossier_store                                       |
+| `miru_dossiers.card_facts`                               | `tools/miru_dossier_store.py:1381`, `shared/intel/db.py:539`                                                                                                                                                | dossier_store / shared.intel                        |
+| `miru_dossiers.card_variants`                            | `tools/miru_dossier_store.py:1435`                                                                                                                                                                          | dossier_store                                       |
+| `miru_learning_dossiers.learning_dossiers`               | `miru_ai/workers/learning_engine.py:5722`, `tools/miru_learning_engine_worktree_overlay.py:1142`                                                                                                            | learning_engine (+ possibly stale overlay)          |
+| `miru_dev_training_reviews.dev_training_reviews`         | `miru_ai/dev_training_review.py:258`                                                                                                                                                                        | server.py wires this — operator-triggered via UI    |
+| `miru_dev_training_reviews.recurrence_aggregates`        | `miru_ai/recurrence.py:267`, `:457`                                                                                                                                                                         | recurrence engine                                   |
+| `miru_dev_training_reviews.recurrence_review_links`      | `miru_ai/recurrence.py:298`, `:488`                                                                                                                                                                         | recurrence engine                                   |
+| `miru_dev_training_reviews.correction_candidates`        | `miru_ai/recurrence.py:766` (table empty — code present but never produces a row)                                                                                                                           | recurrence engine                                   |
+| `miru_dev_training_reviews.post_review_evidence`         | `miru_ai/evidence_collectors.py:1197`                                                                                                                                                                       | evidence collector                                  |
+| `miru_dev_training_reviews.evidence_reconciliation`      | `miru_ai/evidence_collectors.py:1154`                                                                                                                                                                       | evidence collector                                  |
 
 The running Flask service (`miru_ai/server.py`) imports
 `tools.miru_project_sync` at line 139 — confirming the
@@ -1219,4 +1225,4 @@ Numbered so the next visit can cite-and-resolve.
 
 ---
 
-*End of audit — read-only, evidence-backed, no v2 schema proposal.*
+_End of audit — read-only, evidence-backed, no v2 schema proposal._
