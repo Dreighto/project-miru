@@ -585,6 +585,7 @@ are clustered around 0.95). 1,318 are `task_type='verify_official_fields'`,
 > OP01-001 / confidence=0.95 / task_type=verify_official_fields /
 > verified_at='2026-03-07 18:31:00' / sources_json includes "Official card
 > list (snapshot)" / validated_fields_json includes ["card_name", "set_code",
+>
 > > "set_name", "rarity", "color", "card_type", "power", "attribute",
 > > "traits", "life", "effect_text", ...]
 
@@ -966,7 +967,7 @@ These are the only two OP-01 cards the validation engine never logged. **[V]**
   intel/published-insight output layer. Scaffolded, never populated. **[V]**
 - **13 empty tables in `miru_learning_dossiers.db`** (the
   `learning_dossier_*` detail tables — usage, deck*usage, market_signals,
-  rulings, strategy_notes, variant_art, image*_, source\__, tournament_placements,
+  rulings, strategy_notes, variant_art, image*\_, source\_\_, tournament_placements,
   usage_evidence, etc.). **[V]**
 - **`miru_user_decks.db` — all four tables empty.** **[V]**
 - **`card_catalog.official_source_refs` — 0 rows.** **[V]**
@@ -1080,8 +1081,8 @@ to be **built**, not merely populated.
   empty. Tournament placements are a key input for a meta-aware AI.
 - **No image-analysis history.** `learning_image_analysis` and
   `learning_image_selections` are both empty. The image analysis ran (we
-  have `image_variant_analysis` with 1,951 rows in card_catalog.db) but
-  the _learning-trail_ version was never wired.
+  have `image_variant_analysis` with 1,951 rows in card*catalog.db) but
+  the \_learning-trail* version was never wired.
 - **No rulings narrative.** `miru_dossiers.card_rulings_intel`,
   `card_ruling_explanations`, and `card_rulings` are all empty in
   `miru_dossiers.db`. The catalog-side `card_rulings` table has 789 rows;
