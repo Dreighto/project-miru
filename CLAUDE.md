@@ -50,7 +50,7 @@ other rule below assumes you obey this one.
 - **Three-repo system:** project-miru (this — product code), `LogueOS-Console` (operator dashboard), `LogueOS-Orchestrator` (kernel — dispatch loop, gateway, governance canon).
 - **Worktree pool:** Dispatched workers land in `D:\dev\worktrees\project-miru\w{N}`. The pool is managed by the orchestrator's dispatch_listener — see `LogueOS-Orchestrator` for pool config.
 - **Kernel canon** (dispatch rules, gateway profiles, worker routing) lives in the orchestrator's `.logueos/`. This file is miru's thin overlay on top of that kernel.
-- **Worker dispatch** uses `cc_handoff` — the legacy `dispatch_worker` tool is decommissioned.
+- **Worker dispatch** prefers `cc_handoff` (governed path); the legacy `dispatch_worker` tool is a break-glass fallback for when the Gatekeeper is unavailable — not decommissioned (reclassified 2026-06-14 / PRO-973 once `cc_handoff` repo-routing was repaired).
 - Never read, modify, or write files outside the active worktree without explicit operator authorization.
 - If a task requires leaving the worktree: STOP and ask.
 
@@ -169,6 +169,7 @@ the single source of cross-cutting kernel canon.
 - **`workflow-completion.md`** — LOAD IF reaching a terminal task state. Contains: completion marker schema, heartbeat emission, stall classification.
 - **`workflow-salvage.md`** — LOAD IF reviewing a draft PR labelled `salvaged`.
 - **`workflow-dispatch.md`** — LOAD IF orchestrating dispatch, gateway profiles, or W2 routing.
+- **`dispatch-preflight.md`** — LOAD IF building or sending a worker dispatch. Pre-flight checklist: resolve ticket UUID, confirm slot idle + worktree clean, build prompt with acceptance criteria + scope guard, pass `shadow_mode=False`, run `vp_ops_verify_ticket` after. Failure-mode table + `target_repo` resolution pointer.
 - **`dispatch-cr-fix.md`** — LOAD IF CR posts a CHANGES_REQUESTED review on an open PR.
 - **`domain-ui.md`** — LOAD IF touching frontend code (`pm/`, `miru_ai/static/`, templates).
 - **`domain-ops.md`** — LOAD IF touching scheduled tasks, services, Notion writes, or MCP config.
