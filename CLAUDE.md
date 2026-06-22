@@ -2,10 +2,10 @@
 
 ```text
 Instruction Architecture Version: MIRU-INSTRUCTIONS-v3
-Last reviewed: 2026-05-24
+Last reviewed: 2026-06-22
 Effective: 2026-05-13
 Overlay scope: project-miru only.
-Kernel canon: D:\dev\LogueOS-Orchestrator\CLAUDE.md + .logueos\
+Kernel canon: ~/dev/LogueOS-Orchestrator/CLAUDE.md + .logueos/
 If your loaded instructions do not show this version stamp, STOP and reload your boot context.
 ```
 
@@ -21,7 +21,7 @@ rule not explicitly stated here.
 > load-bearing safety net. Workers dispatched into project-miru worktrees do not reliably
 > reach the orchestrator's `CLAUDE.md` today — `dispatch_listener/src/index.js` does not
 > prepend kernel canon into the dispatch prompt, and Claude Code's auto-load doesn't walk
-> from `D:\dev\worktrees\project-miru\w{N}` up to `D:\dev\LogueOS-Orchestrator\`. Until
+> from `~/dev/worktrees/project-miru/w{N}` up to `~/dev/LogueOS-Orchestrator/`. Until
 > the kernel boot-path fix lands (separate ticket — prepend kernel `CLAUDE.md` + `AGENTS.md`
 > in the dispatch prompt), the duplication here is what workers actually run on. **Do not
 > slim the duplicated sections in this file until that fix is live and verified.**
@@ -46,9 +46,9 @@ other rule below assumes you obey this one.
 
 ## Repo Boundary
 
-- **This repo:** `Dreighto/project-miru`. Local checkout at `D:\dev\miru`. Contains PM Storefront + Miru AI + card catalog product code.
+- **This repo:** `Dreighto/project-miru`. Local checkout at `~/dev/miru`. Contains PM Storefront + Miru AI + card catalog product code.
 - **Three-repo system:** project-miru (this — product code), `LogueOS-Console` (operator dashboard), `LogueOS-Orchestrator` (kernel — dispatch loop, gateway, governance canon).
-- **Worktree pool:** Dispatched workers land in `D:\dev\worktrees\project-miru\w{N}`. The pool is managed by the orchestrator's dispatch_listener — see `LogueOS-Orchestrator` for pool config.
+- **Worktree pool:** Dispatched workers land in `~/dev/worktrees/project-miru/w{N}`. The pool is managed by the orchestrator's dispatch_listener — see `LogueOS-Orchestrator` for pool config.
 - **Kernel canon** (dispatch rules, gateway profiles, worker routing) lives in the orchestrator's `.logueos/`. This file is miru's thin overlay on top of that kernel.
 - **Worker dispatch** prefers `cc_handoff` (governed path); the legacy `dispatch_worker` tool is a break-glass fallback for when the Gatekeeper is unavailable — not decommissioned (reclassified 2026-06-14 / PRO-973 once `cc_handoff` repo-routing was repaired).
 - Never read, modify, or write files outside the active worktree without explicit operator authorization.
@@ -92,7 +92,7 @@ file currently open in another worker's session.
 The orchestration append-only chains (`cc_completion_log`, `routing_history`,
 `pending_callbacks`, `dispatch_dlq`, `cc_heartbeat_log`, `vp_ops_supervision`,
 `drift_scanner_log`, `agent_decisions`, `github_resource_ledger`) **live in
-the orchestrator** at `D:\dev\LogueOS-Orchestrator\data\` (Migration Phase 3,
+the orchestrator** at `~/dev/LogueOS-Orchestrator/data/` (Migration Phase 3,
 LOS-55, 2026-05-14). They are not stored in this repo.
 
 Workers in this worktree still call the local `tools/emit_completion.py`
@@ -159,10 +159,10 @@ See `miru-context/miru-service-catalog.md` for current service state and `miru-c
 ## Discovery Index
 
 Load the matching overlay **before** starting work that triggers it. All overlays and
-reference files live in the orchestrator's `.logueos/` at `D:\dev\LogueOS-Orchestrator` —
+reference files live in the orchestrator's `.logueos/` at `~/dev/LogueOS-Orchestrator` —
 the single source of cross-cutting kernel canon.
 
-### Overlays — `.logueos/overlays/` (in `D:\dev\LogueOS-Orchestrator`)
+### Overlays — `.logueos/overlays/` (in `~/dev/LogueOS-Orchestrator`)
 
 - **`workflow-interactive.md`** — LOAD IF in an interactive co-working session (no dispatch envelope, operator typing directly).
 - **`workflow-git.md`** — LOAD IF committing, opening, or merging a PR. Contains: merge policy decision tree, hygiene gate, automated PR review sequence, gh auth, WIP commits, post-merge cleanup.
@@ -176,7 +176,7 @@ the single source of cross-cutting kernel canon.
 - **`adopted-lessons.md`** — LOAD IF doing a non-trivial code change (more than typo or lint).
 - **`pre-push-discipline.md`** — LOAD IF about to push commits to a branch with an open PR (or about to open a new PR).
 
-### Reference — `.logueos/reference/` (in `D:\dev\LogueOS-Orchestrator`)
+### Reference — `.logueos/reference/` (in `~/dev/LogueOS-Orchestrator`)
 
 - **`source-of-truth.md`** — FETCH IF deciding where information belongs, resolving a conflict between sources, or planning a canon refresh. This is the meta-rule that governs every other canon rule.
 - **`roadmap.md`** — FETCH IF planning new work or onboarding a worker.
