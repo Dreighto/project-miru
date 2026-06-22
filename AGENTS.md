@@ -18,7 +18,6 @@ miru-product-specific constraints.
 
 These extend the kernel's `Must never` list with constraints specific to this codebase:
 
-- **`card_catalog.db`** — Never write to this file. It is the live card catalog database. Any modification outside the defined ingestion pipeline can corrupt product data.
 - **`pm/`** — Frontend storefront code. Cursor/GMI lane only. CC must not touch HTML/CSS/JS templates here.
 - **`miru_ai/static/`** — Same as `pm/`. CC must not touch templates or static assets.
 - **`.mcp.json`** — Never modify. MCP config files are operator-managed.
