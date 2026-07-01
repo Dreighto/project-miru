@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PageShell from '$lib/components/PageShell.svelte';
+	import { swipe } from '$lib/actions/swipe';
 	import {
 		getCardsList,
 		getSets,
@@ -181,24 +182,65 @@
 		return deckCards.get(code)?.count ?? 0;
 	}
 
+	// Haptic feedback per mobile-deckbuilder-ux skill. Add/remove get a light
+	// tick, the 4-copy or 50-card ceiling fires a heavier "you can't" pattern.
+	// All paths are no-ops on devices without the Vibration API (desktop, iOS
+	// Safari without user interaction) so this is safe everywhere.
+	function haptic(pattern: number | number[]): void {
+		if (typeof navigator === 'undefined') return;
+		const nav = navigator as Navigator & { vibrate?: (p: number | number[]) => boolean };
+		try {
+			nav.vibrate?.(pattern);
+		} catch {
+			/* iOS Safari can throw if the page isn't visible */
+		}
+	}
+
+	// Card code most-recently added — drives the brief scale-pulse animation on
+	// the matching pool tile so the operator gets visual confirmation alongside
+	// the haptic. Cleared on a short timer so the same card can pulse again.
+	let lastAddedCode = $state<string | null>(null);
+	let lastAddedTimer: ReturnType<typeof setTimeout> | null = null;
+	function flashAdded(code: string): void {
+		lastAddedCode = code;
+		if (lastAddedTimer) clearTimeout(lastAddedTimer);
+		lastAddedTimer = setTimeout(() => (lastAddedCode = null), 220);
+	}
+
 	function addCard(c: CardSummary) {
 		const existing = deckCards.get(c.code);
 		const current = existing?.count ?? 0;
-		if (current >= 4) return;
-		if (deckTotal >= 50) return;
+		if (current >= 4) {
+			haptic([18, 40, 18]); // limit hit — "denied" pattern
+			return;
+		}
+		if (deckTotal >= 50) {
+			haptic([24, 40, 24]); // deck full — slightly heavier
+			return;
+		}
 		const next = new Map(deckCards);
 		next.set(c.code, { count: current + 1, card: c });
 		deckCards = next;
+		// Celebrate the exact moment the deck hits the legal 50.
+		haptic(deckTotal === 50 ? [12, 30, 12, 30, 24] : 14);
+		flashAdded(c.code);
 	}
 
 	function incCard(code: string) {
 		const existing = deckCards.get(code);
 		if (!existing) return;
-		if (existing.count >= 4) return;
-		if (deckTotal >= 50) return;
+		if (existing.count >= 4) {
+			haptic([18, 40, 18]);
+			return;
+		}
+		if (deckTotal >= 50) {
+			haptic([24, 40, 24]);
+			return;
+		}
 		const next = new Map(deckCards);
 		next.set(code, { count: existing.count + 1, card: existing.card });
 		deckCards = next;
+		haptic(deckTotal === 50 ? [12, 30, 12, 30, 24] : 14);
 	}
 
 	function decCard(code: string) {
@@ -208,6 +250,7 @@
 		if (existing.count <= 1) next.delete(code);
 		else next.set(code, { count: existing.count - 1, card: existing.card });
 		deckCards = next;
+		haptic(8); // lighter than add — removal is subtractive
 	}
 
 	// ── Cost curve ──────────────────────────────────────────────────
@@ -343,7 +386,7 @@
 					type="search"
 					bind:value={leaderSearch}
 					placeholder="Search leaders…"
-					class="w-full rounded-[12px] px-3 py-[10px] text-[13px] outline-none"
+					class="w-full rounded-[12px] px-3 py-[10px] text-[16px] outline-none"
 					style="background: rgba(255,255,255,0.04); border: 1px solid var(--color-miru-stroke); color: var(--color-miru-text); font-family: var(--font-ui);"
 				/>
 			</div>
@@ -357,7 +400,12 @@
 			{:else if filteredLeaders.length === 0}
 				<p class="m-0 text-[12px]" style="color: var(--color-miru-muted);">No leaders match.</p>
 			{:else}
-				<div class="grid grid-cols-2 gap-2">
+				<!-- 3-col on every phone width (operator directive 2026-05-24, updating
+				     the 2026-05-23 rule). The 390px breakpoint left iPhone SE / mini and
+				     iPhone-with-Display-Zoom users on 2-col, which the operator rejected.
+				     At 375px the tile is ~110px wide — still 2.5× the WCAG 2.5.5 floor.
+				     Whole-tile is the touch target so 3-col stays accessible. -->
+				<div class="grid grid-cols-3 gap-2">
 					{#each filteredLeaders as l (l.code)}
 						<button
 							type="button"
@@ -416,7 +464,7 @@
 			<div class="mb-3 flex items-center gap-2">
 				<button
 					type="button"
-					class="rounded-[10px] px-[10px] py-[6px] text-[11px] transition-colors"
+					class="min-h-11 rounded-[10px] px-3 py-2 text-[13px] transition-colors"
 					style="background: rgba(255,255,255,0.04); border: 1px solid var(--color-miru-stroke); color: var(--color-miru-muted); font-family: var(--font-ui);"
 					onclick={resetLeader}
 				>
@@ -447,9 +495,9 @@
 					{@const on = tab === t}
 					<button
 						type="button"
-						class="flex-1 rounded-[8px] px-2 py-[7px] text-[12px] capitalize transition-colors"
+						class="min-h-11 flex-1 rounded-[8px] px-3 py-2 text-[14px] capitalize transition-colors"
 						style="font-family: var(--font-ui); background: {on
-							? 'rgba(244,208,120,0.12)'
+							? 'rgba(200,162,97,0.12)'
 							: 'transparent'}; color: {on
 							? 'var(--color-miru-gold)'
 							: 'var(--color-miru-muted)'};"
@@ -472,9 +520,9 @@
 							style="font-family: var(--font-ui); opacity: {allowed
 								? '1'
 								: '0.35'}; border: 1px solid {on
-								? 'rgba(244,208,120,0.35)'
+								? 'rgba(200,162,97,0.35)'
 								: 'rgba(255,255,255,0.08)'}; background: {on
-								? 'rgba(244,208,120,0.12)'
+								? 'rgba(200,162,97,0.12)'
 								: 'rgba(255,255,255,0.02)'}; color: {on
 								? 'var(--color-miru-gold)'
 								: 'var(--color-miru-muted)'};"
@@ -489,7 +537,7 @@
 					type="search"
 					bind:value={poolSearch}
 					placeholder="Search pool…"
-					class="mb-3 w-full rounded-[12px] px-3 py-[10px] text-[13px] outline-none"
+					class="mb-3 w-full rounded-[12px] px-3 py-[10px] text-[16px] outline-none"
 					style="background: rgba(255,255,255,0.04); border: 1px solid var(--color-miru-stroke); color: var(--color-miru-text); font-family: var(--font-ui);"
 				/>
 
@@ -500,17 +548,40 @@
 						Failed to load pool: {poolError}
 					</p>
 				{:else}
-					<div class="grid grid-cols-2 gap-2">
+					<!-- Same 3-col rule as the leader picker (plain, no breakpoint). -->
+					<div class="grid grid-cols-3 gap-2">
 						{#each filteredPool as c (c.code)}
 							{@const n = getCount(c.code)}
-							<button
-								type="button"
-								class="relative flex flex-col overflow-hidden rounded-[14px] text-left transition-colors"
-								style="background: var(--color-miru-surface); border: 1px solid {n > 0
-									? 'rgba(244,208,120,0.35)'
-									: 'var(--color-miru-stroke)'};"
-								onclick={() => addCard(c)}
-							>
+							{@const justAdded = lastAddedCode === c.code}
+							<!-- Swipe wrapper: holds the reveal indicators (rose + / gold −)
+							     that show behind the tile as it translates with the finger.
+							     The button itself is the swipe target + receives the
+							     translateX(var(--swipe-dx)) transform. -->
+							<div class="deck-card-swipe-wrap relative overflow-hidden rounded-[14px]">
+								<span
+									class="deck-card-swipe-reveal deck-card-swipe-reveal--right pointer-events-none absolute inset-y-0 left-0 flex items-center justify-start pl-3 font-bold"
+									aria-hidden="true">+</span
+								>
+								<span
+									class="deck-card-swipe-reveal deck-card-swipe-reveal--left pointer-events-none absolute inset-y-0 right-0 flex items-center justify-end pr-3 font-bold"
+									aria-hidden="true">−</span
+								>
+								<button
+									type="button"
+									use:swipe={{
+										onSwipeRight: () => addCard(c),
+										onSwipeLeft: () => (getCount(c.code) > 0 ? decCard(c.code) : undefined),
+										onArmed: () => haptic(8)
+									}}
+									data-swipe-armed=""
+									class="deck-card-tile relative flex w-full flex-col overflow-hidden rounded-[14px] text-left transition-colors {justAdded
+										? 'deck-card-tile--pulse'
+										: ''}"
+									style="background: var(--color-pm-bg-surface); border: 1px solid {n > 0
+										? 'rgba(200,162,97,0.35)'
+										: 'var(--color-pm-stroke)'};"
+									onclick={() => addCard(c)}
+								>
 								<div
 									class="relative aspect-[5/7] w-full overflow-hidden"
 									style="background: {colorTokenFor(c.color)};"
@@ -553,6 +624,7 @@
 									</div>
 								</div>
 							</button>
+							</div>
 						{/each}
 					</div>
 				{/if}
@@ -573,7 +645,7 @@
 							<div class="flex flex-1 flex-col items-center gap-1">
 								<div
 									class="relative w-full rounded-[4px]"
-									style="height: {(v / costCurveMax) * 68}px; background: linear-gradient(180deg, rgba(244,208,120,0.56), rgba(244,208,120,0.18)); border: 1px solid rgba(244,208,120,0.28); min-height: {v > 0
+									style="height: {(v / costCurveMax) * 68}px; background: linear-gradient(180deg, rgba(200,162,97,0.56), rgba(200,162,97,0.18)); border: 1px solid rgba(200,162,97,0.28); min-height: {v > 0
 										? '4px'
 										: '1px'};"
 								>
@@ -645,7 +717,7 @@
 						<button
 							type="button"
 							class="rounded-[10px] px-3 py-[6px] text-[11px] font-semibold"
-							style="background: rgba(244,208,120,0.12); border: 1px solid rgba(244,208,120,0.35); color: var(--color-miru-gold); font-family: var(--font-ui);"
+							style="background: rgba(200,162,97,0.12); border: 1px solid rgba(200,162,97,0.35); color: var(--color-miru-gold); font-family: var(--font-ui);"
 							onclick={() => (tab = 'pool')}
 						>
 							Add cards from Pool →
@@ -690,7 +762,7 @@
 											<div class="flex shrink-0 items-center gap-1">
 												<button
 													type="button"
-													class="h-7 w-7 rounded-[8px] text-[14px]"
+													class="h-11 w-11 rounded-[8px] text-[16px]"
 													style="background: rgba(255,255,255,0.05); color: var(--color-miru-text);"
 													aria-label="Remove one"
 													onclick={() => decCard(e.card.code)}
@@ -698,15 +770,15 @@
 													−
 												</button>
 												<span
-													class="w-5 text-center text-[12px] font-bold"
+													class="w-6 text-center text-[13px] font-bold"
 													style="color: var(--color-miru-gold); font-family: 'JetBrains Mono', ui-monospace, monospace;"
 												>
 													{e.count}
 												</span>
 												<button
 													type="button"
-													class="h-7 w-7 rounded-[8px] text-[14px]"
-													style="background: rgba(244,208,120,0.14); color: var(--color-miru-gold);"
+													class="h-11 w-11 rounded-[8px] text-[16px]"
+													style="background: rgba(200,162,97,0.15); color: var(--color-miru-gold);"
 													disabled={e.count >= 4 || deckTotal >= 50}
 													aria-label="Add one"
 													onclick={() => incCard(e.card.code)}
@@ -781,14 +853,16 @@
 		style="background: rgba(12,10,20,0.97); border-top-color: var(--color-miru-stroke); backdrop-filter: blur(8px);"
 	>
 		{#if tab === 'pool'}
+			<!-- Primary CTA → rose per PM 06 § 1 (Miru asking the user to act).
+			     The deckTotal stays gold because it represents the user's agency. -->
 			<button
 				type="button"
-				class="flex w-full items-center justify-center gap-2 rounded-[12px] px-4 py-[10px] text-[12px] font-semibold"
-				style="background: rgba(244,208,120,0.14); border: 1px solid rgba(244,208,120,0.4); color: var(--color-miru-gold); font-family: var(--font-ui);"
+				class="flex w-full items-center justify-center gap-2 rounded-[12px] px-4 py-[10px] text-[14px] font-semibold"
+				style="background: var(--color-pm-accent-dim); border: 1px solid var(--color-pm-accent); color: var(--color-pm-fg-primary); font-family: var(--font-ui);"
 				onclick={() => (tab = 'deck')}
 			>
-				<span style="font-family: 'JetBrains Mono', ui-monospace, monospace;">{deckTotal}/50</span>
-				<span>·</span>
+				<span style="font-family: var(--font-mono); color: var(--color-pm-gold);">{deckTotal}/50</span>
+				<span style="color: var(--color-pm-fg-secondary);">·</span>
 				<span>View Deck →</span>
 			</button>
 		{:else}
@@ -797,15 +871,17 @@
 					type="text"
 					bind:value={deckName}
 					placeholder="Deck name"
-					class="w-full rounded-[10px] px-3 py-[8px] text-[12px] outline-none"
-					style="background: rgba(255,255,255,0.04); border: 1px solid var(--color-miru-stroke); color: var(--color-miru-text); font-family: var(--font-ui);"
+					class="w-full rounded-[8px] px-3 py-[10px] text-[16px] outline-none"
+					style="background: rgba(255,255,255,0.04); border: 1px solid var(--color-pm-stroke); color: var(--color-pm-fg-primary); font-family: var(--font-ui);"
 				/>
 			</div>
 			<div class="flex gap-2">
+				<!-- Save Deck = primary CTA → rose. Disabled state visibly distinct
+				     (PM audit W4 fix). Validate is secondary → neutral. -->
 				<button
 					type="button"
-					class="flex-1 rounded-[12px] px-3 py-[10px] text-[12px] font-semibold"
-					style="background: rgba(244,208,120,0.14); border: 1px solid rgba(244,208,120,0.4); color: var(--color-miru-gold); font-family: var(--font-ui); opacity: {saving ? '0.55' : '1'};"
+					class="flex-1 rounded-[12px] px-3 py-[10px] text-[14px] font-semibold transition-opacity"
+					style="background: var(--color-pm-accent); border: 1px solid var(--color-pm-accent); color: var(--color-pm-fg-primary); font-family: var(--font-ui); opacity: {saving || deckCards.size === 0 ? '0.45' : '1'}; cursor: {saving || deckCards.size === 0 ? 'not-allowed' : 'pointer'};"
 					disabled={saving || deckCards.size === 0}
 					onclick={saveDeck}
 				>
@@ -813,8 +889,8 @@
 				</button>
 				<button
 					type="button"
-					class="flex-1 rounded-[12px] px-3 py-[10px] text-[12px] font-semibold"
-					style="background: rgba(255,255,255,0.04); border: 1px solid var(--color-miru-stroke); color: var(--color-miru-text); font-family: var(--font-ui); opacity: {validating ? '0.55' : '1'};"
+					class="flex-1 rounded-[12px] px-3 py-[10px] text-[14px] font-semibold transition-opacity"
+					style="background: rgba(255,255,255,0.04); border: 1px solid var(--color-pm-stroke-strong); color: var(--color-pm-fg-primary); font-family: var(--font-ui); opacity: {validating || deckCards.size === 0 ? '0.45' : '1'}; cursor: {validating || deckCards.size === 0 ? 'not-allowed' : 'pointer'};"
 					disabled={validating || deckCards.size === 0}
 					onclick={runValidate}
 				>
@@ -824,3 +900,118 @@
 		{/if}
 	</div>
 {/if}
+
+<style>
+	/* ── Tap confirmation: brief scale pulse + accent ring on the tile that was
+	     just added. Pairs with the haptic so the operator gets visual feedback
+	     alongside the vibration. Falls back under prefers-reduced-motion. ── */
+	.deck-card-tile {
+		transform-origin: center center;
+		/* Default state transitions handle tap-confirm + snap-back. During an
+		   active swipe the action sets --swipe-dx and we apply translateX via
+		   the rule below; on release --swipe-dx is removed and this transition
+		   animates the tile back to centre. */
+		transition: transform 180ms cubic-bezier(0.2, 0.8, 0.3, 1.2);
+		transform: translateX(var(--swipe-dx, 0px));
+		/* While a swipe is in progress, the action also sets a touch-action
+		   inline style so the browser knows we own horizontal. */
+
+		/* iOS Safari suppression — without these, the operator's long-press
+		   on a card thumb triggers Safari's native image-context menu (Save
+		   to Photos, Copy) BEFORE my pointer-event listeners can react. The
+		   gesture then "only selects the card thumb" instead of swiping.
+		   webkit-touch-callout silences the context menu; user-select stops
+		   the drag from initiating a text/image selection; tap-highlight kills
+		   the blue flash that conflicts with the rose/gold reveal indicators. */
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		user-select: none;
+		-webkit-tap-highlight-color: transparent;
+	}
+	/* Same suppression on any descendant <img> — image elements have their own
+	   iOS callout defaults that override the parent's. */
+	.deck-card-tile img {
+		-webkit-touch-callout: none;
+		-webkit-user-select: none;
+		user-select: none;
+		-webkit-user-drag: none;
+		pointer-events: none; /* let the swipe action see the gesture on the tile, not on the img */
+	}
+	.deck-card-tile:active {
+		/* Only apply the press-shrink when there's no active swipe (no --swipe-dx). */
+		transform: translateX(var(--swipe-dx, 0px)) scale(0.97);
+	}
+	.deck-card-tile--pulse {
+		animation: deck-card-pulse 220ms cubic-bezier(0.2, 0.8, 0.3, 1.2);
+	}
+	@keyframes deck-card-pulse {
+		0%   { transform: scale(0.97); box-shadow: 0 0 0 0 rgba(200, 162, 97, 0.55); }
+		60%  { transform: scale(1.04); box-shadow: 0 0 0 6px rgba(200, 162, 97, 0); }
+		100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(200, 162, 97, 0); }
+	}
+
+	/* ── Swipe reveal indicators ──
+	   The wrap div is a relative-positioned overflow-hidden container.
+	   Two reveal layers sit absolutely behind the tile:
+	     - right-side ROSE "+" reveals as the user swipes right (= add)
+	     - left-side GOLD "−" reveals as the user swipes left (= remove)
+	   Opacity is driven by --swipe-dx via clamp(): the further the finger
+	   travels, the more solid the indicator. data-swipe-armed flips to a
+	   stronger fill when the commit threshold is crossed, providing the
+	   visual companion to the "armed" haptic. */
+	.deck-card-swipe-wrap {
+		/* Live with the tile's own border-radius so the reveals don't bleed. */
+		isolation: isolate;
+	}
+	.deck-card-swipe-reveal {
+		font-size: 28px;
+		line-height: 1;
+		opacity: 0;
+		transition: opacity 120ms ease-out, background-color 120ms ease-out;
+		z-index: 0;
+		width: 64px;
+	}
+	.deck-card-swipe-reveal--right {
+		color: var(--color-pm-accent);
+		background: var(--color-pm-accent-dim);
+	}
+	.deck-card-swipe-reveal--left {
+		color: var(--color-pm-gold);
+		background: var(--color-pm-gold-dim);
+	}
+	/* Show the right reveal (+) when the finger is dragging right. */
+	.deck-card-swipe-wrap:has([data-swipe-armed='right']) .deck-card-swipe-reveal--right,
+	.deck-card-swipe-wrap:has([style*='--swipe-dx']) .deck-card-swipe-reveal--right {
+		opacity: 0.75;
+	}
+	.deck-card-swipe-wrap:has([data-swipe-armed='right']) .deck-card-swipe-reveal--right {
+		opacity: 1;
+		background: var(--color-pm-accent);
+		color: var(--color-pm-fg-primary);
+	}
+	/* Show the left reveal (−) when the finger is dragging left. */
+	.deck-card-swipe-wrap:has([data-swipe-armed='left']) .deck-card-swipe-reveal--left,
+	.deck-card-swipe-wrap:has([style*='--swipe-dx']) .deck-card-swipe-reveal--left {
+		opacity: 0.75;
+	}
+	.deck-card-swipe-wrap:has([data-swipe-armed='left']) .deck-card-swipe-reveal--left {
+		opacity: 1;
+		background: var(--color-pm-gold);
+		color: var(--color-pm-bg-canvas);
+	}
+	/* The tile itself sits on top so its content keeps full opacity even when
+	   the reveal layers are visible behind. */
+	.deck-card-tile {
+		position: relative;
+		z-index: 1;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.deck-card-tile,
+		.deck-card-tile--pulse,
+		.deck-card-swipe-reveal {
+			transition: none;
+			animation: none;
+		}
+	}
+</style>

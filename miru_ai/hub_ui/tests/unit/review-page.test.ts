@@ -19,7 +19,10 @@ const item = {
 	approval_state: 'pending_review',
 	promotion_state: '',
 	confidence_score: 0.5,
-	inconclusive_field_count: 1
+	inconclusive_field_count: 1,
+	image_url: null,
+	full_image_url: null,
+	image_source: 'missing' as const
 };
 
 const itemDetail = {
@@ -43,7 +46,10 @@ const itemDetail = {
 		}
 	],
 	bandai_url: 'https://en.onepiece-cardgame.com/cardlist/?search=true&freewords=OP01-001',
-	tcgplayer_url: 'https://www.tcgplayer.com/search/one-piece-card-game/product?q=OP01-001'
+	tcgplayer_url: 'https://www.tcgplayer.com/search/one-piece-card-game/product?q=OP01-001',
+	image_url: null,
+	full_image_url: null,
+	image_source: 'missing' as const
 };
 
 function jsonResponse(body: unknown, status = 200): Response {

@@ -100,6 +100,7 @@ miru-mcp/sqlite-ro/*.db
 
 # Backup and dev databases (large binaries, regenerable)
 data/card_catalog_backup_*.db
+data/card_catalog.db.bak.*
 data/card_data.db
 data/miru_learning_pool.db.bak.*
 

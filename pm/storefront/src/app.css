@@ -1,88 +1,189 @@
 @import 'tailwindcss';
 
+/* Plus Jakarta Sans — PM 06 § 3. Google Fonts (CDN). Weights match the PM 06
+   weight ladder: 400 regular, 500 medium, 600 semibold, 700 bold. */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
 /* ==========================================================================
-   Miru Design Tokens — ported from pm/static/css/miru-base.css
-   Dark-mode only (operator directive).
-   Tailwind v4 @theme block exposes these as utility classes.
+   PM 06 Design Language tokens — Rosinante palette.
+   Locked at NAS→ROOM migration. Replaces the retired purple+gold forge look.
+   Source: Notion → MIRU → Craft Guides → PM Craft Guide → PM 06 Design Language.
    ========================================================================== */
 
 @theme {
-	/* Core surface + text */
-	--color-miru-bg: #08060f;
-	--color-miru-surface: rgba(10, 14, 22, 0.88);
-	--color-miru-stroke: rgba(255, 255, 255, 0.10);
-	--color-miru-stroke-brand: rgba(201, 176, 255, 0.18);
-	--color-miru-stroke-gold: rgba(244, 208, 120, 0.18);
+  /* ── Backgrounds (PM 06 § 2) ─────────────────────────────────────────── */
+  --color-pm-bg-canvas: #101217;
+  --color-pm-bg-surface: #181b22;
+  --color-pm-bg-surface-alt: #1f232c;
 
-	/* Brand accents */
-	--color-miru-accent: rgba(184, 160, 255, 0.96);
-	--color-miru-gold: rgba(244, 208, 120, 0.96);
+  /* ── Foregrounds — ivory, not pure white ─────────────────────────────── */
+  --color-pm-fg-primary: #f4f1eb;
+  --color-pm-fg-secondary: rgba(244, 241, 235, 0.64);
+  --color-pm-fg-tertiary: rgba(244, 241, 235, 0.4);
+  --color-pm-fg-quaternary: rgba(244, 241, 235, 0.24);
 
-	/* Text scale */
-	--color-miru-text: rgba(237, 243, 255, 0.88);
-	--color-miru-muted: rgba(255, 255, 255, 0.55);
-	--color-miru-muted-2: rgba(255, 255, 255, 0.30);
+  /* ── Accent: Rose = Miru. Primary CTAs. ──────────────────────────────── */
+  --color-pm-accent: #c54668;
+  --color-pm-accent-strong: #a03b58;
+  --color-pm-accent-dim: rgba(197, 70, 104, 0.15);
+  --color-pm-accent-glow: rgba(197, 70, 104, 0.35);
 
-	/* Leader colors */
-	--color-leader-red: #c93a3a;
-	--color-leader-green: #2d9d5f;
-	--color-leader-blue: #3a7bc8;
-	--color-leader-purple: #8b5cf6;
-	--color-leader-yellow: #d4a012;
-	--color-leader-black: #4b5563;
+  /* ── Gold = user's agency. Watched, owned, chosen leader, deck count. ── */
+  --color-pm-gold: #c8a261;
+  --color-pm-gold-strong: #a88748;
+  --color-pm-gold-dim: rgba(200, 162, 97, 0.15);
+  --color-pm-gold-glow: rgba(200, 162, 97, 0.35);
 
-	/* Typography */
-	--font-display: 'Geist', system-ui, sans-serif;
-	--font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+  /* ── Strokes ──────────────────────────────────────────────────────────── */
+  --color-pm-stroke: rgba(255, 255, 255, 0.06);
+  --color-pm-stroke-strong: rgba(255, 255, 255, 0.12);
 
-	/* Radii */
-	--radius-thumb: 6px;
-	--radius-card-sm: 8px;
-	--radius-button: 10px;
-	--radius-pill: 12px;
-	--radius-card: 14px;
-	--radius-hero: 18px;
+  /* ── Leader colors — semantic only, never decorative ─────────────────── */
+  --color-pm-leader-red: #c54242;
+  --color-pm-leader-blue: #4a6fb8;
+  --color-pm-leader-green: #4a9b5e;
+  --color-pm-leader-purple: #8b5bae;
+  --color-pm-leader-yellow: #d4b250;
+  --color-pm-leader-black: #3a3a42;
+
+  /* ── Status ───────────────────────────────────────────────────────────── */
+  --color-pm-success: #c8a261;
+  --color-pm-warning: #d89b3e;
+  --color-pm-error: #c95a5a;
+
+  /* ── Insight categories (Phase 1 placeholders per PM 06 § 9) ─────────── */
+  --color-pm-insight-meta: #c54668;
+  --color-pm-insight-price: #c8a261;
+  --color-pm-insight-synergy: #4a9b8e;
+  --color-pm-insight-lore: #8b5bae;
+
+  /* ── Typography — Plus Jakarta Sans + JetBrains Mono fallback chain ──── */
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-ui: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ── Type scale (PM 06 § 3) — use Tailwind text-* utilities or var() ─── */
+  --text-pm-xs: 0.75rem; /* 12px — micro-labels, timestamps */
+  --text-pm-sm: 0.875rem; /* 14px — secondary text, captions */
+  --text-pm-base: 1rem; /* 16px — body text default, anti-zoom floor */
+  --text-pm-lg: 1.125rem; /* 18px — emphasized body, card name in tile */
+  --text-pm-xl: 1.25rem; /* 20px — card detail title */
+  --text-pm-2xl: 1.5rem; /* 24px — tab titles, major heading */
+  --text-pm-3xl: 2rem; /* 32px — hero treatments only */
+
+  /* ── Spacing (PM 06 § 4) — strict 4px scale, no arbitrary values ─────── */
+  --spacing-pm-1: 4px;
+  --spacing-pm-2: 8px;
+  --spacing-pm-3: 12px;
+  --spacing-pm-4: 16px;
+  --spacing-pm-5: 20px;
+  --spacing-pm-6: 24px;
+  --spacing-pm-8: 32px;
+  --spacing-pm-12: 48px;
+  --spacing-pm-16: 64px;
+
+  /* ── Radius (PM 06 § 5) — sm 4 / md 8 / lg 12 / xl 16 / full ─────────── */
+  --radius-pm-sm: 4px;
+  --radius-pm-md: 8px;
+  --radius-pm-lg: 12px;
+  --radius-pm-xl: 16px;
+  --radius-pm-full: 9999px;
+
+  /* ── Shadows (PM 06 § 6) — warm on dark ──────────────────────────────── */
+  --shadow-pm-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-pm-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-pm-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+
+  /* ── Motion (PM 06 § 7) ──────────────────────────────────────────────── */
+  --pm-duration-fast: 100ms;
+  --pm-duration-base: 200ms;
+  --pm-duration-slow: 300ms;
+  --pm-duration-slower: 500ms;
+  --pm-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --pm-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --pm-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --pm-ease-spring: cubic-bezier(0.5, 1.5, 0.5, 1);
+
+  /* ══════════════════════════════════════════════════════════════════════
+	   Legacy aliases — keep until every page is migrated off --color-miru-*.
+	   Each one re-points to its PM 06 equivalent so pages I haven't touched
+	   yet (Home / Leaders / Profile) automatically inherit the Rosinante
+	   palette without breaking. Remove once a sweep across all pages is done.
+	   ══════════════════════════════════════════════════════════════════════ */
+
+  /* Surface + stroke */
+  --color-miru-bg: var(--color-pm-bg-canvas);
+  --color-miru-surface: var(--color-pm-bg-surface);
+  --color-miru-stroke: var(--color-pm-stroke);
+  --color-miru-stroke-brand: rgba(197, 70, 104, 0.18);
+  --color-miru-stroke-gold: rgba(200, 162, 97, 0.18);
+
+  /* Accent + gold — semantic re-map: old "purple = Miru" → rose; gold stays. */
+  --color-miru-accent: var(--color-pm-accent);
+  --color-miru-gold: var(--color-pm-gold);
+
+  /* Text */
+  --color-miru-text: var(--color-pm-fg-primary);
+  --color-miru-muted: var(--color-pm-fg-secondary);
+  --color-miru-muted-2: var(--color-pm-fg-tertiary);
+
+  /* Leader colors — align to PM 06 exact values */
+  --color-leader-red: var(--color-pm-leader-red);
+  --color-leader-green: var(--color-pm-leader-green);
+  --color-leader-blue: var(--color-pm-leader-blue);
+  --color-leader-purple: var(--color-pm-leader-purple);
+  --color-leader-yellow: var(--color-pm-leader-yellow);
+  --color-leader-black: var(--color-pm-leader-black);
+
+  /* Legacy off-scale radii → snap to nearest PM 06 step */
+  --radius-thumb: var(--radius-pm-sm); /* was 6px → 4px */
+  --radius-card-sm: var(--radius-pm-md); /* was 8px → 8px */
+  --radius-button: var(--radius-pm-md); /* was 10px → 8px */
+  --radius-pill: var(--radius-pm-lg); /* was 12px → 12px */
+  --radius-card: var(--radius-pm-lg); /* was 14px → 12px */
+  --radius-hero: var(--radius-pm-xl); /* was 18px → 16px */
 }
 
 /* ==========================================================================
-   Global base — dark canvas, safe-area insets, system font smoothing.
-   Mirrors the Flask storefront body treatment so the SvelteKit build feels
-   identical during side-by-side development.
+   Global base — Rosinante canvas, ivory text, Plus Jakarta Sans, 16px floor.
    ========================================================================== */
 
 :root {
-	--bottom-nav-height: 56px;
+  --bottom-nav-height: 56px;
 }
 
 html {
-	overflow-x: hidden;
+  overflow-x: hidden;
 }
 
 html,
 body {
-	background:
-		radial-gradient(1200px 800px at 50% -10%, rgba(165, 118, 255, 0.12), transparent 55%),
-		var(--color-miru-bg);
-	color: white;
-	font-family: var(--font-ui);
-	margin: 0;
-	padding: 0;
-	font-size: 13px;
-	-webkit-font-smoothing: antialiased;
-	overscroll-behavior-y: contain;
-	max-width: 100vw;
+  /* PM 06 § 1: warm-dark canvas, no decorative gradient overlay. The retired
+	   lavender radial-gradient is dropped — rose is the accent now and a
+	   permanent gradient would compete with insight glows (PM 06 § 9). */
+  background: var(--color-pm-bg-canvas);
+  color: var(--color-pm-fg-primary);
+  font-family: var(--font-ui);
+  margin: 0;
+  padding: 0;
+  /* PM 06 + mobile-first-standards skill: 16px body floor (also prevents
+	   iOS Safari focus-zoom on inputs that inherit body size). */
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: contain;
+  max-width: 100vw;
 }
 
 body {
-	padding: 0 14px calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  padding: 0 14px calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
 }
 
 @media (prefers-reduced-motion: reduce) {
-	*,
-	*::before,
-	*::after {
-		animation-duration: 0.001ms !important;
-		animation-iteration-count: 1 !important;
-		transition-duration: 0.001ms !important;
-	}
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

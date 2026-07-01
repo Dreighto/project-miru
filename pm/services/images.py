@@ -3,9 +3,8 @@ from pathlib import Path
 from urllib.parse import quote
 
 MIRU_ASSETS = Path(os.getenv("PROJECT_MIRU_CLEAN_THUMB_ROOT", r"D:\\Miru_Assets"))
-MIRU_RUNTIME_IMAGES_ROOT = Path(
-    os.getenv("MIRU_RUNTIME_IMAGES_ROOT", r"D:\\Miru_Assets")
-)
+MIRU_RUNTIME_IMAGES_ROOT = Path(os.getenv("MIRU_RUNTIME_IMAGES_ROOT", r"D:\\Miru_Assets"))
+
 
 def _normalize_rel_image_path(path_text: str) -> str:
     return str(path_text or "").replace("\\", "/").strip().lstrip("/")
@@ -35,6 +34,7 @@ def choose_leader_art_src(code: str) -> str:
     if not code_u:
         return ""
     return f"/static/assets/thumbs/leader_crops/{quote(code_u)}.png"
+
 
 def choose_thumbnail_src(
     name: str,
@@ -66,34 +66,43 @@ def choose_thumbnail_src(
     # Fall back to catalog_image_src if present
     entry = catalog_entry or {}
     url = str(entry.get("catalog_image_src") or "").strip()
-    if url:
-        if (
-            url.startswith("http://")
-            or url.startswith("https://")
-            or url.startswith("/")
-        ):
-            return url
+    if url and (url.startswith("http://") or url.startswith("https://") or url.startswith("/")):
+        return url
 
     return ""
 
+
 def _legacy_thumbs_to_set_base_png(normalized: str) -> Path | None:
     """
-    Map legacy DB paths like thumbs/OP01-001.webp to on-disk base art:
-    MIRU_ASSETS/<set_code>/base/<CODE>.png (set_code = segment before first '-' in the card code).
+    Map legacy DB paths to on-disk base art under MIRU_ASSETS.
+
+    Handles two stale shapes the catalog still emits:
+      1. ``thumbs/<CODE>.webp``               (storefront-first generation)
+      2. ``<SET>/base/thumbs/<CODE>.webp``    (image_assets-table generation
+         that pointed at a thumbs subfolder which was never populated)
+
+    Both resolve to ``MIRU_ASSETS/<set_code>/base/<CODE>.{png,jpg,jpeg}``
+    where set_code is the segment before the first '-' in CODE. Tries .png
+    first (the on-disk default), then .jpg/.jpeg as fallbacks for the
+    handful of cards Bandai distributes as JPEG.
     """
-    if not normalized.lower().startswith("thumbs/"):
-        return None
-    rest = normalized[7:].lstrip("/")
-    if not rest:
-        return None
-    base_name = rest.split("/")[-1]
-    stem = Path(base_name).stem
+    text = normalized.lower()
+    stem: str | None = None
+    if text.startswith("thumbs/"):
+        rest = normalized[7:].lstrip("/")
+        if rest:
+            stem = Path(rest.split("/")[-1]).stem
+    elif "/base/thumbs/" in text:
+        tail = normalized.split("/base/thumbs/", 1)[1]
+        if tail:
+            stem = Path(tail.split("/")[-1]).stem
     if not stem or "-" not in stem:
         return None
     set_code = stem.split("-", 1)[0]
     if not set_code:
         return None
-    candidate = MIRU_ASSETS / set_code / "base" / f"{stem}.png"
-    if candidate.is_file():
-        return candidate
+    for ext in (".png", ".jpg", ".jpeg"):
+        candidate = MIRU_ASSETS / set_code / "base" / f"{stem}{ext}"
+        if candidate.is_file():
+            return candidate
     return None

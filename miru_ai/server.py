@@ -7571,6 +7571,491 @@ def resolve_card_image_url(card_code: str) -> str | None:
     return None
 
 
+def _lookup_variant_image_path(canonical_code: str, print_id: str) -> str | None:
+    """Read ``card_variants.image_path`` for one ``(canonical_code, print_id)`` row.
+
+    Returns the catalog-stored relative path if present (non-empty), else ``None``.
+    Catalog DB is opened read-only so this is safe to call from any request.
+    """
+    code = str(canonical_code or "").strip().upper()
+    pid = str(print_id or "").strip()
+    if not code or not pid:
+        return None
+    if not FALLBACK_CATALOG_DB_PATH.is_file():
+        return None
+    try:
+        conn = sqlite3.connect(f"file:{FALLBACK_CATALOG_DB_PATH}?mode=ro", uri=True)
+    except sqlite3.OperationalError:
+        return None
+    try:
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            """
+            SELECT v.image_path
+            FROM card_variants v
+            JOIN cards c ON c.id = v.card_id
+            WHERE c.canonical_code = ? AND v.print_id = ?
+            LIMIT 1
+            """,
+            (code, pid),
+        ).fetchone()
+    finally:
+        conn.close()
+    if row is None:
+        return None
+    text = str(row["image_path"] or "").strip()
+    return text or None
+
+
+def _rel_is_thumb(rel: str) -> bool:
+    """Heuristic: thumbnail paths live under ``thumbs/...`` and are ``.webp``."""
+    text = rel.lower()
+    return text.startswith("thumbs/") or "/thumbs/" in text or text.endswith(".webp")
+
+
+def _existing_url(rel_path: str) -> str | None:
+    """Return ``/images/cards/<rel>`` iff the file exists under OPTCG_IMAGES_ROOT."""
+    if not rel_path:
+        return None
+    text = rel_path.strip().replace("\\", "/")
+    if not text or any(part == ".." for part in text.split("/")):
+        return None
+    try:
+        if (OPTCG_IMAGES_ROOT / text).is_file():
+            return f"/images/cards/{text}"
+    except OSError:
+        pass
+    return None
+
+
+def _set_folders_for(code: str) -> list[str]:
+    """Set folder candidates for a canonical_code (handles OP07→OP7 collapsed form)."""
+    if not code or "-" not in code:
+        return []
+    prefix = code.split("-", 1)[0].strip()
+    if not prefix:
+        return []
+    folders = [prefix]
+    m = re.fullmatch(r"([A-Za-z]+)(\d+)", prefix)
+    if m:
+        letters, digits = m.group(1).upper(), m.group(2)
+        collapsed = letters + str(int(digits))
+        if collapsed != prefix:
+            folders.append(collapsed)
+    return folders
+
+
+def _probe_variant_thumb(code: str, pid: str) -> str | None:
+    """Find a thumbnail (.webp) for the SPECIFIC variant ``pid``, not the base art.
+
+    Searches ``thumbs/<print_id>.webp`` at root then under the set folder. Bare
+    canonical_code as print_id is the base print — handled by the base path, so
+    we exit early.
+    """
+    if not pid or pid == code:
+        return None
+    for set_folder in _set_folders_for(code):
+        url = _existing_url(f"thumbs/{set_folder}/{pid}.webp")
+        if url:
+            return url
+    return _existing_url(f"thumbs/{pid}.webp")
+
+
+def _probe_variant_full(code: str, pid: str) -> str | None:
+    """Find a full-resolution image for the SPECIFIC variant ``pid``.
+
+    For ``_pN`` parallels we scan every ``*/parallel/`` folder because Bandai
+    reprints can land a print in a different set folder than its canonical_code
+    suggests (e.g. ``OP01-016_p2`` lives under ``OP05/parallel/``).
+    """
+    if not pid or pid == code:
+        return None
+    for ext in (".png", ".jpg", ".jpeg"):
+        # Set-folder probes (any subfolder under the set: parallel/, ALTS/, base/, sp/, ...).
+        for set_folder in _set_folders_for(code):
+            base = OPTCG_IMAGES_ROOT / set_folder
+            try:
+                if not base.is_dir():
+                    continue
+            except OSError:
+                continue
+            for candidate in base.rglob(f"{pid}{ext}"):
+                try:
+                    if candidate.is_file():
+                        return (
+                            f"/images/cards/{candidate.relative_to(OPTCG_IMAGES_ROOT).as_posix()}"
+                        )
+                except (OSError, ValueError):
+                    continue
+        # Cross-set probe for parallels — they get reprinted into other sets'
+        # /parallel/ folders. Only do this for `_p` prints to keep the scan tight.
+        if "_p" in pid:
+            try:
+                for set_dir in OPTCG_IMAGES_ROOT.iterdir():
+                    if not set_dir.is_dir():
+                        continue
+                    candidate = set_dir / "parallel" / f"{pid}{ext}"
+                    try:
+                        if candidate.is_file():
+                            return f"/images/cards/{candidate.relative_to(OPTCG_IMAGES_ROOT).as_posix()}"
+                    except (OSError, ValueError):
+                        continue
+            except OSError:
+                pass
+    return None
+
+
+def _probe_base_thumb(code: str) -> str | None:
+    """Find the BASE art thumbnail for ``code`` (used as a fallback when the variant
+    image is missing — caller flags this as ``base_fallback``)."""
+    for set_folder in _set_folders_for(code):
+        url = _existing_url(f"thumbs/{set_folder}/{code}.webp")
+        if url:
+            return url
+    return _existing_url(f"thumbs/{code}.webp")
+
+
+def _probe_base_full(code: str) -> str | None:
+    """Find the BASE art full-resolution image for ``code``."""
+    for set_folder in _set_folders_for(code):
+        # Catalog drift: old code paired catalog `image_path` with /base/ but actual
+        # files often sit at the set root (e.g. OP01/OP01-016.png, not OP01/base/...).
+        for prefix in (f"{set_folder}/", f"{set_folder}/base/"):
+            for ext in (".png", ".jpg", ".jpeg"):
+                url = _existing_url(f"{prefix}{code}{ext}")
+                if url:
+                    return url
+    return None
+
+
+def resolve_print_images(canonical_code: str, print_id: str | None = None) -> dict[str, Any]:
+    """Return ``{thumb_url, full_url, source}`` for one ``(canonical_code, print_id)``.
+
+    ``source`` semantics — this is what the UI uses to decide whether to show a
+    "showing base art" badge:
+
+      - ``variant_exact``: at least one variant-specific file is on disk. The UI
+        is showing the actual art for the variant being reviewed.
+      - ``base_fallback``: the variant image is missing from ``D:/OPTCG_Images``
+        and we're showing the base art instead. The UI MUST badge this so the
+        operator doesn't review a parallel against the wrong art.
+      - ``missing``: nothing on disk (catalog has no path AND no probe found a
+        base file either) — the UI shows the no-image placeholder.
+    """
+    code = str(canonical_code or "").strip().upper()
+    pid = str(print_id or "").strip()
+
+    # First: trust the catalog if it points at an actually-existing file.
+    variant_thumb: str | None = None
+    variant_full: str | None = None
+    if pid and pid != code:
+        rel = _lookup_variant_image_path(code, pid)
+        if rel:
+            url = _existing_url(rel)
+            if not url and "/base/" in rel:
+                # Catalog drift — try the same name without /base/.
+                url = _existing_url(rel.replace("/base/", "/"))
+            if url:
+                if _rel_is_thumb(rel):
+                    variant_thumb = url
+                else:
+                    variant_full = url
+        # Probe disk for whichever side the catalog didn't supply.
+        if variant_thumb is None:
+            variant_thumb = _probe_variant_thumb(code, pid)
+        if variant_full is None:
+            variant_full = _probe_variant_full(code, pid)
+
+    if variant_thumb or variant_full:
+        return {
+            "thumb_url": variant_thumb or variant_full,
+            "full_url": variant_full or variant_thumb,
+            "source": "variant_exact",
+        }
+
+    base_thumb = _probe_base_thumb(code)
+    base_full = _probe_base_full(code)
+    if base_thumb or base_full:
+        return {
+            "thumb_url": base_thumb or base_full,
+            "full_url": base_full or base_thumb,
+            "source": "base_fallback" if pid and pid != code else "variant_exact",
+        }
+
+    return {"thumb_url": None, "full_url": None, "source": "missing"}
+
+
+def resolve_print_image_url(canonical_code: str, print_id: str | None = None) -> str | None:
+    """Backwards-compatible single-URL helper.
+
+    Returns the best thumb URL (matching the prior contract) — callers that need
+    the full art or the source tag should use :func:`resolve_print_images`.
+    """
+    return resolve_print_images(canonical_code, print_id).get("thumb_url")
+
+
+# Allowed image extensions for upload + local browse + URL attach.
+_ALLOWED_IMAGE_EXTS = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def list_local_card_images(canonical_code: str) -> list[dict[str, Any]]:
+    """Scan ``D:/OPTCG_Images/<SET>/`` for files whose stem contains ``canonical_code``.
+
+    Returns a list of ``{filename, rel_path, url, size_bytes}`` dicts, sorted by
+    filename. Used by the Review-page Attach modal's "Browse local" tab. Searches
+    both the exact set folder (e.g. ``OP07``) and the collapsed-numeric form
+    (e.g. ``OP7``), the same fallback pattern as :func:`resolve_card_image_url`.
+    """
+    code = str(canonical_code or "").strip().upper()
+    if not code or "-" not in code:
+        return []
+    prefix = code.split("-", 1)[0].strip()
+    if not prefix:
+        return []
+    set_folders = [prefix]
+    m = re.fullmatch(r"([A-Za-z]+)(\d+)", prefix)
+    if m:
+        letters, digits = m.group(1).upper(), m.group(2)
+        collapsed = letters + str(int(digits))
+        if collapsed != prefix:
+            set_folders.append(collapsed)
+    seen: set[str] = set()
+    items: list[dict[str, Any]] = []
+    code_lower = code.lower()
+    for set_folder in set_folders:
+        base = OPTCG_IMAGES_ROOT / set_folder
+        try:
+            if not base.is_dir():
+                continue
+        except OSError:
+            continue
+        for p in base.rglob("*"):
+            try:
+                if not p.is_file():
+                    continue
+            except OSError:
+                continue
+            if p.suffix.lower() not in _ALLOWED_IMAGE_EXTS:
+                continue
+            if code_lower not in p.stem.lower():
+                continue
+            try:
+                rel = p.relative_to(OPTCG_IMAGES_ROOT).as_posix()
+            except ValueError:
+                continue
+            if rel in seen:
+                continue
+            seen.add(rel)
+            try:
+                size_bytes = p.stat().st_size
+            except OSError:
+                size_bytes = 0
+            items.append(
+                {
+                    "filename": p.name,
+                    "rel_path": rel,
+                    "url": f"/images/cards/{rel}",
+                    "size_bytes": int(size_bytes),
+                }
+            )
+    items.sort(key=lambda r: r["filename"].lower())
+    return items
+
+
+def _backup_catalog_db_once_per_day() -> Path | None:
+    """Copy ``card_catalog.db`` into ``data/backups/`` if no backup exists today.
+
+    Per ``feedback_db_writes_allowed`` + ``db-schema-discipline``: back up before any
+    write. We dedupe to one backup per day so attach-image flurries don't bloat the
+    backups folder. Returns the backup path or ``None`` if the DB is missing.
+    """
+    src = FALLBACK_CATALOG_DB_PATH
+    if not src.is_file():
+        return None
+    backups_dir = src.parent / "backups"
+    backups_dir.mkdir(parents=True, exist_ok=True)
+    today = datetime.now(UTC).strftime("%Y%m%d")
+    target = backups_dir / f"card_catalog.db.bak-{today}"
+    if target.exists():
+        return target
+    try:
+        shutil.copy2(src, target)
+    except OSError:
+        return None
+    return target
+
+
+def _log_catalog_write(event: dict[str, Any]) -> None:
+    """Append a one-line JSON record to ``data/card_catalog_writes.log``."""
+    log_path = PROJECT_ROOT / "data" / "card_catalog_writes.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    line = json.dumps({"ts": datetime.now(UTC).isoformat(), **event}, default=str)
+    try:
+        with log_path.open("a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+    except OSError:
+        pass
+
+
+def _attach_image_to_variant(
+    canonical_code: str,
+    print_id: str,
+    rel_path: str,
+    source: str,
+) -> dict[str, Any]:
+    """Set ``card_variants.image_path`` for one ``(canonical_code, print_id)`` row.
+
+    Args:
+      rel_path: forward-slash relative path under OPTCG_IMAGES_ROOT, e.g.
+        ``OP09/base/OP09-077.png``. Must already exist on disk.
+      source: ``"local"`` | ``"upload"`` | ``"url"`` — recorded in the write log.
+
+    Returns a dict with ``ok``, ``image_path``, ``image_url``, ``previous_image_path``.
+    Raises ``ValueError`` on missing row / out-of-tree path / file missing.
+    """
+    code = str(canonical_code or "").strip().upper()
+    pid = str(print_id or "").strip()
+    rel = str(rel_path or "").strip().replace("\\", "/")
+    if not code or not pid or not rel:
+        raise ValueError("canonical_code, print_id, and rel_path are all required")
+    if any(part == ".." for part in rel.split("/")):
+        raise ValueError("rel_path may not contain '..'")
+    target = (OPTCG_IMAGES_ROOT / rel).resolve()
+    try:
+        target.relative_to(OPTCG_IMAGES_ROOT.resolve())
+    except ValueError as exc:
+        raise ValueError("rel_path resolves outside OPTCG_IMAGES_ROOT") from exc
+    if not target.is_file():
+        raise ValueError(f"file does not exist at {rel}")
+
+    if not FALLBACK_CATALOG_DB_PATH.is_file():
+        raise ValueError("card_catalog.db not found")
+
+    # Find the row to update — also captures the previous image_path for the log.
+    conn_ro = sqlite3.connect(f"file:{FALLBACK_CATALOG_DB_PATH}?mode=ro", uri=True)
+    try:
+        conn_ro.row_factory = sqlite3.Row
+        row = conn_ro.execute(
+            """
+            SELECT v.id AS variant_id, v.image_path AS previous_image_path
+            FROM card_variants v
+            JOIN cards c ON c.id = v.card_id
+            WHERE c.canonical_code = ? AND v.print_id = ?
+            LIMIT 1
+            """,
+            (code, pid),
+        ).fetchone()
+    finally:
+        conn_ro.close()
+    if row is None:
+        raise ValueError(f"no card_variants row for {code} / {pid}")
+
+    variant_id = int(row["variant_id"])
+    previous = str(row["previous_image_path"] or "")
+
+    backup_path = _backup_catalog_db_once_per_day()
+
+    conn_rw = sqlite3.connect(FALLBACK_CATALOG_DB_PATH)
+    try:
+        conn_rw.execute(
+            "UPDATE card_variants SET image_path = ? WHERE id = ?",
+            (rel, variant_id),
+        )
+        conn_rw.commit()
+    finally:
+        conn_rw.close()
+
+    _log_catalog_write(
+        {
+            "op": "attach_image",
+            "canonical_code": code,
+            "print_id": pid,
+            "variant_id": variant_id,
+            "source": source,
+            "previous_image_path": previous,
+            "new_image_path": rel,
+            "backup": str(backup_path) if backup_path else None,
+        }
+    )
+
+    return {
+        "ok": True,
+        "image_path": rel,
+        "image_url": f"/images/cards/{rel}",
+        "previous_image_path": previous,
+    }
+
+
+def _safe_print_id_for_filename(print_id: str) -> str:
+    """Strip filesystem-hostile characters from a print_id for use in a filename."""
+    return re.sub(r"[^A-Za-z0-9_.-]", "_", str(print_id or "").strip()) or "unknown"
+
+
+def _save_uploaded_image_to_optcg(
+    canonical_code: str,
+    print_id: str,
+    filename: str,
+    payload: bytes,
+) -> str:
+    """Write an uploaded image into ``D:/OPTCG_Images/<SET>/uploads/`` and return the rel path.
+
+    Files land under an explicit ``uploads/`` subfolder so they're distinguishable
+    from Bandai-fetched assets. The name encodes both code and print_id so multiple
+    variants of the same code don't collide.
+    """
+    code = str(canonical_code or "").strip().upper()
+    if not code or "-" not in code:
+        raise ValueError("invalid canonical_code")
+    ext = Path(filename or "").suffix.lower()
+    if ext not in _ALLOWED_IMAGE_EXTS:
+        raise ValueError(f"unsupported extension {ext!r}; allowed: {_ALLOWED_IMAGE_EXTS}")
+    if not payload:
+        raise ValueError("empty upload payload")
+    if len(payload) > 25 * 1024 * 1024:
+        raise ValueError("upload exceeds 25 MB limit")
+
+    set_prefix = code.split("-", 1)[0]
+    safe_pid = _safe_print_id_for_filename(print_id)
+    rel = f"{set_prefix}/uploads/{code}_{safe_pid}{ext}"
+    target = OPTCG_IMAGES_ROOT / rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(payload)
+    return rel
+
+
+def _download_image_to_optcg(
+    canonical_code: str,
+    print_id: str,
+    url: str,
+) -> str:
+    """Download ``url`` into ``D:/OPTCG_Images/<SET>/uploads/`` and return the rel path."""
+    code = str(canonical_code or "").strip().upper()
+    raw_url = str(url or "").strip()
+    if not code or "-" not in code:
+        raise ValueError("invalid canonical_code")
+    if not raw_url.startswith(("http://", "https://")):
+        raise ValueError("url must be http(s)")
+
+    req = Request(raw_url, headers={"User-Agent": "miru-image-attach/1.0"})
+    try:
+        with urlopen(req, timeout=20) as resp:
+            payload = resp.read(26 * 1024 * 1024)  # cap a hair over the upload limit
+            content_type = (resp.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+    except (HTTPError, URLError, TimeoutError) as exc:
+        raise ValueError(f"download failed: {exc}") from exc
+
+    # Pick an extension from Content-Type, then fall back to the URL path.
+    ct_to_ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+    ext = ct_to_ext.get(content_type)
+    if ext is None:
+        url_ext = Path(raw_url.split("?", 1)[0]).suffix.lower()
+        ext = url_ext if url_ext in _ALLOWED_IMAGE_EXTS else None
+    if ext is None:
+        raise ValueError(f"could not determine image extension (content-type={content_type!r})")
+
+    return _save_uploaded_image_to_optcg(code, print_id, f"download{ext}", payload)
+
+
 def _ruling_effective_date_prefix(val: Any) -> str | None:
     raw = str(val or "").strip()
     if not raw:
@@ -8694,8 +9179,33 @@ def create_app() -> Flask:
     log_pushover_startup_status(app.logger)
     compute_asset_version()
     _image_fetch_state_lock = Lock()
-    _image_fetch_state: dict[str, Any] = {"running": False}
+    # The Glance UI polls /api/dev/fetch-missing-images/status to surface
+    # progress + final counts to the operator. The keys mirror what the
+    # status endpoint returns; the runner mutates them under the lock.
+    _image_fetch_state: dict[str, Any] = {
+        "running": False,
+        "status": "idle",
+        "started_at": None,
+        "finished_at": None,
+        "trigger": None,
+        "fetched": 0,
+        "skipped": 0,
+        "failed": [],
+        "log_tail": [],
+        "error": None,
+    }
     _image_fetch_schedule: dict[str, Timer | None] = {"timer": None}
+
+    def _image_fetch_log_tail_append(line: str) -> None:
+        """Keep the last ~50 log lines on the in-memory state for the UI poller."""
+        try:
+            with _image_fetch_state_lock:
+                tail = _image_fetch_state.setdefault("log_tail", [])
+                tail.append(line[-240:])
+                if len(tail) > 50:
+                    _image_fetch_state["log_tail"] = tail[-50:]
+        except Exception:
+            pass
 
     def _safe_collect_evidence(review_id: int) -> None:
         """Background evidence collection — swallows exceptions to avoid crash."""
@@ -8744,12 +9254,30 @@ def create_app() -> Flask:
     def _run_fetch_missing_images_job(trigger: str) -> None:
         _append_image_fetch_log(f"FETCH_JOB_START trigger={trigger}")
         app.logger.info("Miru image fetch started (trigger=%s).", trigger)
+        # Surface progress to the Glance UI by mirroring log lines into the
+        # in-memory state's tail buffer. Per-image logs from image_fetcher come
+        # through the log_callback below.
+        with _image_fetch_state_lock:
+            _image_fetch_state["status"] = "running"
+            _image_fetch_state["started_at"] = datetime.now(UTC).isoformat()
+            _image_fetch_state["finished_at"] = None
+            _image_fetch_state["trigger"] = trigger
+            _image_fetch_state["fetched"] = 0
+            _image_fetch_state["skipped"] = 0
+            _image_fetch_state["failed"] = []
+            _image_fetch_state["log_tail"] = []
+            _image_fetch_state["error"] = None
+
+        def _ui_log(msg: str) -> None:
+            app.logger.info(msg)
+            _image_fetch_log_tail_append(msg)
+
         summary: dict[str, Any] = {"fetched": 0, "skipped": 0, "failed": []}
         try:
             summary = fetch_all_missing(
                 db_path=FALLBACK_CATALOG_DB_PATH,
                 assets_dir=MIRU_ASSETS_ROOT,
-                log_callback=lambda msg: app.logger.info(msg),
+                log_callback=_ui_log,
             )
         except Exception as exc:
             app.logger.exception("Miru image fetch failed (trigger=%s): %s", trigger, exc)
@@ -8761,6 +9289,9 @@ def create_app() -> Flask:
             )
             with _image_fetch_state_lock:
                 _image_fetch_state["running"] = False
+                _image_fetch_state["status"] = "error"
+                _image_fetch_state["finished_at"] = datetime.now(UTC).isoformat()
+                _image_fetch_state["error"] = f"{type(exc).__name__}: {exc}"
             return
 
         failed_count = len(summary.get("failed") or [])
@@ -8784,6 +9315,11 @@ def create_app() -> Flask:
         )
         with _image_fetch_state_lock:
             _image_fetch_state["running"] = False
+            _image_fetch_state["status"] = "done"
+            _image_fetch_state["finished_at"] = datetime.now(UTC).isoformat()
+            _image_fetch_state["fetched"] = fetched_count
+            _image_fetch_state["skipped"] = skipped_count
+            _image_fetch_state["failed"] = list(summary.get("failed") or [])
 
     def _start_fetch_missing_images_job(trigger: str) -> bool:
         with _image_fetch_state_lock:
@@ -9493,6 +10029,16 @@ def create_app() -> Flask:
     def training_status():
         abort(404)
 
+    # Cold-call timing on this endpoint is ~6s (runtime probes + SQLite scans +
+    # intelligence inference). The Glance page loads it on every open, so we
+    # cache by query-key for a short TTL — fresh enough that service status
+    # never feels stale, fast enough that page-open is instant in steady state.
+    # The MiruFlaskHeartbeat scheduled task hits this endpoint on a 60s cadence
+    # so the cache stays warm even when the operator hasn't visited recently.
+    _dev_status_cache_ttl_seconds = 75.0
+    _dev_status_cache: dict[str, tuple[float, Any]] = {}
+    _dev_status_cache_lock = Lock()
+
     @app.get("/api/dev-status")
     def dev_status():
         summary_only = str(request.args.get("view") or "").strip().lower() == "summary"
@@ -9502,12 +10048,44 @@ def create_app() -> Flask:
             "all",
             "full",
         }
+        # `fresh=1` bypasses the cache for callers that need a current probe
+        # (e.g. the operator manually clicking a "refresh status" control).
+        bypass_cache = str(request.args.get("fresh") or "").strip().lower() in {"1", "true", "yes"}
+
+        cache_key = f"summary={int(summary_only)}|surface={surface}|heavy={int(include_heavy)}"
+        now = time.monotonic()
+
+        if not bypass_cache:
+            with _dev_status_cache_lock:
+                hit = _dev_status_cache.get(cache_key)
+            if hit is not None:
+                cached_at, cached_payload = hit
+                if now - cached_at < _dev_status_cache_ttl_seconds:
+                    resp = jsonify(cached_payload)
+                    resp.headers["X-Dev-Status-Cache"] = "HIT"
+                    resp.headers["X-Dev-Status-Cache-Age"] = f"{int(now - cached_at)}"
+                    return resp
+
         payload = build_dev_status(lightweight=summary_only, include_heavy_sections=include_heavy)
         if summary_only:
             payload = ensure_control_layer_payload(payload, force_runtime_probe=True)
         if summary_only and surface == "cockpit":
             payload = _strip_dev_cockpit_dev_status_payload(payload)
-        return jsonify(trim_dev_status_payload(payload))
+        trimmed = trim_dev_status_payload(payload)
+
+        with _dev_status_cache_lock:
+            _dev_status_cache[cache_key] = (now, trimmed)
+            # Cap the cache size — only a handful of query-key combinations
+            # exist, but trim defensively in case a caller sweeps the surface
+            # param. Keep the 8 most recent entries.
+            if len(_dev_status_cache) > 8:
+                oldest = sorted(_dev_status_cache.items(), key=lambda kv: kv[1][0])[:-8]
+                for key, _ in oldest:
+                    _dev_status_cache.pop(key, None)
+
+        resp = jsonify(trimmed)
+        resp.headers["X-Dev-Status-Cache"] = "MISS"
+        return resp
 
     @app.route("/api/dev/operator-handoff/resolve", methods=["POST"], strict_slashes=False)
     def dev_operator_handoff_resolve():
@@ -12221,7 +12799,20 @@ def create_app() -> Flask:
             limit = 50
         if limit > 500:
             limit = 500
-        return jsonify(_shadow_review.fetch_queue(limit=limit))
+        result = _shadow_review.fetch_queue(limit=limit)
+        # Enrich each row with thumb + full URLs and the resolver's verdict on
+        # whether the image is variant-specific or a base-art fallback. The UI
+        # uses ``image_source`` to badge ``base_fallback`` rows so the operator
+        # doesn't review a parallel against the wrong art.
+        for row in result.get("items", []):
+            imgs = resolve_print_images(
+                row.get("canonical_code", ""),
+                row.get("print_id", ""),
+            )
+            row["image_url"] = imgs["thumb_url"]
+            row["full_image_url"] = imgs["full_url"]
+            row["image_source"] = imgs["source"]
+        return jsonify(result)
 
     @app.get("/api/shadow-review/item/<canonical_code>/<print_id>")
     def shadow_review_item(canonical_code: str, print_id: str):
@@ -12235,7 +12826,93 @@ def create_app() -> Flask:
         )
         if item is None:
             return jsonify({"error": "not found"}), 404
+        imgs = resolve_print_images(canonical_code, print_id)
+        item["image_url"] = imgs["thumb_url"]
+        item["full_image_url"] = imgs["full_url"]
+        item["image_source"] = imgs["source"]
         return jsonify(item)
+
+    @app.get("/api/shadow-review/local-images/<canonical_code>")
+    def shadow_review_local_images(canonical_code: str):
+        """List image files in D:/OPTCG_Images that match this canonical_code."""
+        items = list_local_card_images(canonical_code)
+        return jsonify({"items": items, "canonical_code": canonical_code.strip().upper()})
+
+    @app.post("/api/shadow-review/image/attach")
+    def shadow_review_image_attach():
+        """Attach an existing local image to a (canonical_code, print_id) variant.
+
+        Body: ``{canonical_code, print_id, rel_path}``. The ``rel_path`` must already
+        exist under ``D:/OPTCG_Images``. Updates ``card_variants.image_path``.
+        """
+        body = request.get_json(silent=True) or {}
+        try:
+            result = _attach_image_to_variant(
+                canonical_code=body.get("canonical_code", ""),
+                print_id=body.get("print_id", ""),
+                rel_path=body.get("rel_path", ""),
+                source="local",
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify(result)
+
+    @app.post("/api/shadow-review/image/upload")
+    def shadow_review_image_upload():
+        """Upload a new image file and attach it to a variant.
+
+        Multipart form: ``canonical_code``, ``print_id``, ``file``.
+        """
+        canonical_code = (request.form.get("canonical_code") or "").strip()
+        print_id = (request.form.get("print_id") or "").strip()
+        upload = request.files.get("file")
+        if not canonical_code or not print_id or upload is None:
+            return jsonify({"error": "canonical_code, print_id, and file are required"}), 400
+        payload = upload.read()
+        try:
+            rel = _save_uploaded_image_to_optcg(
+                canonical_code=canonical_code,
+                print_id=print_id,
+                filename=upload.filename or "upload",
+                payload=payload,
+            )
+            result = _attach_image_to_variant(
+                canonical_code=canonical_code,
+                print_id=print_id,
+                rel_path=rel,
+                source="upload",
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify(result)
+
+    @app.post("/api/shadow-review/image/from-url")
+    def shadow_review_image_from_url():
+        """Download an image from a URL and attach it to a variant.
+
+        Body: ``{canonical_code, print_id, url}``.
+        """
+        body = request.get_json(silent=True) or {}
+        canonical_code = (body.get("canonical_code") or "").strip()
+        print_id = (body.get("print_id") or "").strip()
+        url_value = (body.get("url") or "").strip()
+        if not canonical_code or not print_id or not url_value:
+            return jsonify({"error": "canonical_code, print_id, and url are required"}), 400
+        try:
+            rel = _download_image_to_optcg(
+                canonical_code=canonical_code,
+                print_id=print_id,
+                url=url_value,
+            )
+            result = _attach_image_to_variant(
+                canonical_code=canonical_code,
+                print_id=print_id,
+                rel_path=rel,
+                source="url",
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify(result)
 
     @app.post("/api/shadow-review/verdict")
     def shadow_review_verdict():
@@ -12256,6 +12933,29 @@ def create_app() -> Flask:
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
         return jsonify(result)
+
+    @app.get("/api/dev/fetch-missing-images/status")
+    def dev_fetch_missing_images_status():
+        """Poll the singleton image-fetch job's state for the Glance UI.
+
+        Returns whatever the runner has written into ``_image_fetch_state``
+        (running flag, last summary, tailing log lines). The state survives a
+        single Flask process lifetime; restarting Flask clears it.
+        """
+        with _image_fetch_state_lock:
+            running = bool(_image_fetch_state.get("running"))
+            payload = {
+                "status": "running" if running else _image_fetch_state.get("status", "idle"),
+                "started_at": _image_fetch_state.get("started_at"),
+                "finished_at": _image_fetch_state.get("finished_at"),
+                "fetched": int(_image_fetch_state.get("fetched", 0)),
+                "skipped": int(_image_fetch_state.get("skipped", 0)),
+                "failed": list(_image_fetch_state.get("failed", [])),
+                "log_tail": list(_image_fetch_state.get("log_tail", [])),
+                "error": _image_fetch_state.get("error"),
+                "trigger": _image_fetch_state.get("trigger"),
+            }
+        return jsonify(payload)
 
     @app.get("/dev/shadow-review")
     def shadow_review_page():
