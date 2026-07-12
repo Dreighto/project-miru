@@ -4,8 +4,6 @@
 **Owner:** Local Governance Gatekeeper (when shipped). Until then, reference doc only.
 **Related canon:**
 
-- Notion: `Dispatcher (Resurrected) — Local Router Architecture` (`358c5d34-0141-817c-8dda-e2f91a50a9c5`)
-- Notion: `Project Miru Autonomy Overhaul — 4-Phase Implementation Plan`
 - Repo: `data/peer_reviews/2026-05-05_local-router-architecture_gmi.txt`
 - Repo: `data/perplexity_research/miru-router-context.md`
 
@@ -23,7 +21,7 @@ stays static — as the single biggest design risk. PXY confirmed Linear
 doesn't have traditional key-value custom fields (only label groups + Asks
 fields, the latter tier-gated and intake-only). Both reviewers converged on
 the same practitioner pattern: **structured frontmatter in the ticket
-description body, written at ticket creation by Claude Chat (CH).**
+description body, written at ticket creation by CC (Claude Code).**
 
 The Gatekeeper reads the frontmatter as the original-intent gospel and the
 `conversational_delta` (passed via the future `cc_handoff` MCP tool) as the
@@ -75,7 +73,7 @@ extract and validate frontmatter from any ticket description string.
 | `worker`                      | enum         | **yes**     | `claude-code` / `gemini` / `both` / `none`. The intended dispatch target at ticket-creation time. The Gatekeeper compares this against the conversational delta and label state. |
 | `scope`                       | string       | **yes**     | Free-form domain hint (e.g. `backend/auth`, `frontend/storefront/cards`). Used as a coarse routing signal and a human readability anchor.                                        |
 | `context_files`               | string array | recommended | Repo-relative file paths the worker should read to start. Empty array means the worker decides. Keeps the worker from going hunting and burning time on irrelevant exploration.  |
-| `expected_mode`               | enum         | recommended | `routine` / `judgment` / `ambiguous` / `blocked`. The mode CH believed at ticket creation. Helps the Gatekeeper detect if the conversation pushed toward ambiguity.              |
+| `expected_mode`               | enum         | recommended | `routine` / `judgment` / `ambiguous` / `blocked`. The mode CC believed at ticket creation. Helps the Gatekeeper detect if the conversation pushed toward ambiguity.              |
 | `expected_tool_profile`       | enum         | recommended | `drift_executor` / `standard_worker` / `reviewer` / `null`. Matches Phase 3 gateway profile names.                                                                               |
 | `plan_only`                   | bool         | recommended | If true, the dispatched worker produces a plan and stops; no branches, PRs, or file modifications. Default `false`.                                                              |
 | `do_not_touch`                | string array | optional    | Files or paths the worker must avoid. Hard scope boundary.                                                                                                                       |
@@ -132,7 +130,7 @@ the deterministic floor before the Gatekeeper invokes Llama 3.1 8B.
 
 ## How the Gatekeeper uses frontmatter
 
-When CH calls the future `cc_handoff` MCP tool, the payload includes:
+When CC calls the future `cc_handoff` MCP tool, the payload includes:
 
 - `ticket_id`
 - `conversational_delta` (pre-processed to highlight intent-changing
@@ -144,7 +142,7 @@ The Gatekeeper:
 1. Pulls the ticket from Linear via MCP, extracts the frontmatter via
    `frontmatter_parser.py`.
 2. Snapshots `git_local_status` against the **main repo root** (per
-   `MIRU_REPO_ROOT` from PR #89, not worker worktrees — catches CH
+   `MIRU_REPO_ROOT` from PR #89, not worker worktrees — catches CC
    self-serve attempts on core branch).
 3. Checks A2A bus state (`agent_messages` table): if the trace_id is
    already `claimed` or `pending`, deterministic reject.
@@ -159,8 +157,7 @@ The Gatekeeper:
 | Repo state shows uncommitted changes on the main branch                                                            | Phase 2.5 Rejection: `reason: dirty_worktree`.                                                                                                         |
 
 5. If validation passes, the Gatekeeper emits a routing decision JSON
-   (schema in the Notion design doc) and signs the dispatch to the
-   existing `dispatch_listener` on port 19100.
+   and signs the dispatch to the existing `dispatch_listener` on port 19100.
 
 6. **Every Gatekeeper decision** (accept/reject/enrich) is logged as a
    `judgment_driven` entry in `agent_decisions.jsonl` (per GMI 2026-05-05
@@ -276,10 +273,10 @@ Children (separate Linear sub-issues, each dispatchable):
 - **Phase 1 (shadow mode):** Frontmatter is parsed but not enforced.
   Gatekeeper logs decisions to `agent_decisions.jsonl`; existing dispatch
   flow continues unchanged via `dispatch_worker`.
-- **Phase 2 (`cc_handoff` ships):** CH starts writing frontmatter at
+- **Phase 2 (`cc_handoff` ships):** CC starts writing frontmatter at
   ticket creation as a new habit. Both `dispatch_worker` and `cc_handoff`
   are available; either path works.
-- **Phase 3 (cutover):** `dispatch_worker` removed from CH's tool
+- **Phase 3 (cutover):** `dispatch_worker` removed from CC's tool
   profile. `cc_handoff` is the only path. Tickets without frontmatter
   default to `worker: standard_worker, mode: judgment` and dispatch
   conservatively.
@@ -307,7 +304,7 @@ parsing.
 
 1. The frontmatter comment must be the **first content** in the ticket
    description body. Anything before it is invalid.
-2. The frontmatter is **read-only** to all workers. Only CH (or the
+2. The frontmatter is **read-only** to all workers. Only CC (or the
    operator via Linear UI) updates it. Workers reading frontmatter for
    guidance is fine; workers writing or modifying it is a violation.
 3. The frontmatter does NOT replace the operator's plain-English ticket
@@ -317,7 +314,7 @@ parsing.
 4. If the frontmatter and the plain-English description disagree, the
    plain-English description is the source of truth for the operator's
    intent — the Gatekeeper should treat the discrepancy as a sign that
-   CH has drifted from the ticket and rejects with `reason:
+   CC has drifted from the ticket and rejects with `reason:
 ticket_drift_unresolved`.
 
 ---

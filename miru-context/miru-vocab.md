@@ -40,7 +40,7 @@ These are not one-time approvals. If the operator says "you're driving" in one t
 | "Hold on that" / "wait"                                     | Don't act yet.                                                | Pause. Wait for the operator to come back.                                         |
 | "Send them over" / "send it"                                | Generate the deliverable just discussed.                      | Create the ticket, prompt, or document using direct tools.                         |
 | "Log this" / "remember this" / "commit that"                | Save to Project Memory.                                       | Write to logueos_memory.db using the appropriate table.                            |
-| "What's the status?" / "where are we?"                      | Quick summary of current state.                               | Pull from Linear, Notion, and Project Memory. Report in 3-5 bullets.               |
+| "What's the status?" / "where are we?"                      | Quick summary of current state.                               | Pull from Linear and Project Memory. Report in 3-5 bullets.                        |
 | "You have access to X, use it"                              | Correction: Claude was routing when it has the tools.         | Do it directly. Remember this for the rest of the thread and future threads.       |
 | "File it" / "ticket it"                                     | Create a Linear ticket.                                       | File with standard structure (goal, fix, done when, don't touch).                  |
 
@@ -48,25 +48,25 @@ These are not one-time approvals. If the operator says "you're driving" in one t
 
 ## Project-Specific Terms
 
-| Term                  | What it means                                                                                                               |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| "The loop"            | The n8n routing automation (W1 → W2 → W7 → W4 → completion). Takes a task from "operator describes it" to "worker does it." |
-| "W2" / "the router"   | Worker Selection Router in n8n. Polls Linear every 3 minutes, proposes a worker via Telegram.                               |
-| "W7"                  | Telegram Callback Handler. Processes approve/override/triage taps.                                                          |
-| "W4" / "the listener" | Dispatch Listener on port 19100. Spawns worker processes from HMAC-signed requests.                                         |
-| "The DLQ"             | Dead letter queue (data/dispatch_dlq.jsonl). Where failed dispatches go.                                                    |
-| "PM"                  | Project Miru — the user-facing storefront at port 18080.                                                                    |
-| "ROOM"                | The canonical machine (GMKtec K12 mini-PC). Everything runs here.                                                           |
-| "Canon"               | The agreed-upon source of truth. Stored in Notion. "That's canon" = it's an established rule.                               |
-| "Canon flip"          | Changing an established rule. Requires a new decisions row with `supersedes`.                                               |
-| "Drift"               | When different surfaces disagree about what's true.                                                                         |
-| "Smoke test"          | Quick verification that something works in production.                                                                      |
-| "Promote" (a ticket)  | Move from Backlog to Todo so the loop can see it.                                                                           |
-| "Surface"             | A place where information lives — Notion, Linear, repo docs, or Project Memory.                                             |
-| "Worker"              | An AI coding assistant that executes tasks (Claude Code, Gemini CLI).                                                       |
-| "Peer review"         | Sending a design question to Gemini, ChatGPT, or Perplexity for a second opinion.                                           |
-| "CC"                  | Claude Code.                                                                                                                |
-| "adaptive thinking"   | Extended Thinking mode in Claude.ai — Claude's deeper, slower reasoning mode for complex decisions. Same thing.             |
+| Term                  | What it means                                                                                                                                                                      |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "The loop"            | The n8n routing automation (W1 → W2 → W7 → W4 → completion). Takes a task from "operator describes it" to "worker does it."                                                        |
+| "W2" / "the router"   | Worker Selection Router in n8n. Polls Linear every 3 minutes, proposes a worker via Telegram.                                                                                      |
+| "W7"                  | Telegram Callback Handler. Processes approve/override/triage taps.                                                                                                                 |
+| "W4" / "the listener" | Dispatch Listener on port 19100. Spawns worker processes from HMAC-signed requests.                                                                                                |
+| "The DLQ"             | Dead letter queue (data/dispatch_dlq.jsonl). Where failed dispatches go.                                                                                                           |
+| "PM"                  | Project Miru — the user-facing storefront at port 18080.                                                                                                                           |
+| "ROOM"                | The canonical machine (GMKtec K12 mini-PC). Everything runs here.                                                                                                                  |
+| "Canon"               | The agreed-upon source of truth. Lives in the code and canon files that are actively worked on (repo + orchestrator canon), not Notion. "That's canon" = it's an established rule. |
+| "Canon flip"          | Changing an established rule. Requires a new decisions row with `supersedes`.                                                                                                      |
+| "Drift"               | When different surfaces disagree about what's true.                                                                                                                                |
+| "Smoke test"          | Quick verification that something works in production.                                                                                                                             |
+| "Promote" (a ticket)  | Move from Backlog to Todo so the loop can see it.                                                                                                                                  |
+| "Surface"             | A place where information lives — Linear, repo docs, or Project Memory.                                                                                                            |
+| "Worker"              | An AI coding assistant that executes tasks (Claude Code, Gemini CLI).                                                                                                              |
+| "Peer review"         | Sending a design question to Gemini, ChatGPT, or Perplexity for a second opinion.                                                                                                  |
+| "CC"                  | Claude Code.                                                                                                                                                                       |
+| "adaptive thinking"   | Extended Thinking mode in Claude.ai — Claude's deeper, slower reasoning mode for complex decisions. Same thing.                                                                    |
 
 ---
 

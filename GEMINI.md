@@ -23,17 +23,11 @@
 - If another worker is actively working on the same file or feature: STOP. Report the conflict. Do not proceed until the operator decides.
 - Never modify a file that is currently open and being edited by another worker.
 
-## Notion — Read-Only
-
-- ALL workers may READ Notion to understand the current job, active tasks, and system state.
-- Only Claude Chat may WRITE to Notion. You are READ-ONLY on Notion at all times.
-
 ## MCP Tool Usage Rules
 
 - Use MCP tools when they genuinely help the task.
 - Use sequential-thinking MCP before complex multi-step tasks — think first.
 - Use sqlite-ro-snapshot MCP to read card data before writing any intelligence pipeline code.
-- Use notion MCP to read current job state.
 - Use git MCP to check what files are currently changed before starting work.
 - Use fetch, perplexity, youtube for research tasks only.
 - Never write to the database through any MCP tool.
@@ -42,7 +36,7 @@
 
 - card_catalog.db is the live database — never write to it directly.
 - sqlite-ro-snapshot is the only approved DB access path for reads.
-- All schema changes must be proposed to Claude Chat first.
+- All schema changes must be proposed to Claude Code first.
 - sqlite3 is available at C:\tools\sqlite3\sqlite3.exe
 
 ## Restart Rules

@@ -171,15 +171,13 @@ wrong content — both mislead health monitors.
 
 ## 7. Worker Code Change Ownership
 
-| Worker      | What it owns                                                              |
-| ----------- | ------------------------------------------------------------------------- |
-| Claude Code | Python backend, tests, verification scripts                               |
-| Claude Chat | CLAUDE.md, GEMINI.md, CURSOR.md, CODEX.md, worker prompts, Notion pages   |
-| Codex       | Assigned work only — never autonomously edits CLAUDE.md or worker prompts |
-| Cursor      | IDE-guided manual edits as directed by operator                           |
+| Worker      | What it owns                                                                                                                                                            |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Claude Code | Python backend, tests, verification scripts, CLAUDE.md, GEMINI.md, CURSOR.md, CODEX.md, worker prompts (canon owner by default per the operator's 2026-07-12 SOP shift) |
+| Codex       | Assigned work only — never autonomously edits CLAUDE.md or worker prompts                                                                                               |
+| Cursor      | IDE-guided manual edits as directed by operator                                                                                                                         |
 
-Claude Code **must not** touch HTML/CSS/JS templates, `.mcp.json` files, or
-`card_catalog.db`. Claude Chat **must not** execute code directly on the server.
+Claude Code **must not** touch HTML/CSS/JS templates or `.mcp.json` files.
 
 When a worker needs to edit another worker's owned files, the operator must explicitly
 authorize it for that specific task. The authorization is per-task, not standing.
@@ -216,11 +214,11 @@ and process management correctly.
 ## 10. Completion Markers — Required on Every CONFIRMED WORKING Task
 
 When CC completes a task with `STATUS: CONFIRMED WORKING`, it must append one row to
-`data/cc_completion_log.jsonl` before reporting completion. Claude Chat reads this file
-to verify task completion without relying on chat context alone.
+`data/cc_completion_log.jsonl` before reporting completion. This file is read to verify
+task completion without relying on chat context alone.
 
 Schema is defined in CLAUDE.md "Completion-marker convention". Use `json.dumps` or
 equivalent to ensure valid JSON — never hand-format the line.
 
-This is how the orchestration loop closes. Missing markers break Claude Chat's ability
+This is how the orchestration loop closes. Missing markers break the ability
 to verify work is done and transition Linear tickets correctly.

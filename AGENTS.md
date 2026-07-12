@@ -26,7 +26,7 @@ These extend the kernel's `Must never` list with constraints specific to this co
 
 - **CC owns:** Python backend files, test scripts, verification scripts in this repo.
 - **Cursor/GMI own:** HTML/CSS/JS templates, `pm/`, `miru_ai/static/` — frontend lane.
-- When CH is active: CH owns CLAUDE.md, AGENTS.md, and all worker rule files by default; CC may edit when operator explicitly authorizes it.
+- **CC owns CLAUDE.md, AGENTS.md, and all worker rule files by default** — permanent as of the operator's 2026-07-12 SOP shift moving canon ownership from CH to CC. CH is no longer the active canon owner or session driver.
 
 ## Miru Context Files
 

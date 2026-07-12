@@ -1,7 +1,12 @@
+> **ARCHIVED/HISTORICAL as of 2026-07-12** — CH is no longer the active canon owner or
+> session driver; this playbook is retained for historical reference only, its patterns
+> may still be useful but the CH-as-orchestrator framing throughout is outdated.
+
 # CH Operations Playbook — Pattern Reference
 
 > Load on demand. Each section is self-contained — jump to the pattern you need.
-> For single-tool lookups, use `miru-context/ch-tool-operations.md` (boot context).
+> The single-tool lookup file this once pointed to (`miru-context/ch-tool-operations.md`)
+> does not exist in this repo — link removed rather than left dangling.
 
 ---
 
