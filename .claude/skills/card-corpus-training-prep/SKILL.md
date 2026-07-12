@@ -84,14 +84,12 @@ Implementation side:
 - When tasked with "feed this to the AI" — STOP, verify clean-corpus criteria, surface gaps before feeding.
 - Pair with `db-schema-discipline` for any write work in the corpus prep flow.
 
-## How CH uses this skill
-
-Brainstorm/architect side:
+## How CC uses this skill in architect/brainstorm mode
 
 - When discussing the AI training pipeline, use the clean-corpus criteria as the design baseline.
 - When the operator asks "are we ready to train on OP01?" — check the corpus state ([[project-op01-corpus-state]]) against the 6 criteria; the gap analysis is the answer.
 - When designing new fact sources or evidence pipelines, design FOR the corpus criteria from the start (don't ship a fact source that produces Tier 5 inferred output without explicit operator opt-in).
-- For brainstorm output about training design, write the synthesis to Notion per the `design-session-output` skill.
+- Write the synthesis of any brainstorm output about training design to the repo (Notion is retired and is no longer a target for design synthesis).
 
 ## Reference
 

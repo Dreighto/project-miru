@@ -110,7 +110,7 @@ memory — don't ask the operator for routine restarts.
 **What it does:** Exposes the local filesystem and system tools to Claude via MCP (Model
 Context Protocol). Runs as a FastMCP / Starlette server. Proxies MCP calls from Claude Code,
 Claude Chat, and Cursor to local tools: filesystem read/write, git, GitHub, n8n, Telegram,
-Linear, Notion, Perplexity, database reads, and system health checks.
+Linear, Perplexity, database reads, and system health checks.
 
 **Bind address:** 127.0.0.1 (loopback only, with Tailscale Funnel for remote access)
 

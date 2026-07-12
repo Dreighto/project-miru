@@ -1,6 +1,9 @@
-# Miru overlay — Claude Chat / Claude Code
+# Miru overlay — Claude Code (CC)
 
-This is the **Miru-specific** overlay for Claude Chat (CH) and Claude Code (CC).
+This is the **Miru-specific** overlay for Claude Code (CC), the default canon owner as of
+the operator's 2026-07-12 SOP shift. Claude Chat (CH) is named below only where this file
+already referenced it historically — CH is no longer the active canon owner or session
+driver; see `CLAUDE_CHAT.md` at the repo root for its archived operating manual.
 
 Global foundations live outside the repo at:
 
@@ -28,6 +31,8 @@ Global foundations live outside the repo at:
 ## Miru workflow / canon entry points
 
 - Worker baseline: [`AGENTS.md`](../../../AGENTS.md)
-- CC/CH canon: [`CLAUDE.md`](../../../CLAUDE.md)
-- Team ethos: [`miru-context/team-charter.md`](../../../miru-context/team-charter.md)
-- Stewardship (CC): [`miru-context/job-stewardship.md`](../../../miru-context/job-stewardship.md)
+- CC canon: [`CLAUDE.md`](../../../CLAUDE.md)
+
+Note: this section previously linked to `miru-context/team-charter.md` and
+`miru-context/job-stewardship.md` — neither file exists in this repo. Removed rather than
+left dangling; if those docs get written, add them back here.

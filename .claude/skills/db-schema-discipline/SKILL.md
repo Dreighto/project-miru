@@ -93,14 +93,14 @@ When doing DB write work:
 3. Before any schema-touching work, STOP and ask.
 4. After the work lands, surface the diff to the operator clearly.
 
-## How CH uses this skill
+## How CC uses this skill in architect/brainstorm mode
 
-When in brainstorm/architect mode about DB design, schema evolution, or data integrity:
+When discussing DB design, schema evolution, or data integrity:
 
 - Use the precise terminology (3-stage funnel, Layer A/B/C, append-only).
 - Recognize when a design decision requires a schema change (= operator approval needed = ticket scope).
 - Distinguish between content writes (CC authority) and schema writes (operator authority).
-- For brainstorm output about DB design, write the synthesis to Notion per the `design-session-output` skill.
+- Write the synthesis of any brainstorm output about DB design to the repo (Notion is retired and is no longer a target for design synthesis).
 
 ## Reference
 

@@ -29,8 +29,9 @@ rule not explicitly stated here.
 Read `AGENTS.md` for miru-specific behavioral constraints.
 
 **When sources disagree, consult `.logueos/reference/source-of-truth.md` in the orchestrator.**
-The truth hierarchy is: Runtime > Audit logs > Linear > Repo (code/canon/DB) > Notion
-canon > Worker memory > Conversation context. Recency is not authority.
+The truth hierarchy is: Runtime > Audit logs > Linear > Repo (code/canon/DB) > Worker memory >
+Conversation context. Recency is not authority. Notion is retired as of 2026-07-12 and is no
+longer part of this hierarchy — do not treat it as a canonical authority.
 
 ---
 
@@ -133,7 +134,6 @@ branch is checked out — that worker is in violation.
 ## Worker Role — Claude Code (VP Ops)
 
 - Owns: Python backend files, tests, verification scripts, post-ticket canon maintenance, `vp_ops_verify_ticket`.
-- Standing Notion write authority for factual/maintenance updates (see `.logueos/overlays/domain-ops.md`).
 - Restarts services autonomously (gateway, dispatch_listener, PM, Miru AI) — don't ask operator for routine restarts. See `.logueos/reference/restart-procedures.md` for service launch paths.
 - Files Linear loop tickets directly via `linear_create_issue` (not file-then-paste).
 - **`card_catalog.db` writes are in scope** when work requires them — set population (OP01–OP15), provenance backfills, meta-relevancy / insight columns, image-asset linkage. Always `cp data/card_catalog.db data/card_catalog.db.bak.<timestamp>` before any UPDATE/INSERT/DELETE batch, log the change to a `data/*.log` file, and surface the diff in commit messages.
@@ -150,7 +150,7 @@ branch is checked out — that worker is in violation.
 **Operator-driven (not in dispatch loop):**
 
 - **Cursor** — operator-driven from the IDE; not loop-dispatched.
-- **Claude Chat (CH)** — Lead Architect role (currently offline for orchestration work). When active: architecture decisions, planning, worker prompt authoring, Notion writes.
+- **Claude Chat (CH)** — historical Lead Architect role. Per the operator's 2026-07-12 SOP shift, canon ownership and dispatch orchestration are permanently CC's (Claude Code's) by default — this is not a temporary "CH offline" state, and CH was never wired into the kernel's dispatch allowlist in code. Architecture decisions, planning, and worker prompt authoring are CC's by default now.
 
 See `miru-context/miru-service-catalog.md` for current service state and `miru-context/miru-protected-constraints.md` for the hard invariants.
 
@@ -172,7 +172,7 @@ the single source of cross-cutting kernel canon.
 - **`dispatch-preflight.md`** — LOAD IF building or sending a worker dispatch. Pre-flight checklist: resolve ticket UUID, confirm slot idle + worktree clean, build prompt with acceptance criteria + scope guard, pass `shadow_mode=False`, run `vp_ops_verify_ticket` after. Failure-mode table + `target_repo` resolution pointer.
 - **`dispatch-cr-fix.md`** — LOAD IF CR posts a CHANGES_REQUESTED review on an open PR.
 - **`domain-ui.md`** — LOAD IF touching frontend code (`pm/`, `miru_ai/static/`, templates).
-- **`domain-ops.md`** — LOAD IF touching scheduled tasks, services, Notion writes, or MCP config.
+- **`domain-ops.md`** — LOAD IF touching scheduled tasks, services, or MCP config.
 - **`adopted-lessons.md`** — LOAD IF doing a non-trivial code change (more than typo or lint).
 - **`pre-push-discipline.md`** — LOAD IF about to push commits to a branch with an open PR (or about to open a new PR).
 

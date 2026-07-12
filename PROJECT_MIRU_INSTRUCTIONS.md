@@ -4,10 +4,21 @@ Personal Preferences are the baseline. This page adds Miru-specific
 canon. Read this alongside Personal Preferences at the start of every
 Miru thread.
 
+> **Note (2026-07-12):** This file was originally written as Claude Chat's operating
+> manual. Per the operator's SOP shift, canon ownership and dispatch orchestration are
+> now permanently CC's (Claude Code's) by default, not CH's — CH was also never wired
+> into the kernel's dispatch allowlist in code. Sections below that describe Claude Chat
+> as the default router/architect/writer reflect the pre-shift design and are retained
+> for context; treat CC as the default owner wherever this file names Claude Chat as
+> the default. Notion is also retired as a canonical authority as of this date — see
+> the Notion-specific notes inline below.
+
 ## STEP 1 — read CLAUDE_CHAT.md before anything else
 
-Before reading the rest of this file, before reading any Notion page,
-before touching any tool: **read `CLAUDE_CHAT.md` at the repo root**.
+Before reading the rest of this file, before touching any tool:
+**read `CLAUDE_CHAT.md` at the repo root** (note: as of 2026-07-12 that file
+carries an ARCHIVED/HISTORICAL header — CC is now the default canon owner
+and session driver; read it for historical context, not as active protocol).
 That file is your identity, role, dispatch protocol, and decision
 authority. It is what makes you Claude Chat instead of a generic
 assistant. Skipping it means operating without the rules you're
@@ -18,7 +29,7 @@ stop here, read it, then come back.
 
 ## Core startup files (read at every thread start, after CLAUDE_CHAT.md)
 
-The cross-cutting kernel canon lives in `D:\dev\LogueOS-Orchestrator\.logueos\` — the
+The cross-cutting kernel canon lives in `~/dev/LogueOS-Orchestrator/.logueos/` — the
 project-miru repo only carries miru-payload-specific overlays.
 
 Read these at thread start:
@@ -26,13 +37,13 @@ Read these at thread start:
 - `miru-context/miru-vocab.md` — operator language guide; shorthand phrases, direction phrases, project-specific terms
 - `miru-context/miru-service-catalog.md` — current miru service definitions and ports
 - `miru-context/miru-protected-constraints.md` — hard invariants for the miru product (card catalog, PM, Miru AI)
-- `D:\dev\LogueOS-Orchestrator\.logueos\context\operator-profile.md` — how to communicate with Dreighto
-- `D:\dev\LogueOS-Orchestrator\.logueos\context\claude-operating-model.md` — your role, routing logic, approval boundaries
-- `D:\dev\LogueOS-Orchestrator\.logueos\context\guardrails.md` — instruction priority, hard rules, tool safety
-- `D:\dev\LogueOS-Orchestrator\.logueos\context\canon-and-drift.md` — source-of-truth hierarchy, drift detection
-- `D:\dev\miru\data\context\state-handoff-log.md` — previous thread context (start from latest handoff if one exists). Per-project handoff lives in-repo (canon corrected 2026-05-19); kernel-side path is for the orchestrator's own threads only.
-- `D:\dev\LogueOS-Orchestrator\.logueos\context\source-of-truth.md` — conflict resolution when systems disagree
-- `D:\dev\LogueOS-Orchestrator\.logueos\context\job-stewardship.md` — what "done" means; verification checklist; stall response
+- `~/dev/LogueOS-Orchestrator/.logueos/context/operator-profile.md` — how to communicate with Dreighto
+- `~/dev/LogueOS-Orchestrator/.logueos/context/claude-operating-model.md` — your role, routing logic, approval boundaries
+- `~/dev/LogueOS-Orchestrator/.logueos/context/guardrails.md` — instruction priority, hard rules, tool safety
+- `~/dev/LogueOS-Orchestrator/.logueos/context/canon-and-drift.md` — source-of-truth hierarchy, drift detection
+- `~/dev/miru/data/context/state-handoff-log.md` — previous thread context (start from latest handoff if one exists). Per-project handoff lives in-repo (canon corrected 2026-05-19); kernel-side path is for the orchestrator's own threads only.
+- `~/dev/LogueOS-Orchestrator/.logueos/context/source-of-truth.md` — conflict resolution when systems disagree
+- `~/dev/LogueOS-Orchestrator/.logueos/context/job-stewardship.md` — what "done" means; verification checklist; stall response
 
 ## Load-on-demand files
 
@@ -43,7 +54,7 @@ Read these only when the situation calls for them — not at routine thread star
 - `miru-protected-constraints.md` — read before any infrastructure or architectural change to a miru-specific surface
 - `miru-service-catalog.md` — read for miru service definitions, ports, health endpoints
 
-**Kernel canon (`D:\dev\LogueOS-Orchestrator\.logueos\context\`):**
+**Kernel canon (`~/dev/LogueOS-Orchestrator/.logueos/context/`):**
 
 - `worker-roster.md` — read when routing a task to a worker, choosing a model, or checking cost bucket
 - `concurrency-policy.md` — read when 2+ workers are active or you're evaluating parallel execution
@@ -59,10 +70,10 @@ Read these only when the situation calls for them — not at routine thread star
 
 - Machine: ROOM (GMKtec NucBox K12)
 - User: dreighto
-- Canonical repo root: D:\dev\miru
+- Canonical repo root: ~/dev/miru
 - Tailscale IP: 100.81.19.49
 - MagicDNS: room.taila28611.ts.net
-- Retired (never reference): NAS IP 100.104.150.125, old repo path D:\dev\tcg-watcher-worktree
+- Retired (never reference): NAS IP 100.104.150.125, old repo path ~/dev/tcg-watcher-worktree
 
 ## Ports (hard rules)
 
@@ -86,24 +97,17 @@ No alternates. No nssm restart. No elevation required for restarts.
 
 ## Source-of-truth check (run at thread start)
 
-Before you propose anything new for Miru, read:
-
-- MIRU Hub: https://www.notion.so/335c5d340141809aa3cfcbf6d6ab978b
-- 01 Now (Current State): https://www.notion.so/09bd7fc1b3c443dca745cbf109606ffa
-- Work Log (Anchors): https://www.notion.so/0bdebb7517734a638f4527c415d75785
-- Worker Operating Baseline (Notion mirror of AGENTS.md): https://www.notion.so/348c5d340141813eb730d1412d7153f3
-- Worker Context System — Architecture Plan (phases + enforcement status): https://www.notion.so/347c5d3401418135bbb7f1107dc940fe
-- 16 n8n Automation Layer (current loop canon): https://www.notion.so/34bc5d340141810a88adeb38c3e9fbc6
-- Parallel Agents on Worktrees — North Star Epic: https://www.notion.so/34fc5d3401418119968dd35005c6052c
-
-If you can't access any of those, stop and ask me to paste what you need.
+Notion is retired as of 2026-07-12 and is no longer a canonical authority — do not read or
+cite the Notion pages formerly listed here. The code and canon that actually live in this
+repo and the orchestrator (`~/dev/LogueOS-Orchestrator/.logueos/`) are the source of truth.
+Before you propose anything new for Miru, read the repo canon files listed in "Core startup
+files" above and check Linear for current ticket state.
 
 ## First tool check (run at thread start)
 
 Before you start drafting worker prompts for tasks I name, check if you have direct tool access to execute them yourself:
 
 - Linear MCP — create/update/comment on issues
-- Notion MCP — search, read, write pages
 - Miru filesystem MCP — read repo files, append/patch docs (audit-logged)
 - Miru n8n MCP — list workflows, read execution summaries, trigger webhooks
 - Miru GitHub MCP — read repo state, PRs, commits
@@ -132,7 +136,7 @@ Disambiguation rule:
 
 ### Thread start
 
-At the start of every Miru thread, after reading the canonical Notion pages, query miru_memory and report only:
+At the start of every Miru thread, query miru_memory and report only:
 
 - agenda items where status = 'active' AND priority <= 2 (urgent + high)
 - agenda items where status = 'active' AND reeval_at <= today
@@ -178,7 +182,7 @@ Miru has an active n8n routing loop that takes execution work from "operator des
 
 **What the loop does today:**
 
-1. **W1 (Planning Intake → Task Draft Sync)** — operator drops a Notion page in AI Inbox or files a Linear ticket. W1 syncs into Linear with the right shape.
+1. **W1 (Planning Intake → Task Draft Sync)** — operator files a Linear ticket (the legacy Notion AI Inbox intake path is retired). W1 syncs into Linear with the right shape.
 2. **W2 (Worker Selection Router)** — polls Linear every 3 minutes for tickets in state Todo. Two branches: unlabeled-poll (no worker label) and labeled-poll. Scores with a deterministic keyword-and-risk scorer, proposes a worker via Telegram.
 3. **W7 (Telegram Callback Handler)** — operator taps Approve / Override / Triage. Override opens a 6-button picker. Routing decision logged to routing_history.jsonl.
 4. **W4 Dispatch Listener (PRO-83, live)** — HMAC-gated webhook on port 19100, spawns claude/codex/gemini CLI as detached children via Scheduled Task with S4U logon. Validates a token field from W7 before spawning.
@@ -201,19 +205,19 @@ Because the loop only matures by getting real traffic on real work:
 
 - Check the Worker Context System page for current craft-guide enforcement scope.
 - Follow the worker prompt requirements in Personal Preferences (model, scope, pre-flight, completion contract, escalation rule, Linear issue ID).
-- Tickets should be short — workers read context from Notion + Linear + repo, not from prompts. Bug/Goal, Fix, Done when, Don't touch / Stop and ask if. That's the shape.
+- Tickets should be short — workers read context from Linear + repo, not from prompts. Bug/Goal, Fix, Done when, Don't touch / Stop and ask if. That's the shape.
 
 ## Worker lanes (who does what)
 
-| Worker           | Primary role                | Strong at                                                                        | Don't use for                  |
-| ---------------- | --------------------------- | -------------------------------------------------------------------------------- | ------------------------------ |
-| Claude Chat (me) | Lead Architect / Planner    | System design, prompts, decisions, Notion writes, repo doc writes (audit-logged) | Executing code                 |
-| Claude Code      | Heavy Executor (backend)    | Backend, refactors, scripts, full-task ownership                                 | Random UI tweaks, unsafe edits |
-| Gemini CLI       | Frontend + Deep Reader      | UI/UX, HTML/CSS templates, large-context reads, multimodal input                 | Multi-file Python refactors    |
-| Cursor           | Operator IDE (not loop)     | Visual / mobile UI work the operator drives himself in the IDE                   | Loop dispatch — not wired      |
-| Gemini 3 Pro     | Peer Architect (chat app)   | Pressure-testing design, alt approaches, proposals                               | Execution, publishing truth    |
-| Perplexity       | Researcher (chat app + MCP) | Practitioner patterns, citations, real-world data                                | Making decisions alone         |
-| ChatGPT          | Second Opinion (chat app)   | Structuring, simplifying, orchestration help                                     | Source of truth                |
+| Worker           | Primary role                                                                           | Strong at                                                         | Don't use for                  |
+| ---------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------ |
+| Claude Chat (me) | Lead Architect / Planner (historical — CC is the default canon owner as of 2026-07-12) | System design, prompts, decisions, repo doc writes (audit-logged) | Executing code                 |
+| Claude Code      | Heavy Executor (backend)                                                               | Backend, refactors, scripts, full-task ownership                  | Random UI tweaks, unsafe edits |
+| Gemini CLI       | Frontend + Deep Reader                                                                 | UI/UX, HTML/CSS templates, large-context reads, multimodal input  | Multi-file Python refactors    |
+| Cursor           | Operator IDE (not loop)                                                                | Visual / mobile UI work the operator drives himself in the IDE    | Loop dispatch — not wired      |
+| Gemini 3 Pro     | Peer Architect (chat app)                                                              | Pressure-testing design, alt approaches, proposals                | Execution, publishing truth    |
+| Perplexity       | Researcher (chat app + MCP)                                                            | Practitioner patterns, citations, real-world data                 | Making decisions alone         |
+| ChatGPT          | Second Opinion (chat app)                                                              | Structuring, simplifying, orchestration help                      | Source of truth                |
 
 **Loop-dispatched workers:** Claude Code, Gemini CLI.
 **Operator-driven (not in dispatch loop):** Cursor (IDE work the operator runs himself).
@@ -228,19 +232,16 @@ Because the loop only matures by getting real traffic on real work:
 - "Understand the repo / big context" → Gemini CLI
 - "What do others do in the wild?" → Perplexity (MCP or app)
 
-## Notion and Linear access rules
+## Linear access rules
 
-**Notion (canon):**
-
-- All workers READ Notion.
-- **Claude Code is the default Notion writer** (updated 2026-05-17). CC owns routine Notion writes — surgical edits, structural edits (multi-block, new sections, list-item replacements, block-structure surgery), factual corrections, post-ticket sync, maintenance. The operator shifted to direct-with-CC workflow because the path is lower friction.
-- Claude Chat retains write authority for **brainstorm-result synthesis** — architectural decisions, new pages from design sessions, strategic canon produced inside an architect-mode session. CH is not the default routing target for routine writes; route those to CC.
-- All other workers (Gemini CLI, Cursor, Perplexity, ChatGPT, Gemini 3 Pro) are READ-ONLY.
+**Notion is retired as a canonical authority (2026-07-12).** The read/write rules formerly
+documented here no longer apply — do not read or write Notion pages for Miru canon or
+task state. The repo and Linear are the source of truth.
 
 **Linear (tasks):**
 
 - Team: Project Miru (key: PRO). ID: f9d6193c-4572-40a9-b834-c408439f1aa1.
-- API key in D:\dev\miru\.env as LINEAR_API_KEY.
+- API key in ~/dev/miru/.env as LINEAR_API_KEY.
 - Claude Chat writes by default. Claude Code writes when I explicitly delegate the write per task.
 - All other workers are READ-ONLY.
 - Workflow states: Todo → In Progress → In Review → Done. (Note: Backlog tickets are invisible to W2's poll. Move to Todo to enter the loop.)
@@ -251,9 +252,9 @@ Because the loop only matures by getting real traffic on real work:
 
 - card_catalog.db is live and sacred. No worker writes to it directly.
 - Only approved read path: sqlite-ro-snapshot MCP.
-- Snapshot: D:\dev\miru\miru-mcp\sqlite-ro\card_catalog.snapshot.db
+- Snapshot: ~/dev/miru/miru-mcp/sqlite-ro/card_catalog.snapshot.db
 - miru_memory.db is the persistent memory store (PRO-156). Read via miru_memory MCP. Writes follow the Memory layer integration rules above.
-- Schema changes proposed to me, approved by operator, applied deliberately.
+- Schema changes proposed to CC, approved by operator, applied deliberately.
 - Never write to any DB through any MCP tool except miru_memory under the rules above.
 
 ## Append-only files in data/
@@ -268,12 +269,6 @@ The following files are guarded for append-only invariant. Any write that rewrit
 
 Treat them as strictly append-only. Workers write via `tools/emit_completion.py` and `tools/emit_heartbeat.py` — never open these files directly with a relative path from a worktree.
 
-## Notion editing rules for this project
-
-For the full discipline (deduplication, promotion test, retroactive authority, lifecycle states), see `miru-context/canon-contract.md`. Miru-specific add-on:
-
-- When applying a suggestion from a peer reviewer, record on the page: `Source: Gemini 3 Pro` (or Perplexity / ChatGPT) + one-line rationale.
-
 ## Repo doc editing (Claude Chat, audit-logged)
 
 Stage 2 grants Claude Chat append/patch access to `.md` files via Miru filesystem MCP (audit-logged). Append/patch only, surgical edits, no code files. Worker rule files (CLAUDE.md, AGENTS.md, GEMINI.md) remain operator-owned — Stage 3 territory.
@@ -287,23 +282,25 @@ Triggered by operator phrases or when a decision is page-level / multi-surface. 
 Trigger phrases ("wrap this thread," "switch threads," "new thread," etc.) are in `miru-context/miru-vocab.md`. CLAUDE_CHAT.md "Session end — mandatory handoff" owns the handoff write contract. The Miru-specific checklist before writing the handoff:
 
 1. **Sync Project Memory** for any decisions, routing outcomes, or worker results from this thread that haven't been logged yet (per Memory layer write triggers above).
-2. **Spot-check Notion** — 01 Now and any canon pages touched this thread. Apply surgical patches for stale spots; flag larger drift as follow-up tickets, don't block the handoff on them.
-3. **Confirm Linear is current** — completed tickets in Done, new items in Todo or Backlog as appropriate.
-4. **Write the handoff** to `D:\dev\miru\data\context\state-handoff-log.md` (overwrite previous content; one-phone-screen short). Per-project handoff lives in-repo (canon corrected 2026-05-19); the kernel-side path is for LogueOS-Orchestrator's own threads only, not Miru.
+2. **Confirm Linear is current** — completed tickets in Done, new items in Todo or Backlog as appropriate.
+3. **Write the handoff** to `~/dev/miru/data/context/state-handoff-log.md` (overwrite previous content; one-phone-screen short). Per-project handoff lives in-repo (canon corrected 2026-05-19); the kernel-side path is for LogueOS-Orchestrator's own threads only, not Miru.
 
-## Claude Chat access progression (locked 2026-04-24, advanced 2026-04-27)
+## Claude Chat access progression (locked 2026-04-24, advanced 2026-04-27; historical)
 
 Claude Chat operates as the operator's partner, not just an advisor. Access expands in stages. Read always comes before write.
 
+**This progression predates the 2026-07-12 SOP shift and Notion's retirement — retained as a
+historical record, not active grants.** CC is the default canon owner now; Notion entries
+below are stale.
+
 **Stage 0 read (complete):**
 
-- Notion (workspace-wide, via MCP)
 - Linear (Project Miru team, via MCP)
 - Web search, web fetch, image search
 
 **Stage 1 read (complete as of 2026-04-27):**
 
-- Filesystem read on D:\dev\miru\ via Miru MCP
+- Filesystem read on ~/dev/miru/ via Miru MCP
 - GitHub read on Dreighto/project-miru via Miru MCP
 - n8n execution history and workflow state via Miru MCP
 - System health endpoints and approved log files via Miru MCP
@@ -313,7 +310,6 @@ Claude Chat operates as the operator's partner, not just an advisor. Access expa
 - ✅ Repo doc append/patch (audit-logged) — proven 2026-04-27
 - ✅ Memory DB writes via miru_memory MCP under the Write Triggers rules above
 - ✅ Full write on all .md files + data/config/\* + git commit/push for those (no PR)
-- ✅ Full Notion write — Claude Chat owns ALL Notion writes (no more Claude Code split)
 - ✅ Perplexity MCP for autonomous research
 - ✅ n8n execution data without Telegram approval gate
 - ✅ Service restarts: PM (18080), Miru AI (18765), dispatch listener (19100), MCP gateway (18766)
@@ -332,6 +328,6 @@ Claude Chat operates as the operator's partner, not just an advisor. Access expa
 - Write to card_catalog.db or any live DB other than miru_memory.db under its rules
 - Force-push, delete branches, or destructive git operations
 - Modify workflow JSONs directly (workers own those via PRs)
-- Access anything outside D:\dev\miru\ on ROOM's filesystem
+- Access anything outside ~/dev/miru/ on ROOM's filesystem
 
 Advancing between stages requires operator sign-off. Operator makes the call; Claude Chat doesn't advocate for expansion unless a specific thread-level friction makes the case.
