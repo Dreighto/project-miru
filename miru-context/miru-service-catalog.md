@@ -84,15 +84,13 @@ started a second time while the first was already running. The entry is inert. N
 
 ### Restart mechanism
 
-There is no standalone restart task for the dispatch listener as of 2026-05-18.
-The listener is launched by the `LogueOS-Startup` scheduled task at boot via
-`windows\start_dispatch_listener.ps1` (which owns its own respawn loop and the
-port-in-use guard). To manually restart while the system is up:
+Since the 2026-05-25 Linux migration, the listener runs as the
+`logueos-dispatch-listener` systemd unit — systemd owns supervision and restart-on-crash,
+so there is no PowerShell respawn wrapper. To restart or check status:
 
-```powershell
-# Kill current listener and let LogueOS-ServiceWatchdog respawn it on next check,
-# OR re-run the start wrapper directly:
-Start-Process powershell.exe -WindowStyle Hidden -ArgumentList '-File','D:\dev\LogueOS-Orchestrator\windows\start_dispatch_listener.ps1'
+```bash
+systemctl restart logueos-dispatch-listener
+systemctl status logueos-dispatch-listener
 ```
 
 CC has standing authority to restart autonomously per `feedback_self_restart`
@@ -125,7 +123,7 @@ Body: {"ok":true,"version":"0.4.0","name":"miru-fs-gateway"}
 ### Log files
 
 The gateway logs to stdout/stderr at the process level. No dedicated log files in `logs/`.
-Output is captured by the startup wrapper task.
+Output is captured by journald — read it with `journalctl -u logueos-mcp-gateway`.
 
 ### Normal log patterns (healthy)
 
@@ -133,7 +131,7 @@ Output is captured by the startup wrapper task.
 [miru-fs-gateway] starting v0.4.0
   host         : 127.0.0.1
   port         : 18766
-  fs_root      : D:\dev\miru
+  fs_root      : ~/dev/miru
   total        : 47 tools
 ```
 
@@ -142,20 +140,20 @@ Output is captured by the startup wrapper task.
 ```
 FATAL: fastmcp is not installed. Install with: pip install --user "fastmcp>=2.5,<3"
 FATAL: filesystem root mismatch.
-  stdio MCP module ROOT = D:\dev\miru
+  stdio MCP module ROOT = ~/dev/miru
   gateway config root   = <wrong path>
 FATAL: this FastMCP version does not expose `custom_route` for attaching /health endpoint.
 ```
 
 ### Restart mechanism
 
-```powershell
-schtasks /Run /TN 'LogueOS-RestartMcpGateway'
+```bash
+systemctl restart logueos-mcp-gateway
 ```
 
-Triggers the `LogueOS-RestartMcpGateway` scheduled task (renamed from
-`MiruRestartMCPGateway` during the 2026-05 de-Miru sweep). Restart log:
-`logs/mcp_gateway_restart.log`.
+Since the 2026-05-25 Linux migration the gateway runs as the `logueos-mcp-gateway`
+systemd unit (superseding the old `LogueOS-RestartMcpGateway` scheduled task).
+Restart history: `journalctl -u logueos-mcp-gateway`.
 
 ---
 
@@ -218,12 +216,11 @@ WARNING: This is a development server. Do not use it in a production deployment.
 
 ### Restart mechanism
 
-There is no dedicated restart task for Miru AI as of 2026-05-18. The service
-is monitored by `LogueOS-ServiceWatchdog`, which respawns it if it stops
-responding to the health endpoint. To manually restart:
+Since the 2026-05-25 Linux migration, Miru AI is managed by systemd. To restart:
 
-```powershell
-# Stop the current process, then re-run the launch wrapper.
+```bash
+# Restart the unit (confirm the unit name against `systemctl list-units`):
+systemctl restart logueos-miru-ai
 # Or invoke service_restart via MCP: service_restart with service="miru_ai".
 ```
 
@@ -276,11 +273,11 @@ GET http://room.taila28611.ts.net:18768/  → 200 from tailnet
 
 ### Restart mechanism
 
-Currently a manual `npm run build && node build` process — not yet registered as a Windows
-service. Scheduled-task setup is on the backlog. To restart manually:
+Currently a manual `npm run build && node build` process — not yet registered as a systemd
+unit. Unit setup is on the backlog. To restart manually:
 
-```powershell
-# from D:\dev\miru\miru_ai\hub_ui
+```bash
+# from ~/dev/miru/miru_ai/hub_ui
 npm run build
 # stop any running build/index.js, then:
 node build
@@ -335,12 +332,15 @@ WARNING: This is a development server. Do not use it in a production deployment.
 
 ### Restart mechanism
 
-There is no dedicated restart task for the PM Dashboard as of 2026-05-18.
-The service is monitored by `LogueOS-ServiceWatchdog`. To manually restart,
-stop the current process and re-run the launch wrapper, or invoke
-`service_restart` via MCP with `service="pm"`.
+Since the 2026-05-25 Linux migration, the PM Dashboard is managed by systemd. To
+restart (confirm the unit name against `systemctl list-units`):
 
-Restart log (if still in use): `logs/pm_restart.log`.
+```bash
+systemctl restart logueos-pm
+# Or invoke service_restart via MCP with service="pm".
+```
+
+Restart history: `journalctl -u logueos-pm`.
 
 ### Key source files
 
@@ -424,42 +424,43 @@ or via the n8n MCP tool: `service_restart` with service="n8n".
 
 Sends Telegram alerts **only on state transitions** (healthy → failing, recovering, etc.) with a 60-minute cooldown to prevent spam. Pings Healthchecks.io as a liveness signal so the watchdog itself can be monitored.
 
-**This is a tool, not a service** — it has no persistent process and no port. It runs on a Windows Task Scheduler trigger.
+**This is a tool, not a service** — it has no persistent process and no port. It runs on a systemd timer (cron-equivalent).
 
 **Not affected by kill switch** — health monitoring must always run regardless of `data/system_halt`.
 
-### Scheduled task
+### systemd timer
 
 ```
-Task name:  LogueOS-ServiceWatchdog
-Schedule:   Every 15 minutes
-Run as:     SYSTEM
+Unit:      logueos-service-watchdog.timer (confirm name against `systemctl list-timers`)
+Schedule:  Every 15 minutes
+Run as:    root
 ```
 
 The standalone `MiruN8nWatchdog` task was consolidated into the broader
-`LogueOS-ServiceWatchdog` during the 2026-05 de-Miru sweep — the same task
+`logueos-service-watchdog` timer during the 2026-05 de-Miru sweep — the same job
 now monitors n8n workflows AND core LogueOS services.
 
 **Manual trigger:**
 
-```powershell
-schtasks /Run /TN 'LogueOS-ServiceWatchdog'
+```bash
+systemctl start logueos-service-watchdog.service
 ```
 
 **Check last run:**
 
-```powershell
-Get-ScheduledTask -TaskName LogueOS-ServiceWatchdog | Get-ScheduledTaskInfo
+```bash
+systemctl list-timers logueos-service-watchdog.timer
+journalctl -u logueos-service-watchdog.service --since '-1h'
 ```
 
 ### Config and state
 
-| Path                                                                          | Purpose                                                                                                                        |
-| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `data/config/watchdog_registry.json`                                          | Workflow definitions — class, interval, thresholds                                                                             |
-| `D:\dev\LogueOS-Orchestrator\data\logueos_memory.db` (table `watchdog_state`) | Per-workflow state persistence (renamed from `miru_memory.db` during the 2026-05 de-Miru sweep; lives in the orchestrator now) |
-| `logs/n8n_loop_watchdog.log`                                                  | Structured log (TSV format)                                                                                                    |
-| `logs/n8n_loop_watchdog_sched.log`                                            | stdout/stderr captured by Task Scheduler                                                                                       |
+| Path                                                                         | Purpose                                                                                                                        |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `data/config/watchdog_registry.json`                                         | Workflow definitions — class, interval, thresholds                                                                             |
+| `~/dev/LogueOS-Orchestrator/data/logueos_memory.db` (table `watchdog_state`) | Per-workflow state persistence (renamed from `miru_memory.db` during the 2026-05 de-Miru sweep; lives in the orchestrator now) |
+| `logs/n8n_loop_watchdog.log`                                                 | Structured log (TSV format)                                                                                                    |
+| `logs/n8n_loop_watchdog_sched.log`                                           | stdout/stderr captured by journald (`journalctl -u logueos-service-watchdog.service`)                                          |
 
 ### Environment variables required
 
@@ -486,15 +487,16 @@ Last 3 of 5 runs failed. First error: Cannot read properties of undefined
 
 ## Cross-Service Patterns
 
-### Restart log format (all PS-managed services)
+### Restart / start-stop history (systemd)
 
-All PowerShell-managed restart scripts write to their service's restart log using
-tab-delimited format with millisecond UTC timestamps:
+Since the 2026-05-25 Linux migration, service start/stop/restart events are recorded
+by journald. Read a service's restart history with `journalctl -u <unit>`; entries carry
+journald's own UTC timestamps, e.g.:
 
 ```
-2026-04-22 14:47:04.164	=== MiruRestartPM BEGIN ===
-2026-04-22 14:47:04.181	repo_root=D:\dev\miru
-2026-04-22 14:47:08.322	PM Dashboard is listening on port 18080 — restart SUCCESS
+2026-04-22 14:47:04	systemd[1]: Stopping LogueOS PM Dashboard...
+2026-04-22 14:47:04	pm[...]: repo_root=~/dev/miru
+2026-04-22 14:47:08	pm[...]: PM Dashboard is listening on port 18080 — restart SUCCESS
 ```
 
 ### "Development server" warning

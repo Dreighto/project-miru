@@ -47,9 +47,9 @@ The orchestration append-only chains (12 files: `cc_completion_log.jsonl`,
 `cc_heartbeat_log.jsonl`, `vp_ops_supervision.jsonl`, `drift_scanner_log.jsonl`,
 `agent_decisions.jsonl`, `github_resource_ledger.jsonl`, `usage_anomalies.jsonl`,
 `salvage_reports.jsonl`, `hermes_predictions.jsonl`) **live in the orchestrator**
-at `D:\dev\LogueOS-Orchestrator\data\` since Migration Phase 3 (LOS-55, 2026-05-14).
+at `~/dev/LogueOS-Orchestrator/data/` since Migration Phase 3 (LOS-55, 2026-05-14).
 They are NOT stored in this repo. The kernel canon at
-`D:\dev\LogueOS-Orchestrator\CLAUDE.md` ("Append-Only Data Files") is authoritative.
+`~/dev/LogueOS-Orchestrator/CLAUDE.md` ("Append-Only Data Files") is authoritative.
 
 The only append-only file that remains in this repo's `data/` directory:
 
@@ -123,8 +123,8 @@ entirely blocks set-population and provenance work that the operator has
 prioritized. The backup + log + verify pattern gives the same audit trail
 ALTER would, without gating every row update on operator approval.
 
-`sqlite3` is available at `C:\tools\sqlite3\sqlite3.exe` for direct CLI work.
-See `D:\dev\LogueOS-Orchestrator\.logueos\reference\database-rules.md` for
+`sqlite3` is on PATH for direct CLI work.
+See `~/dev/LogueOS-Orchestrator/.logueos/reference/database-rules.md` for
 the kernel-level rules that apply to all SQLite DBs in this stack.
 
 ---
@@ -133,17 +133,17 @@ the kernel-level rules that apply to all SQLite DBs in this stack.
 
 Code belongs to its service. The file placement rules are non-negotiable.
 
-| Service                        | Directory            |
-| ------------------------------ | -------------------- |
-| Miru AI backend                | `miru_ai/`           |
-| PM Dashboard backend           | `pm/`                |
-| Windows operational scripts    | `windows/`           |
-| Shared utilities (2+ services) | `shared/`            |
-| Tools and standalone scripts   | `tools/`             |
-| Tests                          | `tests/`             |
-| Documentation                  | `docs/`              |
-| Config JSON                    | `config/`            |
-| Runtime logs                   | `logs/` (gitignored) |
+| Service                        | Directory                      |
+| ------------------------------ | ------------------------------ |
+| Miru AI backend                | `miru_ai/`                     |
+| PM Dashboard backend           | `pm/`                          |
+| Operational service units      | systemd (`windows/` is legacy) |
+| Shared utilities (2+ services) | `shared/`                      |
+| Tools and standalone scripts   | `tools/`                       |
+| Tests                          | `tests/`                       |
+| Documentation                  | `docs/`                        |
+| Config JSON                    | `config/`                      |
+| Runtime logs                   | `logs/` (gitignored)           |
 
 **Never create service code at the repo root.** Never create temp or debug files at
 the repo root. See CLAUDE.md "File Placement — Hard Rules" for the full list.
@@ -196,18 +196,21 @@ Force-push and `git branch -D` (force delete) require explicit operator authoriz
 
 ---
 
-## 9. Restart Scripts — Use Canonical Paths Only
+## 9. Restart Services — Use systemd Units Only
 
-| Service           | Restart command                                                                  |
-| ----------------- | -------------------------------------------------------------------------------- |
-| PM Dashboard      | `powershell -ExecutionPolicy Bypass -File windows\restart_pm.ps1`                |
-| Miru AI           | `powershell -ExecutionPolicy Bypass -File windows\restart_miru_ai.ps1`           |
-| Dispatch Listener | `powershell -ExecutionPolicy Bypass -File windows\restart_dispatch_listener.ps1` |
-| MCP Gateway       | `powershell -ExecutionPolicy Bypass -File windows\restart_mcp_gateway.ps1`       |
+| Service           | Restart command                                         |
+| ----------------- | ------------------------------------------------------- |
+| PM Dashboard      | `systemctl restart logueos-pm` (confirm unit name)      |
+| Miru AI           | `systemctl restart logueos-miru-ai` (confirm unit name) |
+| Dispatch Listener | `systemctl restart logueos-dispatch-listener`           |
+| MCP Gateway       | `systemctl restart logueos-mcp-gateway`                 |
 
-**Never** use `nssm restart` directly. **Never** create alternate restart scripts.
-The canonical scripts trigger SYSTEM-privilege scheduled tasks that handle port cleanup
-and process management correctly.
+Since the 2026-05-25 Linux migration, services are systemd units, not PowerShell
+`.ps1` scripts or scheduled tasks. `logueos-dispatch-listener` and
+`logueos-mcp-gateway` are confirmed unit names; confirm the PM and Miru AI unit
+names against `systemctl list-units --type=service | grep -iE 'miru|pm|logueos'`
+before use. Prefer the `service_restart` MCP tool where available. systemd handles
+port cleanup and process supervision; do not hand-roll alternate restart scripts.
 
 ---
 
