@@ -5,6 +5,18 @@ files and live logs. Workers read this before writing any code that touches a se
 
 Last updated: 2026-05-19
 
+> **STALE DATA WARNING (added 2026-07-21).** This file predates the 2026-05-25 Linux
+> migration. Three services it documents in detail are dead: **Miru AI :18765** and
+> **Miru AI Hub UI :18768** were decommissioned in that migration, and **PM Dashboard
+> :18080** has been intentionally PAUSED since 2026-05-19. None of them has a systemd
+> unit and none is listening. Their health endpoints, log paths, restart commands and
+> "normal output" samples below are therefore **not verifiable and must not be used as
+> a completion check**. The Windows-era restart mechanisms (`windows\*.ps1`, nssm,
+> Scheduled Tasks) documented anywhere in this file are also dead; the host is Linux
+> with systemd. The Service Index immediately below has been corrected; the per-service
+> sections have NOT been rewritten. For live port and service status the authority is
+> `~/dev/LogueOS-Orchestrator/.logueos/reference/ports-and-services.md`, not this file.
+
 ---
 
 ## How to use this document
@@ -19,14 +31,14 @@ Last updated: 2026-05-19
 
 ## Service Index
 
-| Service           | Port  | Language                       | Status |
-| ----------------- | ----- | ------------------------------ | ------ |
-| Dispatch Listener | 19100 | Node.js                        | ACTIVE |
-| MCP Gateway       | 18766 | Python (FastMCP / uvicorn)     | ACTIVE |
-| Miru AI (backend) | 18765 | Python (Flask)                 | ACTIVE |
-| Miru AI Hub UI    | 18768 | SvelteKit (Node, adapter-node) | ACTIVE |
-| PM Dashboard      | 18080 | Python (Flask + SvelteKit)     | ACTIVE |
-| n8n               | 15678 | Node.js                        | ACTIVE |
+| Service           | Port  | Language                       | Status                                                                                      |
+| ----------------- | ----- | ------------------------------ | ------------------------------------------------------------------------------------------- |
+| Dispatch Listener | 19100 | Node.js                        | ACTIVE                                                                                      |
+| MCP Gateway       | 18766 | Python (FastMCP / uvicorn)     | ACTIVE                                                                                      |
+| Miru AI (backend) | 18765 | Python (Flask)                 | INACTIVE, decommissioned in the 2026-05-25 Linux migration. No systemd unit, not listening. |
+| Miru AI Hub UI    | 18768 | SvelteKit (Node, adapter-node) | INACTIVE, decommissioned in the 2026-05-25 Linux migration. No systemd unit, not listening. |
+| PM Dashboard      | 18080 | Python (Flask + SvelteKit)     | PAUSED, intentionally offline since 2026-05-19. No systemd unit, not listening.             |
+| n8n               | 15678 | Node.js                        | ACTIVE                                                                                      |
 
 ---
 

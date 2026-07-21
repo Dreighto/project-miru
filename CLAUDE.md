@@ -2,7 +2,7 @@
 
 ```text
 Instruction Architecture Version: MIRU-INSTRUCTIONS-v3
-Last reviewed: 2026-06-22
+Last reviewed: 2026-07-21
 Effective: 2026-05-13
 Overlay scope: project-miru only.
 Kernel canon: ~/dev/LogueOS-Orchestrator/CLAUDE.md + .logueos/
@@ -134,25 +134,45 @@ branch is checked out — that worker is in violation.
 ## Worker Role — Claude Code (VP Ops)
 
 - Owns: Python backend files, tests, verification scripts, post-ticket canon maintenance, `vp_ops_verify_ticket`.
-- Restarts services autonomously (gateway, dispatch_listener, PM, Miru AI) — don't ask operator for routine restarts. See `.logueos/reference/restart-procedures.md` for service launch paths.
+- Restarts services autonomously (MCP gateway :18766, dispatch_listener :19100). Don't ask operator for routine restarts. See `.logueos/reference/restart-procedures.md` for service launch paths. (Corrected 2026-07-21: PM :18080 and Miru AI :18765 removed from this list because neither has a systemd unit or a listener; 18080 is PAUSED since 2026-05-19 and 18765 was decommissioned in the 2026-05-25 Linux migration. There is nothing to restart.)
 - Files Linear loop tickets directly via `linear_create_issue` (not file-then-paste).
 - **`card_catalog.db` writes are in scope** when work requires them — set population (OP01–OP15), provenance backfills, meta-relevancy / insight columns, image-asset linkage. Always `cp data/card_catalog.db data/card_catalog.db.bak.<timestamp>` before any UPDATE/INSERT/DELETE batch, log the change to a `data/*.log` file, and surface the diff in commit messages.
-- Never touches: HTML/CSS/JS templates, `.mcp.json`.
+- Never touches: `.mcp.json`. (Corrected 2026-07-21: the HTML/CSS/JS template exclusion is removed because the CC=backend / GMI=frontend lane split was retired by operator directive 2026-05-23; CC is a generalist and does frontend work.)
 
 ## Active Loop Workers
 
-**Auto-dispatched (via dispatch_listener):**
+**Do not read a worker roster out of this file.** (Rewritten 2026-07-21: the roster
+previously restated here listed only CC, Gemini CLI and Hermes, called Gemini the
+"autonomous frontend" and called Cursor "not loop-dispatched". All three claims were
+stale, and a per-project copy of the roster rots faster than the kernel it copies.)
 
-- **CC (Claude Code)** — autonomous backend + VP Ops. Python, tests, scripts, verification, canon maintenance.
-- **Gemini CLI** — autonomous frontend. UI/UX, HTML/CSS/JS templates, mobile layout.
-- **Hermes (Qwen-via-Ollama)** — shadow predictor. Logs predicted routes alongside actual dispatches for evaluation. Does not hold routing authority.
+The kernel owns worker identity, lanes, and routing. Read these instead, in this order:
 
-**Operator-driven (not in dispatch loop):**
+- **`~/dev/LogueOS-Orchestrator/CLAUDE.md`**: the "Lane Model" and "Worker Roster
+  Snapshot" sections. Routing is by **lane** (`planner` / `coder` / `verifier` /
+  `designer`), not by worker nickname; `backend`, `frontend`, `verify` and `analysis` are
+  legacy aliases normalized at ingress.
+- **`~/dev/LogueOS-Orchestrator/.logueos/roles.yaml`**: the per-lane `default` and
+  `candidates` lists, including which workers are disqualified from which lane.
+- **`~/dev/LogueOS-Orchestrator/services/dispatch_listener/src/allowlist.js`**: the
+  machine-readable list of workers the listener will actually spawn. This is ground truth
+  for "is X dispatchable"; roster membership in a doc is not.
 
-- **Cursor** — operator-driven from the IDE; not loop-dispatched.
-- **Claude Chat (CH)** — historical Lead Architect role. Per the operator's 2026-07-12 SOP shift, canon ownership and dispatch orchestration are permanently CC's (Claude Code's) by default — this is not a temporary "CH offline" state, and CH was never wired into the kernel's dispatch allowlist in code. Architecture decisions, planning, and worker prompt authoring are CC's by default now.
+Two miru-relevant facts that were wrong here and are worth stating once: **Cursor is a
+live autonomous dispatch worker and the `designer`-lane default** (wired 2026-06-12), and
+the **CC=backend / GMI=frontend lane split is retired** (operator directive 2026-05-23):
+CC is a generalist that also does frontend, and GMI holds no standing designer lane.
 
-See `miru-context/miru-service-catalog.md` for current service state and `miru-context/miru-protected-constraints.md` for the hard invariants.
+**Claude Chat (CH)**: historical Lead Architect role. Per the operator's 2026-07-12 SOP
+shift, canon ownership and dispatch orchestration are permanently CC's (Claude Code's) by
+default. This is not a temporary "CH offline" state, and CH was never wired into the
+kernel's dispatch allowlist in code. Architecture decisions, planning, and worker prompt
+authoring are CC's by default now.
+
+See `miru-context/miru-service-catalog.md` for miru service definitions (read its
+stale-data banner first) and `miru-context/miru-protected-constraints.md` for the hard
+invariants. For live port and service status, the authority is
+`~/dev/LogueOS-Orchestrator/.logueos/reference/ports-and-services.md`.
 
 ---
 
