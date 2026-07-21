@@ -2,7 +2,7 @@
 
 ```text
 Architecture: MIRU-INSTRUCTIONS-v3
-Last reviewed: 2026-06-22
+Last reviewed: 2026-07-21
 Effective: 2026-05-13
 Overlay scope: project-miru only.
 ```
