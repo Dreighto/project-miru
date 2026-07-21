@@ -1,9 +1,19 @@
 # Gemini CLI — Project Miru
 
+> **Read the kernel canon first.** (Pointer added 2026-07-21; this file previously had
+> none.) Before layering anything below, read `~/dev/LogueOS-Orchestrator/CLAUDE.md` and
+> `~/dev/LogueOS-Orchestrator/GEMINI.md`. Those hold the kernel canon: Fail-Closed
+> Directive, Pre-Flight Gates, Completion Contract, lane model and worker routing. This
+> file is a thin project-miru overlay on top of them, and the kernel governs any rule not
+> explicitly stated here. Also read this repo's `AGENTS.md`.
+
 ## Ports — Permanent Reference
 
-- 18080 = Project Miru UI — ACTIVE
-- 18765 = Miru AI — ACTIVE
+(Statuses corrected 2026-07-21 against `ss -ltnp` and the kernel's
+`.logueos/reference/ports-and-services.md`, which is the authority; this list is a copy.)
+
+- 18080 = PM Dashboard UI: **PAUSED**, intentionally offline since 2026-05-19. No systemd unit, not listening.
+- 18765 = Miru AI backend: **INACTIVE**, decommissioned in the 2026-05-25 Linux migration. No systemd unit, not listening.
 - 18766 = MCP Gateway — ACTIVE
 - 19100 = Dispatch Listener (HMAC-gated) — ACTIVE
 - 15678 = n8n — ACTIVE
@@ -13,8 +23,12 @@
 
 ## Repo Boundary — Hard Rule
 
-- Canonical repo: `Dreighto/project-miru`. Local checkout: `D:\dev\miru`.
-- Never access, modify, or read files outside `D:\dev\miru*` worktrees without explicit operator authorization.
+(Paths corrected 2026-07-21: the Windows `D:\dev\miru` spelling died in the 2026-05-25
+Linux migration.)
+
+- Canonical repo: `Dreighto/project-miru`. Local checkout: `~/dev/miru`.
+- Dispatched workers land in a pool worktree: `~/dev/worktrees/project-miru/w1` through `w4`, with parking branches `_parking_project-miru-w<n>`.
+- Never access, modify, or read files outside the worktree you were dispatched into (or `~/dev/miru` in an interactive session) without explicit operator authorization.
 - If a task requires leaving the repo: STOP. Explain what you need to do and why. Wait for operator decision.
 
 ## No Overlap Rule
@@ -27,23 +41,49 @@
 
 - Use MCP tools when they genuinely help the task.
 - Use sequential-thinking MCP before complex multi-step tasks — think first.
-- Use sqlite-ro-snapshot MCP to read card data before writing any intelligence pipeline code.
-- Use git MCP to check what files are currently changed before starting work.
+- Read card data before writing any intelligence pipeline code. See Database Rules below for the two approved read paths.
+- Check what files are currently changed before starting work (`git status`, or the `git` MCP if it is available in your session).
 - Use fetch, perplexity, youtube for research tasks only.
 - Never write to the database through any MCP tool.
 
 ## Database Rules
 
-- card_catalog.db is the live database — never write to it directly.
-- sqlite-ro-snapshot is the only approved DB access path for reads.
+- `data/card_catalog.db` is the live database: **never write to it**, by any tool, ever.
+- **Approved read paths (two, both verified 2026-07-21).** Use either:
+  1. **`sqlite-ro-snapshot` MCP**: reads a read-only snapshot at
+     `~/dev/miru/miru-mcp/sqlite-ro/card_catalog.snapshot.db` (present on disk, mode 444,
+     snapshot taken 2026-06-01). Registered in `~/.gemini/settings.json`, exposing only
+     `read_query` and `get_schema_ddl`. Prefer this: it cannot reach the live file at all.
+  2. **`logueos-gateway` MCP `read_query`** with an explicit
+     `db_path=/home/dreighto/dev/miru/data/card_catalog.db`. SELECT-only, and the gateway
+     opens the file with a `mode=ro` URI, so it cannot write. Use this when you need data
+     newer than the snapshot.
+- **If neither tool is visible in your session, STOP and ask the operator.** Do not fall
+  back to a shell `sqlite3` call against the live file, and do not improvise another path.
+  A missing tool is the gateway's fail-closed design, not an invitation to route around it.
+- **Known trap (2026-07-21):** this repo's own `.gemini/settings.json` still carries
+  Windows-era launch commands (`cmd /c npx.cmd`, `D:\dev\miru\...` paths) for
+  `sqlite-ro-snapshot`, `git` and `youtube`. Those entries cannot start on this Linux host.
+  If a project-scoped MCP server fails to launch, that is why. Report it; do not "fix" it
+  yourself, MCP config is operator-managed (see Must never, below).
 - All schema changes must be proposed to Claude Code first.
-- sqlite3 is available at C:\tools\sqlite3\sqlite3.exe
+- `sqlite3` is at `/usr/bin/sqlite3` (corrected 2026-07-21 from the dead Windows path
+  `C:\tools\sqlite3\sqlite3.exe`). It is for scratch work on copies and snapshots, not a
+  licence to open the live DB read-write.
 
 ## Restart Rules
 
-- PM (18080): `powershell -ExecutionPolicy Bypass -File windows\restart_pm.ps1`
-- Miru AI (18765): `powershell -ExecutionPolicy Bypass -File windows\restart_miru_ai.ps1`
-- Never use nssm restart directly. Never create alternate restart scripts.
+(Rewritten 2026-07-21. The two PowerShell commands previously here pointed at
+`windows\restart_pm.ps1` and `windows\restart_miru_ai.ps1`, neither of which exists in
+this repo, and both named services that are dead. The `nssm` prohibition is moot: nssm is
+a Windows service manager and this host is Linux with systemd.)
+
+- **PM (18080) and Miru AI (18765) have no service to restart.** See the Ports section:
+  18080 is PAUSED, 18765 was decommissioned. If a task assumes either is running, that
+  premise is wrong. Say so rather than trying to bring one up.
+- For any live service, the restart contract is the kernel's, not this file's: see
+  `~/dev/LogueOS-Orchestrator/.logueos/reference/restart-procedures.md`.
+- Never create alternate restart scripts.
 
 ## File Placement — Hard Rules
 
@@ -99,8 +139,7 @@ You can execute tasks end-to-end, but you're routed to Gemini specifically when:
 
 ### Must never
 
-- Never be the primary execution worker for a complex multi-file Python refactor — that's Claude Code's strength
-- Never modify `.mcp.json` or any MCP config files
+- Never modify `.mcp.json`, `.gemini/settings.json`, or any other MCP config file
 - Never write to `card_catalog.db`
 - Never modify worker rule files (CLAUDE.md, AGENTS.md, GEMINI.md)
 - Never use auto-approval mode for file writes unless the operator explicitly enables it

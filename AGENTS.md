@@ -18,14 +18,13 @@ miru-product-specific constraints.
 
 These extend the kernel's `Must never` list with constraints specific to this codebase:
 
-- **`pm/`** — Frontend storefront code. Cursor/GMI lane only. CC must not touch HTML/CSS/JS templates here.
-- **`miru_ai/static/`** — Same as `pm/`. CC must not touch templates or static assets.
+- **`pm/`**: frontend storefront code. (Corrected 2026-07-21: the "Cursor/GMI lane only, CC must not touch" restriction is removed. The CC=backend / GMI=frontend lane split was retired by operator directive 2026-05-23, and GMI holds no standing designer lane. Cursor is the `designer`-lane default, but that is a routing preference, not a write restriction on CC.) Read `.logueos/overlays/domain-ui.md` in the orchestrator before touching frontend code here.
+- **`miru_ai/static/`**: same as `pm/`: no lane restriction, same craft-guide trigger.
 - **`.mcp.json`** — Never modify. MCP config files are operator-managed.
 
 ## Miru-Specific File Ownership
 
-- **CC owns:** Python backend files, test scripts, verification scripts in this repo.
-- **Cursor/GMI own:** HTML/CSS/JS templates, `pm/`, `miru_ai/static/` — frontend lane.
+- **No exclusive frontend owner.** (Corrected 2026-07-21, replacing "Cursor/GMI own HTML/CSS/JS templates, `pm/`, `miru_ai/static/`, the frontend lane".) Routing is by lane, not by nickname, and the lane split this rule encoded was retired 2026-05-23. UI work in this repo routes to the `designer` lane, whose default is **Cursor**; CC and Gemini are the other `designer` candidates. CC is a generalist and may own Python backend, tests, verification scripts, and frontend alike. Lane defaults and candidates live in `~/dev/LogueOS-Orchestrator/.logueos/roles.yaml`, which is the authority here, not this file.
 - **CC owns CLAUDE.md, AGENTS.md, and all worker rule files by default** — permanent as of the operator's 2026-07-12 SOP shift moving canon ownership from CH to CC. CH is no longer the active canon owner or session driver.
 
 ## Miru Context Files
